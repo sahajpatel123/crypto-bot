@@ -1041,3 +1041,12 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   interference. No outbox filing yet; E-003 stays running. V-001R (W1)
   still awaiting go-ahead; W3 idle. No action needed.
 - Suite 87/87, evidence gate exit 0.
+
+## Addendum — turn 81 (E-003 progressing, scope-compliant; V-001R waiting)
+
+- W2 progressing on worker2/e-003: uncommitted edits now span
+  fake_venue.py (+12/-1) and order_manager.py (+39/-6), both inside
+  E-003 allowed paths. Read-only stat check, no interference. No
+  outbox filing yet; E-003 stays running. V-001R (W1) still awaiting
+  go-ahead; W3 idle. No action needed.
+- Suite 87/87, evidence gate exit 0.
