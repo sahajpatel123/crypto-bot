@@ -2294,3 +2294,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   metadata, no hardcoded whitelist. Single-sample datum, not an
   eligibility claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 199 (BTC funding-history PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 9641584. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public fundingRate BTC x3 (fetch 275ms): 00Z -0.0027%
+  ($82,941.06), 08Z -0.0010% ($82,980.80), 16Z +0.0013%
+  ($83,868.70). 8h cadence confirmed. Single-sample datum,
+  not a cost claim. PASS.
+- Suite 104/104, evidence gate exit 0.
