@@ -4447,3 +4447,12 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   buySellRatio 1.1737 @18:05Z; DOGE buySellRatio 0.2789
   @18:10Z. Single-sample, not a flow claim. PASS.
 - Suite 105/105, evidence gate exit 0.
+
+## Addendum — turn 404 (SOL/BNB taker PASS, cycle 3)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 5ecb92e. E-004 accepted; W2 standing by. V-001R (W1)
+  still awaiting go-ahead; W3 idle.
+- Public takerlongshortRatio 5m x1 (fetch 545ms): SOL
+  buySellRatio 0.4123 @18:10Z; BNB buySellRatio 1.0102
+  @18:10Z. Single-sample, not a flow claim. PASS.
+- Suite 105/105, evidence gate exit 0.
