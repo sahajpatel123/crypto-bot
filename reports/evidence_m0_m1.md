@@ -3420,3 +3420,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   long%=68.19. Single-sample, not a sentiment claim.
   PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 302 (BTC/ETH taker PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 68c1c98. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public takerlongshortRatio 5m (fetch 504ms):
+  BTCUSDT buySellRatio=0.9936 buyVol=154.8 sellVol=155.8;
+  ETHUSDT buySellRatio=0.4837 buyVol=3469.7 sellVol=7173.6.
+  Single-sample, not a flow claim. PASS.
+- Suite 104/104, evidence gate exit 0.
