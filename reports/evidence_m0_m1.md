@@ -5142,3 +5142,8 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   ETH 2534.59. Single-sample, not a flow
   claim. PASS. Suite 167/167, evidence
   gate exit 0.
+- Turn-476 (cycle 6): public aggTrades x5
+  (XRP 323ms, DOGE 548ms): XRP 1.4083;
+  DOGE 0.086810. Single-sample, not a
+  flow claim. PASS. Suite 167/167,
+  evidence gate exit 0.
