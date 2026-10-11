@@ -1838,3 +1838,12 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   BTC/ETH/BNB/SOL funding set; single sample, not a cost
   claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 157 (ETH tape snapshot PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at fac78ea. E-004 acked (option a, W2 not started, worker-side
+  go-ahead pending); V-001R (W1) still awaiting go-ahead; W3 idle.
+- Public aggTrades ETHUSDT x100 (fetch 321ms): 9.7s span, 43%
+  buy-side, median $974, p90 $27,351. Joins BNB/SOL tape data;
+  single sample, not a flow claim. PASS.
+- Suite 104/104, evidence gate exit 0.
