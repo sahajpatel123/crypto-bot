@@ -2872,3 +2872,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   ask 0.087280x41631 spread 1.15bp.
   Single-sample, not a liquidity claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 253 (universe PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 9504415. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public exchangeInfo (fetch 732ms): 924 total symbols, 525
+  USDT-margined PERPETUAL TRADING; 2 non-COIN in scope
+  (BTCDOMUSDT, ALLUSDT) flagged.
+  Single-sample, not an eligibility claim. PASS.
+- Suite 104/104, evidence gate exit 0.
