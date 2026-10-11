@@ -3628,3 +3628,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   BNB OIV 564,708 px 756.55 @17:27Z.
   Single-sample, not a flow claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 320 (BTC/ETH funding-rate PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 91d382c. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public fundingRate x2 (fetch 483ms): BTC
+  10-11 08:00Z -0.0010% | 16:00Z 0.0013%; ETH
+  08:00Z -0.0117% | 16:00Z 0.0012%.
+  Single-sample, not a cost claim. PASS.
+- Suite 104/104, evidence gate exit 0.
