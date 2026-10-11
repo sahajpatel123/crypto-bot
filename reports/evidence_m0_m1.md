@@ -1625,3 +1625,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   earlier BTC/ETH snapshots; single sample, not a liquidity
   claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 135 (ETH open-interest snapshot PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 7e50dbb. E-004 acked (option a, W2 not started, worker-side
+  go-ahead pending); V-001R (W1) still awaiting go-ahead; W3 idle.
+- Public openInterest ETHUSDT (fetch 463ms): 2,325,263 ETH at a
+  ~$2,512.09 reference (~$5,841.3M notional). Second-symbol OI
+  datum beside BNB turn-122; single sample, not a positioning
+  claim. PASS.
+- Suite 104/104, evidence gate exit 0.
