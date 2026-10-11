@@ -2768,3 +2768,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   2700.55M ($235.1M) / 16:35Z 2699.53M ($234.7M).
   Single-sample, not a leverage claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 243 (OI-history PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 23c9bd3. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public openInterestHist 5m x2 (fetch 465ms): SOL 16:35Z
+  8.48M ($946.5M) / 16:40Z 8.48M ($948.6M); BNB 16:30Z
+  0.56M ($424.2M) / 16:35Z 0.56M ($423.8M).
+  Single-sample, not a leverage claim. PASS.
+- Suite 104/104, evidence gate exit 0.
