@@ -4857,3 +4857,21 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   buySellRatio 1.0596 (buy 981.4450 / sell 926.2240); ts
   1791743700000. Single-sample, not a flow claim. PASS.
 - Suite 148/148, evidence gate exit 0.
+
+## Addendum — turn 436 (Q-002 tests + EXP-002 appearing,
+  XRP/DOGE taker PASS, cycle 4)
+- Q-002 progressing: w1 worktree grows to 18 entries — adds
+  M tests/unit/test_strategies_{contract,features,research}.py
+  plus new specs/strategies/EXP-002.md and
+  tests/unit/test_strategies_s2.py, on top of the S2/S3/S4
+  spec rewrites and s2.py/pullback.py/_shared.py work; all
+  within Q-002 allowed paths. Branch still at eb85157, no
+  commits or outbox filing yet. Read-only check; manager
+  touched nothing. W3 idle (confirmed), W2 still awaiting
+  E-004 go-ahead (unchanged).
+- Public takerlongshortRatio 5m x1 (fetch 628ms): XRP
+  buySellRatio 0.3501 (buy 299552.6000 / sell 855576.1000);
+  DOGE buySellRatio 0.5542 (buy 2109226.0000 / sell
+  3805675.0000); ts 1791743700000. Single-sample, not a
+  flow claim. PASS.
+- Suite 148/148, evidence gate exit 0.
