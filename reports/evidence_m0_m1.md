@@ -4642,3 +4642,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   ask 0.086920x134761. Single-sample, not a liquidity claim.
   PASS.
 - Suite 105/105, evidence gate exit 0.
+
+## Addendum — turn 425 (SOL/BNB bookTicker PASS, cycle 4)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 387f44c. E-004 accepted; W2 standing by. V-001R (W1)
+  still awaiting go-ahead; W3 idle.
+- Public bookTicker x1 (fetch 723ms): SOL bid 111.9500x525.87 /
+  ask 111.9600x1367.66; BNB bid 754.160x25.74 /
+  ask 754.170x75.75. Single-sample, not a liquidity claim.
+  PASS.
+- Suite 105/105, evidence gate exit 0.
