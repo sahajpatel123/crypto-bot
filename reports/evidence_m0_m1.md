@@ -1749,3 +1749,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   $716.7M quote vol, 817,169 trades. Completes ETH/BNB/SOL 24h
   trio; single sample, not a regime claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 148 (SOL OI-history snapshot PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 8c91962. E-004 acked (option a, W2 not started, worker-side
+  go-ahead pending); V-001R (W1) still awaiting go-ahead; W3 idle.
+- Public openInterestHist SOLUSDT 5m x6 (fetch 253ms): range
+  8,614,073-8,633,119 SOL, last 8,633,119 (~$956.8M @ $110.83).
+  Note: endpoint rows carry no symbolPrice key (first probe failed
+  KeyError, retried with ticker/price); pairs with BTC OI-history
+  datum. Single sample, not a leverage claim. PASS.
+- Suite 104/104, evidence gate exit 0.
