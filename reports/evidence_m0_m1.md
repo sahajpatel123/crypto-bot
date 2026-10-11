@@ -3583,3 +3583,15 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   2,710,060,454 contracts @17:25Z. Single-sample, not a flow
   claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 316 (SOL/BNB OI PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at cddbf63. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public openInterest (fetch 516ms): SOLUSDT
+  8,479,237 contracts; BNBUSDT 564,537
+  contracts @17:26Z. Single-sample, not a flow claim. PASS.
+- Git safety: bundled:git skill re-read; objective text explicitly
+  asks commit+push, authorising history writes.
+- Suite 104/104, evidence gate exit 0.
