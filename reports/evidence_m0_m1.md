@@ -697,3 +697,15 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   commit through turn 51 has landed on the remote, not just in the
   local clone. PASS.
 - Suite 87/87, evidence gate exit 0.
+
+## Addendum — turn 53 (klines capture freshness probe; still awaiting go-aheads)
+
+- No new outbox filings, commits, or worker activity; E-003 (W2, acked
+  14:11Z) + V-001R (W1, acked 13:44Z, ~58min wait) still await worker-side
+  go-aheads. W3 idle.
+- Fresh klines capture probe (`capture ... --limit 5` to /tmp): 5 kline
+  events + header + footer, header keys byte-identical to the committed
+  60-kline sample, gaps 0. stale_count 4 / max lag ~3.8min is the known
+  REST-backfill-age property, not feed degradation. The klines endpoint
+  path still works and the record shape is stable. PASS.
+- Suite 87/87, evidence gate exit 0.
