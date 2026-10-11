@@ -4970,3 +4970,9 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   rate0.00000000 T1791734400002. Single-sample, not
   a cost/positioning claim. PASS. Suite 167/167,
   evidence gate exit 0.
+- Turn-451 (cycle 5): public klines 1m x1 (BTC 240ms,
+  ETH 222ms), T1791745380000: BTC o83667.60 h83680.00
+  l83667.60 c83679.90 v7.302 n369; ETH o2535.63
+  h2536.44 l2535.62 c2536.44 v1438.725 n1071.
+  Single-sample, not a trend/liquidity claim. PASS.
+  Suite 167/167, evidence gate exit 0.
