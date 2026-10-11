@@ -793,3 +793,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   matches the turn-55 import check; allowed_paths stay inside W2
   ownership (D-003). 6/6 acceptance items sourced. PASS.
 - Suite 87/87, evidence gate exit 0.
+
+## Addendum — turn 60 (M1 report freshness; still awaiting go-aheads)
+
+- No new outbox filings, commits, or worker activity; E-003 (W2) +
+  V-001R (W1, ~64min wait) still await worker-side go-aheads. W3 idle.
+  The ~60min V-001R flag (turn 57) stands; no manager-side unblock.
+- Audited committed reports/m1_report.json against a fresh slice run:
+  JSON-identical (bar 154, notional 145.38634456685105, stub/fake
+  labels, ambiguous-reconciled). The committed M1 artifact is not
+  stale. PASS.
+- Suite 87/87, evidence gate exit 0.
