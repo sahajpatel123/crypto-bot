@@ -2861,3 +2861,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   ask 757.870x19.08 spread 0.13bp.
   Single-sample, not a liquidity claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 252 (depth PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 240ecb5. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public depth limit=5 (fetch 628ms): XRP bid 1.4206x24184.7 /
+  ask 1.4207x55624.8 spread 0.70bp; DOGE bid 0.087270x722262 /
+  ask 0.087280x41631 spread 1.15bp.
+  Single-sample, not a liquidity claim. PASS.
+- Suite 104/104, evidence gate exit 0.
