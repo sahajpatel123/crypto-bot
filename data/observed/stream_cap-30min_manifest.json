@@ -1,0 +1,52 @@
+{
+  "run_id": "cap-30min",
+  "input_class": "observed-public",
+  "format": "cryptobot-events/1",
+  "started_utc": "2026-10-11T21:43:58.688145+00:00",
+  "ended_utc": "2026-10-11T22:13:59.301922+00:00",
+  "symbols": [
+    "BTCUSDT",
+    "ETHUSDT"
+  ],
+  "capture_set_rule": "top-2 by 24h quoteVolume among 525 TRADING USDT-perp symbols from live discovery (recomputed per run)",
+  "selection_evidence": {
+    "BTCUSDT": 5160590839.29,
+    "ETHUSDT": 4426003892.08
+  },
+  "metadata_hash": "a6cf3bf144c3ae3a",
+  "clock_offset_start": {
+    "offset_ms": 61.385986328125,
+    "rtt_ms": 284.88623046875
+  },
+  "config": {
+    "market_streams": [
+      "aggTrade",
+      "markPrice@1s"
+    ],
+    "public_streams": [
+      "bookTicker",
+      "depth@100ms"
+    ],
+    "depth_snapshot_limit": 1000,
+    "lateness_ms": 500,
+    "max_bytes": 4294967296,
+    "chaos_disconnect_after_s": 900.0
+  },
+  "files": {
+    "raw": {
+      "path": ".captures/cap-30min/raw.jsonl",
+      "sha256": "93b8346b7df02238cbba15ef76d86476c8260304826371bf5428e7dd4f52ecd9",
+      "bytes": 592502781
+    },
+    "events": {
+      "path": ".captures/cap-30min/events.jsonl",
+      "sha256": "76c9137f00c2ce645e83514409b8019a0a9e5b243fc2be38789587db9e58792e",
+      "bytes": 611979689
+    },
+    "bars": {
+      "path": ".captures/cap-30min/bars.jsonl",
+      "sha256": "ceff7d3c8965a26bc70d260b35659f64d83042e43ffddfc32842d85a74d013c8",
+      "bytes": 1095832
+    }
+  }
+}
