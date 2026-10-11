@@ -449,3 +449,22 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   2a33173, D-006 diff, 18/18 sha256); dbc4203 (E-002) names 7be230d from
   worker2/e-002. Nit (no action): dbc4203 implies rather than names the
   worker session. PASS.
+
+## Addendum — turn 36 (liveness-rule + D-009 heartbeat audit; still awaiting go-aheads)
+
+- No new outbox filings, commits, or worker activity; E-003 (W2, acked
+  14:11Z) + V-001R (W1, acked 13:44Z, ~42min wait) still await worker-side
+  go-aheads. W3 idle.
+- Stall-rule sweep: zero tasks in `running` state (E-001/Q-001/E-002/V-002
+  accepted; V-001 review; V-001R/E-003 assigned-not-started), so the D-009
+  30-min stall rule trips on nothing. Correct: nothing has started-but-
+  stalled; no stall marker is due. Observation (no action yet): D-009
+  covers running tasks only — no aging rule exists for
+  assigned-but-awaiting-go-ahead; the ~60min mark is the manager's stated
+  point to raise the critical-path flag harder.
+- D-009 heartbeat-integrity audit: all three `last_heartbeat_utc` values
+  (W1 13:44:16Z, W2 14:11:55Z, W3 13:58:10Z) are worker-originated and
+  unchanged by any manager turn. The turn-25 vocab commit (c7a8f25)
+  reformatted workers.json but preserved all three values byte-identically
+  (verified via diff). PASS.
+- Suite 87/87, evidence gate exit 0.
