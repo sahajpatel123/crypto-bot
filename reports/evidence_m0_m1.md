@@ -2571,3 +2571,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   (buy 154 / sell 157); ETH 1.852 (buy 6,035 / sell 3,259).
   Single-sample, not a flow claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 225 (taker PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at d37931e. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public takerlongshortRatio 5m (fetch 672ms): SOL 1.245
+  (buy 52,414 / sell 42,084); BNB 0.545 (buy 396 /
+  sell 727). Single-sample, not a flow claim. PASS.
+- Suite 104/104, evidence gate exit 0.
