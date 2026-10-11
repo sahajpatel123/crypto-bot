@@ -1499,3 +1499,16 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   census (universe is larger; discovery must paginate or use
   exchangeInfo). Single snapshot, not a cost claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 124 (USDT-perp universe census PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at ad66e13. E-004 acked (option a, W2 not started, worker-side
+  go-ahead pending); V-001R (W1) still awaiting go-ahead; W3 idle.
+- Public exchangeInfo (fetch 687ms): 924 symbols total —
+  703 PERPETUAL, 217 TRADIFI_PERPETUAL, 2 quarterly each. Filtered
+  USDT-margined+USDT-quoted PERPETUAL in TRADING status: 525.
+  Supersedes turn-123's capped 100-row funding sample as the
+  universe count; confirms TradFi/quarterly exclusion matters for
+  dynamic discovery (no hardcoded whitelist). Single-sample
+  metadata census, not an eligibility/liquidity claim. PASS.
+- Suite 104/104, evidence gate exit 0.
