@@ -5052,3 +5052,12 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   T1791745971100. Single-sample, not a
   depth/liquidity claim. PASS. Suite 167/167,
   evidence gate exit 0.
+- Turn-463 (cycle 5): public premiumIndex (BTC
+  457ms, ETH 290ms): BTC mark83664.35167391
+  idx83701.06108696 fund0.00002612
+  nextT1791763200000 T1791746034000; ETH
+  mark2534.33000000 idx2535.48325581
+  fund0.00002141 nextT1791763200000
+  T1791746034000. Single-sample, not a
+  funding/cost claim. PASS. Suite 167/167,
+  evidence gate exit 0.
