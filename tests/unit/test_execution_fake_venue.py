@@ -17,6 +17,7 @@ def test_market_submit_fills_immediately():
 
 def test_client_id_is_idempotent_no_duplicate_order():
     venue = FakeVenue()
+    venue.set_last_price("BTCUSDT", 67000.0)  # F-E001-04: MARKET needs a price reference.
     venue.submit("c1", "BTCUSDT", "BUY", "MARKET", 0.01)
     again = venue.submit("c1", "BTCUSDT", "BUY", "MARKET", 99.0)
     assert "duplicate-client-id" in again.reason
