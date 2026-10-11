@@ -5218,3 +5218,8 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   83708.10 (+0.807%); ETH last 2535.57
   (+0.773%). PASS. Suite 167/167,
   evidence gate exit 0.
+- Turn-491 (cycle 6): public ticker24 x1
+  (XRP 327ms, DOGE 279ms): XRP last
+  1.4093 (+0.299%); DOGE last 0.086890
+  (+0.871%). PASS. Suite 167/167,
+  evidence gate exit 0.
