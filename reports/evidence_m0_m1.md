@@ -3453,3 +3453,16 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   BNBUSDT buySellRatio=1.5203 buyVol=973.5 sellVol=640.3.
   Single-sample, not a flow claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 305 (BTC/ETH book PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at c4cfaed. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public depth limit=5 top-3 (fetch 564ms):
+  BTCUSDT bid 83910.60/83910.50/83910.00 ask
+  83910.70/83910.80/83911.00 spread 0.10;
+  ETHUSDT bid 2544.46/2544.45/2544.44 ask
+  2544.47/2544.48/2544.49 spread 0.01.
+  Single-sample, not a liquidity claim. PASS.
+- Suite 104/104, evidence gate exit 0.
