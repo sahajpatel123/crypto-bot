@@ -57,3 +57,22 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
 - Next: owner authorizes workers (or pastes nothing — tasks are already in
   their sessions + inbox files); manager integrates worker branches on
   completion, reproduces M2 data/latency evidence, and extends the slice.
+
+## Addendum — turn 2 (E-001 running; shared-tree race disclosed)
+
+- Worker 2 heartbeat: owner go-ahead received, E-001 assigned→running, branch
+  worker2/e-001 created from clean main. No worker files yet; completion will
+  arrive via coord/outbox/E-001.json.
+- Shared-tree race (my defect, disclosed): all four sessions share one working
+  tree, so Worker 2's checkout switched my tree mid-turn and my turn-2 commit
+  e5ed85b landed on worker2/e-001 instead of main. e5ed85b was never pushed;
+  identical manager content is re-committed on main here. I will not rewrite
+  the worker's branch; identical content merges cleanly at integration.
+  Mitigation requested: workers use separate `git worktree` checkouts per
+  directive Section 5 instead of switching branches in the shared tree.
+- Manager change: added `tests/unit/test_coordinator.py` (dedup, opposing
+  stand-aside, stale/halt rejection). First run caught a bad test construction
+  (expiry before evidence); fixed the test, product invariant unchanged.
+- Checks: `pytest -q` 6 passed; M1 slice exit 0, synthetic report unchanged.
+- Worker 3: re-nudged once, still no reply; flagged stalled-pending-ack.
+  Worker 1: still awaiting owner authorization. Accepted worker changes: none.
