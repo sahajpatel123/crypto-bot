@@ -3377,3 +3377,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   2,711,702,976 > 2,712,599,945. Single-sample, not a
   trend claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 298 (SOL/BNB OI-history PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 22d5429. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public openInterestHist 5m x2 (fetch 553ms): SOLUSDT
+  8,472,842 > 8,481,838; BNBUSDT 564,585 > 564,710.
+  Single-sample, not a trend claim. PASS.
+- Suite 104/104, evidence gate exit 0.
