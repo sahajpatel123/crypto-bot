@@ -1010,3 +1010,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   state awaiting V-001R. Noted one empty untracked risk/ scaffold dir
   on main (no tracked files, harmless). Zero drift. PASS.
 - Suite 87/87, evidence gate exit 0.
+
+## Addendum — turn 78 (peer-to-worker mapping audit; still awaiting go-aheads)
+
+- No new outbox filings, commits, or worker activity; E-003 (W2) +
+  V-001R (W1) still await worker-side go-aheads. W3 idle.
+- Audited live peer sessions against workers.json: the 3 reachable
+  cryto-bot sessions exactly match the board — whisper-redshift=W1
+  Quant, cloud-vega=W2 Data/Execution, cool-amalthea=W3 Risk — with
+  no missing or extra sessions. (Role field is proposed_role, not
+  role; first probe used the wrong key.) PASS.
+- Suite 87/87, evidence gate exit 0.
