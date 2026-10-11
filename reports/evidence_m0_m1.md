@@ -4484,3 +4484,12 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   @111.9300; BNB 4.11 SELL @753.930. Single-sample, not a
   liquidity claim. PASS.
 - Suite 105/105, evidence gate exit 0.
+
+## Addendum — turn 408 (BTC/ETH OI PASS, cycle 4)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at bb8bc7f. E-004 accepted; W2 standing by. V-001R (W1)
+  still awaiting go-ahead; W3 idle.
+- Public openInterest x1 (fetch 475ms): BTC 92819.173;
+  ETH 2323929.138. Single-sample, not a leverage claim.
+  PASS.
+- Suite 105/105, evidence gate exit 0.
