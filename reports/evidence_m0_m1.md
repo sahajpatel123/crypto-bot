@@ -1603,3 +1603,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   change context to earlier single-point OI snapshots. Single
   snapshot, not a positioning claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 133 (ETH 1m-kline snapshot PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at e05e34c. E-004 acked (option a, W2 not started, worker-side
+  go-ahead pending); V-001R (W1) still awaiting go-ahead; W3 idle.
+- Public klines ETHUSDT 1m x60 (fetch 232ms): 0 bar gaps; 1m
+  log-return stdev 4.86bps; hour high-low range 46.1bps; total
+  72,522 ETH. Second-symbol vol context beside BTC turn-131
+  (2.37bps/31.6bps) for per-market S1 threshold work; single
+  hour each, not a regime claim. PASS.
+- Suite 104/104, evidence gate exit 0.
