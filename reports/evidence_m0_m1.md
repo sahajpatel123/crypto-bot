@@ -5078,3 +5078,10 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   T1791746263000. Single-sample, not a
   funding/cost claim. PASS. Suite 167/167,
   evidence gate exit 0.
+- Turn-466 (cycle 5): public
+  globalLongShortAccountRatio 5m (BTC 335ms,
+  ETH 297ms): BTC L/S1.3889 longAcc0.5814
+  shortAcc0.4186; ETH L/S2.8329
+  longAcc0.7391 shortAcc0.2609; T1791746100000.
+  Single-sample, not a sentiment claim.
+  PASS. Suite 167/167, evidence gate exit 0.
