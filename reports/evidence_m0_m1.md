@@ -4207,3 +4207,12 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
 - Public openInterest x1 (fetch 616ms): SOL 8500200.84; BNB
   564663.62. Single-sample, not a positioning claim. PASS.
 - Suite 105/105, evidence gate exit 0.
+
+## Addendum — turn 378 (BTC/ETH OI-history PASS, cycle 3)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at dcdae7a. E-004 accepted; W2 standing by. V-001R (W1)
+  still awaiting go-ahead; W3 idle.
+- Public openInterestHist 1h x1 (fetch 480ms): BTC 92780.453;
+  ETH 2321632.027 @18:00Z bar. Single-sample, not a trend claim.
+  PASS.
+- Suite 105/105, evidence gate exit 0.
