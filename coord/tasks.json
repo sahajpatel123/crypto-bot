@@ -150,7 +150,7 @@
    "contract_version": "v0.1.1 black-box",
    "dispatch_utc": "2026-10-11T20:44:02Z",
    "inbox": "coord/inbox/Q-003.json",
-   "note": "Dispatched: independent repro + executable EXP-001/002 per CEO directive Sec 3. Ack pending. Ack+START received 2026-10-11T20:52:00Z (worker1/q-003 @027cc6e, /tmp/cryto-bot-w1q3, baseline 167/167). Phase 1 COMPLETE 2026-10-11T21:05:00Z: 16 tests (11F/5P identical on 871d104+ec7dd62, symptom-cross-checked); 170/170 untouched. Phase 2 started; fix-after runs await integration.",
+   "note": "Dispatched: independent repro + executable EXP-001/002 per CEO directive Sec 3. Ack pending. Ack+START received 2026-10-11T20:52:00Z (worker1/q-003 @027cc6e, /tmp/cryto-bot-w1q3, baseline 167/167). Phase 1 COMPLETE 2026-10-11T21:05:00Z: 16 tests (11F/5P identical on 871d104+ec7dd62, symptom-cross-checked); 170/170 untouched. Phase 2 started; fix-after runs await integration. Build VERIFIED 2026-10-11T21:15:00Z (12/12 hashes, 176 green, 15F/5P, EXP 150/150 reproduced; 90/60 counts confirmed correct grain). One assertion reword requested (unresolved observables). Fix-after runs await V-004 fixup + E-005.",
    "owner_session": "whisper-redshift",
    "role": "Worker 1 \u2014 Quant Research and Strategy Engineer",
    "state": "running"
@@ -269,10 +269,10 @@
    "contract_version": "v0.2.0",
    "dispatch_utc": "2026-10-11T20:44:02Z",
    "inbox": "coord/inbox/V-004.json",
-   "note": "Dispatched: ledger+risk corrections F-CEO-01/03/04/06/07 per CEO directive Sec 3. Ack pending. No ack yet as of 2026-10-11T20:52:00Z. Ack+START 2026-10-11T21:00:00Z (worker3/v-004 @ec7dd62, /tmp/cryto-bot-w3-004, 170/170 baseline, before-probe reproduced). v0.2.0 addendum published; note-(c) superseded: sink GAINS note_fill_delta; note_fill = first-fill transition.",
+   "note": "Dispatched: ledger+risk corrections F-CEO-01/03/04/06/07 per CEO directive Sec 3. Ack pending. No ack yet as of 2026-10-11T20:52:00Z. Ack+START 2026-10-11T21:00:00Z (worker3/v-004 @ec7dd62, /tmp/cryto-bot-w3-004, 170/170 baseline, before-probe reproduced). v0.2.0 addendum published; note-(c) superseded: sink GAINS note_fill_delta; note_fill = first-fill transition. Completion filed 2026-10-11T21:15:00Z (218/218 claimed, invariant report). Manager review: CONDITIONAL PASS \u2014 full diff read, 218/218 reproduced, probe after-outputs confirmed, 3 test updates legitimate. One required fixup: policy ledger binding + delta propagation. Retention ruling: unresolved-bucket stands (addendum clarified).",
    "owner_session": "cool-amalthea",
    "role": "Worker 3 \u2014 Risk, Verification and Reliability Engineer",
-   "state": "running"
+   "state": "review"
   }
  },
  "updated_utc": "2026-10-11T15:10:35Z",

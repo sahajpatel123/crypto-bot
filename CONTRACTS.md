@@ -124,6 +124,12 @@ Protocol code update lands at integration with both sides.
 - Exec identity: OrderManager mints one exec_id per fill increment, unique,
   persisted in the order log (fsync) BEFORE the sink call, stable across
   recovery, and traceable to its client_id. Format at execution discretion.
+- Clarification (MG-001 review): a reservation with booked exposure MAY
+  transition from live reservations to an explicit unresolved set instead
+  of remaining listed live. This is a defined block-retaining state, not a
+  purge. `unresolved_ids()` and `booked_net(reservation_id)` are contract
+  observables; release-stays-False and reconcile-to-lift semantics apply
+  in both locations.
 - Execution-local (no contract change, W2 tests): expiry settle window —
   expired entries are re-reconciled until the window passes fill-free; late
   fills are booked and protected. Overfill residual: exit fills beyond entry
