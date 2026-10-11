@@ -3799,3 +3799,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   ETH mark 2550.89 funding 0.001221% last 2551.46
   @17:37Z. Single-sample, not a funding claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 336 (XRP/DOGE premiumIndex PASS, cycle 2)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 2b4ee6b. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public premiumIndex+ticker/price (fetch 1216ms): XRP
+  mark 1.42280 funding 0.008221% last 1.4229;
+  DOGE mark 0.087610 funding 0.007550% last 0.087590
+  @17:37Z. Single-sample, not a funding claim. PASS.
+- Suite 104/104, evidence gate exit 0.
