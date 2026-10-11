@@ -3949,3 +3949,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   Single-sample, not a regime claim. Replay of canonical recording
   exit 0. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 351 (XRP/DOGE klines PASS, cycle 2)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 583c0a3. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public klines 1m x2 (fetch 509ms): XRP O1.4182 C1.4187 /
+  O1.4187 C1.4186; DOGE O0.087260 C0.087320 / O0.087310 C0.087330.
+  Single-sample, not a regime claim. M1 slice recovery OK. PASS.
+- Suite 104/104, evidence gate exit 0.
