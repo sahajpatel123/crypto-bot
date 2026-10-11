@@ -3124,3 +3124,16 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   bid $344,718/ask $205,896.
   Single-sample, not a liquidity claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 276 (XRP/DOGE depth PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at fc71720. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public depth limit=5 (fetch 480ms): XRPUSDT best
+  1.41680x64,695/1.41690x14,350 L5-notional bid
+  $418,378/ask $139,093; DOGEUSDT best
+  0.08701x427,353/0.08702x392,097 L5-notional bid
+  $266,165/ask $255,911.
+  Single-sample, not a liquidity claim. PASS.
+- Suite 104/104, evidence gate exit 0.
