@@ -5228,3 +5228,8 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   111.4000 (+0.842%); BNB last 753.360
   (+0.212%). PASS. Suite 167/167,
   evidence gate exit 0.
+- Turn-493 (cycle 6): public bookTicker x1
+  (BTC 331ms, ETH 284ms): BTC
+  83675.30/83675.40; ETH 2535.34/
+  2535.35. PASS. Suite 167/167,
+  evidence gate exit 0.
