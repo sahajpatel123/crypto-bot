@@ -99,3 +99,16 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
 - Checks: `pytest -q` 9 passed; M1 slice exit 0.
 - Worker 1: turn-4 check, reachable, no new messages, still awaiting owner
   authorization. Worker 3: turn-4 check, reachable, still silent since kickoff.
+
+## Addendum — turn 5 (E-001 tools emerging; evidence generator added)
+
+- Worker 2: worktree adds capture/replay tools (public-REST-only,
+  observed/synthetic separation, determinism hash — early read, full review
+  at completion). Still uncommitted; heartbeat + incremental-commit request
+  sent. No outbox completion.
+- Manager change: added `tools/generate_evidence.py`, a reproducible
+  status-evidence collector (pytest + M1 + task board + worker status + git
+  log). Smoke-tested: exits 0, output verified.
+- Checks: `pytest -q` 9 passed; M1 slice exit 0.
+- Worker 1: turn-5 check, reachable, no new messages, still awaiting owner
+  authorization. Worker 3: turn-5 check, reachable, still silent since kickoff.
