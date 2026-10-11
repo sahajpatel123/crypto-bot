@@ -3231,3 +3231,15 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   lo 2,496.12 quoteVol 3,941,168,032 trades 1640834.
   Single-sample, not a regime claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 285 (XRP/DOGE 24hr-ticker PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at ddfb5be. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public ticker/24hr (fetch 476ms): XRPUSDT last 1.4177
+  +0.95% hi 1.426 lo 1.3865 quoteVol 394,628,196
+  trades 693427; DOGEUSDT last 0.08699 +1.02% hi
+  0.08753 lo 0.08485 quoteVol 191,941,072 trades 531391.
+  Single-sample, not a regime claim. PASS.
+- Suite 104/104, evidence gate exit 0.
