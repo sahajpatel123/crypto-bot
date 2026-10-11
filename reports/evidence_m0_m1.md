@@ -1693,3 +1693,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   1.088-2.026, last 1.913. Second-symbol flow datum beside BTC
   turn-130; single sample, not a flow claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 142 (BNB L/S-ratio snapshot PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 350c34d. E-004 acked (option a, W2 not started, worker-side
+  go-ahead pending); V-001R (W1) still awaiting go-ahead; W3 idle.
+- Public globalLongShortAccountRatio BNBUSDT 5m x6 (fetch 403ms):
+  range 2.157-2.167, last 2.157. Second-symbol positioning datum
+  beside BTC turn-129; single sample, not a positioning claim.
+  PASS.
+- Suite 104/104, evidence gate exit 0.
