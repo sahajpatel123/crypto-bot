@@ -171,11 +171,11 @@
       ]
     },
     "E-003": {
-      "state": "running",
-      "note": "Acked turn-22b: scope understood, NOT STARTED, awaiting worker-side user go-ahead. Turn-79: W2 heartbeat E-003 STARTED; branch worker2/e-003 from 0d90e6f confirmed in worktree; state -> running.",
+      "state": "accepted",
+      "note": "Acked turn-22b: scope understood, NOT STARTED, awaiting worker-side user go-ahead. Turn-79: W2 heartbeat E-003 STARTED; branch worker2/e-003 from 0d90e6f confirmed in worktree; state -> running. Turn-85: reviewed (104/104 x2, M1 OK, 6/6 mapped, zero risk edits; note 18-vs-17 count) -> ACCEPTED, merged d54a251.",
       "owner_session": "cloud-vega"
     }
   },
-  "updated_utc": "2026-10-11T15:02:32Z",
+  "updated_utc": "2026-10-11T15:06:30Z",
   "version": 1
 }

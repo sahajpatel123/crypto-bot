@@ -1083,3 +1083,17 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   filing yet; E-003 stays running. V-001R (W1) still awaiting
   go-ahead; W3 idle.
 - Suite 87/87, evidence gate exit 0.
+
+## Addendum — turn 85 (E-003 ACCEPTED + integrated; V-001R waiting)
+
+- W2 filed E-003 completion (commit d54a251, 4 files +432/-12, all in
+  allowed paths; outbox E-003.json with 6/6 acceptance mapping).
+  Manager review reproduced every claim: 104/104 green twice in the
+  W2 worktree, M1 slice exit 0 with canonical output, isinstance
+  assertion + halt/orphan/recover APIs present, F-E001-04 migration
+  is one setup line with intent preserved, zero risk-file edits.
+  One trivial note: "18 new" counts 17 collected tests (87+17=104
+  reconciles). Verdict ACCEPT; merged worker2/e-003 into main.
+  E-003 running -> accepted; W2 running -> idle (F-DATA-01 queued
+  next). V-001R (W1) still awaiting go-ahead; W3 idle.
+- Suite 104/104, evidence gate exit 0.
