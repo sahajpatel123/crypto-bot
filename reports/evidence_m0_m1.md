@@ -4183,3 +4183,11 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
 - Public aggTrades x3 (fetch 496ms): SOL 1.33 BUY @111.9900;
   BNB 0.30 SELL @753.820. Single-sample, not a flow claim. PASS.
 - Suite 105/105, evidence gate exit 0.
+
+## Addendum — turn 375 (BTC/ETH OI PASS, cycle 3)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 9f4cf8d. E-004 accepted; W2 standing by. V-001R (W1)
+  still awaiting go-ahead; W3 idle.
+- Public openInterest x1 (fetch 611ms): BTC 92785.703; ETH
+  2323483.934. Single-sample, not a positioning claim. PASS.
+- Suite 105/105, evidence gate exit 0.
