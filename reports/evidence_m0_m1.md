@@ -1769,3 +1769,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   day, $3,131.2M quote vol, 784,450 trades. Completes
   BTC/ETH/BNB/SOL 24h set; single sample, not a regime claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 150 (ETH OI-history snapshot PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 61a03f4. E-004 acked (option a, W2 not started, worker-side
+  go-ahead pending); V-001R (W1) still awaiting go-ahead; W3 idle.
+- Public openInterestHist ETHUSDT 5m x6 (fetch 343ms): range
+  2,302,631-2,327,355 ETH, last 2,302,631 (~$5,817.2M @ $2,526.34;
+  priced via ticker/price, no symbolPrice key in rows). Completes
+  BTC/SOL/ETH OI-history trio; single sample, not a leverage
+  claim. PASS.
+- Suite 104/104, evidence gate exit 0.
