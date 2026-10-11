@@ -37,7 +37,8 @@ state. Long/short evidence separate.
 
 ## Risk gate interface (Worker 3 implements; manager reviews)
 
-`evaluate(intent, account_state) -> Approved(reserved_risk, size) | Rejected(reason)`.
+`evaluate(intent, account) -> Approved(reserved_risk, notional_usdt, qty) | Rejected(reason)`
+(matches the reviewed V-001 surface; turn-41 audit fix).
 Must enforce: planned-loss sizing incl. stressed costs, leverage/margin/exposure,
 minimum-size skip, one-position incl. reservations, daily halt/target pause,
 profit-protection upward-only persistence, health blocks. Reservation atomic.

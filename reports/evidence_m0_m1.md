@@ -526,3 +526,21 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   D-005 in place (manager-owned file): rationale stands, trigger wording
   superseded by D-011. No semantic change.
 - Suite 87/87, evidence gate exit 0.
+
+## Addendum — turn 41 (CONTRACTS code-alignment audit; still awaiting go-aheads)
+
+- No new outbox filings, commits, or worker activity; E-003 (W2, acked
+  14:11Z) + V-001R (W1, acked 13:44Z, ~47min wait) still await worker-side
+  go-aheads. W3 idle.
+- Audited every code claim in CONTRACTS.md against the reviewed sources.
+  Confirmed: V-001 `Approved` already carries `reservation_id`
+  (types.py:36, policy.py:106/117); `RiskOutcomeSink` on main mirrors
+  the V-001 surface exactly (note_fill(id)->None, release(id)->bool,
+  note_flat()->None; policy.py:124-136). One drift found and fixed in
+  the manager-owned contract: the v0.1.0 risk-gate sketch read
+  `evaluate(intent, account_state) -> Approved(reserved_risk, size)`
+  while the reviewed implementation is `evaluate(intent, account) ->
+  Approved(reserved_risk, notional_usdt, qty)`. Contract now matches
+  reviewed code (V-001 still unaccepted; contract tracks it at
+  acceptance if the shape moves).
+- Suite 87/87, evidence gate exit 0.
