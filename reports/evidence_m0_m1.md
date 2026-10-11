@@ -422,3 +422,15 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   Suite 87/87, evidence gate exit 0, evidence_bar still 154. Note: this
   intentionally supersedes the turn-30 MATCH baseline — the only report
   delta is the added prefix.
+
+## Addendum — turn 34 (M1 report self-labels fake venue; still awaiting go-aheads)
+
+- No new outbox filings, commits, or worker activity; E-003 + V-001R still
+  await worker-side go-aheads.
+- Same-class honesty fix as turn 33: the report recorded `fills: 1` with no
+  venue label, so a reader could not tell the fill came from a fake. The
+  report now carries `"venue": "slice-local-fake:ambiguous-once"` (the
+  slice-local minimal fake, not E-001's order-manager venue — verified in
+  source before labelling). Report regenerated with the tool; no test
+  depends on report keys. Suite 87/87, evidence gate exit 0, bar 154,
+  risk-stub label intact.

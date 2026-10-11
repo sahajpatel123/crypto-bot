@@ -141,6 +141,7 @@ def main() -> int:
         "risk": reason,
         "notional": notional,
         "fills": len(venue.fills),
+        "venue": "slice-local-fake:ambiguous-once",
         "recovery": "ambiguous-reconciled-no-duplicate",
     }
     out = Path(args.out)

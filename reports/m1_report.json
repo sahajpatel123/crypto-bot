@@ -8,5 +8,6 @@
   "risk": "risk-stub:approved:budget=0.2500",
   "notional": 145.38634456685105,
   "fills": 1,
+  "venue": "slice-local-fake:ambiguous-once",
   "recovery": "ambiguous-reconciled-no-duplicate"
 }
