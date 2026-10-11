@@ -4258,3 +4258,12 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
 - Public fundingRate x1 (fetch 473ms): SOL 0.006592%; BNB
   0.000000% @16:00Z. Single-sample, not a cost claim. PASS.
 - Suite 105/105, evidence gate exit 0.
+
+## Addendum — turn 384 (BTC/ETH klines PASS, cycle 3)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 3a4c1b3. E-004 accepted; W2 standing by. V-001R (W1)
+  still awaiting go-ahead; W3 idle.
+- Public klines 1m x2 (fetch 584ms): BTC O83836.90 C83848.50 /
+  O83848.50 C83837.60; ETH O2539.66 C2540.11 / O2540.11 C2540.33.
+  Single-sample, not a regime claim. PASS.
+- Suite 105/105, evidence gate exit 0.
