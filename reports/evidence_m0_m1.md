@@ -1535,3 +1535,15 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   p50 3.90, p90 8.44, max 34.1. Feeds M2 cost modelling at order
   level; single snapshot, not a cost claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 127 (universe 24h-volume snapshot PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 8cb5250. E-004 acked (option a, W2 not started, worker-side
+  go-ahead pending); V-001R (W1) still awaiting go-ahead; W3 idle.
+- Public ticker/24hr (fetch 390ms): 789 rows, 741 USDT-suffixed
+  (raw rows, unfiltered by status). Quote volume: p10 $0.1M,
+  p50 $1.6M, p90 $25M, max $2.88B; counts >=$1B: 3, >=$100M: 30,
+  >=$10M: 145. Informs M2 10-20-market shortlist sizing; headline
+  volume is not depth at our size. Single snapshot, not an
+  eligibility claim. PASS.
+- Suite 104/104, evidence gate exit 0.
