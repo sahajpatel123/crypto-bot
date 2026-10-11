@@ -4159,3 +4159,11 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
 - Public takerlongshortRatio 5m x1 (fetch 499ms): SOL 1.2205;
   BNB 0.3217. Single-sample, not a flow claim. PASS.
 - Suite 105/105, evidence gate exit 0.
+
+## Addendum — turn 372 (BTC/ETH aggTrades PASS, cycle 3)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at a6318a1. E-004 accepted; W2 standing by. V-001R (W1)
+  still awaiting go-ahead; W3 idle.
+- Public aggTrades x3 (fetch 464ms): BTC 0.100 BUY @83813.80;
+  ETH 0.040 BUY @2539.25. Single-sample, not a flow claim. PASS.
+- Suite 105/105, evidence gate exit 0.
