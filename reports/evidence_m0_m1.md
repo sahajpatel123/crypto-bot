@@ -2223,3 +2223,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   1.913/1.531/0.890/0.749/1.039/0.781, last 0.781.
   Single-sample datum, not a flow claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 192 (SOL taker-L/S snapshot PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at a3a7482. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public takerlongshortRatio SOL 5m x6 (fetch 258ms):
+  0.826/1.259/1.368/1.158/2.187/0.928, last 0.928.
+  Single-sample datum, not a flow claim. PASS.
+- Suite 104/104, evidence gate exit 0.
