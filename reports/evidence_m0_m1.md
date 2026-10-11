@@ -2316,3 +2316,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   ($2,534.63). 8h cadence confirmed. Single-sample datum,
   not a cost claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 201 (SOL funding-history PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 1043e09. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public fundingRate SOL x3 (fetch 237ms): 00Z +0.0015%
+  ($110.04), 08Z +0.0059% ($109.34), 16Z +0.0066%
+  ($111.94). 8h cadence confirmed. Single-sample datum,
+  not a cost claim. PASS.
+- Suite 104/104, evidence gate exit 0.
