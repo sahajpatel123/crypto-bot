@@ -3267,3 +3267,15 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   2,541.49>2,541.50v49.4 (forming).
   Single-sample, not a signal claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 288 (XRP/DOGE kline PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at ac78958. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public klines 1m x2 (fetch 745ms): XRPUSDT @17:08Z
+  1.4176>1.4176v259,428 | 1.4176>1.4172v93,607
+  (forming); DOGEUSDT @17:08Z 0.08697>0.08693v3,103,615
+  | 0.08694>0.08694v1,237,870 (forming).
+  Single-sample, not a signal claim. PASS.
+- Suite 104/104, evidence gate exit 0.
