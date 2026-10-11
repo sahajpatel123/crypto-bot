@@ -5266,3 +5266,7 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   x1 (XRP 320ms, DOGE 296ms): XRP mark
   1.40945; DOGE mark 0.08693. PASS.
   Suite 167/167, evidence gate exit 0.
+- Turn-501 (cycle 6): public premiumIndex
+  x1 (SOL 287ms, BNB 216ms): SOL mark
+  111.451; BNB mark 753.378. PASS.
+  Suite 167/167, evidence gate exit 0.
