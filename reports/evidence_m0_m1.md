@@ -3861,3 +3861,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   2320626.919 @17:41Z. Single-sample, not an exposure claim.
   PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 342 (XRP/DOGE openInterest PASS, cycle 2)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 84ff636. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public openInterest (fetch 576ms): XRP 297086946.5, DOGE
+  2716942324 @17:42Z. Single-sample, not an exposure claim.
+  PASS.
+- Suite 104/104, evidence gate exit 0.
