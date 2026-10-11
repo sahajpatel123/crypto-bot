@@ -253,3 +253,12 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   reversion, S4 failed-breakout reversal; S5 aligned). Recorded as D-010;
   Q-001 acceptance stands, correction rides with the S2–S5 follow-up task.
   FYI sent to Worker 1, no action required. E-002 bound lapses ~14:06Z.
+
+## Addendum — turn 19 (E-002 bound lapsed)
+
+- At ~14:06Z the E-002 ~30min bound lapsed with no install landed (trial
+  venv pip-only 13M at last probe ~14:05Z, no outbox filing, no commits).
+  Manager sent the lapse directive to Worker 2: stop install attempts, file
+  E-002 completion now as either verdict-with-evidence or documented-blocker
+  (commands+timestamps, output tail, environment). Either outcome closes
+  E-002; next E-task dispatches after the filing.
