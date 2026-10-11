@@ -2680,3 +2680,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   $0.086940 +0.917% hi 0.087320 lo 0.084850 qvol $0.18B.
   Single-sample, not a regime claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 235 (tape PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 19bacc7. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public aggTrades n=100 (fetch 592ms): BTC buy-init
+  $216,861.7 / sell-init $81,785.0 last $83,796.70; ETH
+  buy-init $1,387,708.8 / sell-init $73,268.2 last $2,541.75.
+  Single-sample, not a flow claim. PASS.
+- Suite 104/104, evidence gate exit 0.
