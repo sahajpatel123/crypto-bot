@@ -559,3 +559,16 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   Q-001/V-002/E-002, in-flight E-003/V-001R, V-001 review-passed)
   matches tasks.json. No README fix needed. PASS.
 - Suite 87/87, evidence gate exit 0.
+
+## Addendum — turn 43 (V-002 verdict re-confirmation; still awaiting go-aheads)
+
+- No new outbox filings, commits, or worker activity; E-003 (W2, acked
+  14:11Z) + V-001R (W1, acked 13:44Z, ~49min wait) still await worker-side
+  go-aheads. W3 idle.
+- Re-confirmed the accepted V-002 CLEAN verdict on current main two
+  ways: (1) S1 files (strategies, features, specs/strategies, strategy
+  tests) are byte-unchanged since the V-002 base 4290233, so the
+  verdict carries by construction; (2) re-ran the turn-10b probe
+  (/tmp/v002_probe.py): ALL 6 functional checks PASS with identical
+  values (fire_bar_t=154, sha d89576a1...). PASS.
+- Suite 87/87, evidence gate exit 0.
