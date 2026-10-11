@@ -987,3 +987,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   (39 commits), CONTRACTS.md, and DECISIONS.md were touched — all
   manager-owned. Zero worker-owned files modified. PASS.
 - Suite 87/87, evidence gate exit 0.
+
+## Addendum — turn 76 (multi-symbol data-age snapshot; still awaiting go-aheads)
+
+- No new outbox filings, commits, or worker activity; E-003 (W2) +
+  V-001R (W1) still await worker-side go-aheads. W3 idle.
+- Captured 1m x3 klines for BTC/SOL/BNBUSDT (/tmp/age76_*.jsonl):
+  data age ~10-11s each, fetch latency 226-279ms (consistent with the
+  turn-72 /ping baseline), gaps 0 on all three. A second M2 data point
+  showing age/latency stability across symbols. PASS.
+- Suite 87/87, evidence gate exit 0.
