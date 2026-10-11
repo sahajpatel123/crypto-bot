@@ -60,3 +60,26 @@ ALL calendar days, with trading-active split shown separately.
 
 Contract v0.1.0. Task messages cite this version. Breaking changes require a new
 version + manager-approved migration of worker code.
+
+## Addendum v0.1.1 — risk→execution handoff (D-007; closes F-E001-01/U-002)
+
+Status: interface defined by manager; implementation follows in E/V follow-up
+tasks. v0.1.0 remains the implemented baseline until those land.
+
+- `Approved` carries `reservation_id: string`, unique per approval (the V-001
+  policy already returns this shape).
+- `submit_entry(..., reservation_id)` threads the reservation key into the
+  order manager; the manager records the key on the entry order and its
+  protective siblings.
+- Outcome callbacks into risk, exactly-once per reservation: `note_fill`
+  (entry filled → reservation converts to open-position state), `release`
+  (cancelled/expired/rejected → reservation freed), `note_flat` (position
+  flat → open-position cleared). No callback path may strand a live
+  reservation past entry expiry.
+- Halt → exit-only signal: when risk engages a daily halt, profit-protection
+  breach, or health block that forbids new entries, execution enters exit-only
+  mode (no new entries; protective exits and exposure reduction proceed). The
+  signal is level-triggered and persists across restarts until risk clears it
+  via reconciliation.
+- Restart reconciliation covers reservations: any reservation without a
+  matching live entry/order after recovery is released with a logged reason.
