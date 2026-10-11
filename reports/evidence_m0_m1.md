@@ -1021,3 +1021,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   no missing or extra sessions. (Role field is proposed_role, not
   role; first probe used the wrong key.) PASS.
 - Suite 87/87, evidence gate exit 0.
+
+## Addendum — turn 79 (E-003 STARTED; V-001R still awaiting go-ahead)
+
+- Worker 2 heartbeat: E-003 STARTED on new branch worker2/e-003 from
+  0d90e6f (confirmed in /tmp/cryto-bot-w2 worktree, clean tree, shared
+  tree untouched). Plan: reservations/callbacks -> halt->exit-only/
+  reconciliation -> F-E001-02..05 -> tests/outbox. Board updated:
+  E-003 assigned -> running, W2 awaiting-go-ahead -> running, heartbeat
+  15:02:32Z; ack sent (transport handoff, delivery unconfirmed).
+  V-001R (W1) still awaiting go-ahead; W3 idle.
+- Suite 87/87, evidence gate exit 0.
