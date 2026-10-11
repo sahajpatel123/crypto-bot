@@ -3694,3 +3694,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   BNB bid 755.94 ask 755.95 spread 0.01
   @17:30Z. Single-sample, not a spread claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 326 (BTC/ETH long/short PASS, cycle 2)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 29b79cd. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public globalLongShortAccountRatio 5m x2 (fetch 499ms):
+  BTC L/S 1.4242/1.4231; ETH 2.8745/2.8625
+  @17:32Z. Single-sample, not a sentiment claim. PASS.
+- Suite 104/104, evidence gate exit 0.
