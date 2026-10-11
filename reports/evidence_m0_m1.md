@@ -3755,3 +3755,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   SOL B/S 0.9677/0.9737; BNB 0.8173/1.0522
   @17:35Z. Single-sample, not a flow claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 332 (BTC/ETH depth PASS, cycle 2)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at ef86968. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public depth limit-5 top-3 (fetch 470ms): BTC
+  bid 83999.80x0.725 ask 83999.90x13.749;
+  ETH bid 2546.55x220.099 ask 2546.56x2.681
+  @17:35Z. Single-sample, not a liquidity claim. PASS.
+- Suite 104/104, evidence gate exit 0.
