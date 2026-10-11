@@ -3766,3 +3766,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   ETH bid 2546.55x220.099 ask 2546.56x2.681
   @17:35Z. Single-sample, not a liquidity claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 333 (XRP/DOGE depth PASS, cycle 2)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 8903bac. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public depth limit-5 top-3 (fetch 635ms): XRP
+  bid 1.4234x61799.2 ask 1.4235x20180.2;
+  DOGE bid 0.087540x390408 ask 0.087550x196922
+  @17:36Z. Single-sample, not a liquidity claim. PASS.
+- Suite 104/104, evidence gate exit 0.
