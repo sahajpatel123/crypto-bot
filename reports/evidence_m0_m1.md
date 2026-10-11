@@ -2079,3 +2079,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   2.508/2.397/1.696/1.598/0.650/2.010, last 2.010.
   Single-sample taker-flow datum, not a flow claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 179 (BTC global-L/S snapshot PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at f4d4218. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public globalLongShortAccountRatio BTCUSDT 5m x6 (fetch
+  261ms): 1.447/1.450/1.455/1.456/1.453/1.471, last 1.471.
+  Extends ETH+SOL+BNB coverage to BTC; single-sample
+  positioning datum, not a leverage claim. PASS.
+- Suite 104/104, evidence gate exit 0.
