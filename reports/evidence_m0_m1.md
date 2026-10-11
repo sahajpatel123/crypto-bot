@@ -1883,3 +1883,15 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   discovery contract). Single-sample census datum, not a
   membership claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 161 (ETH funding-history snapshot PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 4113fa7. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public fundingRate ETHUSDT x6 8h cadence (fetch 305ms): last 6
+  settlements 10-09 16:00→10-11 08:00 UTC: +0.00154/+0.00558/
+  +0.00050/+0.00299/-0.01175/-0.01166% (last -0.01166% at 08:00
+  UTC). Single-sample funding datum, not a funding-cost claim.
+  PASS.
+- Suite 104/104, evidence gate exit 0.
