@@ -2263,3 +2263,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   11.8 BNB / sell-initiated 129.1 BNB, last $755.28.
   Single-sample datum, not a flow claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 196 (BTC tape snapshot PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at dc6ab64. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public aggTrades BTC n=100 (fetch 319ms): buy-initiated
+  0.565 BTC / sell-initiated 2.199 BTC, last $83,796.50.
+  Single-sample datum, not a flow claim. PASS.
+- Suite 104/104, evidence gate exit 0.
