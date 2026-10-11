@@ -1309,3 +1309,12 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   snapshot only -- an M2 depth-at-size datum, not a liquidity claim.
   PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 104 (BTCUSDT funding snapshot PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at b4541e8. E-004 acked (option a, W2 not started, worker-side
+  go-ahead pending); V-001R (W1) still awaiting go-ahead; W3 idle.
+- Public premiumIndex (fetch 239ms): mark 83100.68, index 83144.36,
+  lastFundingRate 0.00154%, next funding 16:00 UTC (in ~38min).
+  Single-sample cost-accounting datum, not a funding model. PASS.
+- Suite 104/104, evidence gate exit 0.
