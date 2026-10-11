@@ -3881,3 +3881,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   564756.55 @17:43Z. Single-sample, not an exposure claim.
   PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 344 (BTC/ETH OI-history PASS, cycle 2)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 1984ec0. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public openInterestHist 1h x1 (fetch 586ms): BTC 92902.538,
+  ETH 2311841.344 @17:00Z bar. Single-sample, not an exposure
+  claim. PASS.
+- Suite 104/104, evidence gate exit 0.
