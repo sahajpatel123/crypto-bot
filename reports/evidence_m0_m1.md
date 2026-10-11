@@ -496,3 +496,19 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   assigned tasks (E-003, V-001R) correctly lack one; zero orphan
   inbox/outbox files. PASS.
 - Suite 87/87, evidence gate exit 0.
+
+## Addendum — turn 39 (worker-branch unreviewed-commit sweep; still awaiting go-aheads)
+
+- No new outbox filings, commits, or worker activity; E-003 (W2, acked
+  14:11Z) + V-001R (W1, acked 13:44Z, ~45min wait) still await worker-side
+  go-aheads. W3 idle.
+- Swept all four worker branches for commits ahead of main
+  (`main..<branch>`): three at zero; only worker2/e-002 shows 7be230d,
+  the already-accepted E-002 commit. Its three files (data/README.md,
+  market_data/capabilities.py, test_market_data_matrix.py) are
+  byte-identical on main, so no worker work is unreviewed or missing.
+  Note: `git cherry` flags 7be230d as `+` (not patch-equivalent) because
+  the dbc4203 integration commit bundled tracking updates (tasks,
+  D-011, outbox) with the cherry-picked content — expected, not drift.
+  PASS.
+- Suite 87/87, evidence gate exit 0.
