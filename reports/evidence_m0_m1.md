@@ -3326,3 +3326,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   755.51B 755.51B buys=4 sells=1. Single-sample, not
   a flow claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 293 (BTC/ETH OI PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at d36c6f7. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public openInterest (fetch 523ms): BTCUSDT OI=92,885.4;
+  ETHUSDT OI=2,315,772.2. Single-sample, not a
+  positioning claim. PASS.
+- Suite 104/104, evidence gate exit 0.
