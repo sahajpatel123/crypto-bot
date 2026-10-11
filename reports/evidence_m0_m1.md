@@ -2779,3 +2779,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   0.56M ($424.2M) / 16:35Z 0.56M ($423.8M).
   Single-sample, not a leverage claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 244 (L/S PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at f5a3a5b. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public globalLongShortAccountRatio 5m x2 (fetch 472ms): BTC
+  16:35Z 1.4301 / 16:40Z 1.4284; ETH 16:35Z 2.9651 / 16:40Z
+  2.9557. Single-sample, not a sentiment claim. PASS.
+- Suite 104/104, evidence gate exit 0.
