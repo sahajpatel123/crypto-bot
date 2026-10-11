@@ -1572,3 +1572,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   5m x12 (fetch 241ms): range 1.437-1.447, last 1.447. Single
   snapshot, not a positioning claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 130 (taker buy/sell snapshot PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at b3fbdfe. E-004 acked (option a, W2 not started, worker-side
+  go-ahead pending); V-001R (W1) still awaiting go-ahead; W3 idle.
+- Public takerlongshortRatio BTCUSDT 5m x12 (fetch 335ms):
+  ratio range 0.192-2.834, last 0.351; buyVol 538 BTC,
+  sellVol 678 BTC over the window. Complements turn-129 account
+  positioning ratio with executed-flow data. Single snapshot,
+  not a flow claim. PASS.
+- Suite 104/104, evidence gate exit 0.
