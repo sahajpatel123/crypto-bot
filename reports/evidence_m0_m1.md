@@ -4955,3 +4955,8 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   value424998275.12 T1791745200000. Single-sample, not
   a positioning claim. PASS. Suite 167/167, evidence
   gate exit 0.
+- Turn-448 (cycle 5): public fundingRate x1 (BTC 310ms,
+  ETH 283ms): BTC rate0.00001347 T1791734400002; ETH
+  rate0.00001163 T1791734400002. Single-sample, not
+  a cost/positioning claim. PASS. Suite 167/167,
+  evidence gate exit 0.
