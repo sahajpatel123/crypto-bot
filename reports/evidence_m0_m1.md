@@ -3100,3 +3100,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   DOGEUSDT buySellRatio 1.2070 (buy 163,450,292.0/sell
   135,424,133.0). Single-sample, not a flow claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 274 (SOL/BNB taker PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 363c90f. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public takerlongshortRatio 1h x1 (fetch 978ms): SOLUSDT
+  buySellRatio 1.4921 (buy 1,075,979.5/sell 721,123.4);
+  BNBUSDT buySellRatio 1.5327 (buy 13,978.5/sell 9,120.4).
+  Single-sample, not a flow claim. PASS.
+- Suite 104/104, evidence gate exit 0.
