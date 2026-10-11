@@ -308,3 +308,31 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   worktree, not invented): note_fill(id), release(id)->bool,
   note_flat(). CONTRACTS addendum points to the module. FYI sent to
   Worker 2: build the E-003 recording stub against it. Suite 87/87.
+
+## Addendum — turn 24 (evidence pipeline verified; README refreshed)
+
+- Evidence generator tools/generate_evidence.py verified live: pytest 87
+  green, M1 exit 0 in the same run.
+- README refreshed to real entry points + accepted scope (E-002 accepted,
+  E-003/V-001R in flight, 87 green). E-003 tracking schema key fixed
+  (owner → owner_session, caught by the evidence generator). Pushed af6615b.
+
+## Addendum — turn 25 (status vocabulary; W1 nudge)
+
+- Worker status vocabulary formalised in coord/README (running /
+  awaiting-go-ahead / idle / stalled); honest values applied: W1+W2
+  awaiting-go-ahead, W3 idle. Previously all read running with no active work.
+- V-001R nudge sent to Worker 1 (acked turn-10, ~31min without go-ahead;
+  gates V-001 acceptance). Transport-accepted, receipt unconfirmed; no
+  heartbeat refresh per D-009 (manager-originated). Suite 87/87, M1 exit 0.
+  Pushed c7a8f25.
+
+## Addendum — turn 26 (live tooling smoke; still awaiting go-aheads)
+
+- No new outbox filings, commits, or worker activity; E-003 + V-001R still
+  await worker-side go-aheads. tasks.json states consistent (V-001 review,
+  V-001R/E-003 assigned, rest accepted).
+- Live smoke of accepted E-001 tooling on current main, public API only:
+  capture_public discover → 924 symbols seen, 525 USDT-perp trading,
+  525 eligible, fetch_latency_ms 936.3; replay_public on the observed
+  BTCUSDT sample exits clean. Tooling remains live-green.
