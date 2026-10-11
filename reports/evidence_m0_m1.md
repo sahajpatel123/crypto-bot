@@ -4976,3 +4976,9 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   h2536.44 l2535.62 c2536.44 v1438.725 n1071.
   Single-sample, not a trend/liquidity claim. PASS.
   Suite 167/167, evidence gate exit 0.
+- Turn-452 (cycle 5): public klines 1m x1 (XRP 242ms,
+  DOGE 216ms), T1791745440000: XRP o1.4098 h1.4098
+  l1.4097 c1.4098 v28263.2 n76; DOGE o0.086850
+  h0.086860 l0.086850 c0.086850 v129007 n72.
+  Single-sample, not a trend/liquidity claim. PASS.
+  Suite 167/167, evidence gate exit 0.
