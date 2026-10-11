@@ -5061,3 +5061,11 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   T1791746034000. Single-sample, not a
   funding/cost claim. PASS. Suite 167/167,
   evidence gate exit 0.
+- Turn-464 (cycle 5): public premiumIndex (XRP
+  462ms, DOGE 214ms): XRP mark1.40870000
+  idx1.40926979 fund0.00010000
+  nextT1791763200000 T1791746070000; DOGE
+  mark0.08678062 idx0.08682366 fund0.00008030
+  nextT1791763200000 T1791746071004.
+  Single-sample, not a funding/cost claim.
+  PASS. Suite 167/167, evidence gate exit 0.
