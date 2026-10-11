@@ -2592,3 +2592,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   08Z -0.0117% / 16Z +0.0012%.
   Single-sample, not a cost claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 227 (funding-history PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at e09558a. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public fundingRate x3 (fetch 480ms): SOL 00Z +0.0015% /
+  08Z +0.0059% / 16Z +0.0066%; BNB 00Z +0.0000% /
+  08Z +0.0000% / 16Z +0.0000%.
+  Single-sample, not a cost claim. PASS.
+- Suite 104/104, evidence gate exit 0.
