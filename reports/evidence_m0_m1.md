@@ -3366,3 +3366,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   92,843 > 92,895; ETHUSDT 2,311,594 > 2,314,063.
   Single-sample, not a trend claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 297 (XRP/DOGE OI-history PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 94cb682. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public openInterestHist 5m x2 (fetch 655ms): XRPUSDT
+  297,607,411 > 297,820,391; DOGEUSDT
+  2,711,702,976 > 2,712,599,945. Single-sample, not a
+  trend claim. PASS.
+- Suite 104/104, evidence gate exit 0.
