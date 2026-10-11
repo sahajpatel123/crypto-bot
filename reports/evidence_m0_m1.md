@@ -3617,3 +3617,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   DOGE OIV 2,707,213,431 px 0.08719 @17:27Z.
   Single-sample, not a flow claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 319 (SOL/BNB OI-history PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 7f6763d. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public openInterestHist 5m x2 latest + ticker prices (fetch
+  967ms): SOL OIV 8,479,101 px 112.29;
+  BNB OIV 564,708 px 756.55 @17:27Z.
+  Single-sample, not a flow claim. PASS.
+- Suite 104/104, evidence gate exit 0.
