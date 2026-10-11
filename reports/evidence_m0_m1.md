@@ -3021,3 +3021,15 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   OI-history rows carry no symbolPrice — prices via separate
   ticker call. Single-sample, not a leverage/flow claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 267 (XRP/DOGE OI-history PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 81431f0. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public openInterestHist 1h x2 (fetch 921ms): XRPUSDT OI
+  [301,432,721.6, 297,734,590.2] price 1.42230; DOGEUSDT OI
+  [2,690,646,445.0, 2,694,692,630.0] price 0.08743.
+  Prices via separate ticker call. Single-sample, not a
+  leverage/flow claim. PASS.
+- Suite 104/104, evidence gate exit 0.
