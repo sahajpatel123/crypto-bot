@@ -1674,3 +1674,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   $76.8M. Completes BTC/ETH/SOL 1m-vol coverage for per-market
   S1 threshold work; single hour each, not a regime claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 140 (SOL funding-rate snapshot PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 234f785. E-004 acked (option a, W2 not started, worker-side
+  go-ahead pending); V-001R (W1) still awaiting go-ahead; W3 idle.
+- Public funding SOLUSDT (fetch 465ms): last 0.00630%, next due
+  16:00 UTC, mark ~$110.77; prior three 0.00329/0.00151/0.00588%.
+  Single-symbol carry-cost context beside the turn-123 sweep;
+  single sample, not a cost claim. PASS.
+- Suite 104/104, evidence gate exit 0.
