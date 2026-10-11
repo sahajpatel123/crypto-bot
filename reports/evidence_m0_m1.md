@@ -5069,3 +5069,12 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   nextT1791763200000 T1791746071004.
   Single-sample, not a funding/cost claim.
   PASS. Suite 167/167, evidence gate exit 0.
+- Turn-465 (cycle 5): public premiumIndex (SOL
+  332ms, BNB 288ms): SOL mark111.40315224
+  idx111.44033748 fund0.00010000
+  nextT1791763200000 T1791746263000; BNB
+  mark753.27000000 idx753.00754366
+  fund0.00000000 nextT1791763200000
+  T1791746263000. Single-sample, not a
+  funding/cost claim. PASS. Suite 167/167,
+  evidence gate exit 0.
