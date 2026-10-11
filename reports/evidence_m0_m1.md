@@ -5188,3 +5188,8 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   0.00001347; ETH 0.00001163
   @T1791734400002. PASS. Suite 167/167,
   evidence gate exit 0.
+- Turn-485 (cycle 6): public fundingRate x1
+  (XRP 311ms, DOGE 297ms): XRP
+  0.00006007; DOGE 0.00003448
+  @T1791734400002. PASS. Suite 167/167,
+  evidence gate exit 0.
