@@ -5127,3 +5127,8 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   ETH 2535.49. Single-sample, not a
   valuation claim. PASS. Suite 167/167,
   evidence gate exit 0.
+- Turn-473 (cycle 5): public ticker/price
+  (XRP 260ms, DOGE 217ms): XRP 1.4096;
+  DOGE 0.086910. Single-sample, not a
+  valuation claim. PASS. Suite 167/167,
+  evidence gate exit 0.
