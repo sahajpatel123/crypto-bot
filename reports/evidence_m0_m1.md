@@ -1402,3 +1402,12 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   Second-symbol OI datum alongside turn-108 BTC; single snapshot,
   not a positioning claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 114 (BNBUSDT funding snapshot PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 07095ed. E-004 acked (option a, W2 not started, worker-side
+  go-ahead pending); V-001R (W1) still awaiting go-ahead; W3 idle.
+- Public premiumIndex (fetch 263ms): last funding 0.00000%, next
+  16:00 UTC (mark 751.26). Third-symbol funding datum alongside
+  BTC/SOL turns; single snapshot, not a cost claim. PASS.
+- Suite 104/104, evidence gate exit 0.
