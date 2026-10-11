@@ -2926,3 +2926,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   16:50Z c 83869.10; ETH 16:49Z c 2551.35 / 16:50Z c 2550.27.
   Single-sample, not a regime claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 258 (XRP/DOGE kline PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 7530e03. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public klines 1m x2 (fetch 474ms): XRP 16:49Z c 1.42090 /
+  16:50Z c 1.42010; DOGE 16:49Z c 0.08737 / 16:50Z c 0.08726.
+  Single-sample, not a regime claim. PASS.
+- Suite 104/104, evidence gate exit 0.
