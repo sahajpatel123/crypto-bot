@@ -1209,3 +1209,15 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   the turn-75 checkpoint is 6430e9b ("only manager-owned files since
   08bc082"). This audit ran against the correct anchor.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 94 (liveness + stall-rule audit PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at f692a01. E-004 acked (option a, W2 not started, worker-side
+  go-ahead pending); V-001R (W1) still awaiting go-ahead; W3 idle.
+- Heartbeat ages: W2 5.5min (fresh E-004 ack), W3 77.9min (idle, no
+  rule applies), W1 91.8min (awaiting-go-ahead). Zero running tasks,
+  so the 30-min stall rule (running only, D-009) triggers nothing.
+  The W1/V-001R wait remains the longest outstanding item with no
+  aging rule for assigned-awaiting-go-ahead — standing escalation
+  point, no manager-side unblock. PASS.
+- Suite 104/104, evidence gate exit 0.
