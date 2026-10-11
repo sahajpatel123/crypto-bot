@@ -54,11 +54,14 @@ Resolved 15 packages in 1m 01s
 Downloading nautilus-trader (149.0MiB)   # never completed by the bound
 ```
 
-## Observed samples (E-001)
+## Observed samples (E-001, discovery refreshed E-004)
 
-- `data/observed/discovery_20261011T131845Z.json` — live USDT-perp discovery:
+- `data/observed/discovery_20261011T175443Z.json` — live USDT-perp discovery:
   924 symbols seen, 525 PERPETUAL/USDT/TRADING, 524 eligible under a 20 USDT
-  minimum-notional cap. Fetch latency 928ms.
+  minimum-notional cap. Fetch latency 911ms. Carries
+  `input_class: observed-public` (F-DATA-01 fix). E-004 refresh drift check
+  vs the 13:18Z sample: counts identical, zero membership drift (0 added,
+  0 removed).
 - `data/observed/klines_BTCUSDT_1m_60_20261011T131929Z.jsonl` — 60x 1m BTCUSDT
   klines (59 closed + 1 forming), 0 gaps, replay SHA-256
   `772a91631f76442616daf88b15271657e731882709aa889645c3548d119c4068`

@@ -92,3 +92,11 @@ def test_summary_counts():
     assert summary["total_symbols_seen"] == 6
     assert summary["usdt_perp_trading"] == 3
     assert summary["eligible"] == 3
+
+
+def test_summary_carries_observed_public_label():
+    # F-DATA-01/E-004 pin: discovery output is venue-observed data, so the
+    # summary must carry the observed-public label the README claims.
+    result = discover_usdt_perps(SYNTHETIC_INFO)
+    summary = discovery_summary(result, eligible_symbols(result))
+    assert summary["input_class"] == "observed-public"

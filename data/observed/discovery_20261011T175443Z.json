@@ -1,8 +1,9 @@
 {
+  "input_class": "observed-public",
   "contract_version": "v0.1.0",
   "base_url": "https://fapi.binance.com",
-  "fetched_at_utc": "2026-10-11T13:18:46.865860+00:00",
-  "fetch_latency_ms": 928.1,
+  "fetched_at_utc": "2026-10-11T17:54:44.399345+00:00",
+  "fetch_latency_ms": 911.3,
   "total_symbols_seen": 924,
   "usdt_perp_trading": 525,
   "eligible": 524,
