@@ -4019,3 +4019,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   ask 1.4184 x49694.2; DOGE bid 0.087310 x389936 / ask 0.087320
   x399859. Single-sample, not a spread claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 358 (SOL/BNB bookTicker PASS, cycle 2)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 9ea3834. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public bookTicker x1 (fetch 465ms): SOL bid 112.4000 x424.00 /
+  ask 112.4100 x1992.29; BNB bid 755.780 x83.75 / ask 755.790
+  x3.18. Single-sample, not a spread claim. PASS.
+- Suite 104/104, evidence gate exit 0.
