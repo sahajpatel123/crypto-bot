@@ -4151,3 +4151,11 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
 - Public takerlongshortRatio 5m x1 (fetch 642ms): XRP 1.1318;
   DOGE 0.7767. Single-sample, not a flow claim. PASS.
 - Suite 105/105, evidence gate exit 0.
+
+## Addendum — turn 371 (SOL/BNB taker PASS, cycle 2)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 78e26c3. E-004 accepted; W2 standing by. V-001R (W1)
+  still awaiting go-ahead; W3 idle.
+- Public takerlongshortRatio 5m x1 (fetch 499ms): SOL 1.2205;
+  BNB 0.3217. Single-sample, not a flow claim. PASS.
+- Suite 105/105, evidence gate exit 0.
