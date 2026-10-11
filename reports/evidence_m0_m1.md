@@ -1139,3 +1139,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   (worker-originated, D-009), still awaiting-go-ahead. V-001R (W1)
   still awaiting go-ahead; W3 idle.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 88 (M1 slice re-run green on post-E-003 tip)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at a4dde68. E-004 acked (option a, W2 not started, worker-side
+  go-ahead pending); V-001R (W1) still awaiting go-ahead; W3 idle.
+- Re-ran the canonical M1 slice on the current tip (first run since
+  the E-003 merge landed on main): exit 0, evidence_bar 154,
+  rejected_count 1, recovery ambiguous-reconciled-no-duplicate, with
+  risk-stub + slice-local-fake honesty labels intact. The merged
+  v0.1.1 handoff code does not regress the runnable slice. PASS.
+- Suite 104/104, evidence gate exit 0.
