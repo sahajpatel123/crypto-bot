@@ -112,3 +112,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
 - Checks: `pytest -q` 9 passed; M1 slice exit 0.
 - Worker 1: turn-5 check, reachable, no new messages, still awaiting owner
   authorization. Worker 3: turn-5 check, reachable, still silent since kickoff.
+
+## Addendum — turn 6 (E-001 tests green uncommitted; README touched)
+
+- Worker 2: worktree adds 5 unit-test files. Manager verification (read-only,
+  worktree PYTHONPATH): 41 passed, 0 failed. First attempt without PYTHONPATH
+  errored on collection — invocation artifact of the cross-tree run, not a
+  product defect; corrected run is the evidence. Still uncommitted, no outbox.
+- Manager change: README entry-point list now documents generate_evidence.py.
+- Checks: `pytest -q` 9 passed (main tree); M1 slice exit 0.
+- Worker 1: turn-6 check, reachable, no new messages, still awaiting owner
+  authorization. Worker 3: turn-6 check, reachable, still silent since kickoff.

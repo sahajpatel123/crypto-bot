@@ -23,6 +23,7 @@ pytest -q
   (metadata → replay → S1 stub intent → coordinator → risk stub → fake venue → ledger → report).
   Every synthetic input is labelled. Not a validated trading system.
 - `pytest -q` — maintained tests.
+- `python tools/generate_evidence.py` — reproducible status-evidence collector.
 
 Worker-owned entry points for discovery/capture, deterministic replay, historical
 research, live-feed paper trading, fault/integration checks and evidence reports
