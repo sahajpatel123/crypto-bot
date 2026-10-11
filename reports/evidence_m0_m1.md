@@ -5243,3 +5243,8 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   111.3600/111.3700; BNB 753.290/
   753.300. PASS. Suite 167/167,
   evidence gate exit 0.
+- Turn-496 (cycle 6): public depth L5 x1
+  (BTC 315ms, ETH 285ms): BTC top
+  83675.30/83675.40; ETH top 2535.57/
+  2535.58. PASS. Suite 167/167,
+  evidence gate exit 0.
