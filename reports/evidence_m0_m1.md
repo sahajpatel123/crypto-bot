@@ -3302,3 +3302,15 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   2,543.31B 2,543.30S 2,543.31B buys=4 sells=1.
   Single-sample, not a flow claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 291 (XRP/DOGE tape PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at c44cfbc. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public aggTrades x5 (fetch 496ms): XRPUSDT last5
+  1.4193B 1.4192S 1.4193B 1.4192S 1.4193B buys=3
+  sells=2; DOGEUSDT last5 0.0871S 0.08711B 0.08711B
+  0.0871S 0.0871B buys=3 sells=2. Single-sample, not
+  a flow claim. PASS.
+- Suite 104/104, evidence gate exit 0.
