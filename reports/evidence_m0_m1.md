@@ -5314,3 +5314,7 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   x1 (XRP 323ms, DOGE 275ms): XRP 1.4095
   x 3.7; DOGE 0.086850 x 60. PASS.
   Suite 167/167, evidence gate exit 0.
+- Turn-513 (cycle 7): public aggTrades
+  x1 (SOL 328ms, BNB 278ms): SOL 111.2300
+  x 0.08; BNB 753.600 x 0.02. PASS.
+  Suite 167/167, evidence gate exit 0.
