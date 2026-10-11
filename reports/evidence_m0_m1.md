@@ -1940,3 +1940,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   BTC/ETH/SOL depth snapshots; single-sample book datum, not a
   liquidity claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 166 (ETH taker-L/S snapshot PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at af4c86c. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public takerlongshortRatio ETHUSDT 5m x6 (fetch 234ms):
+  1.413/1.088/2.026/1.913/1.531/0.890, last 0.890. Joins BTC
+  taker datum; single-sample taker datum, not a flow claim.
+  PASS.
+- Suite 104/104, evidence gate exit 0.
