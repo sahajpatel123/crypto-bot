@@ -485,3 +485,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   book/trade streams). Forms the post-E-003 dispatch input; no M2 task
   dispatched yet.
 - Suite 87/87, evidence gate exit 0.
+
+## Addendum — turn 38 (coord referential-integrity sweep; still awaiting go-aheads)
+
+- No new outbox filings, commits, or worker activity; E-003 (W2, acked
+  14:11Z) + V-001R (W1, acked 13:44Z, ~44min wait) still await worker-side
+  go-aheads. W3 idle.
+- Cross-file consistency sweep over coord/: 7 tasks, 7 inbox files, 5
+  outbox files. Every review/accepted task has its outbox filing; both
+  assigned tasks (E-003, V-001R) correctly lack one; zero orphan
+  inbox/outbox files. PASS.
+- Suite 87/87, evidence gate exit 0.
