@@ -5157,3 +5157,9 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   ETH 2314852.497. Single-sample, not a
   positioning claim. PASS. Suite 167/167,
   evidence gate exit 0.
+- Turn-479 (cycle 6): public openInterest
+  (XRP 320ms, DOGE 211ms): XRP
+  295126727.0; DOGE 2701415486.
+  Single-sample, not a positioning claim.
+  PASS. Suite 167/167, evidence gate
+  exit 0.
