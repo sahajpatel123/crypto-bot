@@ -724,3 +724,16 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   hypotheses. The correction dispatch can quote this record verbatim.
   PASS. (No task dispatched — follow-up stays gated on V-001R.)
 - Suite 87/87, evidence gate exit 0.
+
+## Addendum — turn 55 (E-003 dependency readiness; still awaiting go-aheads)
+
+- No new outbox filings, commits, or worker activity; E-003 (W2, acked
+  14:11Z) + V-001R (W1, acked 13:44Z, ~59min wait) still await worker-side
+  go-aheads. W3 idle.
+- Verified E-003's sink dependency is start-ready on main:
+  `RiskOutcomeSink` imports cleanly from
+  `cryptobot.coordination.risk_outcomes` and exposes exactly the three
+  methods the E-003 acceptance names — `note_fill(reservation_id)`,
+  `release(reservation_id) -> bool`, `note_flat()`. No missing import
+  or surface gap will block W2's start. PASS.
+- Suite 87/87, evidence gate exit 0.
