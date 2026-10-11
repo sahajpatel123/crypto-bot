@@ -4761,3 +4761,20 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   nextFunding 1791763200000 both. Single-sample, not a
   funding/liquidity claim. PASS.
 - Suite 139/139, evidence gate exit 0.
+
+## Addendum — turn 431 (Q-002/V-003 both active, SOL/BNB
+  premiumIndex PASS, cycle 4)
+- Q-002 active: w1 worktree now shows M specs/strategies/S2.md
+  (D-010 correction underway), within allowed paths; no commits
+  or outbox filing yet. V-003 active: w3 worktree unchanged
+  since turn-430 (M ledger.py, risk/__init__.py, risk/types.py
+  + new risk/slice.py), all within allowed paths; no commits
+  yet. Both read-only checks; manager touched neither
+  worktree. W2 still awaiting E-004 go-ahead (unchanged).
+- Public premiumIndex x1 + ticker/price x1 (fetch 1274ms):
+  SOL mark 111.94555847 / index 111.98100934 / last 111.9500
+  / lastFunding 0.00010000; BNB mark 754.39342383 / index
+  754.07951015 / last 754.260 / lastFunding 0.00000000;
+  nextFunding 1791763200000 both. Single-sample, not a
+  funding/liquidity claim. PASS.
+- Suite 139/139, evidence gate exit 0.
