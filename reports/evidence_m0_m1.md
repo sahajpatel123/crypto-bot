@@ -3162,3 +3162,15 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   2,540.82x71.253 spread 0.01 (0.04 bps).
   Single-sample, not a cost claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 279 (XRP/DOGE bookTicker PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at bb0529f. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public bookTicker per-symbol (fetch 570ms): XRPUSDT bid
+  1.4172x5313.3 / ask 1.4173x39229.3 spread 0.00010
+  (0.71 bps); DOGEUSDT bid 0.08703x182426 / ask
+  0.08704x641601 spread 0.00001 (1.15 bps).
+  Single-sample, not a cost claim. PASS.
+- Suite 104/104, evidence gate exit 0.
