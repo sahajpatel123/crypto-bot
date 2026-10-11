@@ -3851,3 +3851,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   0.05 SELL @112.5400/...; BNB 0.04 BUY @756.390/...
   @17:41Z. Single-sample, not a flow claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 341 (BTC/ETH openInterest PASS, cycle 2)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 102e61b. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public openInterest (fetch 469ms): BTC 92783.308, ETH
+  2320626.919 @17:41Z. Single-sample, not an exposure claim.
+  PASS.
+- Suite 104/104, evidence gate exit 0.
