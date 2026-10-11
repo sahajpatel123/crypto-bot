@@ -2069,3 +2069,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   buy, median $418 / p90 $30,717. Single-sample tape datum,
   not a flow claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 178 (BTC taker-L/S snapshot PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at fbb0440. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public takerlongshortRatio BTCUSDT 5m x6 (fetch 262ms):
+  2.508/2.397/1.696/1.598/0.650/2.010, last 2.010.
+  Single-sample taker-flow datum, not a flow claim. PASS.
+- Suite 104/104, evidence gate exit 0.
