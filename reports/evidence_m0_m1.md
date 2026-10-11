@@ -1819,3 +1819,12 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   0.00083%, next 16:00 UTC, mark $2,527.05. Pairs with SOL
   funding datum; single sample, not a cost claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 155 (BNB funding snapshot PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 9b54ad1. E-004 acked (option a, W2 not started, worker-side
+  go-ahead pending); V-001R (W1) still awaiting go-ahead; W3 idle.
+- Public premiumIndex BNBUSDT (fetch 229ms): last funding
+  0.00000%, next 16:00 UTC, mark $754.13. Joins SOL/ETH funding
+  data; single sample, not a cost claim. PASS.
+- Suite 104/104, evidence gate exit 0.
