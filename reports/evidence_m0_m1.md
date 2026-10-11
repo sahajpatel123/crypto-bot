@@ -118,7 +118,11 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
 - Worker 2: worktree adds 5 unit-test files. Manager verification (read-only,
   worktree PYTHONPATH): 41 passed, 0 failed. First attempt without PYTHONPATH
   errored on collection — invocation artifact of the cross-tree run, not a
-  product defect; corrected run is the evidence. Still uncommitted, no outbox.
+  product defect; corrected run is the evidence. Late-turn heartbeat then
+  reported incremental commits 66dde7e + 7e2c6e7; manager verified both on
+  worker2/e-001 (15 files, all inside E-001 allowed paths, +1875 lines).
+  47-green claim corroborated by manager's independent 41-pass run plus the
+  6 bootstrap tests on that base. Next: live public-data sample + outbox.
 - Manager change: README entry-point list now documents generate_evidence.py.
 - Checks: `pytest -q` 9 passed (main tree); M1 slice exit 0.
 - Worker 1: turn-6 check, reachable, no new messages, still awaiting owner
