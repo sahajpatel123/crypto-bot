@@ -2465,3 +2465,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   (buy 816,974 / sell 1,450,352); DOGE 0.290 (buy 6,550,591 /
   sell 22,567,018). Single-sample, not a flow claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 215 (funding-history PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 6477d16. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public fundingRate x3 (fetch 480ms): XRP 00Z -0.0005% /
+  08Z +0.0029% / 16Z +0.0060%; DOGE 00Z -0.0019% /
+  08Z +0.0044% / 16Z +0.0034%. Single-sample, not a cost
+  claim. PASS.
+- Suite 104/104, evidence gate exit 0.
