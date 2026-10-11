@@ -3243,3 +3243,15 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   0.08753 lo 0.08485 quoteVol 191,941,072 trades 531391.
   Single-sample, not a regime claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 286 (SOL/BNB 24hr-ticker PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 362a026. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public ticker/24hr (fetch 474ms): SOLUSDT last 111.89
+  +1.76% hi 112.47 lo 108.89 quoteVol 943,455,956
+  trades 987600; BNBUSDT last 755.51 +0.72% hi 758.77
+  lo 744.91 quoteVol 157,960,963 trades 433133.
+  Single-sample, not a regime claim. PASS.
+- Suite 104/104, evidence gate exit 0.
