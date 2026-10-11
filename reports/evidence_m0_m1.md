@@ -3398,3 +3398,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   long%=74.28. Single-sample, not a sentiment claim.
   PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 300 (XRP/DOGE L/S PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at a8ae12b. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public globalLongShortAccountRatio 5m (fetch 506ms):
+  XRPUSDT L/S=2.3613 long%=70.25; DOGEUSDT L/S=2.4141
+  long%=70.71. Single-sample, not a sentiment claim.
+  PASS.
+- Suite 104/104, evidence gate exit 0.
