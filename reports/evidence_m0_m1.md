@@ -3150,3 +3150,15 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   this sample — recorded as observed, not a depth claim).
   Single-sample, not a liquidity claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 278 (BTC/ETH bookTicker PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 21ce5c9. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public bookTicker per-symbol (fetch 515ms): BTCUSDT bid
+  83,744.00x2.994 / ask 83,744.10x15.160 spread 0.10
+  (0.01 bps); ETHUSDT bid 2,540.81x136.686 / ask
+  2,540.82x71.253 spread 0.01 (0.04 bps).
+  Single-sample, not a cost claim. PASS.
+- Suite 104/104, evidence gate exit 0.
