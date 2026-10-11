@@ -1173,3 +1173,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
 - Replay determinism on the fresh file: two runs exit 0 with byte-
   identical stdout, replay_sha256 6c420e09.... PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 91 (REST latency re-sampled; peers 3/3)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 4bced29. E-004 acked (option a, W2 not started, worker-side
+  go-ahead pending); V-001R (W1) still awaiting go-ahead; W3 idle.
+  Worker peers reachable 3/3, no extras.
+- Fresh fapi /ping sample n=9: min 242, med 248, max 283, mean 254ms
+  (prior med 233ms n=7). Same ~250ms class; small-sample point
+  comparison only, not a percentile claim. PASS.
+- Suite 104/104, evidence gate exit 0.
