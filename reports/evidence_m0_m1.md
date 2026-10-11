@@ -2327,3 +2327,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   ($111.94). 8h cadence confirmed. Single-sample datum,
   not a cost claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 202 (BNB funding-history PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 81de45f. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public fundingRate BNB x3 (fetch 281ms): 00Z +0.0000%
+  ($750.31), 08Z +0.0000% ($747.37), 16Z +0.0000%
+  ($755.88). Four-symbol funding set complete. Single-sample
+  datum, not a cost claim. PASS.
+- Suite 104/104, evidence gate exit 0.
