@@ -894,3 +894,15 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   expected W1/W2/W3 mapping; statuses cohere with assignments
   (W3 idle has no active task). PASS.
 - Suite 87/87, evidence gate exit 0.
+
+## Addendum — turn 68 (live universe re-probe; still awaiting go-aheads)
+
+- No new outbox filings, commits, or worker activity; E-003 (W2) +
+  V-001R (W1, ~72min wait) still await worker-side go-aheads. W3 idle.
+  The ~60min V-001R flag (turn 57) stands; no manager-side unblock.
+- Re-probed live USDT-perp discovery: 924/525/524 at 1166ms, and the
+  live 525-symbol set diffs to zero adds/removes against the committed
+  sample — no listing drift, sample still representative. (First diff
+  attempt used the wrong record shape; corrected to plain symbol
+  strings.) PASS.
+- Suite 87/87, evidence gate exit 0.
