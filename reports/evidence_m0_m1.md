@@ -5282,3 +5282,7 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   x1 (SOL 352ms, BNB 290ms): SOL 2.2206;
   BNB 2.1397. PASS.
   Suite 167/167, evidence gate exit 0.
+- Turn-505 (cycle 6): public taker B/S
+  x1 (BTC 335ms, ETH 280ms): BTC 1.0022;
+  ETH 2.0099. PASS.
+  Suite 167/167, evidence gate exit 0.
