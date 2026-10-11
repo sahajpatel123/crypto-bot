@@ -2243,3 +2243,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   1.384/1.667/1.018/1.894/0.579/0.942, last 0.942.
   Single-sample datum, not a flow claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 194 (SOL tape snapshot PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 71dd8c3. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public aggTrades SOL n=100 (fetch 288ms): buy-initiated
+  4428.1 SOL / sell-initiated 5914.2 SOL, last $111.92.
+  Single-sample datum, not a flow claim. PASS.
+- Suite 104/104, evidence gate exit 0.
