@@ -99,3 +99,14 @@ Meta Muse Spark.
   specific blocking incompatibility). Engine work continues on stdlib-urllib
   capture + fake venue; retry deferred to a better-connected host or a
   pre-seeded wheel cache.
+- D-012: V-001R accepted (turn-427): W1 reproduced the V-001 acceptance
+  suite read-only 34/34 twice + hand halt-persistence case
+  (Rejected halt:daily-loss) + R-001..R-012 all pass, with read-only
+  proof and zero unresolved; manager independently re-ran 34/34
+  read-only from /tmp/cryto-bot-w3 with the w3 tree untouched. V-001
+  therefore accepted (no-self-certification chain complete: W3 authored,
+  manager reviewed turn-9, W1 reproduced) and integrated onto main via
+  provenance copy of the 21 manifest files (all within V-001 allowed
+  paths); merged-tree verification 139/139 + evidence
+  gate exit 0. U-001/U-002/U-003 carry forward as follow-ups (U-002
+  partly addressed by E-003 v0.1.1 handoff + RiskOutcomeSink).

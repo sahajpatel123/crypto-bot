@@ -4662,3 +4662,32 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   2539.53x79.473 / ask 2539.54x126.516. Single-sample, not
   a liquidity claim. PASS.
 - Suite 105/105, evidence gate exit 0.
+
+## Addendum — turn 427 (XRP/DOGE depth PASS + V-001R/V-001 ACCEPT,
+  cycle 4)
+- Public depth limit=5 x1 (fetch 483ms): XRP best bid
+  1.4136x55469.3 / ask 1.4137x64465.3; DOGE best bid
+  0.086890x180581 / ask 0.086900x669158. Single-sample, not
+  a liquidity claim. PASS.
+- V-001R COMPLETE filed by W1 (whisper-redshift) 18:30:36Z after
+  worker-side user go-ahead; standing auto-start instruction saved by
+  W1 for future dispatches. Filing verified field-by-field against
+  the 4 inbox acceptance conditions: suite 34 passed x2 (sizing 5,
+  gates 10, halts 7, profit 5, ledger 5, determinism 2), hand
+  halt-persistence case PASS (Rejected halt:daily-loss), R-001..R-012
+  all pass with per-invariant mapping, read-only proof (140-file
+  list + 36 V-001 sha256 identical, w3 status unchanged), zero
+  unresolved, base w3 HEAD 4290233 confirmed. V-001R ACCEPTED.
+- Manager independent repro (read-only, /tmp/v001r-mgr cwd,
+  PYTHONDONTWRITEBYTECODE, no cacheprovider, worktree PYTHONPATH):
+  34 passed; w3 tree untouched (6 untracked entries before=after).
+- V-001 ACCEPTED (review-pass turn-9 + V-001R repro completes the
+  no-self-certification chain) and integrated onto main via
+  provenance copy of the 21 manifest files (specs/acceptance-risk.md,
+  specs/acceptance-review-q001-e001.md, risk x5, accounting x3,
+  acceptance tests x7, fixtures x4); all within V-001 allowed paths.
+  Merged-tree verification: tests/acceptance 34/34, full suite
+  139/139 (105 + 34), evidence gate exit 0. Board: V-001 +
+  V-001R -> accepted; W1 + W3 idle; D-012 recorded. U-001/U-002/U-003
+  carry forward. W2 still awaiting E-004 go-ahead (unchanged).
+- Suite 139/139, evidence gate exit 0.

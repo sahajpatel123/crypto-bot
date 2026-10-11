@@ -131,7 +131,7 @@
    ],
    "owner_session": "cool-amalthea",
    "role": "Worker 3 \u2014 Risk, Verification and Reliability Engineer",
-   "state": "review"
+   "state": "accepted"
   },
   "V-001R": {
    "acceptance": [
@@ -155,7 +155,7 @@
    "objective": "Independently reproduce V-001 critical risk invariants; evidence only, no code changes.",
    "owner_session": "whisper-redshift",
    "role": "Worker 1 \u2014 Quant Research and Strategy Engineer (independent reproduction)",
-   "state": "assigned"
+   "state": "accepted"
   },
   "V-002": {
    "acceptance": [
