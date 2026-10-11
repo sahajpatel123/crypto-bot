@@ -2037,3 +2037,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   range $110.99-$112.10. Single-sample candle datum,
   not a regime claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 175 (BNB kline snapshot PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 8c6813d. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public klines BNBUSDT 1m x6, 15:55-16:00Z (fetch 272ms):
+  closes 754.28/755.40/755.50/756.25/755.96/754.78,
+  range $753.71-$756.38. Completes ETH+SOL+BNB kline trio.
+  Single-sample candle datum, not a regime claim. PASS.
+- Suite 104/104, evidence gate exit 0.
