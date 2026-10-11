@@ -627,3 +627,17 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   integration into main still gated on V-001R per the no-self-cert rule.
   PASS.
 - Suite 87/87, evidence gate exit 0.
+
+## Addendum — turn 48 (M1 slice re-run; still awaiting go-aheads)
+
+- No new outbox filings, commits, or worker activity; E-003 (W2, acked
+  14:11Z) + V-001R (W1, acked 13:44Z, ~54min wait) still await worker-side
+  go-aheads. W3 idle.
+- Re-ran the M1 vertical slice on current main: exit 0 with values
+  identical to acceptance — S1 ARM_BASE fires at bar 154, 1 rejected
+  stale trade, 1 fill with ambiguous-once fault recovered
+  (ambiguous-reconciled-no-duplicate), self-labels intact
+  (`risk-stub:approved:budget=0.2500`,
+  `slice-local-fake:ambiguous-once`). The runnable slice survived all
+  subsequent commits unchanged. PASS.
+- Suite 87/87, evidence gate exit 0.
