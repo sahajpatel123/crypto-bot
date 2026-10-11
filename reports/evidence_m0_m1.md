@@ -5147,3 +5147,8 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   DOGE 0.086810. Single-sample, not a
   flow claim. PASS. Suite 167/167,
   evidence gate exit 0.
+- Turn-477 (cycle 6): public aggTrades x5
+  (SOL 369ms, BNB 279ms): SOL 111.3100;
+  BNB 753.130. Single-sample, not a flow
+  claim. PASS. Suite 167/167, evidence
+  gate exit 0.
