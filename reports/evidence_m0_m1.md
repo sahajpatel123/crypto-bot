@@ -641,3 +641,16 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   `slice-local-fake:ambiguous-once`). The runnable slice survived all
   subsequent commits unchanged. PASS.
 - Suite 87/87, evidence gate exit 0.
+
+## Addendum — turn 49 (live discovery re-probe; still awaiting go-aheads)
+
+- No new outbox filings, commits, or worker activity; E-003 (W2, acked
+  14:11Z) + V-001R (W1, acked 13:44Z, ~54min wait) still await worker-side
+  go-aheads. W3 idle.
+- Re-probed live Binance USD-M discovery (`capture_public.py discover`):
+  924 symbols seen / 525 USDT-perp trading / 525 eligible, exactly
+  matching the recorded 924/525 headline values; fetch latency 1115.8ms
+  (same ~1s class as the recorded 844-936ms). The public-data path
+  still works and the universe is unchanged. (data/README's "524" is a
+  20-USDT-min-notional filtered variant, not drift.) PASS.
+- Suite 87/87, evidence gate exit 0.
