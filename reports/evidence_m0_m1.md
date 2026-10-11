@@ -1558,3 +1558,17 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   mark-price/liquidation-buffer understanding; single snapshot,
   not a pricing claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 129 (L/S-ratio snapshot PASS; bracket 401 noted)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 1b06c62. E-004 acked (option a, W2 not started, worker-side
+  go-ahead pending); V-001R (W1) still awaiting go-ahead; W3 idle.
+- leverageBracket returned HTTP 401 (signed endpoint; no
+  credentials authorised) — recorded as a negative finding, not
+  retried with keys. Exchange max-leverage tiers remain unverified
+  from public data; the 3x pilot cap stands as the binding
+  simulation-side constraint regardless.
+- Fallback public datum: BTCUSDT global long/short account ratio,
+  5m x12 (fetch 241ms): range 1.437-1.447, last 1.447. Single
+  snapshot, not a positioning claim. PASS.
+- Suite 104/104, evidence gate exit 0.
