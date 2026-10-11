@@ -953,3 +953,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   latencies (267ms klines, ~1.1s full discovery) and a first data point
   for M2 execution-path latency evidence. PASS.
 - Suite 87/87, evidence gate exit 0.
+
+## Addendum — turn 73 (heartbeat-age check; still awaiting go-aheads)
+
+- No new outbox filings, commits, or worker activity; E-003 (W2) +
+  V-001R (W1) still await worker-side go-aheads. W3 idle.
+- Heartbeat ages per D-009 (worker-originated contact only): W2
+  cloud-vega 47min, W3 cool-amalthea 60min, W1 whisper-redshift 74min.
+  No stall violation — the 30-min rule covers running tasks only and
+  none are running. The standing flag remains: no aging rule exists
+  for assigned-awaiting-go-ahead (V-001R wait longest). PASS.
+- Suite 87/87, evidence gate exit 0.
