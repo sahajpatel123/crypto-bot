@@ -612,3 +612,18 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   holds — engine remains stdlib-urllib + fake venue, no accidental
   adoption. PASS.
 - Suite 87/87, evidence gate exit 0.
+
+## Addendum — turn 47 (V-001 review-pass re-confirmation; still awaiting go-aheads)
+
+- No new outbox filings, commits, or worker activity; E-003 (W2, acked
+  14:11Z) + V-001R (W1, acked 13:44Z, ~53min wait) still await worker-side
+  go-aheads. W3 idle.
+- Re-confirmed the review-passed V-001 at its current location: the 34
+  acceptance tests (risk gates/sizing/halts/profit, ledger, determinism)
+  still pass 34/34 in the W3 worktree
+  (PYTHONPATH=/tmp/cryto-bot-w3/src, pytest tests/acceptance/
+  tests/fixtures/). Review-pass has not rotted; the V-001R repro base is
+  stable. Note: V-001 files remain uncommitted in /tmp/cryto-bot-w3 —
+  integration into main still gated on V-001R per the no-self-cert rule.
+  PASS.
+- Suite 87/87, evidence gate exit 0.
