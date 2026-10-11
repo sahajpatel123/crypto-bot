@@ -4342,3 +4342,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   ask 754.470x53.84. Single-sample, not a liquidity claim.
   PASS.
 - Suite 105/105, evidence gate exit 0.
+
+## Addendum — turn 393 (BTC/ETH depth PASS, cycle 3)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 23e702a. E-004 accepted; W2 standing by. V-001R (W1)
+  still awaiting go-ahead; W3 idle.
+- Public depth limit=5 x1 (fetch 510ms): BTC best bid
+  83797.80x7.340 / ask 83797.90x4.126; ETH best bid
+  2539.37x310.398 / ask 2539.38x111.639. Single-sample, not a
+  liquidity claim. PASS.
+- Suite 105/105, evidence gate exit 0.
