@@ -4585,3 +4585,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   O0.086980 C0.086960. Single-sample, not a regime claim.
   PASS.
 - Suite 105/105, evidence gate exit 0.
+
+## Addendum — turn 419 (SOL/BNB klines PASS, cycle 4)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 5adaff7. E-004 accepted; W2 standing by. V-001R (W1)
+  still awaiting go-ahead; W3 idle.
+- Public klines 1m x2 (fetch 493ms): SOL O111.9400 C111.9800
+  / O111.9700 C111.9900; BNB O754.360 C754.330 /
+  O754.330 C754.330. Single-sample, not a regime claim.
+  PASS.
+- Suite 105/105, evidence gate exit 0.
