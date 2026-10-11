@@ -434,3 +434,18 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   source before labelling). Report regenerated with the tool; no test
   depends on report keys. Suite 87/87, evidence gate exit 0, bar 154,
   risk-stub label intact.
+
+## Addendum — turn 35 (D-003 ownership self-audit; still awaiting go-aheads)
+
+- No new outbox filings, commits, or worker activity; E-003 + V-001R still
+  await worker-side go-aheads.
+- Manager audited its own D-003 compliance: all non-merge commits on main
+  touching worker-owned paths (strategies/features/research/market_data/
+  execution/risk/accounting, capture/replay tools, specs, acceptance,
+  fixtures). Five commits found, all authorised integrations, zero direct
+  manager edits to worker-owned source: the E-001 trio (66dde7e, 7e2c6e7,
+  77df093) is worker-authored on worker2/e-001, merged via 567dce3; 4290233
+  (Q-001) carries full D-008 provenance (whisper-redshift, worker1/q-001 @
+  2a33173, D-006 diff, 18/18 sha256); dbc4203 (E-002) names 7be230d from
+  worker2/e-002. Nit (no action): dbc4203 implies rather than names the
+  worker session. PASS.
