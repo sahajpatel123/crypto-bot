@@ -1221,3 +1221,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   aging rule for assigned-awaiting-go-ahead — standing escalation
   point, no manager-side unblock. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 95 (remote-ref sweep PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at c57ead8. E-004 acked (option a, W2 not started, worker-side
+  go-ahead pending); V-001R (W1) still awaiting go-ahead; W3 idle.
+- Remote sweep: origin carries only refs/heads/main at c57ead8,
+  identical to local HEAD and origin/main. Worker branches
+  (worker1/q-001, worker2/e-001/e-002/e-003, worker3/v-001) remain
+  local-only as designed; no stray or unexpected remote refs. PASS.
+- Suite 104/104, evidence gate exit 0.
