@@ -2283,3 +2283,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   130.5 ETH / sell-initiated 242.8 ETH, last $2,532.54.
   Single-sample datum, not a flow claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 198 (universe re-check PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at ad671b0. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public exchangeInfo (fetch 469ms): USDT-perp TRADING=525 /
+  non-trading=134 / total symbols=924. Discovery works off live
+  metadata, no hardcoded whitelist. Single-sample datum, not an
+  eligibility claim. PASS.
+- Suite 104/104, evidence gate exit 0.
