@@ -1895,3 +1895,15 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   UTC). Single-sample funding datum, not a funding-cost claim.
   PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 162 (SOL funding-history snapshot PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at a3eb9ca. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public fundingRate SOLUSDT x6 8h cadence (fetch 255ms): last 6
+  settlements 10-09 16:00→10-11 08:00 UTC: +0.00189/+0.00791/
+  +0.00250/+0.00329/+0.00151/+0.00588% (last +0.00588% at 08:00
+  UTC). Single-sample funding datum, not a funding-cost claim.
+  PASS.
+- Suite 104/104, evidence gate exit 0.
