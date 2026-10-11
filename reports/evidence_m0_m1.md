@@ -572,3 +572,16 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   (/tmp/v002_probe.py): ALL 6 functional checks PASS with identical
   values (fire_bar_t=154, sha d89576a1...). PASS.
 - Suite 87/87, evidence gate exit 0.
+
+## Addendum — turn 44 (Q-001 hash re-verification; still awaiting go-aheads)
+
+- No new outbox filings, commits, or worker activity; E-003 (W2, acked
+  14:11Z) + V-001R (W1, acked 13:44Z, ~50min wait) still await worker-side
+  go-aheads. W3 idle.
+- Re-verified the accepted Q-001 deliverable on current main: all 18
+  recorded sha256 hashes MATCH, zero missing, zero drift — the worker's
+  files are byte-intact since acceptance. Record correction: the hashes
+  live at top-level `file_hashes_sha256` in coord/outbox/Q-001.json,
+  not under `body` (a first attempt with the wrong path raised
+  KeyError; the file is authoritative). PASS.
+- Suite 87/87, evidence gate exit 0.
