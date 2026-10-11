@@ -2361,3 +2361,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   funding-timing set complete. Single-sample datum, not a
   cost claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 205 (OI-history PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 1a46997. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public openInterestHist 16:15Z (fetch 626ms): BTC
+  92,892.018 ($7.79B); ETH 2,302,589.285 ($5.83B).
+  Single-sample datum, not a leverage claim. PASS.
+- Suite 104/104, evidence gate exit 0.
