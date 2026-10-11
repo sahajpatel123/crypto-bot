@@ -5178,3 +5178,8 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   295149793.9; DOGE 2699722335.0
   @T1791747000000. No price in rows. PASS.
   Suite 167/167, evidence gate exit 0.
+- Turn-483 (cycle 6): public OI-hist 5m x2
+  (SOL 321ms, BNB 305ms): SOL
+  8477439.57; BNB 564923.52
+  @T1791747000000. No price in rows. PASS.
+  Suite 167/167, evidence gate exit 0.
