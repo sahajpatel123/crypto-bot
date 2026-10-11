@@ -2799,3 +2799,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   16:35Z 2.3625 / 16:40Z 2.3681; DOGE 16:35Z 2.4083 / 16:40Z
   2.4060. Single-sample, not a sentiment claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 246 (L/S PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 2da778a. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public globalLongShortAccountRatio 5m x2 (fetch 629ms): SOL
+  16:35Z 2.4025 / 16:40Z 2.3979; BNB 16:35Z 2.1437 / 16:40Z
+  2.1456. Single-sample, not a sentiment claim. PASS.
+- Suite 104/104, evidence gate exit 0.
