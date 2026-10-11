@@ -5208,3 +5208,8 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   1.4080/c 1.4080; DOGE o 0.086790/c
   0.086800 @T1791747480000. PASS. Suite
   167/167, evidence gate exit 0.
+- Turn-489 (cycle 6): public klines 1m x1
+  (SOL 331ms, BNB 278ms): SOL o
+  111.3500/c 111.3700; BNB o 753.010/c
+  753.080 @T1791747480000. PASS. Suite
+  167/167, evidence gate exit 0.
