@@ -544,3 +544,18 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   reviewed code (V-001 still unaccepted; contract tracks it at
   acceptance if the shape moves).
 - Suite 87/87, evidence gate exit 0.
+
+## Addendum — turn 42 (README command-verification sweep; still awaiting go-aheads)
+
+- No new outbox filings, commits, or worker activity; E-003 (W2, acked
+  14:11Z) + V-001R (W1, acked 13:44Z, ~48min wait) still await worker-side
+  go-aheads. W3 idle.
+- Ran every runnable command README documents, verbatim: m1 --help
+  (exit 0); generate_evidence bare (exit 0, self-reports pytest 87 +
+  M1 exit 0); capture discover live (exit 0, 924 seen/525 eligible,
+  844.7ms — matches turn-26 counts); capture 5 klines to /tmp (exit 0,
+  observed-public labelled, tree left clean); replay on the committed
+  observed sample (exit 0, 60 events). Scope prose (accepted E-001/
+  Q-001/V-002/E-002, in-flight E-003/V-001R, V-001 review-passed)
+  matches tasks.json. No README fix needed. PASS.
+- Suite 87/87, evidence gate exit 0.
