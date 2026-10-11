@@ -1,13 +1,19 @@
-"""Strategy signals (Worker 1, Q-001)."""
+"""Strategy signals (Worker 1, Q-001/Q-002)."""
 from .contract import (
     ARM_BASE,
     ARM_FLOW,
     ARM_IDS,
+    ARM_IDS_S1,
+    ARM_IDS_S2,
     ARM_VOLUME,
     CONTRACT_VERSION,
     COST_LABEL,
     STRATEGY_VERSION,
     S1_FORECAST_COST,
+    S2_BASE,
+    S2_FLOW,
+    S2_VOLUME,
+    S2_FORECAST_COST,
     DataQuality,
     DecisionRecord,
     FeatureEvidence,
@@ -26,16 +32,23 @@ from .s1 import (
     evaluate_bar,
     evaluate_side,
 )
+from . import s2 as s2_module
 
 __all__ = [
     "ARM_BASE",
     "ARM_FLOW",
     "ARM_IDS",
+    "ARM_IDS_S1",
+    "ARM_IDS_S2",
     "ARM_VOLUME",
     "CONTRACT_VERSION",
     "COST_LABEL",
     "STRATEGY_VERSION",
     "S1_FORECAST_COST",
+    "S2_BASE",
+    "S2_FLOW",
+    "S2_VOLUME",
+    "S2_FORECAST_COST",
     "MAX_CONSECUTIVE_MISSING_HALT",
     "Bar",
     "DataQuality",
@@ -51,4 +64,5 @@ __all__ = [
     "build_intent",
     "evaluate_bar",
     "evaluate_side",
+    "s2_module",
 ]

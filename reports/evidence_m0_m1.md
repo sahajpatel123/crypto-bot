@@ -4896,3 +4896,12 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   depth/premiumIndex/L-S/taker x 3 pairs each). Next cycle
   restarts at BTC/ETH aggTrades.
 - Suite 148/148, evidence gate exit 0.
+- Turn-438 (manager review): Q-002 ACCEPTED (D-014). Verified
+  18/18 filing hashes, all paths allowed, repro 167/167
+  read-only from /tmp/cryto-bot-w1q2 (tree untouched), read
+  S2/S3/S4/EXP-002 + s2.py in full, M1 slice exit 0 from the
+  w1 tree. Integration fix: s1 arm validation narrowed to
+  ARM_IDS_S1 (direct probe OK). Provenance copy onto main
+  (no overlap with 8176d33..29a1a10); merged tree 167/167,
+  slice exit 0, gate exit 0. Board Q-002 -> accepted. No M2
+  sample this turn (review turn); cycle 5 starts next turn.

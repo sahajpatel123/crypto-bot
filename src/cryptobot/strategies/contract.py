@@ -1,4 +1,4 @@
-"""Strategy-side contract builders (Worker 1, CONTRACTS v0.1.0).
+"""Strategy-side contract builders (Worker 1, CONTRACTS v0.1.1).
 
 Reuses the manager-owned ``cryptobot.coordination`` classes as the single
 Intent/DecisionRecord types shared with the coordinator. This module adds
@@ -19,13 +19,20 @@ from cryptobot.coordination import (
     Side,
 )
 
-CONTRACT_VERSION = "v0.1.0"
+CONTRACT_VERSION = "v0.1.1"
 STRATEGY_VERSION = "0.1.0"
 
 ARM_BASE = "S1"
 ARM_VOLUME = "S1-V"
 ARM_FLOW = "S1-F"
-ARM_IDS = (ARM_BASE, ARM_VOLUME, ARM_FLOW)
+ARM_IDS_S1 = (ARM_BASE, ARM_VOLUME, ARM_FLOW)
+
+S2_BASE = "S2"
+S2_VOLUME = "S2-V"
+S2_FLOW = "S2-F"
+ARM_IDS_S2 = (S2_BASE, S2_VOLUME, S2_FLOW)
+
+ARM_IDS = ARM_IDS_S1 + ARM_IDS_S2
 
 COST_LABEL = "conservative-simulation"
 
@@ -35,15 +42,26 @@ S1_FORECAST_COST = ForecastCost(
     fee_bps=5.0, spread_bps=5.0, slippage_bps=5.0, funding_bps=1.0
 )
 
+# S2 uses the same frozen preset values under its own name.
+S2_FORECAST_COST = ForecastCost(
+    fee_bps=5.0, spread_bps=5.0, slippage_bps=5.0, funding_bps=1.0
+)
+
 __all__ = [
     "ARM_BASE",
     "ARM_FLOW",
     "ARM_IDS",
+    "ARM_IDS_S1",
+    "ARM_IDS_S2",
     "ARM_VOLUME",
     "CONTRACT_VERSION",
     "COST_LABEL",
     "STRATEGY_VERSION",
     "S1_FORECAST_COST",
+    "S2_BASE",
+    "S2_FLOW",
+    "S2_VOLUME",
+    "S2_FORECAST_COST",
     "DataQuality",
     "DecisionRecord",
     "FeatureEvidence",

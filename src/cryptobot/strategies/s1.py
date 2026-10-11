@@ -33,13 +33,14 @@ from cryptobot.features.breakout import (
 from .contract import (
     ARM_BASE,
     ARM_FLOW,
-    ARM_IDS,
+    ARM_IDS_S1,
     ARM_VOLUME,
     STRATEGY_VERSION,
     S1_FORECAST_COST,
     build_evidence_ref,
     build_intent,
 )
+from ._shared import columns, gap_scan
 
 MAX_CONSECUTIVE_MISSING_HALT = 5
 
@@ -175,39 +176,6 @@ class S1Decision:
                 raise ValueError("intent side must match evaluated side")
 
 
-def _columns(bars: list[Bar | None]) -> dict[str, list[float | None]]:
-    return {
-        "high": [b.high if b else None for b in bars],
-        "low": [b.low if b else None for b in bars],
-        "close": [b.close if b else None for b in bars],
-        "volume": [b.volume if b else None for b in bars],
-        "buy_frac": [b.buy_frac if b else None for b in bars],
-    }
-
-
-def _gap_scan(
-    bars: list[Bar | None], lo: int, hi: int
-) -> tuple[bool, int, bool]:
-    """Return (gap_found, max_consecutive_missing, ts_disorder) over [lo:hi]."""
-    max_consec = 0
-    run = 0
-    gap = False
-    prev_ts: datetime | None = None
-    disorder = False
-    for b in bars[lo:hi]:
-        if b is None:
-            gap = True
-            run += 1
-            max_consec = max(max_consec, run)
-            prev_ts = None
-            continue
-        run = 0
-        if prev_ts is not None and b.ts_utc - prev_ts != timedelta(seconds=1):
-            disorder = True
-        prev_ts = b.ts_utc
-    return gap, max_consec, disorder
-
-
 def evaluate_side(
     bars: list[Bar | None],
     t: int,
@@ -218,8 +186,8 @@ def evaluate_side(
 ) -> S1Decision:
     """Evaluate one side at bar ``t`` (both sides via :func:`evaluate_bar`)."""
     p = params or S1Params()
-    if arm not in ARM_IDS:
-        raise ValueError(f"unknown S1 arm {arm!r}; expected one of {ARM_IDS}")
+    if arm not in ARM_IDS_S1:
+        raise ValueError(f"unknown S1 arm {arm!r}; expected one of {ARM_IDS_S1}")
     n = p.breakout_n
 
     def _log(
@@ -244,7 +212,7 @@ def evaluate_side(
                     DataQuality.CLEAN, "insufficient-history", ts)
     evidence_ts = bars[t].ts_utc  # type: ignore[union-attr]
 
-    gap, max_consec, disorder = _gap_scan(bars, t - n, t + 1)
+    gap, max_consec, disorder = gap_scan(bars, t - n, t + 1)
     if gap or disorder:
         halt = disorder or max_consec > MAX_CONSECUTIVE_MISSING_HALT
         return _log(
@@ -255,7 +223,7 @@ def evaluate_side(
             evidence_ts,
         )
 
-    cols = _columns(bars)
+    cols = columns(bars)
     close_t = cols["close"][t]
     assert close_t is not None
     spread_t = bars[t].spread_bps  # type: ignore[union-attr]

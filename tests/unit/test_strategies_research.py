@@ -9,24 +9,32 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
 from cryptobot.research.experiments import (
     EXP_001,
+    EXP_002,
     NET_S1_V1,
+    S1_SCENARIOS,
+    S2_SCENARIOS,
     TRAIN_SEEDS,
+    TRAIN_SEEDS_S2,
     VALIDATION_SEEDS,
+    VALIDATION_SEEDS_S2,
     TrialLog,
     TrialRecord,
     split_indices,
 )
 from cryptobot.research.synthetic import (
     GENERATOR_ID,
+    SCENARIOS,
     SCENARIO_CHOPPY,
     SCENARIO_FLAT,
     SCENARIO_GAP,
     SCENARIO_LONG,
+    SCENARIO_S2_LONG,
+    SCENARIO_S2_SHORT,
     SCENARIO_SHORT,
     SCENARIO_WIDE_SPREAD,
     generate_fixture,
 )
-from cryptobot.strategies.contract import ARM_IDS
+from cryptobot.strategies.contract import ARM_IDS_S1, ARM_IDS_S2
 
 
 def test_fixture_deterministic_and_labelled():
@@ -81,7 +89,7 @@ def test_split_indices_70_5_25_with_embargo():
 def test_exp001_preregistered_bounded_unpromoted():
     assert EXP_001["status"] == "preregistered"
     assert EXP_001["trials_executed"] == 0
-    assert tuple(EXP_001["arms"]) == ARM_IDS
+    assert tuple(EXP_001["arms"]) == ARM_IDS_S1
     assert len(EXP_001["arms"]) == 3
     assert tuple(EXP_001["train_seeds"]) == TRAIN_SEEDS
     assert tuple(EXP_001["validation_seeds"]) == VALIDATION_SEEDS
@@ -89,6 +97,39 @@ def test_exp001_preregistered_bounded_unpromoted():
     assert "NONE" in EXP_001["promotion_rule"]
     assert "2*(fee+slippage)" in NET_S1_V1
     assert "conservative-simulation" in NET_S1_V1
+
+
+def test_exp001_frozen_despite_s2_additions():
+    assert tuple(EXP_001["scenarios"]) == S1_SCENARIOS
+    assert len(S1_SCENARIOS) == 6
+    assert len(SCENARIOS) == 8  # generator grew; preregistration did not
+
+
+def test_exp002_preregistered_bounded_unpromoted():
+    assert EXP_002["status"] == "preregistered"
+    assert EXP_002["trials_executed"] == 0
+    assert tuple(EXP_002["arms"]) == ARM_IDS_S2
+    assert tuple(EXP_002["scenarios"]) == S2_SCENARIOS
+    assert tuple(EXP_002["train_seeds"]) == TRAIN_SEEDS_S2 == (31, 32, 33)
+    assert tuple(EXP_002["validation_seeds"]) == VALIDATION_SEEDS_S2 == (41, 42)
+    assert set(TRAIN_SEEDS_S2).isdisjoint(VALIDATION_SEEDS_S2)
+    assert set(TRAIN_SEEDS_S2 + VALIDATION_SEEDS_S2).isdisjoint(
+        TRAIN_SEEDS + VALIDATION_SEEDS)
+    assert "NONE" in EXP_002["promotion_rule"]
+
+
+def test_s2_fixture_construction():
+    fx = generate_fixture(seed=31, scenario=SCENARIO_S2_LONG)
+    bars = fx.bars
+    assert bars[0] is not None and bars[199] is not None
+    assert bars[207] is not None and bars[212] is not None
+    assert bars[199].close > bars[0].close  # trend up
+    assert bars[207].close < bars[199].close  # pullback down
+    assert bars[212].close > bars[207].close  # resumption up
+    assert all(b.source == "synthetic" for b in bars if b is not None)
+    mirror = generate_fixture(seed=31, scenario=SCENARIO_S2_SHORT).bars
+    assert mirror[0] is not None and mirror[199] is not None
+    assert mirror[199].close < mirror[0].close
 
 
 def test_trial_log_keeps_failed_trials():

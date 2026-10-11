@@ -18,6 +18,14 @@ from cryptobot.features.breakout import (
     swing_low,
     volume_z,
 )
+from cryptobot.features.pullback import (
+    pullback_high,
+    pullback_low,
+    resume_max,
+    resume_min,
+    swing_high_before,
+    swing_low_before,
+)
 
 
 def test_ref_windows_exclude_trigger_bar():
@@ -76,6 +84,25 @@ def test_flow_mean_inclusive_window_and_bounds():
     bad[150] = 1.5
     with pytest.raises(ValueError):
         flow_mean(bad, 150, 10)
+
+
+def test_pullback_primitives_windows_and_indices():
+    highs = [10.0] * 200
+    highs[100] = 12.0
+    level, idx = swing_high_before(highs, 150, 60)
+    assert (level, idx) == (12.0, 100)
+    lows = [10.0] * 200
+    lows[145] = 9.0
+    assert pullback_low(lows, 149, 10) == 9.0
+    assert pullback_low(lows, 144, 10) == 10.0  # window excludes 145
+    assert pullback_high(highs, 149, 10) == 10.0
+    closes = [float(i) for i in range(200)]
+    assert resume_max(closes, 150, 5) == 149.0
+    assert resume_min(closes, 150, 5) == 145.0
+    level, idx = swing_low_before(lows, 150, 60)
+    assert (level, idx) == (9.0, 145)
+    with pytest.raises(InsufficientHistory):
+        resume_max(closes, 3, 5)
 
 
 def test_features_causal_future_perturbation_invariant():

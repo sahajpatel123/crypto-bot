@@ -25,9 +25,11 @@ def test_no_duplicate_intent_type():
 
 
 def test_arm_ids_and_versions():
-    assert C.ARM_IDS == ("S1", "S1-V", "S1-F")
+    assert C.ARM_IDS_S1 == ("S1", "S1-V", "S1-F")
+    assert C.ARM_IDS_S2 == ("S2", "S2-V", "S2-F")
+    assert C.ARM_IDS == C.ARM_IDS_S1 + C.ARM_IDS_S2
     assert C.STRATEGY_VERSION == "0.1.0"
-    assert C.CONTRACT_VERSION == "v0.1.0"
+    assert C.CONTRACT_VERSION == "v0.1.1"
 
 
 def test_s1_cost_preset_nonzero_labelled():
@@ -37,6 +39,11 @@ def test_s1_cost_preset_nonzero_labelled():
     assert cost.label == "conservative-simulation"
     with pytest.raises(dataclasses.FrozenInstanceError):
         cost.fee_bps = 0.0  # type: ignore[misc]
+
+
+def test_s2_cost_preset_matches_s1_values():
+    assert C.S2_FORECAST_COST == C.S1_FORECAST_COST
+    assert C.S2_FORECAST_COST.label == "conservative-simulation"
 
 
 def test_evidence_ref_format():
@@ -64,6 +71,9 @@ def test_build_intent_ok_and_defaults():
     intent = C.build_intent(**_intent_kwargs())
     assert intent.version == "0.1.0"
     assert intent.forecast_cost is C.S1_FORECAST_COST
+    s2 = C.build_intent(**_intent_kwargs(strategy="S2-V",
+                                         forecast_cost=C.S2_FORECAST_COST))
+    assert s2.strategy == "S2-V"
 
 
 def test_build_intent_rejects_convention_violations():

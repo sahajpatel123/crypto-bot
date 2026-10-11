@@ -210,7 +210,7 @@
    "contract_version": "v0.1.1",
    "role": "quant-research",
    "owner_session": "whisper-redshift",
-   "state": "running"
+   "state": "accepted"
   },
   "V-003": {
    "objective": "v0.1.1 risk wiring: make the accepted V-001 risk policy + ledger runnable in the M1 slice path (no more risk-stub) and dispose the U-003 unmeasured-defaults item.",

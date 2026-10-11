@@ -128,3 +128,19 @@ Meta Muse Spark.
   evidence gate exit 0. U-003 stays pinned until Worker 2
   delivers the cost/latency datasets per the plan; U-001 remains
   out of scope by design.
+- D-014: Q-002 accepted (turn-438): W1 delivered the D-010 correction
+  (S2 trend-pullback exact spec + causal baseline, S3 range-reversion
+  SPEC, S4 failed-breakout SPEC, all matching directive hypotheses;
+  S5 kept as aligned) + pullback features + 2 SYNTH_V1 S2 scenarios
+  + preregistered EXP-002 (S2/S2-V/S2-F, seeds 31-33/41-42, 0 trials,
+  promotion NONE) + 19 new tests. Manager verified 18/18 sha256
+  hashes, all paths within Q-002 allowed prefixes, and reproduced
+  167/167 read-only from /tmp/cryto-bot-w1q2 with the w1 tree
+  untouched; read S2/S3/S4/EXP-002 specs and s2.py (298 lines) in
+  full; ran the M1 slice from the w1 tree (exit 0,
+  risk-policy:approved, recovery OK). One manager-side integration
+  fix: s1.evaluate_side now validates against ARM_IDS_S1 (the
+  extended ARM_IDS would have let S2 arm labels into S1 logic);
+  verified by direct probe. Integrated onto main via provenance
+  copy (no path overlap with 8176d33..29a1a10); merged-tree
+  verification: 167/167, slice exit 0, evidence gate exit 0.

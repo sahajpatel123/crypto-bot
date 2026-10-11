@@ -22,6 +22,8 @@ SCENARIO_FLAT = "flat"
 SCENARIO_CHOPPY = "choppy"
 SCENARIO_GAP = "gap"
 SCENARIO_WIDE_SPREAD = "wide-spread"
+SCENARIO_S2_LONG = "s2-long-pullback"
+SCENARIO_S2_SHORT = "s2-short-pullback"
 SCENARIOS = (
     SCENARIO_LONG,
     SCENARIO_SHORT,
@@ -29,6 +31,8 @@ SCENARIOS = (
     SCENARIO_CHOPPY,
     SCENARIO_GAP,
     SCENARIO_WIDE_SPREAD,
+    SCENARIO_S2_LONG,
+    SCENARIO_S2_SHORT,
 )
 
 __all__ = [
@@ -39,6 +43,8 @@ __all__ = [
     "SCENARIO_FLAT",
     "SCENARIO_GAP",
     "SCENARIO_LONG",
+    "SCENARIO_S2_LONG",
+    "SCENARIO_S2_SHORT",
     "SCENARIO_SHORT",
     "SCENARIO_WIDE_SPREAD",
     "Fixture",
@@ -119,9 +125,11 @@ def generate_fixture(
     """Build a deterministic labelled fixture (see module docstring).
 
     Breakout scenarios hold exactly flat for 150 bars, ramp 1.2 bps/bar for
-    10 bars (total 12 bps), then hold the new level. ``volume_spike`` /
-    ``flow_bias`` toggle the S1-V / S1-F confirmation inputs on impulse bars
-    so arm separation is demonstrable.
+    10 bars (total 12 bps), then hold the new level. S2 pullback scenarios
+    hold flat for 150 bars, trend 0.6 bps/bar for 50 bars (total 30 bps),
+    pull back 2.5 bps/bar for 8 bars (total 20 bps), resume 1.5 bps/bar for
+    5 bars, then hold. ``volume_spike`` / ``flow_bias`` toggle the confirming
+    arms' inputs on impulse/resumption bars so arm separation is demonstrable.
     """
     if scenario not in SCENARIOS:
         raise ValueError(f"unknown scenario {scenario!r}")
@@ -129,8 +137,12 @@ def generate_fixture(
         raise ValueError("n_bars must be >= 200 (history + trigger room)")
     t0 = t0_utc or datetime(2026, 1, 2, tzinfo=timezone.utc)
     rng = random.Random(seed)
-    direction = -1.0 if scenario == SCENARIO_SHORT else 1.0
+    direction = -1.0 if scenario in (SCENARIO_SHORT, SCENARIO_S2_SHORT) else 1.0
     impulse = scenario in (SCENARIO_LONG, SCENARIO_SHORT, SCENARIO_WIDE_SPREAD)
+    s2 = scenario in (SCENARIO_S2_LONG, SCENARIO_S2_SHORT)
+    s2_peak = base_price * (1.0 + direction * 30.0 / 1e4)
+    s2_trough = s2_peak * (1.0 - direction * 20.0 / 1e4)
+    s2_hold = s2_trough * (1.0 + direction * 7.5 / 1e4)
 
     closes: list[float] = []
     for i in range(n_bars):
@@ -144,38 +156,53 @@ def generate_fixture(
             closes.append(base_price * (1.0 + direction * step))
         elif impulse and i >= 160:
             closes.append(base_price * (1.0 + direction * 12.0 / 1e4))
+        elif s2 and 150 <= i < 200:
+            frac = (i - 150 + 1) / 50
+            closes.append(base_price * (1.0 + direction * 30.0 / 1e4 * frac))
+        elif s2 and 200 <= i < 208:
+            step = (i - 200 + 1) * 2.5 / 1e4
+            closes.append(s2_peak * (1.0 - direction * step))
+        elif s2 and 208 <= i < 213:
+            step = (i - 208 + 1) * 1.5 / 1e4
+            closes.append(s2_trough * (1.0 + direction * step))
+        elif s2 and i >= 213:
+            closes.append(s2_hold)
         else:
             closes.append(base_price)
 
     bars: list[Bar | None] = []
     for i in range(n_bars):
         ts = t0 + timedelta(seconds=i)
-        on_impulse = impulse and 150 <= i < 160
+        on_conf = (impulse and 150 <= i < 160) or (s2 and 208 <= i < 213)
         if scenario == SCENARIO_GAP and (160 <= i <= 162 or 200 <= i <= 206):
             bars.append(None)
             continue
-        if on_impulse and volume_spike:
+        if on_conf and volume_spike:
             volume = 400.0 + rng.uniform(0.0, 5.0)
         else:
             volume = 100.0 + rng.uniform(0.0, 5.0)
-        if on_impulse and flow_bias:
+        if on_conf and flow_bias:
             buy_frac = min(1.0, max(0.0,
                             (0.75 if direction > 0 else 0.25) + rng.uniform(-0.01, 0.01)))
         else:
             buy_frac = min(1.0, max(0.0, 0.5 + rng.uniform(-0.02, 0.02)))
-        spread = 10.0 if scenario == SCENARIO_WIDE_SPREAD and on_impulse \
+        spread = 10.0 if scenario == SCENARIO_WIDE_SPREAD and on_conf \
             else max(0.0, 1.0 + rng.uniform(-0.1, 0.1))
         if i == 0 or closes[i] == closes[i - 1]:
             bars.append(_flat_bar(ts, closes[i], volume, buy_frac, spread))
         else:
             bars.append(_trend_bar(ts, closes[i - 1], closes[i], volume,
                                    buy_frac, spread))
+    if impulse:
+        shape = "flat-150 + 10-bar 12bps impulse + hold"
+    elif s2:
+        shape = "flat-150 + 50-bar 30bps trend + 8-bar 20bps pullback + 5-bar resume + hold"
+    else:
+        shape = "control"
     notes = (
-        f"{GENERATOR_ID} {scenario}: flat-150 + 10-bar 12bps impulse + hold; "
+        f"{GENERATOR_ID} {scenario}: {shape}; "
         f"volume_spike={volume_spike} flow_bias={flow_bias}; "
         "seed drives volume/flow jitter only"
-        if impulse else
-        f"{GENERATOR_ID} {scenario}: seed drives volume/flow jitter only"
     )
     return Fixture(
         label=SOURCE_LABEL,

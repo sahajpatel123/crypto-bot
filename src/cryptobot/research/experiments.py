@@ -11,16 +11,48 @@ import json
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
-from cryptobot.strategies.contract import ARM_IDS, STRATEGY_VERSION
+from cryptobot.strategies.contract import (
+    ARM_IDS_S1,
+    ARM_IDS_S2,
+    STRATEGY_VERSION,
+)
 
-from .synthetic import SCENARIOS
+from .synthetic import (
+    SCENARIO_CHOPPY,
+    SCENARIO_FLAT,
+    SCENARIO_GAP,
+    SCENARIO_LONG,
+    SCENARIO_S2_LONG,
+    SCENARIO_S2_SHORT,
+    SCENARIO_SHORT,
+    SCENARIO_WIDE_SPREAD,
+)
 
-REGISTRY_VERSION = "0.1.0"
+REGISTRY_VERSION = "0.2.0"
 TRAIN_FRAC = 0.70
 EMBARGO_FRAC = 0.05
 VALIDATION_FRAC = 0.25
 TRAIN_SEEDS = (11, 12, 13)
 VALIDATION_SEEDS = (21, 22)
+TRAIN_SEEDS_S2 = (31, 32, 33)
+VALIDATION_SEEDS_S2 = (41, 42)
+
+# Preregistrations pin their scenario lists: later generator additions must
+# never retroactively change a filed experiment.
+S1_SCENARIOS = (
+    SCENARIO_LONG,
+    SCENARIO_SHORT,
+    SCENARIO_FLAT,
+    SCENARIO_CHOPPY,
+    SCENARIO_GAP,
+    SCENARIO_WIDE_SPREAD,
+)
+S2_SCENARIOS = (
+    SCENARIO_S2_LONG,
+    SCENARIO_S2_SHORT,
+    SCENARIO_FLAT,
+    SCENARIO_CHOPPY,
+)
 
 NET_S1_V1 = """NET_S1_V1 net-economics method (labelled, conservative-simulation):
 per-side cost bps = fee + slippage + spread/2 + funding*horizon_share;
@@ -33,8 +65,8 @@ EXP_001 = {
     "question": "Do volume/flow confirmation gates change S1 breakout signal "
                 "counts and reject mix vs breakout alone (descriptive)?",
     "strategy_version": STRATEGY_VERSION,
-    "arms": list(ARM_IDS),
-    "scenarios": list(SCENARIOS),
+    "arms": list(ARM_IDS_S1),
+    "scenarios": list(S1_SCENARIOS),
     "train_seeds": list(TRAIN_SEEDS),
     "validation_seeds": list(VALIDATION_SEEDS),
     "split": {"train_frac": TRAIN_FRAC, "embargo_frac": EMBARGO_FRAC,
@@ -48,15 +80,40 @@ EXP_001 = {
     "trials_executed": 0,
 }
 
+EXP_002 = {
+    "exp_id": "EXP-002",
+    "question": "Do volume/flow confirmation gates change S2 pullback signal "
+                "counts and reject mix vs pullback alone (descriptive)?",
+    "strategy_version": STRATEGY_VERSION,
+    "arms": list(ARM_IDS_S2),
+    "scenarios": list(S2_SCENARIOS),
+    "train_seeds": list(TRAIN_SEEDS_S2),
+    "validation_seeds": list(VALIDATION_SEEDS_S2),
+    "split": {"train_frac": TRAIN_FRAC, "embargo_frac": EMBARGO_FRAC,
+              "validation_frac": VALIDATION_FRAC},
+    "cost_method": "NET_S1_V1",
+    "metrics": ["n_signals_long", "n_signals_short", "reject_counts",
+                "net_bps_estimate"],
+    "promotion_rule": "NONE - descriptive only; no arm may be promoted "
+                      "from EXP-002",
+    "status": "preregistered",
+    "trials_executed": 0,
+}
+
 __all__ = [
     "EMBARGO_FRAC",
     "EXP_001",
+    "EXP_002",
     "NET_S1_V1",
     "REGISTRY_VERSION",
+    "S1_SCENARIOS",
+    "S2_SCENARIOS",
     "TRAIN_FRAC",
     "TRAIN_SEEDS",
+    "TRAIN_SEEDS_S2",
     "VALIDATION_FRAC",
     "VALIDATION_SEEDS",
+    "VALIDATION_SEEDS_S2",
     "Split",
     "TrialLog",
     "TrialRecord",
