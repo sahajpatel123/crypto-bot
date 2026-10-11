@@ -4009,3 +4009,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   ask 83900.00 x7.382; ETH bid 2543.16 x74.084 / ask 2543.17
   x227.071. Single-sample, not a spread claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 357 (XRP/DOGE bookTicker PASS, cycle 2)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at ba98374. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public bookTicker x1 (fetch 668ms): XRP bid 1.4183 x35162.6 /
+  ask 1.4184 x49694.2; DOGE bid 0.087310 x389936 / ask 0.087320
+  x399859. Single-sample, not a spread claim. PASS.
+- Suite 104/104, evidence gate exit 0.
