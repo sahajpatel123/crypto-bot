@@ -2305,3 +2305,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   ($83,868.70). 8h cadence confirmed. Single-sample datum,
   not a cost claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 200 (ETH funding-history PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 277d222. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public fundingRate ETH x3 (fetch 273ms): 00Z -0.0118%
+  ($2,504.91), 08Z -0.0117% ($2,499.53), 16Z +0.0012%
+  ($2,534.63). 8h cadence confirmed. Single-sample datum,
+  not a cost claim. PASS.
+- Suite 104/104, evidence gate exit 0.
