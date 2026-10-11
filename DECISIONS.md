@@ -110,3 +110,21 @@ Meta Muse Spark.
   paths); merged-tree verification 139/139 + evidence
   gate exit 0. U-001/U-002/U-003 carry forward as follow-ups (U-002
   partly addressed by E-003 v0.1.1 handoff + RiskOutcomeSink).
+- D-013: V-003 accepted (turn-432): W3 delivered SliceRisk wiring
+  (accepted V-001 RiskPolicy + Ledger, (ok,reason,notional) shape,
+  risk-policy:* labelling) + sink conformance + duplicate-callback
+  tolerance + U-003 pinned-as-simulation-defaults with boundary
+  tests and a written measurement plan; U-001 noted only. Manager
+  verified all 4 inbox conditions field-by-field, read slice.py
+  (106 lines), both new test files, and specs/acceptance-u003.md
+  in full, and reproduced 148/148 read-only from
+  /tmp/cryto-bot-w3-003 with the w3 tree untouched. Integrated
+  onto main via provenance copy of the 7 files (all within V-003
+  allowed paths); manager wired SliceRisk into the M1 slice
+  (risk_stub removed, no risk-stub labelling remains). Merged-tree
+  verification: slice exit 0 with
+  risk-policy:approved:reservation=r-000001:budget=0.2500,
+  rejected trade + fault recovery intact, full suite 148/148,
+  evidence gate exit 0. U-003 stays pinned until Worker 2
+  delivers the cost/latency datasets per the plan; U-001 remains
+  out of scope by design.

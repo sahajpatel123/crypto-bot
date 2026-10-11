@@ -4778,3 +4778,34 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   nextFunding 1791763200000 both. Single-sample, not a
   funding/liquidity claim. PASS.
 - Suite 139/139, evidence gate exit 0.
+
+## Addendum — turn 432 (V-003 ACCEPTED + integrated, BTC/ETH
+  L/S PASS, cycle 4)
+- V-003 COMPLETE filed by W3 (cool-amalthea) 18:41:16Z with a
+  same-turn review handoff: SliceRisk wiring over accepted
+  V-001 RiskPolicy + Ledger, sink conformance,
+  duplicate-callback tolerance, U-003 pinned with boundary
+  tests + measurement plan, U-001 noted only; branch
+  worker3/v-003 ff to base c84499f, uncommitted diff per
+  policy, 148/148 claimed. Manager verified all 4 inbox
+  conditions field-by-field, read slice.py + both new test
+  files + specs/acceptance-u003.md in full, and reproduced
+  148/148 read-only from /tmp/cryto-bot-w3-003 (worktree
+  untouched). V-003 ACCEPTED (D-013).
+- Integrated onto main via provenance copy of the 7 files
+  (risk/slice.py new, risk/__init__.py, risk/types.py,
+  accounting/ledger.py, 2 acceptance test files,
+  specs/acceptance-u003.md; all within V-003 allowed paths);
+  manager wired SliceRisk into tools/m1_vertical_slice.py and
+  removed risk_stub. Merged-tree verification: slice exit 0
+  (risk-policy:approved:reservation=r-000001:budget=0.2500,
+  notional 80.14, rejected trade + fault recovery intact),
+  full suite 148/148 (139 + 9), evidence gate exit 0. Board:
+  V-003 -> accepted; W3 idle. Q-002 still running (w1 tree:
+  M S2/S3/S4 specs, M s1.py, new _shared.py); W2 still
+  awaiting E-004 go-ahead (unchanged).
+- Public globalLongShortAccountRatio 5m x1 (fetch 674ms):
+  BTC ratio 1.3969 (long 0.5828 / short 0.4172); ETH ratio
+  2.8285 (long 0.7388 / short 0.2612); ts 1791744000000.
+  Single-sample, not a sentiment/positioning claim. PASS.
+- Suite 148/148, evidence gate exit 0.

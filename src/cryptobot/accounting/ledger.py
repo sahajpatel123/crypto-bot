@@ -74,6 +74,12 @@ class Ledger:
     def net_liquidation(self, ref_price: float, close_cost_bps: float) -> float:
         return self.marked_equity(ref_price) - abs(self._qty * ref_price) * close_cost_bps / 10000
 
+    def position_qty(self) -> float:
+        return self._qty
+
+    def has_position(self) -> bool:
+        return self._qty != 0.0
+
     def net_realised(self) -> float:
         return self._realised
 

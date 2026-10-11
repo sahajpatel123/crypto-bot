@@ -1,19 +1,22 @@
 """M1 runnable vertical slice on SYNTHETIC data (manager-owned scaffold).
 
 Flow: SYNTH_V1 synthetic fixture -> real S1 baseline intent (ARM_BASE) ->
-coordinator -> risk stub -> fake-venue execution -> reconciled ledger -> report.
+coordinator -> real risk gate (SliceRisk over V-001 policy + ledger) ->
+fake-venue execution -> reconciled ledger -> report.
 
 Includes one demonstrably rejected trade (stale/expired) and one fault-recovery
 path (ambiguous order reconciled before retry, no duplicate exposure).
 
-Risk gate is still a labelled stub until V-001 lands. Not a validated trading
-system. Every input here is synthetic.
+Risk gate is the accepted V-001 RiskPolicy via V-003 SliceRisk wiring (reasons
+labelled risk-policy:*). Not a validated trading system. Every input here is
+synthetic.
 """
 from __future__ import annotations
 
 import argparse
 import json
 import sys
+import tempfile
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -22,6 +25,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from cryptobot.coordination import Coordinator, DataQuality, ForecastCost, Intent, Side
 from cryptobot.research.synthetic import SCENARIO_LONG, generate_fixture
+from cryptobot.risk import SliceRisk
 from cryptobot.strategies.contract import ARM_BASE
 from cryptobot.strategies.s1 import Bar, evaluate_side
 
@@ -58,21 +62,6 @@ class FakeVenue:
             self.orders[client_id] = "cancelled-unknown"
             return "cancelled-unknown"
         return state
-
-
-def risk_stub(intent: Intent, equity_usdt: float) -> tuple[bool, str, float]:
-    if intent.data_quality == DataQuality.HALT:
-        return False, "risk-stub:halt-data-quality", 0.0
-    if intent.entry_expiry_utc < datetime.now(timezone.utc):
-        return False, "risk-stub:expired", 0.0
-    budget = equity_usdt * 0.0025
-    stop_dist = abs((intent.entry_low + intent.entry_high) / 2 - intent.invalidation_price)
-    ref = (intent.entry_low + intent.entry_high) / 2
-    stop_pct = stop_dist / ref if ref else 1.0
-    cost_pct = (intent.forecast_cost.fee_bps + intent.forecast_cost.spread_bps) / 10000
-    denom = stop_pct + cost_pct
-    notional = budget / denom if denom > 0 else 0.0
-    return True, f"risk-stub:approved:budget={budget:.4f}", notional
 
 
 def main() -> int:
@@ -115,21 +104,31 @@ def main() -> int:
     assert stale in decision.rejected, "stale intent must be rejected"
 
     equity = 100.0  # synthetic USDT
-    ok, reason, notional = risk_stub(decision.accepted, equity)
-    assert ok, f"risk stub should approve good intent: {reason}"
-
-    venue = FakeVenue()
     mid = (good.entry_low + good.entry_high) / 2
-    qty = notional / mid
-    cid = "m1-0001"
-    first = venue.submit(cid, mid, qty)
-    assert first == "ambiguous", "fault injection must trigger once"
-    rec = venue.reconcile(cid)
-    assert rec == "cancelled-unknown", "reconcile must resolve ambiguity before retry"
-    cid2 = "m1-0002"
-    final = venue.submit(cid2, mid, qty)
-    assert final == "filled", "retry with new client ID must fill once"
-    assert len(venue.fills) == 1, "no duplicate exposure after recovery"
+    # Real risk gate: accepted V-001 policy + ledger via V-003 SliceRisk.
+    # State lives in a per-run temp dir (halt persistence itself is covered
+    # by the acceptance suite, not this synthetic demo).
+    with tempfile.TemporaryDirectory(prefix="m1_risk_") as statedir:
+        gate = SliceRisk(state_path=str(Path(statedir) / "risk_state.json"),
+                         day_start_equity=equity)
+        rdec = gate.evaluate(decision.accepted, mid)
+        ok, reason, notional = rdec.ok, rdec.reason, rdec.notional_usdt
+        assert ok, f"risk policy should approve good intent: {reason}"
+        assert reason.startswith("risk-policy:"), f"real-policy labelling: {reason}"
+
+        venue = FakeVenue()
+        qty = rdec.qty
+        cid = "m1-0001"
+        first = venue.submit(cid, mid, qty)
+        assert first == "ambiguous", "fault injection must trigger once"
+        rec = venue.reconcile(cid)
+        assert rec == "cancelled-unknown", "reconcile must resolve ambiguity before retry"
+        cid2 = "m1-0002"
+        final = venue.submit(cid2, mid, qty)
+        assert final == "filled", "retry with new client ID must fill once"
+        assert len(venue.fills) == 1, "no duplicate exposure after recovery"
+        assert rdec.reservation_id is not None
+        gate.note_slice_fill(rdec.reservation_id, "BUY", qty, mid)
 
     report = {
         "slice": "M1",

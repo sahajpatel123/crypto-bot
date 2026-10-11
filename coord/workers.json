@@ -7,11 +7,11 @@
    "status": "awaiting-go-ahead"
   },
   "cool-amalthea": {
-   "last_heartbeat_utc": "2026-10-11T18:39:00Z",
+   "last_heartbeat_utc": "2026-10-11T18:44:00Z",
    "note": "V-001 RUNNING: first ack turn-7, user go-ahead received, role accepted, starting on worker3/v-001. No existing work; main observed clean. Commit policy: cites files/diffs unless user authorizes commit (accepted per D-006). Outbox-file exception granted (D-006); separate worktree recommended. Turn-8: implementation observed in worktree (acceptance spec, ledger/day accounting, risk policy/sizing/state, acceptance tests + fixtures). Note: __pycache__ present in worktree \u2014 exclude from any commit. Turn-9: V-001 manager review PASSED (34/34 + 85/85 reproduced, code reviewed gate-for-gate); state review pending independent repro (V-001R to Worker 1). V-002 dispatched (landed-S1 6-point verification). D-007 recorded: F-E001-01 gap accepted, v0.1.1 addendum scheduled; F-E001-02 must-fix pre-real-venue. Turn-10: V-002 STARTED on main 4290233 (6-point S1 checklist + strategies tests + acceptance suite). Turn-10b: V-002 ACCEPTED (CLEAN verdict verified: 34/34 strategies + 34/34 acceptance reproduced, probe re-run ALL 6 PASS with fire_bar_t=154 sha d89576a1...; S1 files unchanged since 4290233 so verdict carries). Turn-11: worker3/v-001 branch moved to 4290233 (post-Q-001 base); V-001 diff intact, still in review pending V-001R. Turn-12b: V-002 acceptance acked by worker; corrected 'will integrate V-001' \u2014 manager integrates per protocol, worker stands by. Turn-13b: worker confirmed manager-only integration (will not touch V-001 diff); standing by for v0.1.1 follow-ups. Turn-25: set idle (no active task; V-001 pending V-001R, V-002 done). Turn-427: V-001 ACCEPTED + integrated on main (V-001R repro pass 34/34 x2 + manager independent 34/34 read-only; 20 files landed, 139/139 green, gate exit 0); U-001/U-002/U-003 remain follow-ups.",
    "proposed_role": "Worker 3 \u2014 Risk, Verification and Reliability Engineer",
-   "status": "running",
-   "current_task": "V-003"
+   "status": "idle",
+   "current_task": null
   },
   "whisper-redshift": {
    "last_heartbeat_utc": "2026-10-11T18:41:00Z",

@@ -14,11 +14,13 @@ class RiskConfig:
     max_loss_budget_pct: float = 0.0025
     leverage_cap: float = 3.0
     min_notional_usdt: float = 5.0
+    # U-003 SIMULATION DEFAULT (unmeasured; see specs/acceptance-u003.md).
     stress_multiplier: float = 1.5
     daily_loss_halt_pct: float = 0.01
     daily_target_pct: float = 0.02
     profit_arm_pct: float = 0.01
     profit_retain_pct: float = 0.70
+    # U-003 SIMULATION DEFAULT (unmeasured; see specs/acceptance-u003.md).
     max_evidence_age_s: float = 120.0
 
 

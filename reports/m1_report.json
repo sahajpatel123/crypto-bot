@@ -5,8 +5,8 @@
   "evidence_bar": 154,
   "coordinator_reason": "single-owner-selected",
   "rejected_count": 1,
-  "risk": "risk-stub:approved:budget=0.2500",
-  "notional": 145.38634456685105,
+  "risk": "risk-policy:approved:reservation=r-000001:budget=0.2500",
+  "notional": 80.13960274075248,
   "fills": 1,
   "venue": "slice-local-fake:ambiguous-once",
   "recovery": "ambiguous-reconciled-no-duplicate"
