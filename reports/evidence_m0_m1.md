@@ -1251,3 +1251,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   risk-stub, slice-local-fake, recovery clean). The filed report is
   current with the post-E-003 code; no refresh needed. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 98 (BNBUSDT capture observation PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 1a010b5. E-004 acked (option a, W2 not started, worker-side
+  go-ahead pending); V-001R (W1) still awaiting go-ahead; W3 idle.
+- Live BNBUSDT 1m x30 capture (observed-public): n=30 data rows,
+  gaps=0 (independent recompute), closed=29, data_age 53.8s,
+  fetch_latency 244.5ms. Second-symbol M2 data point; REST-backfill
+  age != feed health. PASS.
+- Suite 104/104, evidence gate exit 0.
