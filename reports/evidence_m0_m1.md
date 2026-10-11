@@ -57,3 +57,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
 - Next: owner authorizes workers (or pastes nothing — tasks are already in
   their sessions + inbox files); manager integrates worker branches on
   completion, reproduces M2 data/latency evidence, and extends the slice.
+
+## Addendum — turn 2 (manager continuation, no worker output yet)
+
+- Liveness: all three peer sessions reachable; no new worker messages, no
+  branches, outbox empty, tree clean at ca6ac6c. V-001 re-nudged once.
+- Manager change: added `tests/unit/test_coordinator.py` (dedup, opposing
+  stand-aside, stale/halt rejection). First run caught a bad test construction
+  (expiry before evidence); fixed the test, product invariant unchanged.
+- Checks: `pytest -q` 6 passed; M1 slice exit 0, synthetic report unchanged.
+- Worker states unchanged: Q-001/E-001 receipt-confirmed, awaiting owner
+  go-ahead; V-001 awaiting first ack. Accepted worker changes: none.
