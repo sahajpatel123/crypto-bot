@@ -4079,3 +4079,12 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   index 1.41948309; DOGE mark 0.08736000 / index 0.08739707.
   Single-sample, not a premium claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 363b (E-004 STARTED, verified)
+- W2 heartbeat received: E-004 started (option a). Verified on
+  disk: branch worker2/e-004 from 5ca2f86 in /tmp/cryto-bot-w2,
+  discovery.py edit in progress; shared tree untouched. Board
+  E-004 assigned -> running.
+- V-001R (W1) still awaiting go-ahead; W3 idle. Note: turn-363
+  commit message predates this heartbeat.
+- Suite 104/104, evidence gate exit 0 (re-verified pre-push).
