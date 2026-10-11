@@ -1,4 +1,4 @@
-"""Resumable EXP-001/EXP-002 descriptive runner (Worker 1, Q-003 Phase 2).
+"""Resumable EXP-001..004 descriptive runner (Worker 1, Q-003 Phase 2, Q-004).
 
 Command: ``python -m cryptobot.research.runner --exp EXP-001 --out <dir>``.
 
@@ -25,14 +25,20 @@ from datetime import datetime, timezone
 from cryptobot.strategies.contract import (
     ARM_IDS_S1,
     ARM_IDS_S2,
+    ARM_IDS_S3,
+    ARM_IDS_S4,
     STRATEGY_VERSION,
 )
 from cryptobot.strategies.s1 import evaluate_bar as evaluate_s1
 from cryptobot.strategies.s2 import evaluate_bar as evaluate_s2
+from cryptobot.strategies.s3 import evaluate_bar as evaluate_s3
+from cryptobot.strategies.s4 import evaluate_bar as evaluate_s4
 
 from .experiments import (
     EXP_001,
     EXP_002,
+    EXP_003,
+    EXP_004,
     REGISTRY_VERSION,
     TrialLog,
     TrialRecord,
@@ -40,12 +46,16 @@ from .experiments import (
 )
 from .synthetic import generate_fixture
 
-EXPERIMENTS = {"EXP-001": EXP_001, "EXP-002": EXP_002}
+EXPERIMENTS = {"EXP-001": EXP_001, "EXP-002": EXP_002, "EXP-003": EXP_003, "EXP-004": EXP_004}
 EVALUATORS = {}
 for _arm in ARM_IDS_S1:
     EVALUATORS[_arm] = evaluate_s1
 for _arm in ARM_IDS_S2:
     EVALUATORS[_arm] = evaluate_s2
+for _arm in ARM_IDS_S3:
+    EVALUATORS[_arm] = evaluate_s3
+for _arm in ARM_IDS_S4:
+    EVALUATORS[_arm] = evaluate_s4
 
 WARMUP_BARS = 120
 ROUNDTRIP_BPS_PER_SIGNAL = 2 * (5.0 + 5.0) + 5.0 + 1.0  # NET_S1_V1, cost exposure only
@@ -236,7 +246,7 @@ def reconcile(manifest: dict, log: TrialLog) -> dict:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Resumable EXP-001/EXP-002 runner")
     parser.add_argument("--exp", default="all",
-                        choices=["all", "EXP-001", "EXP-002"])
+                        choices=["all", "EXP-001", "EXP-002", "EXP-003", "EXP-004"])
     parser.add_argument("--out", required=True, help="output directory")
     parser.add_argument("--limit", type=int, default=None,
                         help="smoke: run only the first N trials per experiment")
@@ -246,7 +256,7 @@ def main(argv: list[str] | None = None) -> int:
     from pathlib import Path
 
     out = Path(args.out)
-    exp_ids = ["EXP-001", "EXP-002"] if args.exp == "all" else [args.exp]
+    exp_ids = ["EXP-001", "EXP-002", "EXP-003", "EXP-004"] if args.exp == "all" else [args.exp]
     overall = {"planned": 0, "completed": 0, "failed": 0}
     for exp_id in exp_ids:
         manifest = build_manifest(exp_id)

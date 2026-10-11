@@ -5,6 +5,8 @@ from .contract import (
     ARM_IDS,
     ARM_IDS_S1,
     ARM_IDS_S2,
+    ARM_IDS_S3,
+    ARM_IDS_S4,
     ARM_VOLUME,
     CONTRACT_VERSION,
     COST_LABEL,
@@ -14,6 +16,13 @@ from .contract import (
     S2_FLOW,
     S2_VOLUME,
     S2_FORECAST_COST,
+    S3_BASE,
+    S3_COST,
+    S3_REGIME,
+    S3_FORECAST_COST,
+    S4_BASE,
+    S4_SIMPLE,
+    S4_FORECAST_COST,
     DataQuality,
     DecisionRecord,
     FeatureEvidence,
@@ -33,6 +42,8 @@ from .s1 import (
     evaluate_side,
 )
 from . import s2 as s2_module
+from . import s3 as s3_module
+from . import s4 as s4_module
 
 __all__ = [
     "ARM_BASE",
@@ -40,6 +51,8 @@ __all__ = [
     "ARM_IDS",
     "ARM_IDS_S1",
     "ARM_IDS_S2",
+    "ARM_IDS_S3",
+    "ARM_IDS_S4",
     "ARM_VOLUME",
     "CONTRACT_VERSION",
     "COST_LABEL",
@@ -49,6 +62,13 @@ __all__ = [
     "S2_FLOW",
     "S2_VOLUME",
     "S2_FORECAST_COST",
+    "S3_BASE",
+    "S3_COST",
+    "S3_REGIME",
+    "S3_FORECAST_COST",
+    "S4_BASE",
+    "S4_SIMPLE",
+    "S4_FORECAST_COST",
     "MAX_CONSECUTIVE_MISSING_HALT",
     "Bar",
     "DataQuality",
@@ -65,4 +85,6 @@ __all__ = [
     "evaluate_bar",
     "evaluate_side",
     "s2_module",
+    "s3_module",
+    "s4_module",
 ]

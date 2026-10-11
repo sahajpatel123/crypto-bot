@@ -170,10 +170,10 @@
    "contract_version": "v0.2.0",
    "dispatch_utc": "2026-10-11T22:05:00Z",
    "inbox": "coord/inbox/Q-004.json",
-   "note": "Dispatched: S3/S4 implementation + S5 ruling per directive Sec 5, parallel with E-006. Ack pending. Ack+START 2026-10-11T22:10:00Z (worker1/q-004 @ea4fa9d, 264/264 baseline).",
+   "note": "Dispatched: S3/S4 implementation + S5 ruling per directive Sec 5, parallel with E-006. Ack pending. Ack+START 2026-10-11T22:10:00Z (worker1/q-004 @ea4fa9d, 264/264 baseline). VERIFIED + ACCEPTED 2026-10-11T22:20:00Z (25/25 hashes on corrected filing, 297/297 reproduced, S3/S4 spec-exact + causal, S5 unavailable-ruled, EXP-003/004 at 0/NONE). Integrated via provenance copy.",
    "owner_session": "whisper-redshift",
    "role": "Worker 1 \u2014 Quant Research and Strategy Engineer",
-   "state": "running"
+   "state": "accepted"
   },
   "V-001": {
    "acceptance": [

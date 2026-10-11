@@ -27,9 +27,12 @@ def test_no_duplicate_intent_type():
 def test_arm_ids_and_versions():
     assert C.ARM_IDS_S1 == ("S1", "S1-V", "S1-F")
     assert C.ARM_IDS_S2 == ("S2", "S2-V", "S2-F")
-    assert C.ARM_IDS == C.ARM_IDS_S1 + C.ARM_IDS_S2
+    assert C.ARM_IDS_S3 == ("S3", "S3-R", "S3-C")
+    assert C.ARM_IDS_S4 == ("S4", "S4-S")
+    assert C.ARM_IDS == C.ARM_IDS_S1 + C.ARM_IDS_S2 + C.ARM_IDS_S3 + C.ARM_IDS_S4
+    assert len(C.ARM_IDS) == 11
     assert C.STRATEGY_VERSION == "0.1.0"
-    assert C.CONTRACT_VERSION == "v0.1.1"
+    assert C.CONTRACT_VERSION == "v0.2.0"
 
 
 def test_s1_cost_preset_nonzero_labelled():
@@ -44,6 +47,11 @@ def test_s1_cost_preset_nonzero_labelled():
 def test_s2_cost_preset_matches_s1_values():
     assert C.S2_FORECAST_COST == C.S1_FORECAST_COST
     assert C.S2_FORECAST_COST.label == "conservative-simulation"
+
+
+def test_s3_s4_cost_presets_match_s1_values():
+    assert C.S3_FORECAST_COST == C.S1_FORECAST_COST
+    assert C.S4_FORECAST_COST == C.S1_FORECAST_COST
 
 
 def test_evidence_ref_format():
@@ -74,6 +82,12 @@ def test_build_intent_ok_and_defaults():
     s2 = C.build_intent(**_intent_kwargs(strategy="S2-V",
                                          forecast_cost=C.S2_FORECAST_COST))
     assert s2.strategy == "S2-V"
+    s3 = C.build_intent(**_intent_kwargs(strategy="S3-R",
+                                         forecast_cost=C.S3_FORECAST_COST))
+    assert s3.strategy == "S3-R"
+    s4 = C.build_intent(**_intent_kwargs(strategy="S4-S",
+                                         forecast_cost=C.S4_FORECAST_COST))
+    assert s4.strategy == "S4-S"
 
 
 def test_build_intent_rejects_convention_violations():

@@ -20,7 +20,7 @@ def test_manifest_derived_from_frozen_definitions():
     # arms x scenarios x (3 train seeds on train split + 2 val seeds on val split)
     assert m1["planned"] == 3 * 6 * 5
     assert m1["promotion_rule"].startswith("NONE")
-    assert m1["code"]["registry_version"] == "0.2.0"
+    assert m1["code"]["registry_version"] == "0.3.0"
     ids = [t["trial_id"] for t in m1["trials"]]
     assert len(set(ids)) == len(ids)
     first = m1["trials"][0]
@@ -83,3 +83,8 @@ def test_main_smoke_and_exit_codes(tmp_path):
     assert main(["--exp", "EXP-002", "--out", str(tmp_path / "d2"),
                  "--dry-run"]) == 0
     assert json.loads((tmp_path / "d2" / "EXP-002" / "manifest.json").read_text())["planned"] == 60
+
+
+def test_manifest_counts_exp003_exp004():
+    assert build_manifest("EXP-003")["planned"] == 3 * 4 * 5
+    assert build_manifest("EXP-004")["planned"] == 2 * 4 * 5

@@ -19,11 +19,13 @@ from .pullback import (
     swing_high_before,
     swing_low_before,
 )
+from .range import edge_touches, vwap_typical
 
 __all__ = [
     "STD_FLOOR",
     "InsufficientHistory",
     "MissingData",
+    "edge_touches",
     "flow_mean",
     "momentum_bps",
     "pullback_high",
@@ -37,4 +39,5 @@ __all__ = [
     "swing_low",
     "swing_low_before",
     "volume_z",
+    "vwap_typical",
 ]

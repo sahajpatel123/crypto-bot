@@ -1,4 +1,4 @@
-"""Strategy-side contract builders (Worker 1, CONTRACTS v0.1.1).
+"""Strategy-side contract builders (Worker 1, CONTRACTS v0.2.0).
 
 Reuses the manager-owned ``cryptobot.coordination`` classes as the single
 Intent/DecisionRecord types shared with the coordinator. This module adds
@@ -19,7 +19,7 @@ from cryptobot.coordination import (
     Side,
 )
 
-CONTRACT_VERSION = "v0.1.1"
+CONTRACT_VERSION = "v0.2.0"
 STRATEGY_VERSION = "0.1.0"
 
 ARM_BASE = "S1"
@@ -32,7 +32,16 @@ S2_VOLUME = "S2-V"
 S2_FLOW = "S2-F"
 ARM_IDS_S2 = (S2_BASE, S2_VOLUME, S2_FLOW)
 
-ARM_IDS = ARM_IDS_S1 + ARM_IDS_S2
+S3_BASE = "S3"
+S3_REGIME = "S3-R"
+S3_COST = "S3-C"
+ARM_IDS_S3 = (S3_BASE, S3_REGIME, S3_COST)
+
+S4_BASE = "S4"
+S4_SIMPLE = "S4-S"
+ARM_IDS_S4 = (S4_BASE, S4_SIMPLE)
+
+ARM_IDS = ARM_IDS_S1 + ARM_IDS_S2 + ARM_IDS_S3 + ARM_IDS_S4
 
 COST_LABEL = "conservative-simulation"
 
@@ -42,8 +51,14 @@ S1_FORECAST_COST = ForecastCost(
     fee_bps=5.0, spread_bps=5.0, slippage_bps=5.0, funding_bps=1.0
 )
 
-# S2 uses the same frozen preset values under its own name.
+# S2/S3/S4 use the same frozen preset values under their own names.
 S2_FORECAST_COST = ForecastCost(
+    fee_bps=5.0, spread_bps=5.0, slippage_bps=5.0, funding_bps=1.0
+)
+S3_FORECAST_COST = ForecastCost(
+    fee_bps=5.0, spread_bps=5.0, slippage_bps=5.0, funding_bps=1.0
+)
+S4_FORECAST_COST = ForecastCost(
     fee_bps=5.0, spread_bps=5.0, slippage_bps=5.0, funding_bps=1.0
 )
 
@@ -53,6 +68,8 @@ __all__ = [
     "ARM_IDS",
     "ARM_IDS_S1",
     "ARM_IDS_S2",
+    "ARM_IDS_S3",
+    "ARM_IDS_S4",
     "ARM_VOLUME",
     "CONTRACT_VERSION",
     "COST_LABEL",
@@ -62,6 +79,13 @@ __all__ = [
     "S2_FLOW",
     "S2_VOLUME",
     "S2_FORECAST_COST",
+    "S3_BASE",
+    "S3_COST",
+    "S3_REGIME",
+    "S3_FORECAST_COST",
+    "S4_BASE",
+    "S4_SIMPLE",
+    "S4_FORECAST_COST",
     "DataQuality",
     "DecisionRecord",
     "FeatureEvidence",
