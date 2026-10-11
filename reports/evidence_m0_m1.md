@@ -4420,3 +4420,12 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   XRP ratio 2.2949 @18:10Z; DOGE ratio 2.3693 @18:10Z.
   Single-sample, not a sentiment claim. PASS.
 - Suite 105/105, evidence gate exit 0.
+
+## Addendum — turn 401 (SOL/BNB L/S PASS, cycle 3)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 49443bc. E-004 accepted; W2 standing by. V-001R (W1)
+  still awaiting go-ahead; W3 idle.
+- Public globalLongShortAccountRatio 5m x1 (fetch 601ms):
+  SOL ratio 2.2227 @18:10Z; BNB ratio 2.1348 @18:10Z.
+  Single-sample, not a sentiment claim. PASS.
+- Suite 105/105, evidence gate exit 0.
