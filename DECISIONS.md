@@ -87,3 +87,11 @@ Meta Muse Spark.
   the S2-S5 follow-up task will require the directive's S2/S3/S4 hypotheses
   or a written substitution rationale for CEO/owner review. Substitutions are
   a goal-content change, not routine engineering.
+- D-011: E-002 verdict blocked-on-transfer accepted: nautilus_trader==1.231.0
+  stays a PROPOSAL (D-005 still open); no adoption without a future
+  import+adapter smoke pass. The bottleneck is host/network-specific
+  (~100KB/s class), not a demonstrated upstream incompatibility, so it does
+  not trigger the thin-official-SDK path either (CEO Sec.3.2 requires a
+  specific blocking incompatibility). Engine work continues on stdlib-urllib
+  capture + fake venue; retry deferred to a better-connected host or a
+  pre-seeded wheel cache.

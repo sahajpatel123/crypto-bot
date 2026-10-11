@@ -27,6 +27,21 @@ PROPOSED_PINS = {
 
 CONTRACT_VERSION = "v0.1.0"
 
+# E-002 bounded trial-install record (D-005 follow-up). A trial documents what
+# was ATTEMPTED and observed; it never counts as verified behaviour — the
+# nautilus row's `verified` tuple stays empty until an import + adapter smoke
+# actually passes in this environment.
+E002_TRIAL_UTC = "2026-10-11T13:36:00Z/2026-10-11T14:06:45Z"  # bound window (start/end).
+E002_TRIAL_VERDICT = "blocked-on-transfer"
+E002_TRIAL_EVIDENCE = (
+    "trial venv .venv-trial (project-checkout-local, untracked, never committed)",
+    "attempt 1 (py3.11): pin 1.231.0 rejected — requires-python >=3.12,<3.15 (PyPI file list: cp312/cp313/cp314 wheels + sdist)",
+    "attempt 2 (py3.14, pip wheels-only): deps resolved; 156MB cp314 macosx_arm64 wheel at ~96KB/s, ~55MB in ~15min, stopped for faster installer",
+    "attempt 3 (py3.14, uv 0.11.11): 15 pkgs resolved in 61s; parallel transfer reached 110MB+ cache but wheel never completed by the ~30min bound",
+    "env: macOS 27.2 arm64, python 3.14.6, pip 26.1.2 — trial venv 13M, nautilus absent",
+    "never completed: wheel transfer/install; no import, adapter, or conditional-order evidence obtained",
+)
+
 
 @dataclass(frozen=True)
 class ConnectorCapability:
@@ -41,6 +56,7 @@ class ConnectorCapability:
     verified: tuple[str, ...] = field(default_factory=tuple)
     assumed: tuple[str, ...] = field(default_factory=tuple)
     blockers: tuple[str, ...] = field(default_factory=tuple)
+    trial: tuple[str, ...] = field(default_factory=tuple)  # E-002 attempt evidence; never verification.
 
 
 @dataclass(frozen=True)
@@ -71,7 +87,7 @@ CONNECTOR_CANDIDATES: tuple[_Candidate, ...] = (
             "Backtest + live execution engine with Binance adapter (upstream docs)",
             "Rust-backed core; install is heavy (native build/wheel)",
         ),
-        install_blocker="not installed in .venv; bounded E-001 check did metadata-only PyPI probe, no install",
+        install_blocker="not installed in .venv; E-002 trial blocked-on-transfer (see trial notes)",
     ),
     _Candidate(
         name="binance-connector",
@@ -123,6 +139,7 @@ def build_matrix(extra_verified: Mapping[str, list[str]] | None = None) -> list[
                 verified=verified,
                 assumed=cand.assumed,
                 blockers=tuple(blockers),
+                trial=E002_TRIAL_EVIDENCE if cand.name == "nautilus_trader" else (),
             )
         )
     return rows
@@ -143,6 +160,7 @@ def to_dict(matrix: list[ConnectorCapability]) -> dict:
                 "verified": list(r.verified),
                 "assumed": list(r.assumed),
                 "blockers": list(r.blockers),
+                "trial": list(r.trial),
             }
             for r in matrix
         ],
@@ -164,4 +182,10 @@ def render_markdown(matrix: list[ConnectorCapability]) -> str:
             f"| {r.name} | {r.installed_version or 'NOT-INSTALLED'} "
             f"| {r.proposed_pin or 'n/a (stdlib)'} | {ver} | {asm} | {blk} |"
         )
+    trial_rows = [r for r in matrix if r.trial]
+    if trial_rows:
+        lines += ["", f"Trial notes (E-002, {E002_TRIAL_UTC}; verdict: {E002_TRIAL_VERDICT}):", ""]
+        for r in trial_rows:
+            lines.append(f"- {r.name} (pin {r.proposed_pin}):")
+            lines.extend(f"  - {note}" for note in r.trial)
     return "\n".join(lines) + "\n"

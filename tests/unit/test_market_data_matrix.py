@@ -1,6 +1,6 @@
-"""Capability-matrix unit tests (Worker 2, E-001). Offline-safe, no network."""
+"""Capability-matrix unit tests (Worker 2, E-001/E-002). Offline-safe, no network."""
 from cryptobot.market_data import build_matrix, render_markdown
-from cryptobot.market_data.capabilities import to_dict
+from cryptobot.market_data.capabilities import E002_TRIAL_VERDICT, to_dict
 
 
 def test_matrix_has_all_candidate_rows():
@@ -44,3 +44,15 @@ def test_render_and_dict_cover_all_rows():
     payload = to_dict(matrix)
     assert payload["contract_version"] == "v0.1.0"
     assert len(payload["rows"]) == 4
+
+
+def test_e002_trial_documented_without_counting_as_verified():
+    (nautilus,) = [row for row in build_matrix() if row.name == "nautilus_trader"]
+    assert nautilus.trial, "E-002 trial evidence must be recorded on the nautilus row"
+    assert nautilus.verified == (), "a blocked trial must not count as verification"
+    assert E002_TRIAL_VERDICT == "blocked-on-transfer"
+    text = render_markdown(build_matrix())
+    assert E002_TRIAL_VERDICT in text
+    payload = to_dict(build_matrix())
+    (row,) = [r for r in payload["rows"] if r["name"] == "nautilus_trader"]
+    assert row["trial"] and row["verified"] == []

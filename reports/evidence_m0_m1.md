@@ -273,3 +273,17 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   completed by the bound. Matrix + data README + new test updated; trial
   explicitly not counted as verification. No outbox filing yet — manager
   integration waits for the completion claim.
+
+## Addendum — turn 21 (E-002 accepted + integrated)
+
+- Worker 2 filed E-002 completion (outbox E-002.json + message, commit
+  7be230d on worker2/e-002): verdict blocked-on-transfer, honest
+  acceptance map (install/import/adapter items marked NOT OBTAINED),
+  3 timestamped attempts, environment, repro commands, DEFER
+  recommendation. Manager reproduced 52/52 in the w2 worktree,
+  confirmed 0 tracked trial files and a clean main .venv, and
+  cherry-picked 7be230d onto main: suite now 86/86 green.
+- D-011: pin 1.231.0 stays PROPOSAL; no thin-SDK trigger (no upstream
+  incompatibility demonstrated); retry deferred to better throughput or a
+  pre-seeded cache. Next E-task (v0.1.1 execution + crash fix) dispatches
+  after this integration.
