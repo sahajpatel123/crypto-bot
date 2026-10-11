@@ -5310,3 +5310,7 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   x1 (BTC 378ms, ETH 290ms): BTC 83629.00
   x 0.029; ETH 2535.56 x 0.010. PASS.
   Suite 167/167, evidence gate exit 0.
+- Turn-512 (cycle 7): public aggTrades
+  x1 (XRP 323ms, DOGE 275ms): XRP 1.4095
+  x 3.7; DOGE 0.086850 x 60. PASS.
+  Suite 167/167, evidence gate exit 0.
