@@ -5028,3 +5028,11 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   ask752.620 bq1.60 aq110.25 sprd0.0100.
   Single-sample, not a spread/depth claim. PASS.
   Suite 167/167, evidence gate exit 0.
+- Turn-460 (cycle 5): public depth limit=5 (BTC
+  264ms, ETH 236ms): BTC id11790000243940
+  bid83652.10x3.203 ask83652.20x7.346
+  T1791745892288; ETH id11790000256441
+  bid2534.36x66.465 ask2534.37x96.017
+  T1791745892530. Single-sample, not a
+  depth/liquidity claim. PASS. Suite 167/167,
+  evidence gate exit 0.
