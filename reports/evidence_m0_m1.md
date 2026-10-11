@@ -2413,3 +2413,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   58,431.0 / sell-initiated 27,763.0 XRP, last $1.4180.
   Single-sample, not a flow claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 210 (tape PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at a84e5fd. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public DOGE aggTrades n=100 (fetch 332ms): buy-initiated
+  716,290.0 / sell-initiated 1,360,288.0 DOGE, last $0.08688.
+  Single-sample, not a flow claim. PASS.
+- Suite 104/104, evidence gate exit 0.
