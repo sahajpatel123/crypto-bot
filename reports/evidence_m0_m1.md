@@ -2210,3 +2210,16 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   ETH 0.04bps, SOL 0.89bps, BNB 0.13bps. Single-sample
   datum, not a cost claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 191 (ETH taker-L/S snapshot PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at d4fa98a. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- First attempt assumed `longShortRatio` key (KeyError); endpoint
+  rows actually carry `buySellRatio`/`buyVol`/`sellVol` — probe
+  fixed, not a venue failure. Re-ran correctly.
+- Public takerlongshortRatio ETH 5m x6 (fetch 229ms):
+  1.913/1.531/0.890/0.749/1.039/0.781, last 0.781.
+  Single-sample datum, not a flow claim. PASS.
+- Suite 104/104, evidence gate exit 0.
