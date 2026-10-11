@@ -5036,3 +5036,11 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   T1791745892530. Single-sample, not a
   depth/liquidity claim. PASS. Suite 167/167,
   evidence gate exit 0.
+- Turn-461 (cycle 5): public depth limit=5 (XRP
+  338ms, DOGE 276ms): XRP id11790003306851
+  bid1.4084x34444.0 ask1.4085x42486.4
+  T1791745929917; DOGE id11790003324925
+  bid0.086720x614059 ask0.086730x243013
+  T1791745930187. Single-sample, not a
+  depth/liquidity claim. PASS. Suite 167/167,
+  evidence gate exit 0.
