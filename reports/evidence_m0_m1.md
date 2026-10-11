@@ -3821,3 +3821,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   BNB mark 756.886 funding 0.000000% last 756.880
   @17:38Z. Single-sample, not a funding claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 338 (BTC/ETH aggTrades PASS, cycle 2)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 477be02. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public aggTrades x3 (fetch 504ms): BTC
+  0.035 SELL @84075.50/...; ETH 0.008 BUY @2548.98/...
+  @17:38Z. Single-sample, not a flow claim. PASS.
+- Suite 104/104, evidence gate exit 0.
