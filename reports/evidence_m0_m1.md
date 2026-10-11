@@ -2423,3 +2423,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   716,290.0 / sell-initiated 1,360,288.0 DOGE, last $0.08688.
   Single-sample, not a flow claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 211 (funding-timing PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at a401852. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public premiumIndex (fetch 462ms): XRP mark $1.41757
+  lastFunding +0.0063%; DOGE mark $0.08691 lastFunding
+  +0.0045%; both nextFunding 2026-10-12T00:00:00Z.
+  Single-sample, not a cost claim. PASS.
+- Suite 104/104, evidence gate exit 0.
