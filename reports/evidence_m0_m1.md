@@ -5253,3 +5253,8 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   1.4089/1.4090; DOGE top 0.086890/
   0.086900. PASS. Suite 167/167,
   evidence gate exit 0.
+- Turn-498 (cycle 6): public depth L5 x1
+  (SOL 384ms, BNB 279ms): SOL top
+  111.3900/111.4000; BNB top 753.450/
+  753.460. PASS. Suite 167/167,
+  evidence gate exit 0.
