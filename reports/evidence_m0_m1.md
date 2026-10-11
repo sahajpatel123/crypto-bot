@@ -3197,3 +3197,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   2,542.90 lastFunding 0.1263 bps next 00:00Z.
   Single-sample, not a cost claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 282 (XRP/DOGE funding PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at e792778. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public premiumIndex (fetch 565ms): XRPUSDT mark 1.417801
+  lastFunding 0.7521 bps next 00:00Z; DOGEUSDT mark
+  0.08703 lastFunding 0.6305 bps next 00:00Z.
+  Single-sample, not a cost claim. PASS.
+- Suite 104/104, evidence gate exit 0.
