@@ -1,1 +1,32 @@
-{"body":{"acceptance":["Reproduce V-001 acceptance suite read-only from /tmp/cryto-bot-w3 (expect 34 passed) with worktree PYTHONPATH; no writes to that worktree","Hand-reproduce one halt-persistence case per the plan in specs/acceptance-review-q001-e001.md section 'Independent reproduction plan'","Confirm determinism re-run behavior (test_determinism.py) and report per-invariant R-001..R-012 pass/fail","No code changes: evidence only, written to coord/outbox/V-001R.json"],"allowed_paths":["coord/outbox/V-001R.json"],"contract_version":"v0.1.0","dependencies":["V-001 diff on worker3/v-001 (/tmp/cryto-bot-w3, base cbb722f)","V-001 repro plan in specs/acceptance-review-q001-e001.md"],"evidence_required":["repro commands with outputs","base/worktree IDs","per-invariant pass/fail","unresolved issues"],"note":"Read-only reproduction; do not modify the w3 worktree or any source file.","objective":"Independently reproduce V-001 critical risk invariants (no self-certification: Worker 3 authored, manager reviewed, you reproduce)."},"from":"young-polaris","id":"msg-V-001R-01","kind":"task","task_id":"V-001R","to":"whisper-redshift","utc":"2026-10-11T13:39:00Z"}
+{
+  "body": {
+    "acceptance": [
+      "Reproduce V-001 acceptance suite read-only from /tmp/cryto-bot-w3 (expect 34 passed) with worktree PYTHONPATH; no writes to that worktree",
+      "Hand-reproduce one halt-persistence case per the plan in specs/acceptance-review-q001-e001.md section 'Independent reproduction plan'",
+      "Confirm determinism re-run behavior (test_determinism.py) and report per-invariant R-001..R-012 pass/fail",
+      "No code changes: evidence only, written to coord/outbox/V-001R.json"
+    ],
+    "allowed_paths": [
+      "coord/outbox/V-001R.json"
+    ],
+    "contract_version": "v0.1.0",
+    "dependencies": [
+      "V-001 diff on worker3/v-001 (/tmp/cryto-bot-w3, base 4290233; corrected turn-29, was cbb722f \u2014 branch moved turn-11, diff intact, repro command verified runnable by manager pre-check)",
+      "V-001 repro plan in specs/acceptance-review-q001-e001.md section Independent reproduction plan (line 79)"
+    ],
+    "evidence_required": [
+      "repro commands with outputs",
+      "base/worktree IDs",
+      "per-invariant pass/fail",
+      "unresolved issues"
+    ],
+    "note": "Read-only reproduction; do not modify the w3 worktree or any source file.",
+    "objective": "Independently reproduce V-001 critical risk invariants (no self-certification: Worker 3 authored, manager reviewed, you reproduce)."
+  },
+  "from": "young-polaris",
+  "id": "msg-V-001R-01",
+  "kind": "task",
+  "task_id": "V-001R",
+  "to": "whisper-redshift",
+  "utc": "2026-10-11T13:39:00Z"
+}

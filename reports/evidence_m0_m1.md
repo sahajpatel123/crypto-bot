@@ -364,3 +364,17 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   Fixed: concrete pointer appended to the inbox dependencies (import path +
   file + conformance test tests/unit/test_coordination_risk_outcomes.py,
   filename verified present); one-line FYI sent to Worker 2, no re-ack needed.
+
+## Addendum — turn 29 (V-001R pre-start pointer check; still awaiting go-aheads)
+
+- No new outbox filings, commits, or worker activity; E-003 + V-001R still
+  await worker-side go-aheads.
+- Symmetric pre-start check on V-001R (not started, fixes clean). Gap found:
+  inbox cited w3 base cbb722f, but worker3/v-001 moved to 4290233 at turn-11;
+  corrected the inbox to 4290233. Verified: w3 HEAD is 4290233 with the V-001
+  diff intact; repro plan section exists (acceptance-review-q001-e001.md:79);
+  the cited 34-test repro runs read-only (PYTHONDONTWRITEBYTECODE +
+  no:cacheprovider, worktree PYTHONPATH) → 34 passed, and the worktree shows
+  no new files after the probe. This run proves runnability only — V-001
+  acceptance still requires Worker 1's independent V-001R filing. FYI + start
+  request sent to Worker 1.
