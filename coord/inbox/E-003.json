@@ -1,1 +1,38 @@
-{"body":{"acceptance":["submit_entry(..., reservation_id) threads the key onto the entry order and its protective siblings; outcome callbacks note_fill/release/note_flat fire exactly-once per reservation against the addendum interface (recording stub in tests; no edits to risk-owned files)","Halt → exit-only signal: level-triggered, persisted, survives restart until cleared via reconciliation; exit-only blocks new entries while protective exits and exposure reduction proceed","Restart reconciliation covers reservations: a reservation with no matching live entry/order after recover() is released with a logged reason","F-E001-02 fixed: fsync (or equivalent durability) on log append + startup sweep that detects venue-side unknown orders and cancels ones with no local record; demonstrated with the fault-injectable fake venue","F-E001-03 dead line removed or restored-from-log; F-E001-04 zero-price fill guarded (raise, never fill at 0.0); F-E001-05 documented as a live-venue note","Full suite green; fake-venue determinism preserved (no network/creds/randomness)"],"allowed_paths":["src/cryptobot/execution/*","tests/unit/test_execution_*"],"branch":"worker2/e-003 from origin/main (post-E-002 tip)","contract_version":"v0.1.1 addendum (execution side); v0.1.0 remains baseline elsewhere","dependencies":["CONTRACTS.md v0.1.1 handoff addendum (D-007)","V-001 findings F-E001-02/03/04/05 (specs/acceptance-review-q001-e001.md on worker3/v-001; F-E001-01 closed by the addendum)","E-001 order-manager skeleton + fake venue"],"evidence_required":["repro commands","commit/change IDs","fault-injection test results (crash window, orphan sweep, exit-only restart)","unresolved issues","next dependency (risk-side wiring after V-001 lands)"],"objective":"Implement the CONTRACTS v0.1.1 execution side of the risk→execution handoff (reservation_id threading, exactly-once outcome callbacks, halt→exit-only, reservation reconciliation) and fix the F-E001-02 venue-submit/log crash window, plus F-E001-03/04 nits and the F-E001-05 live note. Risk-owned files stay untouched; callbacks target the addendum interface with a recording stub."},"from":"young-polaris","id":"msg-E-003-01","kind":"task","task_id":"E-003","to":"cloud-vega","utc":"2026-10-11T14:11:00Z"}
+{
+  "body": {
+    "acceptance": [
+      "submit_entry(..., reservation_id) threads the key onto the entry order and its protective siblings; outcome callbacks note_fill/release/note_flat fire exactly-once per reservation against the addendum interface (recording stub in tests; no edits to risk-owned files)",
+      "Halt \u2192 exit-only signal: level-triggered, persisted, survives restart until cleared via reconciliation; exit-only blocks new entries while protective exits and exposure reduction proceed",
+      "Restart reconciliation covers reservations: a reservation with no matching live entry/order after recover() is released with a logged reason",
+      "F-E001-02 fixed: fsync (or equivalent durability) on log append + startup sweep that detects venue-side unknown orders and cancels ones with no local record; demonstrated with the fault-injectable fake venue",
+      "F-E001-03 dead line removed or restored-from-log; F-E001-04 zero-price fill guarded (raise, never fill at 0.0); F-E001-05 documented as a live-venue note",
+      "Full suite green; fake-venue determinism preserved (no network/creds/randomness)"
+    ],
+    "allowed_paths": [
+      "src/cryptobot/execution/*",
+      "tests/unit/test_execution_*"
+    ],
+    "branch": "worker2/e-003 from origin/main (post-E-002 tip)",
+    "contract_version": "v0.1.1 addendum (execution side); v0.1.0 remains baseline elsewhere",
+    "dependencies": [
+      "CONTRACTS.md v0.1.1 handoff addendum (D-007)",
+      "V-001 findings F-E001-02/03/04/05 (specs/acceptance-review-q001-e001.md on worker3/v-001; F-E001-01 closed by the addendum)",
+      "E-001 order-manager skeleton + fake venue",
+      "Shared callback interface (landed on main post-dispatch, turn-23): from cryptobot.coordination import RiskOutcomeSink (src/cryptobot/coordination/risk_outcomes.py); build the recording stub against it. CONTRACTS.md v0.1.1 addendum points to the module; conformance test in tests/unit/test_coordination_risk_outcomes.py"
+    ],
+    "evidence_required": [
+      "repro commands",
+      "commit/change IDs",
+      "fault-injection test results (crash window, orphan sweep, exit-only restart)",
+      "unresolved issues",
+      "next dependency (risk-side wiring after V-001 lands)"
+    ],
+    "objective": "Implement the CONTRACTS v0.1.1 execution side of the risk\u2192execution handoff (reservation_id threading, exactly-once outcome callbacks, halt\u2192exit-only, reservation reconciliation) and fix the F-E001-02 venue-submit/log crash window, plus F-E001-03/04 nits and the F-E001-05 live note. Risk-owned files stay untouched; callbacks target the addendum interface with a recording stub."
+  },
+  "from": "young-polaris",
+  "id": "msg-E-003-01",
+  "kind": "task",
+  "task_id": "E-003",
+  "to": "cloud-vega",
+  "utc": "2026-10-11T14:11:00Z"
+}

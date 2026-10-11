@@ -350,3 +350,17 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   samples live only under data/observed/);
   (3) no api_key/secret/private-key/password patterns in src/ or tools/ —
   no credentials in code.
+
+## Addendum — turn 28 (E-003 dependency-pointer check; still awaiting go-aheads)
+
+- No new outbox filings, commits, or worker activity; E-003 + V-001R still
+  await worker-side go-aheads.
+- Pre-start dependency check (E-003 has not started, so fixes are clean):
+  CONTRACTS-cited import `from cryptobot.coordination import
+  RiskOutcomeSink` verified resolvable from a fresh interpreter (re-exported
+  in coordination/__init__.py, impl src/cryptobot/coordination/
+  risk_outcomes.py). Gap found: inbox E-003.json named only "the addendum
+  interface" without the concrete path (Protocol landed post-dispatch).
+  Fixed: concrete pointer appended to the inbox dependencies (import path +
+  file + conformance test tests/unit/test_coordination_risk_outcomes.py,
+  filename verified present); one-line FYI sent to Worker 2, no re-ack needed.
