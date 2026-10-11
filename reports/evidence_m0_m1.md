@@ -5318,3 +5318,7 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   x1 (SOL 328ms, BNB 278ms): SOL 111.2300
   x 0.08; BNB 753.600 x 0.02. PASS.
   Suite 167/167, evidence gate exit 0.
+- Turn-514 (cycle 7): public openInterest
+  x1 (BTC 326ms, ETH 281ms): BTC 92656.078;
+  ETH 2315032.086. PASS.
+  Suite 167/167, evidence gate exit 0.
