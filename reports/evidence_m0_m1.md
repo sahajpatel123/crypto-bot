@@ -3045,3 +3045,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   Prices via separate ticker call. Single-sample, not a
   leverage/flow claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 269 (BTC/ETH L/S PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 318315e. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public globalLongShortAccountRatio 1h x1 (fetch 544ms):
+  BTCUSDT L/S 1.4710 (long 0.5953/short 0.4047); ETHUSDT
+  L/S 3.0128 (long 0.7508/short 0.2492).
+  Single-sample, not a sentiment claim. PASS.
+- Suite 104/104, evidence gate exit 0.
