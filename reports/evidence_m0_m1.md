@@ -5152,3 +5152,8 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   BNB 753.130. Single-sample, not a flow
   claim. PASS. Suite 167/167, evidence
   gate exit 0.
+- Turn-478 (cycle 6): public openInterest
+  (BTC 316ms, ETH 274ms): BTC 92680.588;
+  ETH 2314852.497. Single-sample, not a
+  positioning claim. PASS. Suite 167/167,
+  evidence gate exit 0.
