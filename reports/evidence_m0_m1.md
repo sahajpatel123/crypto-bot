@@ -4143,3 +4143,11 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
 - Public takerlongshortRatio 5m x1 (fetch 583ms): BTC 1.2230;
   ETH 0.9648. Single-sample, not a flow claim. PASS.
 - Suite 105/105, evidence gate exit 0.
+
+## Addendum — turn 370 (XRP/DOGE taker PASS, cycle 2)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 1d03c42. E-004 accepted; W2 standing by. V-001R (W1)
+  still awaiting go-ahead; W3 idle.
+- Public takerlongshortRatio 5m x1 (fetch 642ms): XRP 1.1318;
+  DOGE 0.7767. Single-sample, not a flow claim. PASS.
+- Suite 105/105, evidence gate exit 0.
