@@ -5198,3 +5198,8 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   0.00006592; BNB 0.00000000
   @T1791734400002. PASS. Suite 167/167,
   evidence gate exit 0.
+- Turn-487 (cycle 6): public klines 1m x1
+  (BTC 317ms, ETH 266ms): BTC o
+  83710.60/c 83699.50; ETH o 2534.41/c
+  2533.97 @T1791747420000. PASS. Suite
+  167/167, evidence gate exit 0.
