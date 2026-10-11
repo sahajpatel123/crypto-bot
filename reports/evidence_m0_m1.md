@@ -2658,3 +2658,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   $2,538.74 +1.316% hi 2,549.00 lo 2,496.12 qvol $3.57B.
   Single-sample, not a regime claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 233 (ticker PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 61c6ba9. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public 24h ticker (fetch 978ms): SOL last $111.69
+  +1.407% hi 112.13 lo 108.89 qvol $0.89B; BNB last
+  $755.60 +0.714% hi 757.27 lo 744.91 qvol $0.15B.
+  Single-sample, not a regime claim. PASS.
+- Suite 104/104, evidence gate exit 0.
