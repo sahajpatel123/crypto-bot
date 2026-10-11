@@ -1635,3 +1635,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   datum beside BNB turn-122; single sample, not a positioning
   claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 136 (SOL trade-tape snapshot PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at fc750c8. E-004 acked (option a, W2 not started, worker-side
+  go-ahead pending); V-001R (W1) still awaiting go-ahead; W3 idle.
+- Public aggTrades SOLUSDT x100 (fetch 240ms): 32.3s span, 54%
+  buyer-initiated; median $98, p90 $11,776 notional. Third-symbol
+  tape context after BTC/BNB; single sample, not a flow claim.
+  PASS.
+- Suite 104/104, evidence gate exit 0.
