@@ -2130,3 +2130,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   spread 0.13bps, bid $178,769 / ask $181,226 top-20 notional.
   Single-sample depth datum, not a liquidity claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 184 (funding snapshot PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at ef33bde. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public premiumIndex (fetch 515ms): BTC funding +0.0010%,
+  mark $83,776.75 vs index $83,828.07; ETH funding +0.0012%,
+  mark $2,533.86 vs index $2,534.75. Next funding 1791763200000.
+  Single-sample datum, not a cost/regime claim. PASS.
+- Suite 104/104, evidence gate exit 0.
