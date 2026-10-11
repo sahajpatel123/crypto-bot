@@ -1271,3 +1271,12 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   fb836e50..., deterministic=true. Second-symbol replay confirms the
   tool path. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 100 (S1 evaluation determinism PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at b040aaa. E-004 acked (option a, W2 not started, worker-side
+  go-ahead pending); V-001R (W1) still awaiting go-ahead; W3 idle.
+- S1 baseline double-evaluation (SYNTH_V1 long, seed 11, bars 120-239,
+  ARM_BASE, long+short): identical decision digests 925a7df1... both
+  runs; 6 intent fires, matching the FIRE_BARS [154..159] pin. PASS.
+- Suite 104/104, evidence gate exit 0.
