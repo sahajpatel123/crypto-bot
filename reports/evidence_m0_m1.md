@@ -4547,3 +4547,12 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   ETH 0.001163% @16:00Z. Single-sample, not a cost claim.
   PASS.
 - Suite 105/105, evidence gate exit 0.
+
+## Addendum — turn 415 (XRP/DOGE fundingRate PASS, cycle 4)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 7c301d4. E-004 accepted; W2 standing by. V-001R (W1)
+  still awaiting go-ahead; W3 idle.
+- Public fundingRate x1 (fetch 602ms): XRP 0.006007% @16:00Z;
+  DOGE 0.003448% @16:00Z. Single-sample, not a cost claim.
+  PASS.
+- Suite 105/105, evidence gate exit 0.
