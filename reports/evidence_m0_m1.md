@@ -1791,3 +1791,12 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   BTC/SOL/ETH/BNB OI-history set; single sample, not a leverage
   claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 152 (ETH depth snapshot PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 94d9898. E-004 acked (option a, W2 not started, worker-side
+  go-ahead pending); V-001R (W1) still awaiting go-ahead; W3 idle.
+- Public depth ETHUSDT limit=20 (fetch 239ms): mid $2,525.91,
+  spread 0.04bps, bid20 $1.00M / ask20 $0.88M. Joins BNB/SOL
+  depth data; single sample, not a liquidity claim. PASS.
+- Suite 104/104, evidence gate exit 0.
