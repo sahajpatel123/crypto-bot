@@ -1439,3 +1439,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   Third-symbol OI datum alongside BTC/ETH turns; single snapshot,
   not a positioning claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 118 (BNBUSDT 24h ticker snapshot PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at b285a96. E-004 acked (option a, W2 not started, worker-side
+  go-ahead pending); V-001R (W1) still awaiting go-ahead; W3 idle.
+- Public ticker/24hr (fetch 252ms): last 750.84, 24h range 0.95%,
+  $124.2M quote vol, 368,903 trades. Fourth-symbol ticker datum
+  alongside BTC/ETH/SOL turns; single snapshot, not a regime claim.
+  PASS.
+- Suite 104/104, evidence gate exit 0.
