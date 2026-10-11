@@ -1583,3 +1583,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   positioning ratio with executed-flow data. Single snapshot,
   not a flow claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 131 (BTC 1m-kline snapshot PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 3ac4c5f. E-004 acked (option a, W2 not started, worker-side
+  go-ahead pending); V-001R (W1) still awaiting go-ahead; W3 idle.
+- Public klines BTCUSDT 1m x60 (fetch 325ms): 0 bar gaps; 1m
+  log-return stdev 2.37bps; hour high-low range 31.6bps; total
+  2,540 BTC. Volatility context for S1 compression/expansion
+  calibration; single hour, not a regime claim. PASS.
+- Suite 104/104, evidence gate exit 0.
