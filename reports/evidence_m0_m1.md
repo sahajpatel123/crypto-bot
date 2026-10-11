@@ -4127,3 +4127,11 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
 - Public globalLongShortAccountRatio 5m x1 (fetch 497ms): XRP
   2.2927; DOGE 2.3715. Single-sample, not a sentiment claim. PASS.
 - Suite 105/105, evidence gate exit 0.
+
+## Addendum — turn 368 (SOL/BNB L/S PASS, cycle 2)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at a4ea6ad. E-004 accepted; W2 standing by. V-001R (W1)
+  still awaiting go-ahead; W3 idle.
+- Public globalLongShortAccountRatio 5m x1 (fetch 479ms): SOL
+  2.3322; BNB 2.1328. Single-sample, not a sentiment claim. PASS.
+- Suite 105/105, evidence gate exit 0.
