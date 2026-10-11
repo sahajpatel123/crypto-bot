@@ -2184,3 +2184,15 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   $3.24B, 1,430,624 trades. Single-sample datum, not a
   regime/liquidity claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 189 (SOL/BNB 24h-ticker snapshot PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at fcc6d01. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public ticker/24hr (fetch 718ms): SOL $111.86 +1.52%,
+  hi $112.10 / lo $108.89, $0.85B, 895,866 trades;
+  BNB $755.22 +0.61%, hi $756.38 / lo $744.91,
+  $0.14B, 397,495 trades. Single-sample datum, not a
+  regime/liquidity claim. PASS.
+- Suite 104/104, evidence gate exit 0.
