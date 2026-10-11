@@ -1365,3 +1365,12 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   $827k / ask $278k notional. Second-symbol depth datum alongside
   turn-103 BTC; single snapshot, not a liquidity claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 110 (SOLUSDT funding snapshot PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 591a75f. E-004 acked (option a, W2 not started, worker-side
+  go-ahead pending); V-001R (W1) still awaiting go-ahead; W3 idle.
+- Public premiumIndex (fetch 257ms): last funding 0.00566%, next
+  16:00 UTC. Second-symbol funding datum alongside turn-104 BTC;
+  single snapshot, not a cost claim. PASS.
+- Suite 104/104, evidence gate exit 0.
