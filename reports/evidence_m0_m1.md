@@ -5168,3 +5168,8 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   BNB 564597.41. Single-sample, not a
   positioning claim. PASS. Suite 167/167,
   evidence gate exit 0.
+- Turn-481 (cycle 6): public OI-hist 5m x2
+  (BTC 319ms, ETH 283ms): BTC 92688.801;
+  ETH 2312739.837 @T1791747000000. No
+  price in rows. PASS. Suite 167/167,
+  evidence gate exit 0.
