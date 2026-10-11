@@ -1547,3 +1547,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   volume is not depth at our size. Single snapshot, not an
   eligibility claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 128 (mark/index basis snapshot PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at e4174a6. E-004 acked (option a, W2 not started, worker-side
+  go-ahead pending); V-001R (W1) still awaiting go-ahead; W3 idle.
+- Public premiumIndex (fetch 763ms, 927 rows): mark/index basis —
+  BTC -6.38bps (funding +0.00157%), ETH -6.07bps (+0.00064%),
+  SOL -5.56bps (+0.00613%), BNB +0.47bps (+0.00000%). Feeds M2
+  mark-price/liquidation-buffer understanding; single snapshot,
+  not a pricing claim. PASS.
+- Suite 104/104, evidence gate exit 0.
