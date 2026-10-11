@@ -881,3 +881,16 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   sentence, not a violation. Zero hand-assigned probabilities or
   win-rate claims. Check-5 substance holds. PASS.
 - Suite 87/87, evidence gate exit 0.
+
+## Addendum — turn 67 (board-vocabulary audit; still awaiting go-aheads)
+
+- No new outbox filings, commits, or worker activity; E-003 (W2) +
+  V-001R (W1, ~71min wait) still await worker-side go-aheads. W3 idle.
+  The ~60min V-001R flag (turn 57) stands; no manager-side unblock.
+- Audited board against coord/README vocabulary: all 7 task states
+  (4 accepted, 1 review, 2 assigned) and all 3 worker statuses
+  (2 awaiting-go-ahead, 1 idle) fall inside the documented sets;
+  every task owner resolves to a workers.json entry with the
+  expected W1/W2/W3 mapping; statuses cohere with assignments
+  (W3 idle has no active task). PASS.
+- Suite 87/87, evidence gate exit 0.
