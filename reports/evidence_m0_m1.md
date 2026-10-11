@@ -585,3 +585,17 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   not under `body` (a first attempt with the wrong path raised
   KeyError; the file is authoritative). PASS.
 - Suite 87/87, evidence gate exit 0.
+
+## Addendum — turn 45 (E-001 acceptance re-confirmation; still awaiting go-aheads)
+
+- No new outbox filings, commits, or worker activity; E-003 (W2, acked
+  14:11Z) + V-001R (W1, acked 13:44Z, ~51min wait) still await worker-side
+  go-aheads. W3 idle.
+- Re-confirmed the accepted E-001 on current main: owned test subset
+  (execution + market-data) 43 passed; replay of the committed
+  observed sample deterministic across two runs AND its canonical
+  `replay_sha256` (772a9163...) exactly equals the turn-7c acceptance
+  record. A naive stdout hash differed (3bb37050) — investigated, not
+  drift: stdout wraps the digest with path/formatting bytes. Observed
+  samples untouched since 77df093. PASS.
+- Suite 87/87, evidence gate exit 0.
