@@ -2005,3 +2005,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   buy, median $1,220 / p90 $47,250. Single-sample tape
   datum, not a flow claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 172 (BNB tape snapshot PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 2f9b853. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public aggTrades BNBUSDT x100 (fetch 241ms): 12.3s span, 68%
+  buy, median $64 / p90 $6,397. Single-sample tape datum,
+  not a flow claim. PASS.
+- Suite 104/104, evidence gate exit 0.
