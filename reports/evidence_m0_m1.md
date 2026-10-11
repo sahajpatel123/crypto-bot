@@ -5248,3 +5248,8 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   83675.30/83675.40; ETH top 2535.57/
   2535.58. PASS. Suite 167/167,
   evidence gate exit 0.
+- Turn-497 (cycle 6): public depth L5 x1
+  (XRP 269ms, DOGE 219ms): XRP top
+  1.4089/1.4090; DOGE top 0.086890/
+  0.086900. PASS. Suite 167/167,
+  evidence gate exit 0.
