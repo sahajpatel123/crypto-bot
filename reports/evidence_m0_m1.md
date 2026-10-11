@@ -1740,3 +1740,12 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   $128.9M quote vol, 378,478 trades. Pairs with ETH 24h datum;
   single sample, not a regime claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 147 (SOL 24h-stat snapshot PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 04cf676. E-004 acked (option a, W2 not started, worker-side
+  go-ahead pending); V-001R (W1) still awaiting go-ahead; W3 idle.
+- Public ticker/24hr SOLUSDT (fetch 298ms): $110.73, +0.18% on day,
+  $716.7M quote vol, 817,169 trades. Completes ETH/BNB/SOL 24h
+  trio; single sample, not a regime claim. PASS.
+- Suite 104/104, evidence gate exit 0.
