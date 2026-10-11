@@ -4943,3 +4943,9 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   symbolPrice (separate ticker call when priced).
   Single-sample, not a positioning claim. PASS. Suite
   167/167, evidence gate exit 0.
+- Turn-446 (cycle 5): public openInterestHist 5m x1 (XRP
+  609ms, DOGE 301ms): XRP sumOI295046796.50
+  value415248861.39 T1791744900000; DOGE sumOI2703630225.0
+  value234134377.49 T1791744900000. Single-sample, not
+  a positioning claim. PASS. Suite 167/167, evidence
+  gate exit 0.
