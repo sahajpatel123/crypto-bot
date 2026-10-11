@@ -2253,3 +2253,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   4428.1 SOL / sell-initiated 5914.2 SOL, last $111.92.
   Single-sample datum, not a flow claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 195 (BNB tape snapshot PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 045fb33. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public aggTrades BNB n=100 (fetch 333ms): buy-initiated
+  11.8 BNB / sell-initiated 129.1 BNB, last $755.28.
+  Single-sample datum, not a flow claim. PASS.
+- Suite 104/104, evidence gate exit 0.
