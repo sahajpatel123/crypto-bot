@@ -170,10 +170,10 @@
    "contract_version": "v0.2.0",
    "dispatch_utc": "2026-10-11T22:05:00Z",
    "inbox": "coord/inbox/Q-004.json",
-   "note": "Dispatched: S3/S4 implementation + S5 ruling per directive Sec 5, parallel with E-006. Ack pending.",
+   "note": "Dispatched: S3/S4 implementation + S5 ruling per directive Sec 5, parallel with E-006. Ack pending. Ack+START 2026-10-11T22:10:00Z (worker1/q-004 @ea4fa9d, 264/264 baseline).",
    "owner_session": "whisper-redshift",
    "role": "Worker 1 \u2014 Quant Research and Strategy Engineer",
-   "state": "assigned"
+   "state": "running"
   },
   "V-001": {
    "acceptance": [
