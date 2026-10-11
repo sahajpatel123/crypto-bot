@@ -1383,3 +1383,12 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   $2.49B quote vol, 1,216,557 trades. Second-symbol ticker datum
   alongside turn-106 BTC; single snapshot, not a regime claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 112 (SOLUSDT trade-tape snapshot PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at d83b8b5. E-004 acked (option a, W2 not started, worker-side
+  go-ahead pending); V-001R (W1) still awaiting go-ahead; W3 idle.
+- Public aggTrades x100 (fetch 321ms): span 37.3s, taker-buy 58/100,
+  median notional $229. Second-symbol tape datum alongside turn-107
+  BTC; single snapshot, not a flow claim. PASS.
+- Suite 104/104, evidence gate exit 0.
