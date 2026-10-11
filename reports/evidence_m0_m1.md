@@ -4312,3 +4312,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   BNB last 754.670 +0.572%. Single-sample, not a momentum
   claim. PASS.
 - Suite 105/105, evidence gate exit 0.
+
+## Addendum — turn 390 (BTC/ETH bookTicker PASS, cycle 3)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at bdcb5a3. E-004 accepted; W2 standing by. V-001R (W1)
+  still awaiting go-ahead; W3 idle.
+- Public bookTicker x1 (fetch 743ms): BTC bid 83800.30x7.432 /
+  ask 83800.40x4.749; ETH bid 2539.35x122.432 /
+  ask 2539.36x86.851. Single-sample, not a liquidity claim.
+  PASS.
+- Suite 105/105, evidence gate exit 0.
