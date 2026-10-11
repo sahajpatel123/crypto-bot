@@ -4714,3 +4714,25 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   754.140x1.93 / ask 754.150x60.42. Single-sample, not
   a liquidity claim. PASS.
 - Suite 139/139, evidence gate exit 0.
+
+## Addendum — turn 429 (V-003 RUNNING, BTC/ETH premiumIndex PASS,
+  cycle 4)
+- W3 (cool-amalthea) acked V-003 STARTING via real message:
+  fresh worktree /tmp/cryto-bot-w3-003 on branch worker3/v-003
+  from eb85157 (v-001 worktree untouched); plan = wiring module
+  in risk/ + RiskOutcomeSink conformance/duplicate-callback tests
+  + U-003 pinned-as-simulation-defaults with boundary tests and
+  measurement plan; U-001 noted only; ETA this session. Board:
+  V-003 -> running. Verified: worktree exists at eb85157, clean,
+  no commits yet.
+- W1 created fresh worktree /tmp/cryto-bot-w1q2 on worker1/q-002
+  from eb85157 (clean, no commits) but has not acked yet; Q-002
+  stays assigned until an ack or first commit is observed. W2
+  still awaiting E-004 go-ahead (unchanged).
+- Public premiumIndex x1 + ticker/price x1 (fetch 946ms): BTC
+  mark 83811.53823188 / index 83853.64434783 / last 83814.30 /
+  lastFunding 0.00002076; ETH mark 2539.34608527 / index
+  2540.73348837 / last 2539.50 / lastFunding 0.00001084;
+  nextFunding 1791763200000 both. Single-sample, not a
+  funding/liquidity claim. PASS.
+- Suite 139/139, evidence gate exit 0.
