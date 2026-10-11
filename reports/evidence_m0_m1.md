@@ -3901,3 +3901,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   DOGE 2710446749.0 @17:00Z bar. Single-sample, not an exposure
   claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 346 (SOL/BNB OI-history PASS, cycle 2)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 2451feb. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public openInterestHist 1h x1 (fetch 623ms): SOL 8474773.6,
+  BNB 564690.48 @17:00Z bar. Single-sample, not an exposure
+  claim. PASS.
+- Suite 104/104, evidence gate exit 0.
