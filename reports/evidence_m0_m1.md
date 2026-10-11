@@ -408,3 +408,17 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   schema keys (incl. the turn-28/29 amended E-003/V-001R inboxes); 7/7
   tasks have valid state + owner; 3/3 workers have valid status +
   heartbeat + note. ALL PASS.
+
+## Addendum — turn 33 (M1 report self-labels risk stub; still awaiting go-aheads)
+
+- No new outbox filings, commits, or worker activity; E-003 + V-001R still
+  await worker-side go-aheads.
+- Honesty gap found + fixed in the M1 artifact: the slice source labelled
+  the risk gate a stub, but the committed report's `risk` field read plain
+  `approved:budget=0.2500`, so a reader of the report alone could not tell.
+  All three stub-emitted reasons now carry a `risk-stub:` prefix; the report
+  was regenerated with the tool itself (not hand-edited) and now reads
+  `risk-stub:approved:budget=0.2500`. No test asserted the old string.
+  Suite 87/87, evidence gate exit 0, evidence_bar still 154. Note: this
+  intentionally supersedes the turn-30 MATCH baseline — the only report
+  delta is the added prefix.

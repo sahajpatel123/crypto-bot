@@ -62,9 +62,9 @@ class FakeVenue:
 
 def risk_stub(intent: Intent, equity_usdt: float) -> tuple[bool, str, float]:
     if intent.data_quality == DataQuality.HALT:
-        return False, "halt-data-quality", 0.0
+        return False, "risk-stub:halt-data-quality", 0.0
     if intent.entry_expiry_utc < datetime.now(timezone.utc):
-        return False, "expired", 0.0
+        return False, "risk-stub:expired", 0.0
     budget = equity_usdt * 0.0025
     stop_dist = abs((intent.entry_low + intent.entry_high) / 2 - intent.invalidation_price)
     ref = (intent.entry_low + intent.entry_high) / 2
@@ -72,7 +72,7 @@ def risk_stub(intent: Intent, equity_usdt: float) -> tuple[bool, str, float]:
     cost_pct = (intent.forecast_cost.fee_bps + intent.forecast_cost.spread_bps) / 10000
     denom = stop_pct + cost_pct
     notional = budget / denom if denom > 0 else 0.0
-    return True, f"approved:budget={budget:.4f}", notional
+    return True, f"risk-stub:approved:budget={budget:.4f}", notional
 
 
 def main() -> int:
