@@ -4135,3 +4135,11 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
 - Public globalLongShortAccountRatio 5m x1 (fetch 479ms): SOL
   2.3322; BNB 2.1328. Single-sample, not a sentiment claim. PASS.
 - Suite 105/105, evidence gate exit 0.
+
+## Addendum — turn 369 (BTC/ETH taker PASS, cycle 2)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at e1908e4. E-004 accepted; W2 standing by. V-001R (W1)
+  still awaiting go-ahead; W3 idle.
+- Public takerlongshortRatio 5m x1 (fetch 583ms): BTC 1.2230;
+  ETH 0.9648. Single-sample, not a flow claim. PASS.
+- Suite 105/105, evidence gate exit 0.
