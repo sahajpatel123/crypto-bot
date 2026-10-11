@@ -1614,3 +1614,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   (2.37bps/31.6bps) for per-market S1 threshold work; single
   hour each, not a regime claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 134 (BNB depth snapshot PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at c0d1159. E-004 acked (option a, W2 not started, worker-side
+  go-ahead pending); V-001R (W1) still awaiting go-ahead; W3 idle.
+- Public depth BNBUSDT limit=10 (fetch 278ms): mid ~$751.53,
+  spread 0.13bps; top-10 bid $77,455 / ask $50,282;
+  updateId 11788763860048. Third-symbol cost context after
+  earlier BTC/ETH snapshots; single sample, not a liquidity
+  claim. PASS.
+- Suite 104/104, evidence gate exit 0.
