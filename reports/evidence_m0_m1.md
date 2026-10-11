@@ -1524,3 +1524,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   at order level; sizing still needs depth/cost evidence per
   market). Metadata snapshot, not a sizing claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 126 (universe spread snapshot PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 364a9ec. E-004 acked (option a, W2 not started, worker-side
+  go-ahead pending); V-001R (W1) still awaiting go-ahead; W3 idle.
+- Public bookTicker (fetch 418ms): 791 rows, 741 USDT-suffixed
+  (raw book rows, NOT filtered to the 525-eligible TRADING census;
+  includes other statuses). Spread bps: min 0.01, p10 0.71,
+  p50 3.90, p90 8.44, max 34.1. Feeds M2 cost modelling at order
+  level; single snapshot, not a cost claim. PASS.
+- Suite 104/104, evidence gate exit 0.
