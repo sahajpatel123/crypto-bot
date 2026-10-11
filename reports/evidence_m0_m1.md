@@ -4069,3 +4069,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   index 83949.32; ETH mark 2543.06 / index 2544.58.
   Single-sample, not a premium claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 363 (XRP/DOGE premiumIndex PASS, cycle 2)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 5ca2f86. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public premiumIndex x1 (fetch 491ms): XRP mark 1.41900000 /
+  index 1.41948309; DOGE mark 0.08736000 / index 0.08739707.
+  Single-sample, not a premium claim. PASS.
+- Suite 104/104, evidence gate exit 0.
