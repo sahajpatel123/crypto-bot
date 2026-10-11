@@ -3186,3 +3186,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   755.78x13.98 spread 0.0100 (0.13 bps).
   Single-sample, not a cost claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 281 (BTC/ETH funding PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at b3c7134. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public premiumIndex (fetch 586ms): BTCUSDT mark 83,755.40
+  lastFunding 0.1172 bps next 00:00Z; ETHUSDT mark
+  2,542.90 lastFunding 0.1263 bps next 00:00Z.
+  Single-sample, not a cost claim. PASS.
+- Suite 104/104, evidence gate exit 0.
