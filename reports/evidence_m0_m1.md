@@ -1703,3 +1703,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   beside BTC turn-129; single sample, not a positioning claim.
   PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 143 (ETH 24h-stat snapshot PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 9127e86. E-004 acked (option a, W2 not started, worker-side
+  go-ahead pending); V-001R (W1) still awaiting go-ahead; W3 idle.
+- Public ticker/24hr ETHUSDT (fetch 344ms): last $2,527.14 (+0.76%),
+  hi $2,534.32 / lo $2,496.12; quote vol $2.89B across 1,323,690
+  trades; VWAP $2,507.76. Single-symbol session context; single
+  sample, not a session claim. PASS.
+- Suite 104/104, evidence gate exit 0.
