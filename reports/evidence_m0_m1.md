@@ -3525,3 +3525,15 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   BNBUSDT mark=756.69 last=756.73 funding=0.0000%.
   Single-sample, not a cost claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 311 (BTC/ETH kline PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 072dd8c. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public klines 1m x2 (fetch 620ms):
+  BTCUSDT 83957.30>83950.10v67 | 83950.10>83925.00v32
+  forming; ETHUSDT 2545.99>2545.34v3,282 |
+  2545.34>2544.57v641 forming @17:22Z.
+  Single-sample, not a price claim. PASS.
+- Suite 104/104, evidence gate exit 0.
