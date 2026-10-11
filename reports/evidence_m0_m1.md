@@ -3777,3 +3777,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   DOGE bid 0.087540x390408 ask 0.087550x196922
   @17:36Z. Single-sample, not a liquidity claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 334 (SOL/BNB depth PASS, cycle 2)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 7508de0. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public depth limit-5 top-3 (fetch 710ms): SOL
+  bid 112.6200x156.45 ask 112.6300x1427.97;
+  BNB bid 757.150x5.74 ask 757.160x20.94
+  @17:36Z. Single-sample, not a liquidity claim. PASS.
+- Suite 104/104, evidence gate exit 0.
