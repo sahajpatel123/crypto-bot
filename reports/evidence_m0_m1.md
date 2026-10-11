@@ -4276,3 +4276,12 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   O1.4162 C1.4162; DOGE O0.087010 C0.087010 / O0.087010 C0.087020.
   Single-sample, not a regime claim. PASS.
 - Suite 105/105, evidence gate exit 0.
+
+## Addendum — turn 386 (SOL/BNB klines PASS, cycle 3)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 762f3d3. E-004 accepted; W2 standing by. V-001R (W1)
+  still awaiting go-ahead; W3 idle.
+- Public klines 1m x2 (fetch 602ms): SOL O112.2800 C112.2600 /
+  O112.2600 C112.3300; BNB O754.430 C754.780 / O754.780 C755.000.
+  Single-sample, not a regime claim. PASS.
+- Suite 105/105, evidence gate exit 0.
