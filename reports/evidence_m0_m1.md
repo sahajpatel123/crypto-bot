@@ -737,3 +737,15 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   `release(reservation_id) -> bool`, `note_flat()`. No missing import
   or surface gap will block W2's start. PASS.
 - Suite 87/87, evidence gate exit 0.
+
+## Addendum — turn 56 (evidence-citation integrity; still awaiting go-aheads)
+
+- No new outbox filings, commits, or worker activity; E-003 (W2, acked
+  14:11Z) + V-001R (W1, acked 13:44Z, ~60min wait) still await worker-side
+  go-aheads. W3 idle.
+- Verified evidence-report citation integrity: all 16 commit SHAs cited
+  across recent addenda and tracking notes resolve to real commits via
+  `git cat-file -t` (turns 45-55 tips, 4290233 replay base, 7be230d
+  E-002, 2a33173, 77df093 observed-sample commit, cbb722f stale-base
+  reference). No dangling or mistyped citation. PASS.
+- Suite 87/87, evidence gate exit 0.
