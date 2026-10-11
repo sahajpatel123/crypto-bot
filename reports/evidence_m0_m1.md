@@ -4565,3 +4565,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   BNB 0.000000% @16:00Z. Single-sample, not a cost claim.
   PASS.
 - Suite 105/105, evidence gate exit 0.
+
+## Addendum — turn 417 (BTC/ETH klines PASS, cycle 4)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 937c3d1. E-004 accepted; W2 standing by. V-001R (W1)
+  still awaiting go-ahead; W3 idle.
+- Public klines 1m x2 (fetch 466ms): BTC O83834.40 C83842.10
+  / O83842.10 C83836.50; ETH O2539.80 C2539.95 /
+  O2539.95 C2539.94. Single-sample, not a regime claim.
+  PASS.
+- Suite 105/105, evidence gate exit 0.
