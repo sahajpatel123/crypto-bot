@@ -4809,3 +4809,20 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   2.8285 (long 0.7388 / short 0.2612); ts 1791744000000.
   Single-sample, not a sentiment/positioning claim. PASS.
 - Suite 148/148, evidence gate exit 0.
+
+## Addendum — turn 433 (Q-002 expanding, XRP/DOGE L/S PASS,
+  cycle 4)
+- Q-002 progressing: w1 worktree now shows M S2/S3/S4 specs,
+  M features/__init__.py, M research/__init__.py +
+  experiments.py + synthetic.py, M strategies/__init__.py +
+  contract.py + s1.py, and new features/pullback.py — all
+  within Q-002 allowed paths. Branch still at base eb85157,
+  no commits or outbox filing yet; W1 was instructed to
+  rebase onto latest main before filing (main now 8696f4b).
+  Read-only check; manager touched nothing. W3 idle
+  (confirmed), W2 still awaiting E-004 go-ahead (unchanged).
+- Public globalLongShortAccountRatio 5m x1 (fetch 510ms):
+  XRP ratio 2.2916 (long 0.6962 / short 0.3038); DOGE ratio
+  2.3625 (long 0.7026 / short 0.2974); ts 1791744000000.
+  Single-sample, not a sentiment/positioning claim. PASS.
+- Suite 148/148, evidence gate exit 0.
