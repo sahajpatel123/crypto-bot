@@ -1458,3 +1458,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   median notional $1,756. Third-symbol tape datum alongside BTC/SOL
   turns; single snapshot, not a flow claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 120 (BNBUSDT depth snapshot PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at b402ff7. E-004 acked (option a, W2 not started, worker-side
+  go-ahead pending); V-001R (W1) still awaiting go-ahead; W3 idle.
+- Public depth limit=20 (fetch 243ms): spread 0.13bps, top-20 bid
+  $111,597 / ask $213,429 notional. Fourth-symbol depth datum
+  alongside BTC/ETH/SOL turns; single snapshot, not a liquidity
+  claim. PASS.
+- Suite 104/104, evidence gate exit 0.
