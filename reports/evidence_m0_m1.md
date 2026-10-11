@@ -244,3 +244,12 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   documented-blocker finding. Pushed 84f03ef. Suite 85 green throughout.
 - Standing waits: V-001R (Worker 1 go-ahead, 5th turn, no escalation yet —
   worker-side approvals have historically landed); E-002 verdict/blocker.
+
+## Addendum — turn 17 (Q-001 draft review finding)
+
+- Manager review of the accepted Q-001 S2–S5 drafts found F-Q001-01: S2–S4
+  drafts do not match the directive's five candidates (S2 range-fade,
+  S3 funding-tilt, S4 ATR breakout vs directive S2 trend-pullback, S3 range
+  reversion, S4 failed-breakout reversal; S5 aligned). Recorded as D-010;
+  Q-001 acceptance stands, correction rides with the S2–S5 follow-up task.
+  FYI sent to Worker 1, no action required. E-002 bound lapses ~14:06Z.

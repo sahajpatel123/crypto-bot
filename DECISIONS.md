@@ -78,3 +78,12 @@ Meta Muse Spark.
   worker-produced evidence (commits, diffs, files). The manager's own turns
   do not refresh it. The 30-minute stall rule in coord/README applies to
   running tasks without such contact.
+- D-010: Finding F-Q001-01 (manager review of accepted Q-001 drafts):
+  specs/strategies/S2.md-S4.md do not match the directive's five candidates
+  (S2 filed as range-fade ~ directive S3; S3 as funding-tilt scalp, not in
+  the directive; S4 as ATR breakout, not failed-breakout reversal; S5
+  micro-imbalance ~ directive S5 order-flow, aligned). Q-001 acceptance
+  stands (S1 + contract met the bar; drafts are labelled DRAFT/no-code), but
+  the S2-S5 follow-up task will require the directive's S2/S3/S4 hypotheses
+  or a written substitution rationale for CEO/owner review. Substitutions are
+  a goal-content change, not routine engineering.
