@@ -1487,3 +1487,15 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   ticker/depth/tape/OI) alongside BTC/SOL/ETH. Single snapshot,
   not a positioning claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 123 (funding-rate sweep PASS, capped sample)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at cec6839. E-004 acked (option a, W2 not started, worker-side
+  go-ahead pending); V-001R (W1) still awaiting go-ahead; W3 idle.
+- Public fundingRate, no symbol param (fetch 276ms): endpoint
+  returned 100 rows (default cap), 95 USDT-denominated. Distribution
+  (%): min -0.1236, p50 0.00500, max 0.0214; 84 positive, 11
+  negative. This is a capped 100-row sample, NOT a full-universe
+  census (universe is larger; discovery must paginate or use
+  exchangeInfo). Single snapshot, not a cost claim. PASS.
+- Suite 104/104, evidence gate exit 0.
