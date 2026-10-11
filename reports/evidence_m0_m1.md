@@ -1645,3 +1645,12 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   tape context after BTC/BNB; single sample, not a flow claim.
   PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 137 (SOL open-interest snapshot PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at eff0818. E-004 acked (option a, W2 not started, worker-side
+  go-ahead pending); V-001R (W1) still awaiting go-ahead; W3 idle.
+- Public openInterest SOLUSDT (fetch 627ms): 8,635,794 SOL at a
+  ~$110.22 reference (~$951.8M notional). Third-symbol OI datum
+  beside BNB/ETH; single sample, not a positioning claim. PASS.
+- Suite 104/104, evidence gate exit 0.
