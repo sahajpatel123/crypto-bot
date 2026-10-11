@@ -387,3 +387,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   committed reports/m1_report.json → MATCH (327 bytes, identical keys and
   values). The committed report is current, and this is the 5th determinism
   confirmation (evidence_bar 154 shape unchanged).
+
+## Addendum — turn 31 (evidence gate re-verified; still awaiting go-aheads)
+
+- No new outbox filings, commits, or worker activity; E-003 + V-001R still
+  await worker-side go-aheads.
+- Evidence generator re-run on current main (6 turns + 5 commits after the
+  turn-24 verification): exit 0, pytest 87 passed, M1 exit 0, task states
+  consistent (V-001 review, V-001R/E-003 assigned, rest accepted), worker
+  statuses honest (W1+W2 awaiting-go-ahead, W3 idle). README claims
+  re-checked against reality (87 green, E-003/V-001R in flight) — current,
+  no edit needed.
