@@ -468,3 +468,20 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   reformatted workers.json but preserved all three values byte-identically
   (verified via diff). PASS.
 - Suite 87/87, evidence gate exit 0.
+
+## Addendum — turn 37 (M2-readiness gap scan; still awaiting go-aheads)
+
+- No new outbox filings, commits, or worker activity; E-003 (W2, acked
+  14:11Z) + V-001R (W1, acked 13:44Z, ~43min wait) still await worker-side
+  go-aheads. W3 idle.
+- Manager scanned landed code against the M2 checklist (§9: connector
+  proof, clean public live data, p50/p95/p99 data age + execution-path
+  latency). Foundations present: capability matrix (E-001) + nautilus
+  verdict (E-002, blocked-on-transfer); live discovery + klines capture
+  emit single-shot `fetch_latency_ms` / `data_age_ms`. Gaps confirmed by
+  grep over src/ + tools/: no percentile/quantile aggregation anywhere
+  (no p50/p95/p99), no execution-path latency harness (fake venue only),
+  and no sustained clean-capture run (single klines sample only, no
+  book/trade streams). Forms the post-E-003 dispatch input; no M2 task
+  dispatched yet.
+- Suite 87/87, evidence gate exit 0.
