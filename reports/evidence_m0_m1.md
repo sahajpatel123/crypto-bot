@@ -2048,3 +2048,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   range $753.71-$756.38. Completes ETH+SOL+BNB kline trio.
   Single-sample candle datum, not a regime claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 176 (BTC kline snapshot PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at e5364b5. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public klines BTCUSDT 1m x6, 15:56-16:01Z (fetch 299ms):
+  closes 83751.9/83732.5/83911.7/83868.7/83768.4/83758.5,
+  range $83,511.3-$83,955.0. Single-sample candle datum,
+  not a regime claim. PASS.
+- Suite 104/104, evidence gate exit 0.
