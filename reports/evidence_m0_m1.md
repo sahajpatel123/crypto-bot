@@ -4826,3 +4826,19 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   2.3625 (long 0.7026 / short 0.2974); ts 1791744000000.
   Single-sample, not a sentiment/positioning claim. PASS.
 - Suite 148/148, evidence gate exit 0.
+
+## Addendum — turn 434 (Q-002 S2 baseline appearing, SOL/BNB
+  L/S PASS, cycle 4)
+- Q-002 progressing: w1 worktree adds new
+  src/cryptobot/strategies/s2.py (S2 baseline) alongside the
+  S2/S3/S4 spec rewrites, features/pullback.py, _shared.py,
+  and research/strategy edits — all within Q-002 allowed
+  paths. Branch still at base eb85157, no commits or outbox
+  filing yet. Read-only check; manager touched nothing. W3
+  idle (confirmed), W2 still awaiting E-004 go-ahead
+  (unchanged).
+- Public globalLongShortAccountRatio 5m x1 (fetch 627ms):
+  SOL ratio 2.2196 (long 0.6894 / short 0.3106); BNB ratio
+  2.1377 (long 0.6813 / short 0.3187); ts 1791744000000.
+  Single-sample, not a sentiment/positioning claim. PASS.
+- Suite 148/148, evidence gate exit 0.
