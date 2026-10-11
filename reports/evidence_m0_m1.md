@@ -1984,3 +1984,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   Joins ETH global-L/S datum; single-sample positioning
   datum, not a leverage claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 170 (BNB global-L/S snapshot PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 81250e0. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public globalLongShortAccountRatio BNBUSDT 5m x6 (fetch
+  268ms): 2.163/2.159/2.157/2.162/2.170/2.168, last 2.168.
+  Completes ETH+SOL+BNB global-L/S trio; single-sample
+  positioning datum, not a leverage claim. PASS.
+- Suite 104/104, evidence gate exit 0.
