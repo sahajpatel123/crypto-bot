@@ -2141,3 +2141,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   mark $2,533.86 vs index $2,534.75. Next funding 1791763200000.
   Single-sample datum, not a cost/regime claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 185 (SOL/BNB funding snapshot PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 7d1f1ea. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public premiumIndex (fetch 459ms): SOL funding +0.0067%,
+  mark $111.90 vs index $111.95; BNB funding +0.0000%,
+  mark $754.89 vs index $754.80. Next funding 1791763200000.
+  Single-sample datum, not a cost/regime claim. PASS.
+- Suite 104/104, evidence gate exit 0.
