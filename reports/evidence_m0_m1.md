@@ -5132,3 +5132,8 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   DOGE 0.086910. Single-sample, not a
   valuation claim. PASS. Suite 167/167,
   evidence gate exit 0.
+- Turn-474 (cycle 5): public ticker/price
+  (SOL 262ms, BNB 214ms): SOL 111.3500;
+  BNB 753.150. Single-sample, not a
+  valuation claim. PASS. Suite 167/167,
+  evidence gate exit 0.
