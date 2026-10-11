@@ -2916,3 +2916,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   ask 757.56, spread 0.13bp.
   Single-sample, not a cost claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 257 (BTC/ETH kline PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at d737d8c. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public klines 1m x2 (fetch 485ms): BTC 16:49Z c 83891.60 /
+  16:50Z c 83869.10; ETH 16:49Z c 2551.35 / 16:50Z c 2550.27.
+  Single-sample, not a regime claim. PASS.
+- Suite 104/104, evidence gate exit 0.
