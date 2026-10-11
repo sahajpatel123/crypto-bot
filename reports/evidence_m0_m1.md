@@ -654,3 +654,20 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   still works and the universe is unchanged. (data/README's "524" is a
   20-USDT-min-notional filtered variant, not drift.) PASS.
 - Suite 87/87, evidence gate exit 0.
+
+## Addendum — turn 50 (pending-inbox completeness audit; still awaiting go-aheads)
+
+- No new outbox filings, commits, or worker activity; E-003 (W2, acked
+  14:11Z) + V-001R (W1, acked 13:44Z, ~55min wait) still await worker-side
+  go-aheads. W3 idle.
+- Audited both pending inbox files for completeness and freshness.
+  E-003: objective, acceptance (reservation threading, exactly-once
+  outcome callbacks), allowed paths (execution + exec tests), branch
+  (worker2/e-003 from origin/main), contract v0.1.1 addendum,
+  evidence list — all present; zero commits since 14:11Z dispatch
+  touch its allowed paths, so no drift. V-001R: objective,
+  acceptance (34-test read-only repro + halt case + R-001..R-012),
+  allowed paths limited to its own outbox per D-006, read-only note,
+  evidence list — all present; repro base verified 34/34 at turn 47.
+  Both tasks are complete, fresh, and escalation-ready. PASS.
+- Suite 87/87, evidence gate exit 0.
