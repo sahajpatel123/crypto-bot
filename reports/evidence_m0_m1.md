@@ -4905,3 +4905,9 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   (no overlap with 8176d33..29a1a10); merged tree 167/167,
   slice exit 0, gate exit 0. Board Q-002 -> accepted. No M2
   sample this turn (review turn); cycle 5 starts next turn.
+- Turn-439 (cycle 5 opens): public aggTrades x1 (BTC 331ms,
+  ETH 296ms): BTC a3481569477 p83556.70 q0.004 mTrue
+  T1791744814451; ETH a3114466087 p2529.86 q0.700 mFalse
+  T1791744814527. Single-sample, not a flow claim. PASS.
+  W1 -> idle (Q-002 accepted); W3 idle, W2 still awaiting
+  E-004 go-ahead. Suite 167/167, evidence gate exit 0.
