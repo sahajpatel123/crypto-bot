@@ -3841,3 +3841,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   5.9 SELL @1.4212/...; DOGE 534 SELL @0.087390/...
   @17:40Z. Single-sample, not a flow claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 340 (SOL/BNB aggTrades PASS, cycle 2)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at c33b30b. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public aggTrades x3 (fetch 613ms): SOL
+  0.05 SELL @112.5400/...; BNB 0.04 BUY @756.390/...
+  @17:41Z. Single-sample, not a flow claim. PASS.
+- Suite 104/104, evidence gate exit 0.
