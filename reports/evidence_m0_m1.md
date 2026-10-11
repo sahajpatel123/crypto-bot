@@ -5342,3 +5342,8 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   x1 5m (SOL 348ms, BNB 220ms): SOL
   8483584.03; BNB 564912.41. PASS.
   Suite 167/167, evidence gate exit 0.
+- Turn-520 (cycle 8): public premiumIndex
+  x1 (BTC 305ms, ETH 281ms): BTC mark
+  83637.60/idx 83680.96; ETH mark 2534.66/idx
+  2535.95. PASS. Suite 167/167,
+  evidence gate exit 0.
