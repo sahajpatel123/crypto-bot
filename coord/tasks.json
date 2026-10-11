@@ -83,6 +83,16 @@
    "role": "Worker 2 \u2014 Market Data and Execution Engineer",
    "state": "accepted"
   },
+  "E-006": {
+   "branch": "worker2/e-006 from origin/main at d1dff76",
+   "contract_version": "v0.2.0",
+   "dispatch_utc": "2026-10-11T21:32:00Z",
+   "inbox": "coord/inbox/E-006.json",
+   "note": "Dispatched: sustained capture + replay + latency per CEO directive Sec 4. Ack pending.",
+   "owner_session": "cloud-vega",
+   "role": "Worker 2 \u2014 Market Data and Execution Engineer",
+   "state": "assigned"
+  },
   "Q-001": {
    "acceptance": [
     "Exact deterministic S1 breakout-momentum rules (setup, trigger, reject, invalidation, exit) with causal windows/thresholds",
