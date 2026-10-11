@@ -3137,3 +3137,16 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   $266,165/ask $255,911.
   Single-sample, not a liquidity claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 277 (SOL/BNB depth PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 84d3b4b. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public depth limit=5 (fetch 585ms): SOLUSDT best
+  111.79x766.2/111.80x775.3 L5-notional bid $775,951/ask
+  $580,920; BNBUSDT best 755.51x40.5/755.52x1.3
+  L5-notional bid $48,201/ask $1,224 (thin top-of-book ask
+  this sample — recorded as observed, not a depth claim).
+  Single-sample, not a liquidity claim. PASS.
+- Suite 104/104, evidence gate exit 0.
