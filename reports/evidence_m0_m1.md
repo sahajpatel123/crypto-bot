@@ -4949,3 +4949,9 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   value234134377.49 T1791744900000. Single-sample, not
   a positioning claim. PASS. Suite 167/167, evidence
   gate exit 0.
+- Turn-447 (cycle 5): public openInterestHist 5m x1 (SOL
+  281ms, BNB 226ms): SOL sumOI8484803.23
+  value946162017.61 T1791745200000; BNB sumOI564661.70
+  value424998275.12 T1791745200000. Single-sample, not
+  a positioning claim. PASS. Suite 167/167, evidence
+  gate exit 0.
