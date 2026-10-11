@@ -159,3 +159,16 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   Unresolved carried forward: nautilus trial install, streaming, live adapter.
 - Tree race #2 (Worker 3 checkout) caused zero damage: branch guard held,
   no commit on wrong branch, resolved by worktree move within the turn.
+
+## Addendum — turn 7c (E-001 ACCEPTED and merged)
+
+- Merge 567dce3 (no-ff) brought worker2/e-001 into main: 22 worker files
+  (market_data ×5, execution ×3, tools ×2, data ×3, tests ×5, README).
+  Conflicts confined to coord/workers.json + evidence report (stale turn-2
+  duplicates on the branch); resolved to main versions.
+- Merged-tree verification (all observed): pytest 51/51 green, M1 exit 0,
+  replay of committed observed sample deterministic with sha 772a9163…
+  E-001 state → accepted. First worker acceptance of the project.
+- Worker 2's carried-forward items stand: nautilus trial install (needs
+  follow-up task), streaming connector, live-venue adapter — all future work,
+  none blocking Q-001/V-001.
