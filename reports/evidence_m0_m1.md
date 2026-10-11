@@ -172,3 +172,56 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
 - Worker 2's carried-forward items stand: nautilus trial install (needs
   follow-up task), streaming connector, live-venue adapter — all future work,
   none blocking Q-001/V-001.
+
+## Addendum — turn 8 (E-002 dispatched; Q-001/V-001 implementing)
+
+- E-002 (bounded Nautilus trial install + capability verdict, D-005 follow-up)
+  dispatched to Worker 2 on new branch worker2/e-002; documented blocker is a
+  valid finding. Receipt acked; not started, awaiting worker-side go-ahead.
+- Worker 1: Q-001 worktree shows S1–S5 specs, EXP-001, contract, s1.py,
+  features, research harness. Rebase-onto-new-main plan accepted; observed
+  sample reserved for post-EXP-001 validation (EXP-001 stays synthetic).
+- Worker 3: V-001 worktree shows acceptance spec, ledger/day accounting, risk
+  policy/sizing/state, acceptance tests + fixtures. __pycache__ noted for
+  exclusion from any commit.
+- Checks: pytest 51/51 green; M1 exit 0. Pushed cbb722f + 2a33173.
+
+## Addendum — turn 9 (Q-001 ACCEPTED + merged; V-001 review-passed)
+
+- Q-001 accepted and integrated as 4290233 (provenance commit per new D-008):
+  18 files, 18/18 sha256 verified vs outbox, 34/34 focused + 85/85 full
+  reproduced, M1 output byte-identical post-merge. Causality + invalidation
+  side verified by construction; EXP-001 clean (0 trials, promotion NONE).
+- V-001 manager review PASSED, state review: 34/34 acceptance + 85/85 full
+  reproduced in w3 worktree; policy/ledger reviewed gate-for-gate vs
+  R-001..R-012. Acceptance awaits independent reproduction (no self-cert).
+- Dispatched V-001R (Worker 1, independent V-001 repro, evidence-only) and
+  V-002 (Worker 3, landed-S1 6-point verification).
+- D-007: F-E001-01 handoff gap accepted as real; v0.1.1 addendum scheduled.
+  E-002 STARTED (branch worker2/e-002 from 2a33173).
+
+## Addendum — turn 10 (M1 uses real S1; V-002 ACCEPTED clean)
+
+- Manager wiring (tools/m1_*): S1 stub replaced with real S1 ARM_BASE intent
+  from SYNTH_V1 long-breakout seed 11 (fires bar 154); coordinator select,
+  1 stale rejection, risk-stub approval, ambiguous-reconcile recovery (1
+  fill, no duplicate) all preserved. Risk stub stays labelled to V-001.
+  Committed 8a9b735; suite 85 green.
+- V-002 accepted (75e20cb): landed-S1 CLEAN verdict fully verified — 34/34
+  strategies + 34/34 acceptance reproduced, worker probe re-run ALL 6 PASS
+  with fire_bar_t=154 sha d89576a1…, matching filed evidence.
+- V-001R receipt acked by Worker 1; not started, awaiting go-ahead. E-002
+  trial venv .venv-trial observed in w2 worktree.
+
+## Addendum — turn 11 (v0.1.1 addendum; E-002 healthy heartbeat)
+
+- Manager drafted CONTRACTS v0.1.1 addendum (f58f225): reservation_id
+  threading, exactly-once outcome callbacks, halt→exit-only signal,
+  reservation-aware restart reconciliation. v0.1.0 stays implemented
+  baseline; implementation follows in E/V follow-ups. Names verified
+  against landed code (submit_entry, note_fill/release/note_flat).
+- E-002 heartbeat: install in progress, no blocker, inside ~30min bound;
+  pin needs Python ≥3.12 (3.11 venv fast-rejected, logged); cp312–314
+  wheels incl. macosx_arm64 confirmed; 156MB cp314 wheel downloading.
+  Recorded ea2acae. worker3/v-001 moved to 4290233 base (diff intact).
+- Checks: pytest 85 green; M1 stable (bar 154, third confirmation).
