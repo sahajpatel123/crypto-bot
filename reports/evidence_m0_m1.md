@@ -2381,3 +2381,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   8,490,789.670 ($950.3M); BNB 560,616.580 ($423.4M).
   Single-sample datum, not a leverage claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 207 (depth PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 04378f1. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public depth limit=5 (fetch 655ms): BTC bid 83777.0x3.987 /
+  ask 83777.1x12.647 spread 0.01bp; ETH bid 2532.14x88.96 /
+  ask 2532.15x166.923 spread 0.04bp. Single-sample, not a
+  liquidity claim. PASS.
+- Suite 104/104, evidence gate exit 0.
