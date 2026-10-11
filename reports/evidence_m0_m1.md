@@ -1183,3 +1183,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   (prior med 233ms n=7). Same ~250ms class; small-sample point
   comparison only, not a percentile claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 92 (V-001 review-pass re-confirmed 34/34)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 55a1eff. E-004 acked (option a, W2 not started, worker-side
+  go-ahead pending); V-001R (W1) still awaiting go-ahead; W3 idle.
+- Re-ran the V-001 acceptance battery read-only from the W3 worktree
+  (PYTHONPATH to W3 src, no cache writes): 34/34 passed, and the W3
+  tracked tree shows zero modifications afterwards. The pending V-001
+  review-pass stands unchanged; still gated on the independent V-001R
+  repro. PASS.
+- Suite 104/104, evidence gate exit 0.
