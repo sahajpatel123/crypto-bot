@@ -2059,3 +2059,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   range $83,511.3-$83,955.0. Single-sample candle datum,
   not a regime claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 177 (BTC tape snapshot PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 89afaa1. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public aggTrades BTCUSDT x100 (fetch 236ms): 1.7s span, 8%
+  buy, median $418 / p90 $30,717. Single-sample tape datum,
+  not a flow claim. PASS.
+- Suite 104/104, evidence gate exit 0.
