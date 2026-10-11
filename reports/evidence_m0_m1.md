@@ -1231,3 +1231,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   (worker1/q-001, worker2/e-001/e-002/e-003, worker3/v-001) remain
   local-only as designed; no stray or unexpected remote refs. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 96 (S2-S5 draft-hash stability 4/4)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 2e45b25. E-004 acked (option a, W2 not started, worker-side
+  go-ahead pending); V-001R (W1) still awaiting go-ahead; W3 idle.
+- Re-verified the S2-S5 drafts against the turn-82 sha256 baseline
+  (D-010 correction inputs): S2 09e22e7a78f2, S3 4e5618eff6cc, S4
+  28bcded70d29, S5 147e5d2583ed — 4/4 MATCH, drafts unmodified. The
+  pending D-010 correction still applies to exactly these texts. PASS.
+- Suite 104/104, evidence gate exit 0.
