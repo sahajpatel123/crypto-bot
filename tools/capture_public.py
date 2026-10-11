@@ -77,7 +77,8 @@ def cmd_capture(args: argparse.Namespace) -> int:
     for row in rows:
         recorder.record_rest_kline(row, local_recv_ms)
     stats = recorder.finish(stale_after_ms=args.stale_after_ms)
-    last_close_ms = int(rows[-1][6])
+    closed_rows = [row for row in rows if int(row[6]) <= local_recv_ms]
+    last_close_ms = int(closed_rows[-1][6]) if closed_rows else int(rows[-1][6])
     data_age_ms = local_recv_ms - last_close_ms
     report = {
         "out": str(out),

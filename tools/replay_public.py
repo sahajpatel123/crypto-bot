@@ -34,7 +34,8 @@ def main() -> int:
     events = list(replay(records))
     stats = analyze_klines(records, interval_ms, stale_after_ms=args.stale_after_ms)
     first = replay_hash(records)
-    second = replay_hash(list(replay(records)))
+    _, records_again = load_recording(args.path)  # independent second pass.
+    second = replay_hash(records_again)
     report = {
         "path": args.path,
         "input_class": header["input_class"],

@@ -153,7 +153,13 @@ class KlineRecorder:
         return self._seq
 
     def record_rest_kline(self, row: list[Any], local_recv_ms: int) -> dict[str, Any]:
-        """Record one Binance REST kline row (12-field array)."""
+        """Record one Binance REST kline row (12-field array).
+
+        The last REST row is usually the still-forming candle; a row whose
+        exchange close time lies in the future cannot be closed, so the flag
+        is derived from timestamps rather than assumed.
+        """
+        close_ms = int(row[6])
         record = {
             "type": "kline",
             "seq": self._seq,
@@ -163,8 +169,8 @@ class KlineRecorder:
             "l": str(row[3]),
             "c": str(row[4]),
             "v": str(row[5]),
-            "exchange_close_ms": int(row[6]),
-            "closed": True,
+            "exchange_close_ms": close_ms,
+            "closed": close_ms <= int(local_recv_ms),
             "local_recv_ms": int(local_recv_ms),
         }
         self._seq += 1

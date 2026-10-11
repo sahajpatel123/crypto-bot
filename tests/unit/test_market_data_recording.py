@@ -69,6 +69,17 @@ def test_forming_kline_excluded_from_closed_and_stale(tmp_path):
     assert (stats.count, stats.closed_count, stats.stale_count) == (2, 1, 0)
 
 
+def test_rest_row_with_future_close_is_forming_not_closed(tmp_path):
+    path = tmp_path / "forming_rest.jsonl"
+    rec = KlineRecorder(path, symbol="SYNUSDT", channel="klines/1m",
+                        interval_ms=MIN, input_class=INPUT_SYNTHETIC,
+                        source="unit-test", capture_cmd="pytest synthetic")
+    rec.record_rest_kline(_row(BASE), BASE + MIN)  # close passed -> closed.
+    rec.record_rest_kline(_row(BASE + MIN), BASE + MIN)  # close in future -> forming.
+    stats = rec.finish()
+    assert (stats.count, stats.closed_count, stats.stale_count) == (2, 1, 0)
+
+
 def test_header_footer_and_input_class_label(tmp_path):
     path = tmp_path / "label.jsonl"
     _write_recording(path, [BASE])
