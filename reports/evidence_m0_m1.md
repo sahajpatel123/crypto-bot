@@ -4175,3 +4175,11 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
 - Public aggTrades x3 (fetch 604ms): XRP 11.7 SELL @1.4148;
   DOGE 153 BUY @0.087020. Single-sample, not a flow claim. PASS.
 - Suite 105/105, evidence gate exit 0.
+
+## Addendum — turn 374 (SOL/BNB aggTrades PASS, cycle 3)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at d9eb8d0. E-004 accepted; W2 standing by. V-001R (W1)
+  still awaiting go-ahead; W3 idle.
+- Public aggTrades x3 (fetch 496ms): SOL 1.33 BUY @111.9900;
+  BNB 0.30 SELL @753.820. Single-sample, not a flow claim. PASS.
+- Suite 105/105, evidence gate exit 0.
