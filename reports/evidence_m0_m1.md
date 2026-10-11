@@ -964,3 +964,16 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   none are running. The standing flag remains: no aging rule exists
   for assigned-awaiting-go-ahead (V-001R wait longest). PASS.
 - Suite 87/87, evidence gate exit 0.
+
+## Addendum — turn 74 (M1 report semantic audit; still awaiting go-aheads)
+
+- No new outbox filings, commits, or worker activity; E-003 (W2) +
+  V-001R (W1) still await worker-side go-aheads. W3 idle.
+- Audited the committed m1_report.json against M1 milestone claims
+  (beyond the turn-61 byte-freshness check): rejected_count=1,
+  recovery=ambiguous-reconciled-no-duplicate, s1_source SYNTH_V1 seed
+  11 bar 154, risk=risk-stub:approved:budget=0.2500,
+  venue=slice-local-fake:ambiguous-once, synthetic=true. All 6
+  content checks PASS — rejected trade, fault recovery, and honesty
+  labels all present in the committed artifact.
+- Suite 87/87, evidence gate exit 0.
