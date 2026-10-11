@@ -3979,3 +3979,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   ETH last 2544.45 +1.459%. Single-sample, not a momentum claim.
   Git skill re-read pre-push. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 354 (XRP/DOGE ticker PASS, cycle 2)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 1dd70d2. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public ticker/24hr x1 (fetch 639ms): XRP last 1.4182 +1.004%;
+  DOGE last 0.087320 +1.370%. Single-sample, not a momentum claim.
+  PASS.
+- Suite 104/104, evidence gate exit 0.
