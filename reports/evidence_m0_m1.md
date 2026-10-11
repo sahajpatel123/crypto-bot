@@ -76,3 +76,16 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
 - Checks: `pytest -q` 6 passed; M1 slice exit 0, synthetic report unchanged.
 - Worker 3: re-nudged once, still no reply; flagged stalled-pending-ack.
   Worker 1: still awaiting owner authorization. Accepted worker changes: none.
+
+## Addendum — turn 3 (E-001 progressing uncommitted; decision records added)
+
+- Worker 2: `market_data/capabilities.py` + `__init__.py` present uncommitted;
+  matrix separates verified vs assumed with no invented verification (early
+  read-only review; full review at E-001 completion). Referenced
+  discovery/recorder/replayer modules not yet written. No commits, no outbox.
+- Manager change: added `coordination/decision_record.py` (frozen
+  DecisionRecord + FeatureEvidence for Intent evidence_ref) with unit tests.
+- Checks: `pytest -q` 9 passed; M1 slice exit 0.
+- Worker 1: turn-3 check, session reachable, no new messages, still awaiting
+  owner authorization. Worker 3: turn-3 check, reachable, still no reply;
+  no further nudge this turn — owner attention needed on that session.
