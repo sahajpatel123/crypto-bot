@@ -3314,3 +3314,15 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   0.0871S 0.0871B buys=3 sells=2. Single-sample, not
   a flow claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 292 (SOL/BNB tape PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 65cc55a. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public aggTrades x5 (fetch 478ms): SOLUSDT last5
+  111.90B 111.89S 111.90B 111.90B 111.90B buys=4
+  sells=1; BNBUSDT last5 755.51B 755.51B 755.50S
+  755.51B 755.51B buys=4 sells=1. Single-sample, not
+  a flow claim. PASS.
+- Suite 104/104, evidence gate exit 0.
