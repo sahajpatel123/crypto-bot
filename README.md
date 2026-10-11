@@ -23,7 +23,7 @@ pytest -q
   (SYNTH_V1 fixture → real S1 baseline intent → coordinator → risk stub → fake venue → report).
   Every synthetic input is labelled. Risk gate stays a stub until V-001 lands.
   Not a validated trading system.
-- `pytest -q` — maintained tests (85 green on main: coordination + market-data +
+- `pytest -q` — maintained tests (87 green on main: coordination + market-data +
   execution + strategies suites).
 - `python tools/generate_evidence.py` — reproducible status-evidence collector.
 
@@ -38,9 +38,12 @@ Worker-owned entry points (accepted, live on main):
 
 Accepted scope so far: E-001 (market data + execution skeleton + observed
 sample), Q-001 (S1 baseline + fixtures + preregistered EXP-001), V-002 (S1
-verification, clean). V-001 risk policy is review-passed, landing after
-independent reproduction. Historical research, live-feed paper trading and
-fault/integration harnesses are tracked in [coord/tasks.json](/Users/sahajpatel/Code/cryto-bot/coord/tasks.json).
+verification, clean), E-002 (Nautilus trial, blocked-on-transfer; pin stays
+a proposal per D-011). In flight: E-003 (v0.1.1 execution side + crash fix,
+Worker 2) and V-001R (independent risk reproduction, Worker 1). V-001 risk
+policy is review-passed, landing after independent reproduction. Historical
+research, live-feed paper trading and fault/integration harnesses are tracked
+in [coord/tasks.json](/Users/sahajpatel/Code/cryto-bot/coord/tasks.json).
 Documented commands only; no invented package commands in status reports.
 
 ## Safety
