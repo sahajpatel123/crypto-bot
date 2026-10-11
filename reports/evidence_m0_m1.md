@@ -4575,3 +4575,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   O2539.95 C2539.94. Single-sample, not a regime claim.
   PASS.
 - Suite 105/105, evidence gate exit 0.
+
+## Addendum — turn 418 (XRP/DOGE klines PASS, cycle 4)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 06adb0c. E-004 accepted; W2 standing by. V-001R (W1)
+  still awaiting go-ahead; W3 idle.
+- Public klines 1m x2 (fetch 487ms): XRP O1.4150 C1.4151 /
+  O1.4151 C1.4154; DOGE O0.086960 C0.086980 /
+  O0.086980 C0.086960. Single-sample, not a regime claim.
+  PASS.
+- Suite 105/105, evidence gate exit 0.
