@@ -3336,3 +3336,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   ETHUSDT OI=2,315,772.2. Single-sample, not a
   positioning claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 294 (XRP/DOGE OI PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at cbfc6ed. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public openInterest (fetch 467ms): XRPUSDT
+  OI=297,608,503.4; DOGEUSDT OI=2,713,203,430.0.
+  Single-sample, not a positioning claim. PASS.
+- Suite 104/104, evidence gate exit 0.
