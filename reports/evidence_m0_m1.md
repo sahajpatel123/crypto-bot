@@ -918,3 +918,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   (data/ is W2-owned per D-003). My first verification one-liner used
   the wrong record key; recomputed against exchange_open_ms. PASS.
 - Suite 87/87, evidence gate exit 0.
+
+## Addendum — turn 70 (fresh-capture replay determinism; still awaiting go-aheads)
+
+- No new outbox filings, commits, or worker activity; E-003 (W2) +
+  V-001R (W1, ~79min wait) still await worker-side go-aheads. W3 idle.
+  The ~60min V-001R flag (turn 57) stands; no manager-side unblock.
+- Replayed the fresh turn-69 ETHUSDT capture twice through
+  replay_public: deterministic=true, replay_sha256 ee2fd38f identical
+  across runs, gaps empty — the replayer is stable on a second,
+  newly-captured observed file, not just the committed sample. PASS.
+- Suite 87/87, evidence gate exit 0.
