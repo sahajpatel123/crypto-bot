@@ -5233,3 +5233,8 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   83675.30/83675.40; ETH 2535.34/
   2535.35. PASS. Suite 167/167,
   evidence gate exit 0.
+- Turn-494 (cycle 6): public bookTicker x1
+  (XRP 329ms, DOGE 276ms): XRP
+  1.4083/1.4084; DOGE 0.086860/
+  0.086870. PASS. Suite 167/167,
+  evidence gate exit 0.
