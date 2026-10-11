@@ -78,7 +78,7 @@
    "contract_version": "v0.1.1 (+v0.2.0 addendum via manager if interfaces change)",
    "dispatch_utc": "2026-10-11T20:44:02Z",
    "inbox": "coord/inbox/E-005.json",
-   "note": "Dispatched: partial fills/protection/recovery F-CEO-02+03-exec per CEO directive Sec 3. Ack pending. E-004 stays accepted/closed.",
+   "note": "Dispatched: partial fills/protection/recovery F-CEO-02+03-exec per CEO directive Sec 3. Ack pending. E-004 stays accepted/closed. Ack received 2026-10-11T20:52:00Z (scope understood; base clarified to tip; NOT STARTED, worker-side go-ahead pending).",
    "owner_session": "cloud-vega",
    "role": "Worker 2 \u2014 Market Data and Execution Engineer",
    "state": "assigned"
@@ -150,10 +150,10 @@
    "contract_version": "v0.1.1 black-box",
    "dispatch_utc": "2026-10-11T20:44:02Z",
    "inbox": "coord/inbox/Q-003.json",
-   "note": "Dispatched: independent repro + executable EXP-001/002 per CEO directive Sec 3. Ack pending.",
+   "note": "Dispatched: independent repro + executable EXP-001/002 per CEO directive Sec 3. Ack pending. Ack+START received 2026-10-11T20:52:00Z (worker1/q-003 @027cc6e, /tmp/cryto-bot-w1q3, baseline 167/167).",
    "owner_session": "whisper-redshift",
    "role": "Worker 1 \u2014 Quant Research and Strategy Engineer",
-   "state": "assigned"
+   "state": "running"
   },
   "V-001": {
    "acceptance": [
@@ -269,7 +269,7 @@
    "contract_version": "v0.1.1 (+v0.2.0 addendum via manager if interfaces change)",
    "dispatch_utc": "2026-10-11T20:44:02Z",
    "inbox": "coord/inbox/V-004.json",
-   "note": "Dispatched: ledger+risk corrections F-CEO-01/03/04/06/07 per CEO directive Sec 3. Ack pending.",
+   "note": "Dispatched: ledger+risk corrections F-CEO-01/03/04/06/07 per CEO directive Sec 3. Ack pending. No ack yet as of 2026-10-11T20:52:00Z.",
    "owner_session": "cool-amalthea",
    "role": "Worker 3 \u2014 Risk, Verification and Reliability Engineer",
    "state": "assigned"
