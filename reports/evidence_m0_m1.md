@@ -1800,3 +1800,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   spread 0.04bps, bid20 $1.00M / ask20 $0.88M. Joins BNB/SOL
   depth data; single sample, not a liquidity claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 153 (BTC depth snapshot PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 5afbd8f. E-004 acked (option a, W2 not started, worker-side
+  go-ahead pending); V-001R (W1) still awaiting go-ahead; W3 idle.
+- Public depth BTCUSDT limit=20 (fetch 264ms): mid $83,400.6,
+  spread 0.01bps, bid20 $0.56M / ask20 $1.01M. Completes
+  BTC/ETH/BNB/SOL depth set; single sample, not a liquidity
+  claim. PASS.
+- Suite 104/104, evidence gate exit 0.
