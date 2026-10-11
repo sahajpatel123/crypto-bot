@@ -1847,3 +1847,15 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   buy-side, median $974, p90 $27,351. Joins BNB/SOL tape data;
   single sample, not a flow claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 158 (BTC funding-history snapshot PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 7735dfb. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public fundingRate BTCUSDT x6 8h cadence (fetch 253ms): last 6
+  settlements 10-09 16:00→10-11 08:00 UTC: +0.00129/+0.00523/
+  -0.00043/+0.00046/-0.00272/-0.00099% (last -0.00099% at 08:00
+  UTC). Single-sample funding datum, not a funding-cost claim.
+  PASS.
+- Suite 104/104, evidence gate exit 0.
