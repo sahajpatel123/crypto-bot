@@ -4352,3 +4352,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   2539.37x310.398 / ask 2539.38x111.639. Single-sample, not a
   liquidity claim. PASS.
 - Suite 105/105, evidence gate exit 0.
+
+## Addendum — turn 394 (XRP/DOGE depth PASS, cycle 3)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 9f00d00. E-004 accepted; W2 standing by. V-001R (W1)
+  still awaiting go-ahead; W3 idle.
+- Public depth limit=5 x1 (fetch 491ms): XRP best bid
+  1.4148x49883.8 / ask 1.4149x13312.6; DOGE best bid
+  0.086970x307735 / ask 0.086980x272592. Single-sample, not a
+  liquidity claim. PASS.
+- Suite 105/105, evidence gate exit 0.
