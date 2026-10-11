@@ -4456,3 +4456,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   buySellRatio 0.4123 @18:10Z; BNB buySellRatio 1.0102
   @18:10Z. Single-sample, not a flow claim. PASS.
 - Suite 105/105, evidence gate exit 0.
+
+## Addendum — turn 405 (BTC/ETH aggTrades PASS, cycle 4)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 48b3e64. E-004 accepted; W2 standing by. V-001R (W1)
+  still awaiting go-ahead; W3 idle. Cycle 3 closed (turns
+  372-404, 33 snapshots); cycle 4 begins.
+- Public aggTrades x3 (fetch 641ms): BTC 0.004 BUY
+  @83857.30; ETH 0.011 SELL @2540.35. Single-sample, not a
+  liquidity claim. PASS.
+- Suite 105/105, evidence gate exit 0.
