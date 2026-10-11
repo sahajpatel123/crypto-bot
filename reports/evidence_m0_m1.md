@@ -4234,3 +4234,11 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   BNB 564820.58 @18:00Z bar. Single-sample, not a trend claim.
   PASS.
 - Suite 105/105, evidence gate exit 0.
+
+## Addendum — turn 381 (BTC/ETH fundingRate PASS, cycle 3)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 68ef78c. E-004 accepted; W2 standing by. V-001R (W1)
+  still awaiting go-ahead; W3 idle.
+- Public fundingRate x1 (fetch 557ms): BTC 0.001347%; ETH
+  0.001163% @16:00Z. Single-sample, not a cost claim. PASS.
+- Suite 105/105, evidence gate exit 0.
