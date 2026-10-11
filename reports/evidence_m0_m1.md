@@ -4982,3 +4982,9 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   h0.086860 l0.086850 c0.086850 v129007 n72.
   Single-sample, not a trend/liquidity claim. PASS.
   Suite 167/167, evidence gate exit 0.
+- Turn-453 (cycle 5): public klines 1m x1 (SOL 282ms,
+  BNB 236ms), T1791745440000: SOL o111.6300 h111.6400
+  l111.5900 c111.6200 v3593.23 n769; BNB o753.220
+  h753.220 l753.010 c753.130 v156.38 n330.
+  Single-sample, not a trend/liquidity claim. PASS.
+  Suite 167/167, evidence gate exit 0.
