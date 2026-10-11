@@ -763,3 +763,19 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   worker2/e-002, worker3/v-001); no worker2/e-003 exists anywhere yet,
   consistent with E-003 not started. PASS.
 - Suite 87/87, evidence gate exit 0.
+
+## Addendum — turn 58 (V-001R coverage audit; still awaiting go-aheads)
+
+- No new outbox filings, commits, or worker activity; E-003 (W2) +
+  V-001R (W1, ~62min wait) still await worker-side go-aheads. W3 idle.
+  The ~60min V-001R flag from turn 57 stands; no manager-side unblock
+  exists.
+- Audited V-001R dispatch scope against V-001's 5 acceptance_mapped
+  claims: adversarial fixtures, deterministic policy, repro plan, and
+  risk invariants are all worker-covered (34-test repro, determinism
+  re-run, hand halt case, R-001..R-012 report). The 5th item —
+  Q-001/E-001 interface review — is a prose review doc covered by
+  manager review only (turn-9 review-pass + turn-41 alignment audit),
+  not worker reproduction; acceptable by nature, recorded here. No
+  dispatch change: V-001R is already acked. PASS with noted exception.
+- Suite 87/87, evidence gate exit 0.
