@@ -154,3 +154,16 @@ Meta Muse Spark.
   data/research). Snapshot/test/commit loop STOPPED; logical
   commits only. V-004 (W3), E-005 (W2), Q-003 (W1) dispatched;
   manager owns MG-001. Live trading stays disabled.
+- D-016: V-004 + E-005 accepted and integrated (turn review):
+  V-004 ledger/risk corrections (221/221 incl. fixup) via
+  provenance copy (15 files, sha-verified); E-005 execution
+  (187/187) merged as 6640bc9. Manager integration changes:
+  RiskOutcomeSink Protocol gains note_fill_delta (v0.2.0 code)
+  + 2 stub conformance updates + 3 handoff assertions to the
+  delta-before-transition sequence. Merged-tree: 238/238,
+  M1 exit 0, CEO probe 8/8 fixed. Rulings: unresolved-bucket
+  stands (observable, block-retaining); filled reservations
+  are consumed by first-fill transition (never expire live);
+  W1 retention assertion corrected to release-False +
+  booked_net-nonzero. Q-003 fix-after 19/20, one correction
+  outstanding. E-002-style residuals recorded, not promoted.

@@ -56,7 +56,8 @@ def test_fill_then_flat_lifecycle(tmp_path):
     assert isinstance(policy.evaluate(build_intent(INTENTS["canonical_long"]), acct), Approved)
 
 
-def test_expired_reservation_purged(tmp_path):
+def test_expired_reservation_retained_until_reconciled(tmp_path):
+    # V-004 F-CEO-03: expiry never proves flat; reconciliation lifts the block.
     policy = _ready(tmp_path)
     acct = build_account(ACCOUNTS["healthy_10k"])
     first = policy.evaluate(build_intent(INTENTS["canonical_long"]), acct)
@@ -68,7 +69,14 @@ def test_expired_reservation_purged(tmp_path):
     fresh_spec["evidence_ts_utc"] = (later - timedelta(seconds=5)).isoformat()
     fresh_spec["entry_expiry_utc"] = (later + timedelta(seconds=60)).isoformat()
     out = late_policy.evaluate(build_intent(fresh_spec), acct)
-    assert isinstance(out, Approved)
+    assert isinstance(out, Rejected) and out.reason == "exposure:unresolved"
+    assert late_policy.unresolved_ids() == (first.reservation_id,)
+    restarted = make_policy(tmp_path, now=later)
+    out2 = restarted.evaluate(build_intent(fresh_spec), acct)
+    assert isinstance(out2, Rejected) and out2.reason == "exposure:unresolved"
+    assert restarted.release(first.reservation_id) is False  # reconciliation, nothing live
+    assert restarted.unresolved_ids() == ()
+    assert isinstance(restarted.evaluate(build_intent(fresh_spec), acct), Approved)
 
 
 def test_fresh_day_needs_reconciliation(tmp_path):

@@ -1,4 +1,4 @@
-"""M1-slice wiring over the accepted V-001 policy (Worker 3, v0.1.1).
+"""M1-slice wiring over the accepted V-001 policy (Worker 3, v0.1.1/v0.2.0).
 
 Drop-in replacement for the slice-local ``risk_stub``: same ``(ok, reason,
 notional)`` decision shape, real :class:`RiskPolicy` + accounting
@@ -10,6 +10,10 @@ Day handling: the slice opens its accounting day explicitly at construction
 (``day_start_equity``). If the clock rolls past midnight mid-run, evaluations
 report ``risk-policy:rejected:health:day-open-needs-reconciliation`` until
 the integrator calls :meth:`SliceRisk.reconcile_day` again.
+
+V-004: snapshots carry lifetime flow totals so halt/target/floor references
+are flow-adjusted (F-CEO-06); ``note_fill_delta`` books v0.2.0 fill
+increments into both ledger and policy exposure books.
 """
 from __future__ import annotations
 
@@ -21,7 +25,7 @@ from typing import Callable
 from cryptobot.accounting import Ledger
 
 from .policy import RiskPolicy
-from .types import AccountSnapshot, Approved, Rejected, RiskConfig
+from .types import AccountSnapshot, Approved, HealthStatus, Rejected, RiskConfig
 
 LABEL = "risk-policy"
 
@@ -49,10 +53,11 @@ class SliceRisk:
         self._now_utc = now_utc or (lambda: datetime.now(timezone.utc))
         self.policy = RiskPolicy(config=config, state_path=state_path, now_utc=self._now_utc)
         self.ledger = Ledger(pilot_equity=day_start_equity)
-        self.policy.reconcile_day(day_start_equity)
+        self.policy.bind_ledger(self.ledger)
+        self.policy.reconcile_day(day_start_equity, self.ledger.total_flows())
 
     def reconcile_day(self, day_start_equity: float) -> str:
-        return self.policy.reconcile_day(day_start_equity)
+        return self.policy.reconcile_day(day_start_equity, self.ledger.total_flows())
 
     def snapshot(self, ref_price: float, close_cost_bps: float) -> AccountSnapshot:
         marked = self.ledger.marked_equity(ref_price)
@@ -62,6 +67,7 @@ class SliceRisk:
             net_liquidation=self.ledger.net_liquidation(ref_price, close_cost_bps),
             net_realised_global=self.ledger.net_realised(),
             open_position=self.ledger.has_position(),
+            flows_cumulative=self.ledger.total_flows(),
         )
 
     def evaluate(self, intent, ref_price: float) -> SliceDecision:
@@ -69,14 +75,13 @@ class SliceRisk:
         fc = intent.forecast_cost
         close_cost_bps = fc.fee_bps + fc.spread_bps + fc.slippage_bps + fc.funding_bps
         out = self.policy.evaluate(intent, self.snapshot(ref_price, close_cost_bps))
-        mid = (intent.entry_low + intent.entry_high) / 2
         if isinstance(out, Approved):
             return SliceDecision(
                 ok=True,
                 reason=f"{LABEL}:approved:reservation={out.reservation_id}"
                        f":budget={out.reserved_risk:.4f}",
                 notional_usdt=out.notional_usdt,
-                qty=out.notional_usdt / mid,
+                qty=out.qty,
                 reservation_id=out.reservation_id,
             )
         return SliceDecision(
@@ -104,3 +109,26 @@ class SliceRisk:
     def note_slice_flat(self) -> None:
         """Clear open-position state after the caller closes the ledger leg."""
         self.policy.note_flat()
+
+    def note_fill_delta(
+        self,
+        reservation_id: str,
+        exec_id: str,
+        symbol: str,
+        venue_side: str,
+        qty: float,
+        price: float,
+        fee: float,
+        ts_utc: str,
+    ) -> None:
+        """Book one v0.2.0 fill increment (delegates to the bound policy sink).
+
+        The policy validates, books state, and propagates to this bound
+        ledger under the same exec_id; both sides stay idempotent.
+        """
+        self.policy.note_fill_delta(reservation_id, exec_id, symbol, venue_side,
+                                    qty, price, fee, ts_utc)
+
+    def monitor(self, ref_price: float, close_cost_bps: float) -> HealthStatus:
+        """Intent-free health check over live ledger equity (V-004)."""
+        return self.policy.check_health(self.snapshot(ref_price, close_cost_bps))

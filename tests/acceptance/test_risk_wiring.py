@@ -7,6 +7,8 @@ from __future__ import annotations
 
 from datetime import timedelta
 
+import pytest
+
 from conftest import NOW, build_intent, load_fixture, make_clock
 from cryptobot.coordination import RiskOutcomeSink, Side
 from cryptobot.research.synthetic import SCENARIO_LONG, generate_fixture
@@ -51,7 +53,7 @@ def test_wiring_approves_real_s1_intent(tmp_path):
     assert out.reason.startswith("risk-policy:approved:reservation=r-000001:budget=")
     assert "risk-stub" not in out.reason
     assert out.notional_usdt > 0.0
-    assert out.qty == out.notional_usdt / mid
+    assert out.qty == pytest.approx(out.notional_usdt / intent.entry_high)
 
 
 def test_wiring_rejects_stale_with_policy_reason(tmp_path):

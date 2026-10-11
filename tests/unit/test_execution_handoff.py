@@ -21,6 +21,10 @@ class RecordingSink:
     def __init__(self):
         self.calls = []
 
+    def note_fill_delta(self, reservation_id, exec_id, symbol, venue_side,
+                          qty, price, fee, ts_utc):
+        self.calls.append(("delta", reservation_id, exec_id))
+
     def note_fill(self, reservation_id):
         self.calls.append(("fill", reservation_id))
 
@@ -76,6 +80,12 @@ def test_retry_chain_shares_one_reservation(tmp_path):
 
 # -- exactly-once callbacks --------------------------------------------------
 
+def _kinds(sink):
+    # v0.2.0: the conformant stub records delta calls (exec_ids are unique
+    # per run, so assertions match the callback-kind sequence + payload shape).
+    return [c[0] for c in sink.calls]
+
+
 def test_fill_fires_exactly_once(tmp_path):
     venue = FakeVenue()
     venue.set_last_price("BTCUSDT", 67000.0)
@@ -83,11 +93,12 @@ def test_fill_fires_exactly_once(tmp_path):
     manager = _manager(venue, tmp_path, sink)
     order = manager.submit_entry("BTCUSDT", "LONG", 0.01, 67005.0,
                                  expire_at_utc=_expiring(), reservation_id="r1")
-    assert sink.calls == [("fill", "r1")]
+    assert _kinds(sink) == ["delta", "fill"]  # delta-before-transition (v0.2.0).
+    assert sink.calls[0][1] == "r1" and sink.calls[0][2].endswith(":fill:0001")
     manager.poll()
     manager.reconcile(order.client_id)
     manager.poll()
-    assert sink.calls == [("fill", "r1")]
+    assert _kinds(sink) == ["delta", "fill"]
 
 
 def test_reject_releases_exactly_once(tmp_path):
@@ -127,12 +138,12 @@ def test_flat_fires_once_when_protective_leg_fills(tmp_path):
     entry = manager.submit_entry("BTCUSDT", "LONG", 0.01, 67005.0,
                                  expire_at_utc=_expiring(), reservation_id="r1")
     manager.attach_siblings(entry, stop_price=66850.0, target_price=67200.0)
-    assert sink.calls == [("fill", "r1")]  # open, not flat.
+    assert _kinds(sink) == ["delta", "fill"]  # open, not flat.
     venue.set_last_price("BTCUSDT", 66800.0)
     manager.poll()
-    assert sink.calls == [("fill", "r1"), ("flat",)]
+    assert _kinds(sink) == ["delta", "fill", "delta", "flat"]
     manager.poll()
-    assert sink.calls == [("fill", "r1"), ("flat",)]
+    assert _kinds(sink) == ["delta", "fill", "delta", "flat"]
 
 
 def test_no_sink_no_callbacks_no_crash(tmp_path):
@@ -206,7 +217,7 @@ def test_recovery_never_refires_callbacks(tmp_path):
     manager = _manager(venue, tmp_path, sink_a)
     manager.submit_entry("BTCUSDT", "LONG", 0.01, 67005.0,
                          expire_at_utc=_expiring(), reservation_id="r1")
-    assert sink_a.calls == [("fill", "r1")]
+    assert _kinds(sink_a) == ["delta", "fill"]
     sink_b = RecordingSink()  # fresh post-restart sink sees nothing repeated.
     recovered = OrderManager.recover(venue, tmp_path / "orders.jsonl", now_utc=lambda: NOW,
                                      outcome_sink=sink_b)

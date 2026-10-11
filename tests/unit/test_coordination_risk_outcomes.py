@@ -8,6 +8,10 @@ class RecordingSink:
     def __init__(self):
         self.calls = []
 
+    def note_fill_delta(self, reservation_id, exec_id, symbol, venue_side,
+                          qty, price, fee, ts_utc):
+        self.calls.append(("delta", reservation_id, exec_id))
+
     def note_fill(self, reservation_id):
         self.calls.append(("fill", reservation_id))
 

@@ -3,6 +3,11 @@
 Persisted as JSON with sorted keys (byte-deterministic for a fixed clock).
 Every mutation saves via tmp-file + atomic rename before the caller observes
 the decision, so a crash never leaves an approval unrecorded.
+
+V-004 (F-CEO-03): expired reservations whose outcome is unknown move to the
+``unresolved`` set instead of vanishing; only reconciliation (a sink
+callback) lifts the block. Flow baselines (F-CEO-06) are persisted values,
+robust across restarts. Version 1 snapshots migrate explicitly to version 2.
 """
 from __future__ import annotations
 
@@ -13,7 +18,7 @@ from datetime import datetime
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 
-STATE_VERSION = 1
+STATE_VERSION = 2
 
 
 @dataclass
@@ -66,6 +71,10 @@ class RiskState:
     peak_realised: float = 0.0
     profit_floor: float | None = None
     reservations: dict[str, Reservation] = field(default_factory=dict)
+    unresolved: dict[str, dict] = field(default_factory=dict)
+    booked: dict[str, dict] = field(default_factory=dict)
+    flow_baseline_day: float | None = None
+    flow_baseline_inception: float | None = None
     open_position: bool = False
     seq: int = 0
 
@@ -81,13 +90,22 @@ class RiskState:
             "peak_realised": self.peak_realised,
             "profit_floor": self.profit_floor,
             "reservations": {rid: r.to_dict() for rid, r in self.reservations.items()},
+            "unresolved": {rid: dict(entry) for rid, entry in self.unresolved.items()},
+            "booked": {rid: {"net_qty": e["net_qty"], "exec_ids": list(e["exec_ids"]),
+                                "symbol": e["symbol"]} for rid, e in self.booked.items()},
+            "flow_baseline_day": self.flow_baseline_day,
+            "flow_baseline_inception": self.flow_baseline_inception,
             "open_position": self.open_position,
             "seq": self.seq,
         }
 
     @classmethod
     def from_dict(cls, raw: dict) -> "RiskState":
-        if raw.get("version") != STATE_VERSION:
+        version = raw.get("version")
+        if version == 1:
+            raw = migrate_v1_to_v2(raw)
+            version = 2
+        if version != STATE_VERSION:
             raise ValueError(f"unsupported risk-state version: {raw.get('version')!r}")
         return cls(
             current_day=raw.get("current_day"),
@@ -101,9 +119,34 @@ class RiskState:
             reservations={
                 rid: Reservation.from_dict(rid, r) for rid, r in raw.get("reservations", {}).items()
             },
+            unresolved={rid: dict(entry) for rid, entry in raw.get("unresolved", {}).items()},
+            booked={rid: {"net_qty": float(e["net_qty"]), "exec_ids": list(e["exec_ids"]),
+                           "symbol": e["symbol"]} for rid, e in raw.get("booked", {}).items()},
+            flow_baseline_day=raw.get("flow_baseline_day"),
+            flow_baseline_inception=raw.get("flow_baseline_inception"),
             open_position=bool(raw.get("open_position", False)),
             seq=int(raw.get("seq", 0)),
         )
+
+
+def migrate_v1_to_v2(raw: dict) -> dict:
+    """Migrate a version-1 snapshot to version 2 (explicit, tested).
+
+    New in v2: the ``unresolved`` exposure set and the flow baselines.
+    Migration forces a fresh day reconciliation so the baselines are
+    established from live ledger totals (pre-migration flows are absorbed
+    into the new baselines by construction).
+    """
+    if raw.get("version") != 1:
+        raise ValueError(f"migrate_v1_to_v2 needs version 1, got {raw.get('version')!r}")
+    migrated = dict(raw)
+    migrated["version"] = 2
+    migrated.setdefault("unresolved", {})
+    migrated.setdefault("booked", {})
+    migrated["flow_baseline_day"] = None
+    migrated["flow_baseline_inception"] = None
+    migrated["needs_reconciliation"] = True
+    return migrated
 
 
 def load_state(path: str | Path) -> RiskState:

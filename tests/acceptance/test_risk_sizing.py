@@ -11,11 +11,12 @@ ACCOUNTS = load_fixture("risk_accounts.json")
 
 
 def _expected(intent_spec):
-    ref = (intent_spec["entry_low"] + intent_spec["entry_high"]) / 2
-    stop_pct = abs(ref - intent_spec["invalidation_price"]) / ref
+    # V-004 F-CEO-04: loss bounded at the adverse permitted fill (LONG: high).
+    adverse = intent_spec["entry_high"]
+    stop_dist = abs(adverse - intent_spec["invalidation_price"])
     fc = intent_spec["forecast_cost"]
     stressed = (fc["fee_bps"] + fc["spread_bps"] + fc["slippage_bps"] + fc["funding_bps"]) / 10000 * 1.5
-    return ref, stop_pct, stressed
+    return adverse, stop_dist, stressed
 
 
 def test_canonical_long_planned_loss_identity(tmp_path):
@@ -25,10 +26,12 @@ def test_canonical_long_planned_loss_identity(tmp_path):
     out = policy.evaluate(build_intent(spec), build_account(ACCOUNTS["healthy_10k"]))
     assert isinstance(out, Approved)
     assert out.reserved_risk == pytest.approx(25.0)
-    ref, stop_pct, stressed = _expected(spec)
-    assert out.notional_usdt == pytest.approx(25.0 / (stop_pct + stressed))
-    assert out.notional_usdt * stop_pct + out.notional_usdt * stressed == pytest.approx(25.0)
-    assert out.qty == pytest.approx(out.notional_usdt / ref)
+    adverse, stop_dist, stressed = _expected(spec)
+    assert out.notional_usdt == pytest.approx(out.qty * adverse)
+    planned = out.qty * stop_dist + out.qty * adverse * stressed
+    assert planned <= 25.0 * (1 + 1e-9)
+    assert planned == pytest.approx(25.0)
+    assert out.qty == pytest.approx(out.notional_usdt / adverse)
 
 
 def test_canonical_short_approved(tmp_path):
