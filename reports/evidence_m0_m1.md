@@ -1032,3 +1032,12 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   15:02:32Z; ack sent (transport handoff, delivery unconfirmed).
   V-001R (W1) still awaiting go-ahead; W3 idle.
 - Suite 87/87, evidence gate exit 0.
+
+## Addendum — turn 80 (E-003 in progress, scope-compliant; V-001R waiting)
+
+- W2 actively implementing: worker2/e-003 worktree shows uncommitted
+  M src/cryptobot/execution/fake_venue.py (+12/-1), inside the E-003
+  allowed paths (src/cryptobot/execution/*). Read-only stat check, no
+  interference. No outbox filing yet; E-003 stays running. V-001R (W1)
+  still awaiting go-ahead; W3 idle. No action needed.
+- Suite 87/87, evidence gate exit 0.
