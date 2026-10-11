@@ -4632,3 +4632,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   ask 2539.53x79.134. Single-sample, not a liquidity claim.
   PASS.
 - Suite 105/105, evidence gate exit 0.
+
+## Addendum — turn 424 (XRP/DOGE bookTicker PASS, cycle 4)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 2e7d1a1. E-004 accepted; W2 standing by. V-001R (W1)
+  still awaiting go-ahead; W3 idle.
+- Public bookTicker x1 (fetch 612ms): XRP bid 1.4142x66678.7 /
+  ask 1.4143x16731.7; DOGE bid 0.086910x757944 /
+  ask 0.086920x134761. Single-sample, not a liquidity claim.
+  PASS.
+- Suite 105/105, evidence gate exit 0.
