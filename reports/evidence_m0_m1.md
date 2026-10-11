@@ -5002,3 +5002,11 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   qv211006483.585960 n571788 T1791745569401.
   Single-sample, not a volume/liquidity claim. PASS.
   Suite 167/167, evidence gate exit 0.
+- Turn-456 (cycle 5): public ticker/24hr (SOL 286ms,
+  BNB 226ms): SOL last111.3900 chg%1.080 h112.7300
+  l108.8900 qv1017803204.7584 n1081866
+  T1791745713186; BNB last752.460 chg%0.271
+  h758.770 l744.910 qv167106883.434 n459244
+  T1791745710000. Single-sample, not a
+  volume/liquidity claim. PASS. Suite 167/167,
+  evidence gate exit 0.
