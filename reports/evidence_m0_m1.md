@@ -5193,3 +5193,8 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   0.00006007; DOGE 0.00003448
   @T1791734400002. PASS. Suite 167/167,
   evidence gate exit 0.
+- Turn-486 (cycle 6): public fundingRate x1
+  (SOL 277ms, BNB 507ms): SOL
+  0.00006592; BNB 0.00000000
+  @T1791734400002. PASS. Suite 167/167,
+  evidence gate exit 0.
