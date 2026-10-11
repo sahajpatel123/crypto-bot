@@ -5114,3 +5114,11 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   sellVol1947472.0 T1791745800000.
   Single-sample, not a flow claim. PASS.
   Suite 167/167, evidence gate exit 0.
+- Turn-471 (cycle 5): public takerlongshortRatio
+  5m (SOL 323ms, BNB 288ms): SOL
+  buySell2.0850 buyVol12606.06
+  sellVol6045.94 T1791745800000; BNB
+  buySell1.9027 buyVol220.71 sellVol116.00
+  T1791746100000. Single-sample, not a flow
+  claim. PASS. Suite 167/167, evidence
+  gate exit 0.
