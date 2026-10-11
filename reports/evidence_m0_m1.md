@@ -906,3 +906,15 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   attempt used the wrong record shape; corrected to plain symbol
   strings.) PASS.
 - Suite 87/87, evidence gate exit 0.
+
+## Addendum — turn 69 (second-symbol klines probe; still awaiting go-aheads)
+
+- No new outbox filings, commits, or worker activity; E-003 (W2) +
+  V-001R (W1, ~78min wait) still await worker-side go-aheads. W3 idle.
+  The ~60min V-001R flag (turn 57) stands; no manager-side unblock.
+- Captured ETHUSDT 1m x5 (/tmp/kl69.jsonl, new symbol beyond the
+  turn-53 BTCUSDT probe): gaps 0, 4 closed + 1 forming, fetch latency
+  267ms, data age ~40s, header labelled observed-public. Kept in /tmp
+  (data/ is W2-owned per D-003). My first verification one-liner used
+  the wrong record key; recomputed against exchange_open_ms. PASS.
+- Suite 87/87, evidence gate exit 0.
