@@ -4102,3 +4102,12 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
 - V-001R (W1) still awaiting go-ahead; W3 idle. W2 standing by
   for next dispatch.
 - Suite 105/105, evidence gate exit 0.
+
+## Addendum — turn 365 (SOL/BNB premiumIndex PASS, cycle 2)
+- E-004 accepted + merged at 4058bec; W2 standing by. No other
+  new outbox filings or worker activity; tree clean on main at
+  4058bec. V-001R (W1) still awaiting go-ahead; W3 idle.
+- Public premiumIndex x1 (fetch 505ms): SOL mark 112.31032605 /
+  index 112.35520032; BNB mark 755.16649935 / index 754.99190137.
+  Single-sample, not a premium claim. PASS.
+- Suite 105/105, evidence gate exit 0.
