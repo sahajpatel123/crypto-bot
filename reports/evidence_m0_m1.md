@@ -869,3 +869,15 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   (D-003); manager recommendation is (a), W2 decides. Dispatch-ready
   input for the post-E-003 W2 task. PASS (scoping).
 - Suite 87/87, evidence gate exit 0.
+
+## Addendum — turn 66 (V-002 check-5 re-verified; still awaiting go-aheads)
+
+- No new outbox filings, commits, or worker activity; E-003 (W2) +
+  V-001R (W1, ~70min wait) still await worker-side go-aheads. W3 idle.
+  The ~60min V-001R flag (turn 57) stands; no manager-side unblock.
+- Re-ran V-002's no-confidence-language sweep on current main
+  (strategies/features/research/specs/tests): exactly 1 match —
+  S1.md line 124 "No confidence percentages anywhere", a prohibition
+  sentence, not a violation. Zero hand-assigned probabilities or
+  win-rate claims. Check-5 substance holds. PASS.
+- Suite 87/87, evidence gate exit 0.
