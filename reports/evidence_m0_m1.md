@@ -5137,3 +5137,8 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   BNB 753.150. Single-sample, not a
   valuation claim. PASS. Suite 167/167,
   evidence gate exit 0.
+- Turn-475 (cycle 6): public aggTrades x5
+  (BTC 451ms, ETH 429ms): BTC 83650.30;
+  ETH 2534.59. Single-sample, not a flow
+  claim. PASS. Suite 167/167, evidence
+  gate exit 0.
