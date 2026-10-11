@@ -78,3 +78,42 @@ def replay_hash(records: Iterable[dict[str, Any]]) -> str:
             ).encode("utf-8")
         )
     return digest.hexdigest()
+
+
+def load_events(path: str | Path) -> list[dict[str, Any]]:
+    """Load a normalized event stream (cryptobot-events/1), enforcing labels."""
+    records = [json.loads(ln) for ln in Path(path).read_text(encoding="utf-8").splitlines()
+               if ln.strip()]
+    for record in records:
+        if "input_class" not in record:
+            raise ValueError("event record missing mandatory input_class label")
+    return records
+
+
+def replay_events(
+    records: Iterable[dict[str, Any]], *, order: str = "arrival"
+) -> Iterator[dict[str, Any]]:
+    """Yield normalized events in deterministic order.
+
+    ``order="arrival"`` (default) replays in ``seq`` order, reproducing the
+    exact arrival sequence the collector saw — feeding the stream back into
+    stateful processors (bar builders, books) reproduces capture-time state,
+    including live late/dup drops. ``order="exchange_ts"`` replays in
+    ``(exchange_ts_ms, seq)`` order for causal analysis; stateful rebuilds
+    under this ordering can legitimately differ from capture-time artifacts.
+    """
+    if order == "exchange_ts":
+        key = lambda r: (int(r["exchange_ts_ms"]), int(r["seq"]))  # noqa: E731
+    elif order == "arrival":
+        key = lambda r: int(r["seq"])  # noqa: E731
+    else:
+        raise ValueError(f"unknown replay order: {order!r}")
+    yield from sorted(records, key=key)
+
+
+def events_hash(records: Iterable[dict[str, Any]], *, order: str = "arrival") -> str:
+    """Stable SHA-256 over the deterministic event replay stream."""
+    digest = hashlib.sha256()
+    for event in replay_events(records, order=order):
+        digest.update(json.dumps(event, sort_keys=True).encode("utf-8"))
+    return digest.hexdigest()
