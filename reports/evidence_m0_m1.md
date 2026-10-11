@@ -3572,3 +3572,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   2,318,032.1 contracts @17:24Z. Single-sample, not a flow
   claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 315 (XRP/DOGE OI PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 86b5c36. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public openInterest (fetch 619ms): XRPUSDT
+  297,456,931 contracts; DOGEUSDT
+  2,710,060,454 contracts @17:25Z. Single-sample, not a flow
+  claim. PASS.
+- Suite 104/104, evidence gate exit 0.
