@@ -150,7 +150,7 @@
    "contract_version": "v0.1.1 black-box",
    "dispatch_utc": "2026-10-11T20:44:02Z",
    "inbox": "coord/inbox/Q-003.json",
-   "note": "Dispatched: independent repro + executable EXP-001/002 per CEO directive Sec 3. Ack pending. Ack+START received 2026-10-11T20:52:00Z (worker1/q-003 @027cc6e, /tmp/cryto-bot-w1q3, baseline 167/167).",
+   "note": "Dispatched: independent repro + executable EXP-001/002 per CEO directive Sec 3. Ack pending. Ack+START received 2026-10-11T20:52:00Z (worker1/q-003 @027cc6e, /tmp/cryto-bot-w1q3, baseline 167/167). Phase 1 COMPLETE 2026-10-11T21:05:00Z: 16 tests (11F/5P identical on 871d104+ec7dd62, symptom-cross-checked); 170/170 untouched. Phase 2 started; fix-after runs await integration.",
    "owner_session": "whisper-redshift",
    "role": "Worker 1 \u2014 Quant Research and Strategy Engineer",
    "state": "running"
