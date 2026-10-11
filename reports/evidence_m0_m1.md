@@ -5213,3 +5213,8 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   111.3500/c 111.3700; BNB o 753.010/c
   753.080 @T1791747480000. PASS. Suite
   167/167, evidence gate exit 0.
+- Turn-490 (cycle 6): public ticker24 x1
+  (BTC 338ms, ETH 289ms): BTC last
+  83708.10 (+0.807%); ETH last 2535.57
+  (+0.773%). PASS. Suite 167/167,
+  evidence gate exit 0.
