@@ -262,3 +262,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   E-002 completion now as either verdict-with-evidence or documented-blocker
   (commands+timestamps, output tail, environment). Either outcome closes
   E-002; next E-task dispatches after the filing.
+
+## Addendum — turn 20 (E-002 finding emerging)
+
+- Worker 2 heartbeat via fresh worktree evidence (~14:08Z): E-002 trial
+  record taking shape in worker2/e-002 (uncommitted) — verdict
+  "blocked-on-transfer": attempt 1 py3.11 rejected by requires-python
+  >=3.12; attempt 2 pip wheels-only ~55MB of 156MB at ~96KB/s, stopped for
+  uv; attempt 3 uv resolved 15 pkgs in 61s, 110MB+ cached, wheel never
+  completed by the bound. Matrix + data README + new test updated; trial
+  explicitly not counted as verification. No outbox filing yet — manager
+  integration waits for the completion claim.
