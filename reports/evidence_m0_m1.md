@@ -816,3 +816,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   the older pre-rewire risk label/notional, as expected at W1's base
   2a33173.) PASS.
 - Suite 87/87, evidence gate exit 0.
+
+## Addendum — turn 62 (tree-hygiene sweep; still awaiting go-aheads)
+
+- No new outbox filings, commits, or worker activity; E-003 (W2) +
+  V-001R (W1, ~66min wait) still await worker-side go-aheads. W3 idle.
+  The ~60min V-001R flag (turn 57) stands; no manager-side unblock.
+- Swept tracked tree: zero __pycache__/.pyc/.venv/node_modules/
+  .DS_Store entries in git ls-files. Decision ledger contiguous
+  D-001..D-011, no gaps, each defined once (list format; D-005/D-011
+  cross-refs are intentional prose). PASS.
+- Suite 87/87, evidence gate exit 0.
