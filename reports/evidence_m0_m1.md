@@ -2999,3 +2999,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   DOGEUSDT OI 2,709,205,076.0.
   Single-sample, not a leverage claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 265 (SOL/BNB OI PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at a3c7308. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public openInterest (fetch 517ms): SOLUSDT OI 8,481,366.3;
+  BNBUSDT OI 563,139.3.
+  Single-sample, not a leverage claim. PASS.
+- Suite 104/104, evidence gate exit 0.
