@@ -4936,3 +4936,10 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   oi564366.16 T1791745027563. Single-sample, not a
   positioning claim. PASS. Suite 167/167, evidence
   gate exit 0.
+- Turn-445 (cycle 5): public openInterestHist 5m x1 (BTC
+  246ms, ETH 226ms): BTC sumOI92549.10
+  value7734846561.96 T1791744900000; ETH sumOI2312776.655
+  value5849209571.22 T1791744600000. Rows carry no
+  symbolPrice (separate ticker call when priced).
+  Single-sample, not a positioning claim. PASS. Suite
+  167/167, evidence gate exit 0.
