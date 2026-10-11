@@ -2603,3 +2603,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   08Z +0.0000% / 16Z +0.0000%.
   Single-sample, not a cost claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 228 (depth PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at f8dc9d1. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public depth limit=5 (fetch 461ms): BTC bid
+  83788.0x1.464 / ask 83788.1x17.395 spread 0.01bp; ETH bid
+  2540.96x34.891 / ask 2540.97x212.705 spread 0.04bp.
+  Single-sample, not a liquidity claim. PASS.
+- Suite 104/104, evidence gate exit 0.
