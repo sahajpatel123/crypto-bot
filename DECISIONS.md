@@ -58,3 +58,8 @@ Meta Muse Spark.
   edits inside worker-owned implementation files.
 - D-005: NautilusTrader version pin deferred until Worker 2 capability matrix
   lands (bounded check). No framework code in M1 scaffold.
+- D-006: Workers may write exactly their own completion file
+  (coord/outbox/Q-001.json, E-001.json, V-001.json); the rest of coord/
+  stays manager-owned. Uncommitted-branch-diff evidence is acceptable for
+  review when a worker's git policy requires user authorization to commit;
+  the manager reviews the diff and the worker commits if/when authorized.

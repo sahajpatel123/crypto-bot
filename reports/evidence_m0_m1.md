@@ -127,3 +127,35 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
 - Checks: `pytest -q` 9 passed (main tree); M1 slice exit 0.
 - Worker 1: turn-6 check, reachable, no new messages, still awaiting owner
   authorization. Worker 3: turn-6 check, reachable, still silent since kickoff.
+
+## Addendum — turn 7 (V-001 running; D-006 outbox exception)
+
+- Worker 3: first ack — user go-ahead received, V-001 assigned→running,
+  starting on worker3/v-001. Flagged two real issues: commit policy
+  (cites diffs unless user authorizes — accepted) and coord/outbox write
+  ambiguity (resolved by D-006: each worker may write only its own
+  completion file). Worktree recommended. D-006 also notified to Workers 1–2.
+- Worker 2: worktree modifies recorder/tools + new data/observed/ — live
+  public-data sample in progress. Still on 7e2c6e7, no outbox yet.
+- Manager changes: D-006 in DECISIONS.md; tasks.json V-001→running.
+- Checks: `pytest -q` 9 passed; M1 slice exit 0.
+- Worker 1: turn-7 check, reachable, no new messages, still awaiting owner
+  authorization. Only remaining unauthorised worker.
+
+## Addendum — turn 7b (all workers running; E-001 review passed)
+
+- Worker 1: go-ahead received, Q-001 assigned→running in isolated worktree
+  /tmp/cryto-bot-w1 (branch worker1/q-001). All three workers now active.
+- Worker 3: moved to worktree /tmp/cryto-bot-w3; shared tree returned to
+  main with only manager files + outbox. V-001 progressing (acceptance
+  spec written; fixtures/tests before policy).
+- Worker 2: E-001 completion claim INSPECTED, review PASSED (merge below):
+  3 commits verified ownership-clean; 48/48 tests reproduced; replay sha
+  772a9163… reproduced exactly with 0 gaps; discovery counts 924/525/524
+  reproduced from committed JSON; no-whitelist test present; order-manager
+  code read (unique IDs, reconcile-before-retry with new IDs, no atomic
+  bracket, expiry, restart recovery). data/observed placement + matrix
+  location accepted as faithful readings of the task text.
+  Unresolved carried forward: nautilus trial install, streaming, live adapter.
+- Tree race #2 (Worker 3 checkout) caused zero damage: branch guard held,
+  no commit on wrong branch, resolved by worktree move within the turn.
