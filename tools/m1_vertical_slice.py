@@ -19,7 +19,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from cryptobot.coordination import Coordinator, DataQuality, ForecastCost, Intent, Side
+from cryptobot.coordination import Coordinator, DataQuality, DecisionRecord, FeatureEvidence, ForecastCost, Intent, Side
 
 
 @dataclass
@@ -78,10 +78,15 @@ def main() -> int:
 
     now = datetime.now(timezone.utc)
     forecast = ForecastCost(fee_bps=5, spread_bps=5, slippage_bps=5, funding_bps=0)
+    record = DecisionRecord("synthetic-decision-1", Side.LONG, "compression",
+                            (FeatureEvidence("range120s", "120s", "<0.5*vol", "0.3*vol"),),
+                            "close>upper+flow", ("chase=pass", "depth=pass"),
+                            DataQuality.CLEAN)
     good = Intent("S1", "0.1.0-stub", "BTCUSDT", Side.LONG, now - timedelta(seconds=5),
                   67000.0, 67010.0, now + timedelta(seconds=60), 66850.0,
-                  "invalidation-or-300s", 300, forecast, "synthetic-decision-1",
+                  "invalidation-or-300s", 300, forecast, record.record_id,
                   DataQuality.CLEAN)
+    assert good.evidence_ref == record.record_id, "intent must point at its decision record"
     stale = Intent("S1", "0.1.0-stub", "BTCUSDT", Side.LONG, now - timedelta(seconds=120),
                    67000.0, 67010.0, now - timedelta(seconds=1), 66850.0,
                    "invalidation-or-300s", 300, forecast, "synthetic-decision-2",

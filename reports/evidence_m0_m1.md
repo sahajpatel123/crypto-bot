@@ -89,3 +89,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
 - Worker 1: turn-3 check, session reachable, no new messages, still awaiting
   owner authorization. Worker 3: turn-3 check, reachable, still no reply;
   no further nudge this turn — owner attention needed on that session.
+
+## Addendum — turn 4 (E-001 expanding; M1 wires decision records)
+
+- Worker 2: worktree holds untracked market_data/ + execution/ (order-manager
+  skeleton started). Still no commits, no outbox completion. Shared tree clean.
+- Manager change: M1 slice now builds a real DecisionRecord and asserts the
+  accepted Intent's evidence_ref points at it (synthetic content, labelled).
+- Checks: `pytest -q` 9 passed; M1 slice exit 0.
+- Worker 1: turn-4 check, reachable, no new messages, still awaiting owner
+  authorization. Worker 3: turn-4 check, reachable, still silent since kickoff.
