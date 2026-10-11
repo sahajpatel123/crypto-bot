@@ -1097,3 +1097,20 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   E-003 running -> accepted; W2 running -> idle (F-DATA-01 queued
   next). V-001R (W1) still awaiting go-ahead; W3 idle.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 86 (E-004 dispatched to W2; F-DATA-01 unblocked)
+- No new outbox filings, commits, or worker activity before dispatch;
+  tree clean on main at 8cb875c. W2 idle post-E-003; V-001R (W1)
+  still awaiting go-ahead; W3 idle.
+- Dispatched E-004 (F-DATA-01 discovery-label fix) to W2: inbox
+  coord/inbox/E-004.json (msg-E-004-01), branch worker2/e-004 from
+  8cb875c, acceptance = close the gap via (a) input_class
+  INPUT_OBSERVED + refreshed live sample (preferred) or (b) narrowed
+  README claim, W2 decides with justification. Board: E-004 assigned,
+  W2 idle -> awaiting-go-ahead (ack pending). Dispatch message sent to
+  cloud-vega (transport handoff, delivery unconfirmed); durable record
+  is inbox + board.
+- D-009 note: manager dispatch timestamp was briefly written to W2's
+  last_heartbeat_utc and immediately reverted to 15:02:32Z — manager
+  contact is not worker-originated contact.
+- Suite 104/104, evidence gate exit 0.
