@@ -1,0 +1,211 @@
+"""Fault-injectable fake venue for order-manager verification (Worker 2, E-001).
+
+The fake venue models the failure modes a real venue exhibits: ambiguous
+timeouts (request outcome unknown), rejections, and partial fills. Faults are
+programmed explicitly per test via ``fail_next_submit``; there is no randomness.
+
+Timeout ambiguity is the critical case: ``received=True`` means the order
+reached the matching engine even though the client saw a timeout (retrying
+blindly would double exposure), while ``received=False`` means it never
+arrived (retry with a new client ID is safe). Only reconciliation — querying
+the venue — distinguishes the two.
+"""
+from __future__ import annotations
+
+from collections import deque
+from dataclasses import dataclass, field
+from typing import Callable
+
+
+class VenueTimeoutError(Exception):
+    """Submit timed out; order state on the venue is UNKNOWN (ambiguous)."""
+
+
+@dataclass(frozen=True)
+class Fill:
+    client_id: str
+    symbol: str
+    price: float
+    qty: float
+
+
+@dataclass(frozen=True)
+class SubmitResult:
+    client_id: str
+    accepted: bool
+    reason: str
+
+
+@dataclass(frozen=True)
+class VenueOrderView:
+    client_id: str
+    symbol: str
+    side: str  # "BUY" | "SELL"
+    kind: str  # "MARKET" | "LIMIT" | "STOP_MARKET" | "TAKE_PROFIT_MARKET"
+    qty: float
+    price: float | None
+    stop_price: float | None
+    status: str  # NEW | PARTIALLY_FILLED | FILLED | REJECTED | CANCELLED
+    filled_qty: float
+    avg_price: float | None
+
+
+@dataclass
+class _Order:
+    client_id: str
+    symbol: str
+    side: str
+    kind: str
+    qty: float
+    price: float | None
+    stop_price: float | None
+    status: str = "NEW"
+    filled_qty: float = 0.0
+    fill_notional: float = 0.0
+    pending_fractions: list[float] = field(default_factory=list)
+
+    def view(self) -> VenueOrderView:
+        avg = self.fill_notional / self.filled_qty if self.filled_qty > 0 else None
+        return VenueOrderView(
+            client_id=self.client_id, symbol=self.symbol, side=self.side,
+            kind=self.kind, qty=self.qty, price=self.price,
+            stop_price=self.stop_price, status=self.status,
+            filled_qty=self.filled_qty, avg_price=avg,
+        )
+
+
+@dataclass(frozen=True)
+class _Fault:
+    mode: str  # "timeout" | "reject" | "partial"
+    received: bool = False  # for timeout: did the order reach the engine?
+    reason: str = "injected-fault"
+    fractions: tuple[float, ...] = (0.5, 0.5)  # for partial: first fills now, rest on settle()
+
+
+class FakeVenue:
+    def __init__(self, now_ms: Callable[[], int] | None = None) -> None:
+        self._now_ms = now_ms or (lambda: 0)
+        self._orders: dict[str, _Order] = {}
+        self._faults: deque[_Fault] = deque()
+        self._last_price: dict[str, float] = {}
+        self.fills: list[Fill] = []
+
+    # -- fault programming -------------------------------------------------
+    def fail_next_submit(
+        self,
+        mode: str,
+        *,
+        received: bool = False,
+        reason: str = "injected-fault",
+        fractions: tuple[float, ...] = (0.5, 0.5),
+    ) -> None:
+        if mode not in ("timeout", "reject", "partial"):
+            raise ValueError(f"unknown fault mode: {mode!r}")
+        self._faults.append(_Fault(mode, received, reason, fractions))
+
+    # -- venue API ---------------------------------------------------------
+    def submit(
+        self,
+        client_id: str,
+        symbol: str,
+        side: str,
+        kind: str,
+        qty: float,
+        price: float | None = None,
+        stop_price: float | None = None,
+    ) -> SubmitResult:
+        if qty <= 0:
+            raise ValueError("qty must be > 0")
+        existing = self._orders.get(client_id)
+        if existing is not None:
+            # Idempotent client ID: no duplicate order, report current state.
+            return SubmitResult(client_id, existing.status != "REJECTED", f"duplicate-client-id:{existing.status}")
+        fault = self._faults.popleft() if self._faults else None
+        if fault is not None and fault.mode == "reject":
+            self._orders[client_id] = _Order(client_id, symbol, side, kind, qty, price, stop_price, status="REJECTED")
+            return SubmitResult(client_id, False, fault.reason)
+        order = _Order(client_id, symbol, side, kind, qty, price, stop_price)
+        if fault is not None and fault.mode == "timeout":
+            if fault.received:
+                self._orders[client_id] = order
+                self._try_immediate_fill(order)
+            raise VenueTimeoutError(fault.reason)
+        self._orders[client_id] = order
+        if fault is not None and fault.mode == "partial":
+            order.pending_fractions = list(fault.fractions[1:])
+            self._apply_fill(order, order.qty * fault.fractions[0], self._ref_price(order))
+            if order.filled_qty < order.qty:
+                order.status = "PARTIALLY_FILLED"
+            return SubmitResult(client_id, True, "accepted-partial")
+        self._try_immediate_fill(order)
+        return SubmitResult(client_id, True, "accepted")
+
+    def query(self, client_id: str) -> VenueOrderView | None:
+        """Reconciliation read. Returns None when the venue never saw the ID."""
+        order = self._orders.get(client_id)
+        return order.view() if order is not None else None
+
+    def cancel(self, client_id: str) -> VenueOrderView | None:
+        order = self._orders.get(client_id)
+        if order is None or order.status in ("FILLED", "REJECTED", "CANCELLED"):
+            return order.view() if order is not None else None
+        order.status = "CANCELLED"
+        order.pending_fractions.clear()
+        return order.view()
+
+    def set_last_price(self, symbol: str, price: float) -> list[Fill]:
+        """Advance the market; trigger resting stop/target orders."""
+        self._last_price[symbol] = price
+        triggered: list[Fill] = []
+        for order in self._orders.values():
+            if order.symbol != symbol or order.status not in ("NEW", "PARTIALLY_FILLED"):
+                continue
+            if order.kind in ("STOP_MARKET", "TAKE_PROFIT_MARKET") and order.stop_price is not None:
+                if self._stop_triggered(order, price):
+                    triggered.extend(self._fill_rest(order, price))
+        return triggered
+
+    def settle(self) -> list[Fill]:
+        """Advance pending partial fills by one fraction per order."""
+        settled: list[Fill] = []
+        for order in self._orders.values():
+            if order.pending_fractions and order.status == "PARTIALLY_FILLED":
+                fraction = order.pending_fractions.pop(0)
+                settled.extend(self._apply_fill(order, order.qty * fraction, self._ref_price(order)))
+        return settled
+
+    # -- internals ---------------------------------------------------------
+    def _ref_price(self, order: _Order) -> float:
+        if order.price is not None:
+            return order.price
+        return self._last_price.get(order.symbol, 0.0)
+
+    def _try_immediate_fill(self, order: _Order) -> None:
+        if order.kind in ("MARKET", "LIMIT"):
+            self._fill_rest(order, self._ref_price(order))
+
+    def _stop_triggered(self, order: _Order, price: float) -> bool:
+        assert order.stop_price is not None
+        # Exit semantics: SELL stop triggers at/below stop, SELL target at/above stop.
+        if order.kind == "STOP_MARKET":
+            return price <= order.stop_price if order.side == "SELL" else price >= order.stop_price
+        return price >= order.stop_price if order.side == "SELL" else price <= order.stop_price
+
+    def _fill_rest(self, order: _Order, price: float) -> list[Fill]:
+        remaining = order.qty - order.filled_qty
+        if remaining <= 0:
+            return []
+        return self._apply_fill(order, remaining, price)
+
+    def _apply_fill(self, order: _Order, qty: float, price: float) -> list[Fill]:
+        order.filled_qty += qty
+        order.fill_notional += qty * price
+        if order.filled_qty >= order.qty - 1e-12:
+            order.filled_qty = order.qty
+            order.status = "FILLED"
+            order.pending_fractions.clear()
+        else:
+            order.status = "PARTIALLY_FILLED"
+        fill = Fill(order.client_id, order.symbol, price, qty)
+        self.fills.append(fill)
+        return [fill]
