@@ -2669,3 +2669,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   $755.60 +0.714% hi 757.27 lo 744.91 qvol $0.15B.
   Single-sample, not a regime claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 234 (ticker PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at be981d8. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public 24h ticker (fetch 480ms): XRP last $1.4169
+  +0.804% hi 1.4260 lo 1.3865 qvol $0.38B; DOGE last
+  $0.086940 +0.917% hi 0.087320 lo 0.084850 qvol $0.18B.
+  Single-sample, not a regime claim. PASS.
+- Suite 104/104, evidence gate exit 0.
