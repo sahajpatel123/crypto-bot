@@ -73,3 +73,8 @@ Meta Muse Spark.
   verified files are copied to main with the authoring worker, source branch,
   and hash/diff evidence named in the commit; worker branches stay the source
   of truth until the worker commits if/when authorized.
+- D-009: Heartbeat semantics tightened: last_heartbeat_utc advances only on
+  worker-originated contact (message, outbox file, ack) or newly observed
+  worker-produced evidence (commits, diffs, files). The manager's own turns
+  do not refresh it. The 30-minute stall rule in coord/README applies to
+  running tasks without such contact.
