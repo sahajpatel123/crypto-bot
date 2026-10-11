@@ -3466,3 +3466,16 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   2544.47/2544.48/2544.49 spread 0.01.
   Single-sample, not a liquidity claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 306 (XRP/DOGE book PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at bc8f10f. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public depth limit=5 top-3 (fetch 542ms):
+  XRPUSDT bid 1.4213/1.4212/1.4211 ask
+  1.4214/1.4215/1.4216 spread 0.0001;
+  DOGEUSDT bid 0.0872/0.0871/0.0871 ask
+  0.0872/0.0872/0.0872 spread 0.0000.
+  Single-sample, not a liquidity claim. PASS.
+- Suite 104/104, evidence gate exit 0.
