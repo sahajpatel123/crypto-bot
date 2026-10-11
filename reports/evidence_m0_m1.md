@@ -2338,3 +2338,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   ($755.88). Four-symbol funding set complete. Single-sample
   datum, not a cost claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 203 (funding-timing PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 4fdae2f. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public premiumIndex (fetch 509ms): BTC nextFunding
+  2026-10-12T00:00:00Z lastRate +0.0012%; ETH nextFunding
+  2026-10-12T00:00:00Z lastRate +0.0015%. Single-sample
+  datum, not a cost claim. PASS.
+- Suite 104/104, evidence gate exit 0.
