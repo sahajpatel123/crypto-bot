@@ -3595,3 +3595,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
 - Git safety: bundled:git skill re-read; objective text explicitly
   asks commit+push, authorising history writes.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 317 (BTC/ETH OI-history PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 43ad937. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public openInterestHist 5m x2 latest + ticker prices (fetch
+  1211ms): BTC OIV 92,969.0 px 83,955.90; ETH
+  OIV 2,315,086.7 px 2,545.11 @17:26Z.
+  Single-sample, not a flow claim. PASS.
+- Suite 104/104, evidence gate exit 0.
