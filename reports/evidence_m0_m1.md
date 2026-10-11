@@ -4191,3 +4191,11 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
 - Public openInterest x1 (fetch 611ms): BTC 92785.703; ETH
   2323483.934. Single-sample, not a positioning claim. PASS.
 - Suite 105/105, evidence gate exit 0.
+
+## Addendum — turn 376 (XRP/DOGE OI PASS, cycle 3)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 8468c3e. E-004 accepted; W2 standing by. V-001R (W1)
+  still awaiting go-ahead; W3 idle.
+- Public openInterest x1 (fetch 458ms): XRP 295000374.5; DOGE
+  2711960900. Single-sample, not a positioning claim. PASS.
+- Suite 105/105, evidence gate exit 0.
