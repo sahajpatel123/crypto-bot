@@ -2196,3 +2196,17 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   $0.14B, 397,495 trades. Single-sample datum, not a
   regime/liquidity claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 190 (bookTicker snapshot PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at ff9456f. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- First attempt: multi-symbol `symbols` param returned the full
+  universe book and a quarterly contract (BTCUSDT_260925, bid 0.0)
+  broke the spread math (ZeroDivisionError) — probe fixed, not a
+  venue failure. Re-ran per-symbol.
+- Public bookTicker (fetch 1185ms): BTC spread 0.01bps,
+  ETH 0.04bps, SOL 0.89bps, BNB 0.13bps. Single-sample
+  datum, not a cost claim. PASS.
+- Suite 104/104, evidence gate exit 0.
