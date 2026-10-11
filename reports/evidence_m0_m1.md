@@ -2541,3 +2541,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   92,950.060 ($7.80B); ETH 2,304,780.071 ($5.86B).
   Single-sample, not a leverage claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 222 (openInterest PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at ee6d40d. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public current openInterest (fetch 944ms): SOL
+  8,481,463.150 ($949.2M); BNB 560,602.900 ($424.0M).
+  Single-sample, not a leverage claim. PASS.
+- Suite 104/104, evidence gate exit 0.
