@@ -83,3 +83,7 @@ tasks. v0.1.0 remains the implemented baseline until those land.
   via reconciliation.
 - Restart reconciliation covers reservations: any reservation without a
   matching live entry/order after recovery is released with a logged reason.
+- Code: `cryptobot.coordination.RiskOutcomeSink` (manager-owned Protocol).
+  E-003 stubs and the future V-001 wiring both conform to it; signatures
+  mirror the V-001 policy surface (release → bool, note_fill(id),
+  note_flat()).

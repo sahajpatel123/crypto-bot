@@ -298,3 +298,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
 - M1 slice re-run post-E-002-integration (4th determinism confirmation):
   evidence_bar 154, 1 rejected, 1 fill, ambiguous-reconciled-no-duplicate
   — identical shape to prior runs. Suite 86/86.
+
+## Addendum — turn 23 (shared v0.1.1 callback interface)
+
+- Manager defined the shared execution→risk callback interface before E-003
+  starts (interface-before-implementation duty): new manager-owned
+  cryptobot.coordination.RiskOutcomeSink Protocol + conformance test.
+  Signatures mirror the V-001 policy surface exactly (read from the w3
+  worktree, not invented): note_fill(id), release(id)->bool,
+  note_flat(). CONTRACTS addendum points to the module. FYI sent to
+  Worker 2: build the E-003 recording stub against it. Suite 87/87.
