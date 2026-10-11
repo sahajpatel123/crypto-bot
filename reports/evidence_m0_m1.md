@@ -4960,3 +4960,8 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   rate0.00001163 T1791734400002. Single-sample, not
   a cost/positioning claim. PASS. Suite 167/167,
   evidence gate exit 0.
+- Turn-449 (cycle 5): public fundingRate x1 (XRP 283ms,
+  DOGE 216ms): XRP rate0.00006007 T1791734400002; DOGE
+  rate0.00003448 T1791734400002. Single-sample, not
+  a cost/positioning claim. PASS. Suite 167/167,
+  evidence gate exit 0.
