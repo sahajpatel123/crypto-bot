@@ -1929,3 +1929,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   funding across the window). Single-sample funding datum, not
   a funding-cost claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 165 (BNB depth snapshot PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 555e917. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public depth BNBUSDT x20 (fetch 551ms): mid $753.71, spread
+  0.13bps, bid20 $107k / ask20 $257k, last $753.70. Joins
+  BTC/ETH/SOL depth snapshots; single-sample book datum, not a
+  liquidity claim. PASS.
+- Suite 104/104, evidence gate exit 0.
