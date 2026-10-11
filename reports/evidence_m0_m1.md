@@ -2520,3 +2520,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   buy-initiated 134.8 / sell-initiated 45.6 last $755.66.
   Single-sample, not a flow claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 220 (funding-timing PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at c126046. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public premiumIndex (fetch 600ms): SOL mark $112.022
+  lastRate +0.0080%; BNB mark $756.346 lastRate +0.0000%;
+  both nextFunding 2026-10-12T00:00:00Z.
+  Single-sample, not a cost claim. PASS.
+- Suite 104/104, evidence gate exit 0.
