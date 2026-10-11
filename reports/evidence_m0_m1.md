@@ -5016,3 +5016,9 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   ask2533.44 bq6.134 aq248.674 sprd0.0100.
   Single-sample, not a spread/depth claim. PASS.
   Suite 167/167, evidence gate exit 0.
+- Turn-458 (cycle 5): public bookTicker (XRP 377ms,
+  DOGE 294ms): XRP bid1.4082 ask1.4083 bq53799.2
+  aq48138.2 sprd0.000100; DOGE bid0.086710
+  ask0.086720 bq191941 aq513932 sprd0.000010.
+  Single-sample, not a spread/depth claim. PASS.
+  Suite 167/167, evidence gate exit 0.
