@@ -2233,3 +2233,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   0.826/1.259/1.368/1.158/2.187/0.928, last 0.928.
   Single-sample datum, not a flow claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 193 (BNB taker-L/S snapshot PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 0e58a17. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public takerlongshortRatio BNB 5m x6 (fetch 271ms):
+  1.384/1.667/1.018/1.894/0.579/0.942, last 0.942.
+  Single-sample datum, not a flow claim. PASS.
+- Suite 104/104, evidence gate exit 0.
