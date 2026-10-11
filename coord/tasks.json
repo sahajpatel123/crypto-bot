@@ -293,6 +293,16 @@
    "owner_session": "cool-amalthea",
    "role": "Worker 3 \u2014 Risk, Verification and Reliability Engineer",
    "state": "accepted"
+  },
+  "V-005": {
+   "branch": "none required (read-only verify)",
+   "contract_version": "v0.2.0",
+   "dispatch_utc": "2026-10-11T22:50:00Z",
+   "inbox": "coord/inbox/V-005.json",
+   "note": "Dispatched: independent E-006 verification (both-confirm rule). Ack pending; first two session sends returned containment-limited, inbox is the durable record.",
+   "owner_session": "cool-amalthea",
+   "role": "Worker 3 \u2014 Risk, Verification and Reliability Engineer",
+   "state": "assigned"
   }
  },
  "updated_utc": "2026-10-11T15:10:35Z",
