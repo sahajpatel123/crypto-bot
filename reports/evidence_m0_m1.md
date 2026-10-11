@@ -3549,3 +3549,15 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   0.0873>0.0873v3,408,264 | 0.0873>0.0873v1,472,331
   forming @17:22Z. Single-sample, not a price claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 313 (SOL/BNB kline PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 75cd817. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public klines 1m x2 (fetch 460ms):
+  SOLUSDT 112.22>112.27v12,911 |
+  112.27>112.26v3,189 forming; BNBUSDT
+  756.65>756.64v159 | 756.64>756.48v56
+  forming @17:23Z. Single-sample, not a price claim. PASS.
+- Suite 104/104, evidence gate exit 0.
