@@ -3969,3 +3969,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   O112.3700 C112.3800; BNB O755.720 C755.820 / O755.810 C755.750.
   Single-sample, not a regime claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 353 (BTC/ETH ticker PASS, cycle 2)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 372e36b. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public ticker/24hr x1 (fetch 469ms): BTC last 83931.80 +0.974%;
+  ETH last 2544.45 +1.459%. Single-sample, not a momentum claim.
+  Git skill re-read pre-push. PASS.
+- Suite 104/104, evidence gate exit 0.
