@@ -929,3 +929,16 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   across runs, gaps empty — the replayer is stable on a second,
   newly-captured observed file, not just the committed sample. PASS.
 - Suite 87/87, evidence gate exit 0.
+
+## Addendum — turn 71 (contract-version coherence; still awaiting go-aheads)
+
+- No new outbox filings, commits, or worker activity; E-003 (W2) +
+  V-001R (W1, ~80min wait) still await worker-side go-aheads. W3 idle.
+  The ~60min V-001R flag (turn 57) stands; no manager-side unblock.
+- Swept contract-version pins: all 12 coord inbox/outbox files pin a
+  version; v0.1.0 baseline cited 30x, v0.1.1 7x. Placement is correct:
+  E-003 inbox pins v0.1.1 (4x, implements the addendum), V-001 outbox
+  cites it only as "addendum proposed", workers.json only in tracking
+  notes, and V-001R inbox pins v0.1.0 only (verbatim repro of the V-001
+  baseline). CONTRACTS.md carries both baseline + addendum. PASS.
+- Suite 87/87, evidence gate exit 0.
