@@ -1871,3 +1871,15 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   weighting; single-sample cost-input datum, not an execution
   cost claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 160 (universe re-census PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 6bbf318. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public exchangeInfo re-census (fetch 444ms): 924 total symbols,
+  523 eligible (PERPETUAL + USDT margin + TRADING + COIN
+  underlying; TradFi/expiry/non-trading excluded per
+  discovery contract). Single-sample census datum, not a
+  membership claim. PASS.
+- Suite 104/104, evidence gate exit 0.
