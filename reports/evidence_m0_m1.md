@@ -854,3 +854,18 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   (D-003) so no direct edit — queued for the next W2 dispatch after
   E-003. PARTIAL PASS with finding.
 - Suite 87/87, evidence gate exit 0.
+
+## Addendum — turn 65 (F-DATA-01 scoping; still awaiting go-aheads)
+
+- No new outbox filings, commits, or worker activity; E-003 (W2) +
+  V-001R (W1, ~69min wait) still await worker-side go-aheads. W3 idle.
+  The ~60min V-001R flag (turn 57) stands; no manager-side unblock.
+- Scoped F-DATA-01 in code: discovery_summary() (market_data/
+  discovery.py) emits no input_class field — the observed-public label
+  machinery exists only in the recorder path (klines JSONL). Fix is
+  either (a) one-line code: add input_class INPUT_OBSERVED to the
+  summary + refresh the committed sample, or (b) doc-only: narrow the
+  README claim to recording files. All touched files are W2-owned
+  (D-003); manager recommendation is (a), W2 decides. Dispatch-ready
+  input for the post-E-003 W2 task. PASS (scoping).
+- Suite 87/87, evidence gate exit 0.
