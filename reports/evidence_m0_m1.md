@@ -5183,3 +5183,8 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   8477439.57; BNB 564923.52
   @T1791747000000. No price in rows. PASS.
   Suite 167/167, evidence gate exit 0.
+- Turn-484 (cycle 6): public fundingRate x1
+  (BTC 319ms, ETH 278ms): BTC
+  0.00001347; ETH 0.00001163
+  @T1791734400002. PASS. Suite 167/167,
+  evidence gate exit 0.
