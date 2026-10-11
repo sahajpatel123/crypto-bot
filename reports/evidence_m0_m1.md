@@ -5258,3 +5258,7 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   111.3900/111.4000; BNB top 753.450/
   753.460. PASS. Suite 167/167,
   evidence gate exit 0.
+- Turn-499 (cycle 6): public premiumIndex
+  x1 (BTC 251ms, ETH 287ms): BTC mark
+  83683.68; ETH mark 2536.16. PASS.
+  Suite 167/167, evidence gate exit 0.
