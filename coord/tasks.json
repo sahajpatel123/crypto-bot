@@ -165,6 +165,16 @@
    "role": "Worker 1 \u2014 Quant Research and Strategy Engineer",
    "state": "accepted"
   },
+  "Q-004": {
+   "branch": "worker1/q-004 from origin/main at 6915858",
+   "contract_version": "v0.2.0",
+   "dispatch_utc": "2026-10-11T22:05:00Z",
+   "inbox": "coord/inbox/Q-004.json",
+   "note": "Dispatched: S3/S4 implementation + S5 ruling per directive Sec 5, parallel with E-006. Ack pending.",
+   "owner_session": "whisper-redshift",
+   "role": "Worker 1 \u2014 Quant Research and Strategy Engineer",
+   "state": "assigned"
+  },
   "V-001": {
    "acceptance": [
     "Risk invariants + acceptance conditions covering sizing, leverage/margin/exposure, halts, persistence",
