@@ -1918,3 +1918,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   ETH/BTC depth snapshots; single-sample book datum, not a
   liquidity claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 164 (BNB funding-history snapshot PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at ef3aba0. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public fundingRate BNBUSDT x6 8h cadence (fetch 244ms): all six
+  settlements 10-09 16:00→10-11 08:00 UTC +0.00000% (flat/zero
+  funding across the window). Single-sample funding datum, not
+  a funding-cost claim. PASS.
+- Suite 104/104, evidence gate exit 0.
