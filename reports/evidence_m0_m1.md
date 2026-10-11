@@ -4475,3 +4475,12 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   DOGE 327 BUY @0.086950. Single-sample, not a
   liquidity claim. PASS.
 - Suite 105/105, evidence gate exit 0.
+
+## Addendum — turn 407 (SOL/BNB aggTrades PASS, cycle 4)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 1c3621f. E-004 accepted; W2 standing by. V-001R (W1)
+  still awaiting go-ahead; W3 idle.
+- Public aggTrades x3 (fetch 659ms): SOL 282.09 BUY
+  @111.9300; BNB 4.11 SELL @753.930. Single-sample, not a
+  liquidity claim. PASS.
+- Suite 105/105, evidence gate exit 0.
