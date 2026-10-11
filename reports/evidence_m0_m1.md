@@ -5163,3 +5163,8 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   Single-sample, not a positioning claim.
   PASS. Suite 167/167, evidence gate
   exit 0.
+- Turn-480 (cycle 6): public openInterest
+  (SOL 251ms, BNB 235ms): SOL 8480371.79;
+  BNB 564597.41. Single-sample, not a
+  positioning claim. PASS. Suite 167/167,
+  evidence gate exit 0.
