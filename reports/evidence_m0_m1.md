@@ -3033,3 +3033,15 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   Prices via separate ticker call. Single-sample, not a
   leverage/flow claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 268 (SOL/BNB OI-history PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 5b6d96d. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public openInterestHist 1h x2 (fetch 938ms): SOLUSDT OI
+  [8,601,759.2, 8,509,202.3] price 112.27; BNBUSDT OI
+  [562,863.0, 561,282.2] price 757.56.
+  Prices via separate ticker call. Single-sample, not a
+  leverage/flow claim. PASS.
+- Suite 104/104, evidence gate exit 0.
