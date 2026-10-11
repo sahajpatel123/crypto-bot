@@ -5022,3 +5022,9 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   ask0.086720 bq191941 aq513932 sprd0.000010.
   Single-sample, not a spread/depth claim. PASS.
   Suite 167/167, evidence gate exit 0.
+- Turn-459 (cycle 5): public bookTicker (SOL 315ms,
+  BNB 286ms): SOL bid111.3400 ask111.3500
+  bq2322.17 aq441.08 sprd0.0100; BNB bid752.610
+  ask752.620 bq1.60 aq110.25 sprd0.0100.
+  Single-sample, not a spread/depth claim. PASS.
+  Suite 167/167, evidence gate exit 0.
