@@ -4493,3 +4493,12 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   ETH 2323929.138. Single-sample, not a leverage claim.
   PASS.
 - Suite 105/105, evidence gate exit 0.
+
+## Addendum — turn 409 (XRP/DOGE OI PASS, cycle 4)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 901a1eb. E-004 accepted; W2 standing by. V-001R (W1)
+  still awaiting go-ahead; W3 idle.
+- Public openInterest x1 (fetch 462ms): XRP 294836546.6;
+  DOGE 2709791708. Single-sample, not a leverage claim.
+  PASS.
+- Suite 105/105, evidence gate exit 0.
