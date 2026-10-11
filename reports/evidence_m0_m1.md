@@ -2455,3 +2455,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   ask 0.08686x755,534 spread 1.15bp. Single-sample, not a
   liquidity claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 214 (taker PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 161d1ff. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public takerlongshortRatio 5m (fetch 536ms): XRP 0.563
+  (buy 816,974 / sell 1,450,352); DOGE 0.290 (buy 6,550,591 /
+  sell 22,567,018). Single-sample, not a flow claim. PASS.
+- Suite 104/104, evidence gate exit 0.
