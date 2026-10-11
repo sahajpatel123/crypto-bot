@@ -2476,3 +2476,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   08Z +0.0044% / 16Z +0.0034%. Single-sample, not a cost
   claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 216 (bookTicker PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at cdb7bd9. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public per-symbol bookTicker (fetch 541ms): BTC bid
+  83784.5x11.618 / ask 83784.6x2.534 spread 0.01bp; ETH bid
+  2537.34x1.941 / ask 2537.35x484.509 spread 0.04bp.
+  Single-sample, not a cost claim. PASS.
+- Suite 104/104, evidence gate exit 0.
