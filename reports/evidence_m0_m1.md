@@ -2561,3 +2561,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   297,104,301.8 ($422.0M); DOGE 2,701,949,981.0 ($235.4M).
   Single-sample, not a leverage claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 224 (taker PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 380c4cc. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public takerlongshortRatio 5m (fetch 613ms): BTC 0.980
+  (buy 154 / sell 157); ETH 1.852 (buy 6,035 / sell 3,259).
+  Single-sample, not a flow claim. PASS.
+- Suite 104/104, evidence gate exit 0.
