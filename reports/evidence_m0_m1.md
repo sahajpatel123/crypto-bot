@@ -1962,3 +1962,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   BTC/ETH taker data; single-sample taker datum, not a flow
   claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 168 (BNB taker-L/S snapshot PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at e33a76c. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public takerlongshortRatio BNBUSDT 5m x6 (fetch 249ms):
+  0.599/2.359/0.700/1.384/1.667/1.018, last 1.018. Joins
+  BTC/ETH/SOL taker data; single-sample taker datum, not a
+  flow claim. PASS.
+- Suite 104/104, evidence gate exit 0.
