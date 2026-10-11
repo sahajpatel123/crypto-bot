@@ -1,8 +1,11 @@
-"""Fault-injectable fake venue for order-manager verification (Worker 2, E-001).
+"""Fault-injectable fake venue for order-manager verification (Worker 2, E-001/E-005).
 
-The fake venue models the failure modes a real venue exhibits: ambiguous
-timeouts (request outcome unknown), rejections, and partial fills. Faults are
-programmed explicitly per test via ``fail_next_submit``; there is no randomness.
+FAULT SIMULATOR ONLY — never a profitability fill model. It models failure
+modes a real venue exhibits: ambiguous timeouts (request outcome unknown),
+rejections, partial fills, late fills and exit races. Faults are programmed
+explicitly per test via ``fail_next_submit``/``inject_fill``; there is no
+randomness. Instant LIMIT fills at the submitted price exercise the state
+machine; economic evaluation must use the research simulator instead.
 
 Timeout ambiguity is the critical case: ``received=True`` means the order
 reached the matching engine even though the client saw a timeout (retrying
@@ -180,6 +183,22 @@ class FakeVenue:
                 fraction = order.pending_fractions.pop(0)
                 settled.extend(self._apply_fill(order, order.qty * fraction, self._ref_price(order)))
         return settled
+
+    def inject_fill(self, client_id: str, qty: float, price: float) -> list[Fill]:
+        """FAULT SIMULATOR: force a fill onto an order (late-fill / exit-race cases).
+
+        Works even on CANCELLED orders to model the cancel race (fill landed
+        before the cancel processed, report arrived after). Rejected orders
+        can never fill.
+        """
+        order = self._orders.get(client_id)
+        if order is None:
+            raise KeyError(f"unknown order: {client_id}")
+        if order.status == "REJECTED":
+            raise ValueError("cannot fill a rejected order")
+        if qty <= 0:
+            raise ValueError("qty must be > 0")
+        return self._apply_fill(order, qty, price)
 
     # -- internals ---------------------------------------------------------
     def _ref_price(self, order: _Order) -> float:
