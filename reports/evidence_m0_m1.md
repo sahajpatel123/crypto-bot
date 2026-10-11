@@ -2946,3 +2946,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   16:51Z c 112.18; BNB 16:50Z c 757.11 / 16:51Z c 757.14.
   Single-sample, not a regime claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 260 (BTC/ETH tape PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at f6c8e67. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public aggTrades n=5 (fetch 480ms): BTC last 83912.90,
+  buy 0.0120 / sell 0.0210; ETH last 2551.88,
+  buy 0.0860 / sell 0.8570.
+  Single-sample, not a flow claim. PASS.
+- Suite 104/104, evidence gate exit 0.
