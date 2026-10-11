@@ -3479,3 +3479,15 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   0.0872/0.0872/0.0872 spread 0.0000.
   Single-sample, not a liquidity claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 307 (SOL/BNB book PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 188df33. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public depth limit=5 top-3 (fetch 469ms):
+  SOLUSDT bid 112.16/112.15/112.14 ask 112.17/112.18/112.19
+  spread 0.01; BNBUSDT bid 756.27/756.26/756.25 ask
+  756.28/756.29/756.30 spread 0.01.
+  Single-sample, not a liquidity claim. PASS.
+- Suite 104/104, evidence gate exit 0.
