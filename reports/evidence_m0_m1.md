@@ -5306,3 +5306,7 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   x1 (SOL 335ms, BNB 275ms): SOL 111.3300;
   BNB 753.510. PASS.
   Suite 167/167, evidence gate exit 0.
+- Turn-511 (cycle 7): public aggTrades
+  x1 (BTC 378ms, ETH 290ms): BTC 83629.00
+  x 0.029; ETH 2535.56 x 0.010. PASS.
+  Suite 167/167, evidence gate exit 0.
