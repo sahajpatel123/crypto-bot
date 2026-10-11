@@ -1654,3 +1654,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   ~$110.22 reference (~$951.8M notional). Third-symbol OI datum
   beside BNB/ETH; single sample, not a positioning claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 138 (SOL depth snapshot PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at ea50dec. E-004 acked (option a, W2 not started, worker-side
+  go-ahead pending); V-001R (W1) still awaiting go-ahead; W3 idle.
+- Public depth SOLUSDT limit=10 (fetch 249ms): mid ~$110.71,
+  spread 0.90bps; top-10 bid $2,161,289 / ask $1,719,184;
+  updateId 11788779995733. Completes BTC/ETH/BNB/SOL depth
+  coverage; single sample, not a liquidity claim. PASS.
+- Suite 104/104, evidence gate exit 0.
