@@ -1,0 +1,19 @@
+[project]
+name = "crypto-scalping-bot"
+version = "0.1.0"
+description = "Binance USDT-perpetual scalping research and simulation system (replay-first, no live orders)"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

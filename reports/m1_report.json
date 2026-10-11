@@ -1,0 +1,10 @@
+{
+  "slice": "M1",
+  "synthetic": true,
+  "coordinator_reason": "single-owner-selected",
+  "rejected_count": 1,
+  "risk": "approved:budget=0.2500",
+  "notional": 75.45438165807077,
+  "fills": 1,
+  "recovery": "ambiguous-reconciled-no-duplicate"
+}
