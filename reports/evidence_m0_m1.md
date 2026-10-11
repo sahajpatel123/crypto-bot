@@ -336,3 +336,17 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   capture_public discover → 924 symbols seen, 525 USDT-perp trading,
   525 eligible, fetch_latency_ms 936.3; replay_public on the observed
   BTCUSDT sample exits clean. Tooling remains live-green.
+
+## Addendum — turn 27 (contract conformance audit; still awaiting go-aheads)
+
+- No new outbox filings, commits, or worker activity; E-003 + V-001R still
+  await worker-side go-aheads.
+- Manager-run conformance audit on current main (all PASS):
+  (1) no `import nautilus` / `from nautilus` in src/ or tools/ — only
+  capability-matrix string labels + E-002 trial evidence, as designed
+  (D-011: engine is stdlib-urllib + fake venue);
+  (2) no BTCUSDT/ETHUSDT literals or symbol-list defaults in src/ or
+  tools/ — no hardcoded whitelist, discovery stays dynamic (observed
+  samples live only under data/observed/);
+  (3) no api_key/secret/private-key/password patterns in src/ or tools/ —
+  no credentials in code.
