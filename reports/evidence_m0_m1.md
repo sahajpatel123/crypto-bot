@@ -3219,3 +3219,15 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   755.91 lastFunding 0.0000 bps next 00:00Z.
   Single-sample, not a cost claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 284 (BTC/ETH 24hr-ticker PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at ad1ce4a. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public ticker/24hr (fetch 519ms): BTCUSDT last 83,758.60
+  +0.88% hi 84,024.40 lo 82,751.10 quoteVol 4,443,391,041
+  trades 995274; ETHUSDT last 2,542.00 +1.48% hi 2,553.76
+  lo 2,496.12 quoteVol 3,941,168,032 trades 1640834.
+  Single-sample, not a regime claim. PASS.
+- Suite 104/104, evidence gate exit 0.
