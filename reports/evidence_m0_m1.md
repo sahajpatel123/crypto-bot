@@ -2883,3 +2883,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   (BTCDOMUSDT, ALLUSDT) flagged.
   Single-sample, not an eligibility claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 254 (BTC/ETH spread PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 7f41685. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public bookTicker (fetch 624ms): BTCUSDT bid 83947.90 /
+  ask 83948.00, spread 0.01bp; ETHUSDT bid 2553.30 /
+  ask 2553.31, spread 0.04bp.
+  Single-sample, not a cost claim. PASS.
+- Suite 104/104, evidence gate exit 0.
