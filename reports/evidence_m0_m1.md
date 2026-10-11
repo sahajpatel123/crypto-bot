@@ -1280,3 +1280,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   ARM_BASE, long+short): identical decision digests 925a7df1... both
   runs; 6 intent fires, matching the FIRE_BARS [154..159] pin. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 101 (synthetic fixture seed-determinism PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at f6f54b6. E-004 acked (option a, W2 not started, worker-side
+  go-ahead pending); V-001R (W1) still awaiting go-ahead; W3 idle.
+- generate_fixture: same seed+scenario twice -> identical digest
+  f916bdaa0e50 (240 bars); different seed -> 79a9881ba2b8; different
+  scenario -> 24118ca70580. Seeded replay stable, variants distinct.
+  PASS.
+- Suite 104/104, evidence gate exit 0.
