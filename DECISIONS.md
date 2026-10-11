@@ -63,3 +63,13 @@ Meta Muse Spark.
   stays manager-owned. Uncommitted-branch-diff evidence is acceptable for
   review when a worker's git policy requires user authorization to commit;
   the manager reviews the diff and the worker commits if/when authorized.
+- D-007: V-001 finding F-E001-01/U-002 accepted as a real contract gap
+  (risk->execution handoff: reservation_id threading, fill/cancel/expire
+  outcome callbacks, halt->exit-only signal). Manager will draft a CONTRACTS
+  v0.1.1 addendum with E/V implementation follow-ups after Q-001/V-001 land.
+  F-E001-02 (venue-submit/log crash window) is must-fix before any real venue
+  (E-003 candidate); F-E001-03/04 nits + F-E001-05 note bundle into it.
+- D-008: Uncommitted worker diffs integrate via manager provenance commits:
+  verified files are copied to main with the authoring worker, source branch,
+  and hash/diff evidence named in the commit; worker branches stay the source
+  of truth until the worker commits if/when authorized.
