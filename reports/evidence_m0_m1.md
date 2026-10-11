@@ -2392,3 +2392,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   ask 2532.15x166.923 spread 0.04bp. Single-sample, not a
   liquidity claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 208 (depth PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at a3c4c28. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public depth limit=5 (fetch 547ms): SOL bid 111.62x481.78 /
+  ask 111.63x1273.62 spread 0.90bp; BNB bid 755.57x14.03 /
+  ask 755.58x115.16 spread 0.13bp. Single-sample, not a
+  liquidity claim. PASS.
+- Suite 104/104, evidence gate exit 0.
