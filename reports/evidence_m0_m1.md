@@ -4988,3 +4988,10 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   h753.220 l753.010 c753.130 v156.38 n330.
   Single-sample, not a trend/liquidity claim. PASS.
   Suite 167/167, evidence gate exit 0.
+- Turn-454 (cycle 5): public ticker/24hr (BTC 260ms,
+  ETH 219ms): BTC last83667.80 chg%0.811 h84180.00
+  l82751.10 qv4932168337.99 n1094330 T1791745528652;
+  ETH last2535.72 chg%0.954 h2553.76 l2496.12
+  qv4297359333.63 n1781304 T1791745527382.
+  Single-sample, not a volume/liquidity claim. PASS.
+  Suite 167/167, evidence gate exit 0.
