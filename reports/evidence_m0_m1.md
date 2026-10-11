@@ -5085,3 +5085,10 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   longAcc0.7391 shortAcc0.2609; T1791746100000.
   Single-sample, not a sentiment claim.
   PASS. Suite 167/167, evidence gate exit 0.
+- Turn-467 (cycle 5): public
+  globalLongShortAccountRatio 5m (XRP 286ms,
+  DOGE 213ms): XRP L/S2.2982 longAcc0.6968
+  shortAcc0.3032; DOGE L/S2.3557
+  longAcc0.7020 shortAcc0.2980; T1791746100000.
+  Single-sample, not a sentiment claim.
+  PASS. Suite 167/167, evidence gate exit 0.
