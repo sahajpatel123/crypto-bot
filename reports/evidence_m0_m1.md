@@ -3111,3 +3111,16 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   BNBUSDT buySellRatio 1.5327 (buy 13,978.5/sell 9,120.4).
   Single-sample, not a flow claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 275 (BTC/ETH depth PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 715cf72. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public depth limit=5 (fetch 468ms): BTCUSDT best
+  83,783.10x6.4020/83,783.20x2.0310 L5-notional
+  bid $652,418/ask $171,169; ETHUSDT best
+  2,542.92x131.3780/2,542.93x72.9160 L5-notional
+  bid $344,718/ask $205,896.
+  Single-sample, not a liquidity claim. PASS.
+- Suite 104/104, evidence gate exit 0.
