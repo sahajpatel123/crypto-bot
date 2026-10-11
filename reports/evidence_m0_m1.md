@@ -686,3 +686,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   board=accepted — cosmetic format variance, acceptance stands. All 7
   board tasks have states, zero orphans. PASS.
 - Suite 87/87, evidence gate exit 0.
+
+## Addendum — turn 52 (push-chain verification; still awaiting go-aheads)
+
+- No new outbox filings, commits, or worker activity; E-003 (W2, acked
+  14:11Z) + V-001R (W1, acked 13:44Z, ~57min wait) still await worker-side
+  go-aheads. W3 idle.
+- Independently verified the push chain: `git ls-remote origin main`
+  returns b7edc7f, byte-identical to local HEAD — every evidence
+  commit through turn 51 has landed on the remote, not just in the
+  local clone. PASS.
+- Suite 87/87, evidence gate exit 0.
