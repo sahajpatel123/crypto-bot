@@ -144,3 +144,13 @@ Meta Muse Spark.
   verified by direct probe. Integrated onto main via provenance
   copy (no path overlap with 8176d33..29a1a10); merged-tree
   verification: 167/167, slice exit 0, evidence gate exit 0.
+- D-015: CEO review directive accepted (baseline 871d104):
+  F-CEO-01..10 independently reproduced by manager probe
+  (realized 76.0 vs 16; adverse loss 4.568 vs budget 2.5;
+  partial-protection refusal + expiry release + re-approval
+  with open fill; TTL re-approval; deposit-triggered target
+  pause; NaN approved; gate exit 0 on injected failures;
+  inline M1 venue; stale E-004/coord state + README; stalled
+  data/research). Snapshot/test/commit loop STOPPED; logical
+  commits only. V-004 (W3), E-005 (W2), Q-003 (W1) dispatched;
+  manager owns MG-001. Live trading stays disabled.
