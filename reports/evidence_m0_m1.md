@@ -5122,3 +5122,8 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   T1791746100000. Single-sample, not a flow
   claim. PASS. Suite 167/167, evidence
   gate exit 0.
+- Turn-472 (cycle 5): public ticker/price
+  (BTC 324ms, ETH 342ms): BTC 83698.10;
+  ETH 2535.49. Single-sample, not a
+  valuation claim. PASS. Suite 167/167,
+  evidence gate exit 0.
