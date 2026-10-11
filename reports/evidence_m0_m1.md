@@ -4059,3 +4059,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   112.3900 x366.82; BNB top 755.580 x48.25 / 755.590 x19.09.
   Single-sample, not a liquidity claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 362 (BTC/ETH premiumIndex PASS, cycle 2)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at ff0a4dd. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public premiumIndex x1 (fetch 644ms): BTC mark 83911.40 /
+  index 83949.32; ETH mark 2543.06 / index 2544.58.
+  Single-sample, not a premium claim. PASS.
+- Suite 104/104, evidence gate exit 0.
