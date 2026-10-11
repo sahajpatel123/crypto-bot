@@ -671,3 +671,18 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   evidence list — all present; repro base verified 34/34 at turn 47.
   Both tasks are complete, fresh, and escalation-ready. PASS.
 - Suite 87/87, evidence gate exit 0.
+
+## Addendum — turn 51 (outbox-to-board consistency audit; still awaiting go-aheads)
+
+- No new outbox filings, commits, or worker activity; E-003 (W2, acked
+  14:11Z) + V-001R (W1, acked 13:44Z, ~56min wait) still await worker-side
+  go-aheads. W3 idle.
+- Compared each outbox filing's claimed state against tasks.json: E-001,
+  E-002, V-002 show outbox=review with board=accepted — the expected
+  pattern (worker claims review, manager accepts after inspection).
+  V-001 shows review/review, correctly awaiting V-001R. E-002's
+  verdict=blocked-on-transfer matches the D-011 record. Q-001's older
+  outbox shape lacks body.state but carries results + hashes with
+  board=accepted — cosmetic format variance, acceptance stands. All 7
+  board tasks have states, zero orphans. PASS.
+- Suite 87/87, evidence gate exit 0.
