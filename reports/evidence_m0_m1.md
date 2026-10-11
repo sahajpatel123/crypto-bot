@@ -3491,3 +3491,15 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   756.28/756.29/756.30 spread 0.01.
   Single-sample, not a liquidity claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 308 (BTC/ETH funding PASS; schema fix)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 8c561f2. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- First attempt KeyError 'lastPrice': premiumIndex carries no
+  lastPrice — last price read via ticker/price. Re-ran (fetch
+  862ms): BTCUSDT mark=83946.30 last=83929.60
+  funding=0.0017%; ETHUSDT mark=2545.74 last=2544.92
+  funding=0.0011%. Single-sample, not a cost claim. PASS.
+- Suite 104/104, evidence gate exit 0.
