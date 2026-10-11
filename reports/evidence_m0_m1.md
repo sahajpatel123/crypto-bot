@@ -2691,3 +2691,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   buy-init $1,387,708.8 / sell-init $73,268.2 last $2,541.75.
   Single-sample, not a flow claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 236 (tape PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at e6b557e. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public aggTrades n=100 (fetch 511ms): XRP buy-init
+  $97,151.4 / sell-init $56,200.3 last $1.41840; DOGE
+  buy-init $58,691.1 / sell-init $70,715.2 last $0.08707.
+  Single-sample, not a flow claim. PASS.
+- Suite 104/104, evidence gate exit 0.
