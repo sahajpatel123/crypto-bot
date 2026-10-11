@@ -110,8 +110,11 @@ def test_expiry_releases_without_stranding(tmp_path):
                          expire_at_utc=_expiring(), kind="STOP_MARKET",
                          reservation_id="r3")
     assert sink.calls == []  # live reservation: no callback yet.
-    manager.poll(NOW + timedelta(seconds=61))
-    assert sink.calls == [("release", "r3")]  # freed at expiry, never stranded.
+    manager.poll(NOW + timedelta(seconds=61))  # expired; settle window runs.
+    assert sink.calls == []  # no release until the cancel race settles.
+    manager.poll(NOW + timedelta(seconds=62))
+    manager.poll(NOW + timedelta(seconds=63))
+    assert sink.calls == [("release", "r3")]  # freed after settle, never stranded.
     manager.poll(NOW + timedelta(seconds=120))
     assert sink.calls == [("release", "r3")]
 
@@ -186,7 +189,11 @@ def test_recovery_releases_reservation_with_no_live_order(tmp_path):
                        expire_at_utc=_expiring(), kind="STOP_MARKET", reservation_id="r9")
     first.poll(NOW + timedelta(seconds=61))  # expired; no sink to tell.
     sink = RecordingSink()
-    OrderManager.recover(venue, tmp_path / "orders.jsonl", now_utc=lambda: NOW, outcome_sink=sink)
+    recovered = OrderManager.recover(venue, tmp_path / "orders.jsonl", now_utc=lambda: NOW,
+                                     outcome_sink=sink)
+    assert sink.calls == []  # settle window survives recovery; no instant release.
+    recovered.poll(NOW + timedelta(seconds=62))
+    recovered.poll(NOW + timedelta(seconds=63))
     assert sink.calls == [("release", "r9")]
     log_text = (tmp_path / "orders.jsonl").read_text()
     assert "no-live-order" in log_text
@@ -210,16 +217,25 @@ def test_recovery_never_refires_callbacks(tmp_path):
 def test_orphan_sweep_cancels_venue_order_with_no_local_record(tmp_path):
     venue = FakeVenue()
     venue.set_last_price("BTCUSDT", 67000.0)
-    # Simulate the F-E001-02 crash window: venue.submit landed, _log never ran.
-    venue.submit("ghost-1", "BTCUSDT", "SELL", "STOP_MARKET", 0.01, stop_price=66850.0)
-    venue.submit("ghost-2", "BTCUSDT", "BUY", "MARKET", 0.01)  # fills: terminal stranger.
     manager = _manager(venue, tmp_path, RecordingSink())
+    # Simulate the crash window precisely: intent persisted, venue.submit
+    # landed, the order record never did.
+    manager._log("ghost-1", "submit-intent", {"symbol": "BTCUSDT"})
+    manager._minted_ids.add("ghost-1")
+    manager._log("ghost-2", "submit-intent", {"symbol": "BTCUSDT"})
+    manager._minted_ids.add("ghost-2")
+    venue.submit("ghost-1", "BTCUSDT", "SELL", "STOP_MARKET", 0.01, stop_price=66850.0)
+    venue.submit("ghost-2", "BTCUSDT", "BUY", "MARKET", 0.01)  # fills: bot-owned terminal stranger.
+    venue.submit("foreign-1", "BTCUSDT", "SELL", "STOP_MARKET", 0.01, stop_price=1.0)
     swept = manager.sweep_venue_orphans()
     assert swept == ["ghost-1"]
     assert venue.query("ghost-1").status == "CANCELLED"
     assert venue.query("ghost-2").status == "FILLED"  # terminal: observed, untouched.
+    assert venue.query("foreign-1").status == "NEW"  # foreign: never touched.
     log_text = (tmp_path / "orders.jsonl").read_text()
-    assert "orphan-swept" in log_text and "orphan-observed-terminal" in log_text
+    assert "orphan-swept" in log_text
+    assert "orphan-observed-terminal" in log_text
+    assert "orphan-foreign-ignored" in log_text
 
 
 def test_recover_runs_orphan_sweep(tmp_path):
@@ -227,6 +243,7 @@ def test_recover_runs_orphan_sweep(tmp_path):
     manager = _manager(venue, tmp_path, RecordingSink())
     manager.submit_entry("BTCUSDT", "LONG", 0.01, 1.0,
                          expire_at_utc=_expiring(), kind="STOP_MARKET")
+    manager._log("ghost-3", "submit-intent", {"symbol": "BTCUSDT"})
     venue.submit("ghost-3", "BTCUSDT", "SELL", "STOP_MARKET", 0.01, stop_price=1.0)
     OrderManager.recover(venue, tmp_path / "orders.jsonl", now_utc=lambda: NOW,
                          outcome_sink=RecordingSink())

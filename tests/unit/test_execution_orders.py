@@ -125,7 +125,7 @@ def test_siblings_rejected_for_unfilled_entry(tmp_path):
     order = manager.submit_entry("BTCUSDT", "LONG", 0.01, 67005.0,
                                  expire_at_utc=NOW + timedelta(seconds=60),
                                  kind="STOP_MARKET")
-    with pytest.raises(ValueError, match="FILLED entry"):
+    with pytest.raises(ValueError, match="with fills"):
         manager.attach_siblings(order, stop_price=1.0, target_price=2.0)
 
 
