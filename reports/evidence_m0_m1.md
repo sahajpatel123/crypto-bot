@@ -1593,3 +1593,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   2,540 BTC. Volatility context for S1 compression/expansion
   calibration; single hour, not a regime claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 132 (BTC OI-history snapshot PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 9ca2961. E-004 acked (option a, W2 not started, worker-side
+  go-ahead pending); V-001R (W1) still awaiting go-ahead; W3 idle.
+- Public openInterestHist BTCUSDT 5m x12 (fetch 276ms): OI
+  93,361 -> 93,234 BTC, dOI -127 (-0.14%) over the hour. Adds
+  change context to earlier single-point OI snapshots. Single
+  snapshot, not a positioning claim. PASS.
+- Suite 104/104, evidence gate exit 0.
