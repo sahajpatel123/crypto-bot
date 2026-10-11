@@ -4875,3 +4875,24 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   3805675.0000); ts 1791743700000. Single-sample, not a
   flow claim. PASS.
 - Suite 148/148, evidence gate exit 0.
+
+## Addendum — turn 437 (Q-002 rebased onto main, SOL/BNB
+  taker PASS, cycle 4 CLOSED)
+- Q-002 nearing filing: W1 fast-forwarded worker1/q-002 to
+  8176d33 (turn-435 main, per the rebase-before-filing
+  instruction); same 18 file entries (S2/S3/S4 specs,
+  features/research/strategies code, EXP-002, S2 + updated
+  unit tests), all within allowed paths; no commits of its
+  own or outbox filing yet. Read-only check; manager
+  touched nothing. W3 idle (confirmed), W2 still awaiting
+  E-004 go-ahead (unchanged).
+- Public takerlongshortRatio 5m x1 (fetch 645ms): SOL
+  buySellRatio 0.3779 (buy 11459.3400 / sell 30324.2100),
+  ts 1791744000000; BNB buySellRatio 1.8796 (buy 253.2700
+  / sell 134.7500), ts 1791743700000. Single-sample, not
+  a flow claim. PASS.
+- Cycle 4 closed: turns 405-437, 33 snapshots
+  (aggTrades/OI/OI-hist/funding/klines/ticker/bookTicker/
+  depth/premiumIndex/L-S/taker x 3 pairs each). Next cycle
+  restarts at BTC/ETH aggTrades.
+- Suite 148/148, evidence gate exit 0.
