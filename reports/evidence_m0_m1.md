@@ -2403,3 +2403,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   ask 755.58x115.16 spread 0.13bp. Single-sample, not a
   liquidity claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 209 (tape PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 3d53f17. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public XRP aggTrades n=100 (fetch 256ms): buy-initiated
+  58,431.0 / sell-initiated 27,763.0 XRP, last $1.4180.
+  Single-sample, not a flow claim. PASS.
+- Suite 104/104, evidence gate exit 0.
