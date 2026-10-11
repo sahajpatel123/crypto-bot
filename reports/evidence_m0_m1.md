@@ -1062,3 +1062,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   correction inputs): S2 09e22e7a78f2, S3 4e5618eff6cc, S4 28bcded70d29,
   S5 147e5d2583ed — stability verifiable from here.
 - Suite 87/87, evidence gate exit 0.
+
+## Addendum — turn 83 (E-003 interface alignment; V-001R waiting)
+
+- W2 still advancing on worker2/e-003: order_manager.py now +163
+  (was +111), fake_venue.py steady. Read-only WIP scan shows exact
+  v0.1.1 vocabulary in the diff: reservation_id 42x, note_fill/
+  note_flat, release, exit_only/exit-only, RiskOutcomeSink 4x — aligned
+  with the shared Protocol, no interface drift. No interference, no
+  outbox filing yet; E-003 stays running. V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Suite 87/87, evidence gate exit 0.
