@@ -5010,3 +5010,9 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   T1791745710000. Single-sample, not a
   volume/liquidity claim. PASS. Suite 167/167,
   evidence gate exit 0.
+- Turn-457 (cycle 5): public bookTicker (BTC 267ms,
+  ETH 217ms): BTC bid83622.50 ask83622.60
+  bq1.000 aq10.567 sprd0.1000; ETH bid2533.43
+  ask2533.44 bq6.134 aq248.674 sprd0.0100.
+  Single-sample, not a spread/depth claim. PASS.
+  Suite 167/167, evidence gate exit 0.
