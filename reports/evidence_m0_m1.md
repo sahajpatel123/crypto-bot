@@ -838,3 +838,19 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   52/52 record — no drift in the accepted E-002 tree. (The nautilus
   pip-install step was not re-attempted per D-011 deferral.) PASS.
 - Suite 87/87, evidence gate exit 0.
+
+## Addendum — turn 64 (data-manifest audit; still awaiting go-aheads)
+
+- No new outbox filings, commits, or worker activity; E-003 (W2) +
+  V-001R (W1, ~68min wait) still await worker-side go-aheads. W3 idle.
+  The ~60min V-001R flag (turn 57) stands; no manager-side unblock.
+- Audited data/observed against data/README: both files present,
+  discovery values exactly match (924/525/524, 928ms), klines shape
+  matches (header + 60 klines + footer, 59 closed, 0 gaps) with
+  input_class observed-public. BUT the README blanket claim "every
+  recording is labelled observed-public in its header" is false for
+  the discovery JSON — it carries no label field at all. New minor
+  finding F-DATA-01 (doc-vs-data label gap); data/README is W2-owned
+  (D-003) so no direct edit — queued for the next W2 dispatch after
+  E-003. PARTIAL PASS with finding.
+- Suite 87/87, evidence gate exit 0.
