@@ -2551,3 +2551,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   8,481,463.150 ($949.2M); BNB 560,602.900 ($424.0M).
   Single-sample, not a leverage claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 223 (openInterest PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at a616d8d. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public current openInterest (fetch 957ms): XRP
+  297,104,301.8 ($422.0M); DOGE 2,701,949,981.0 ($235.4M).
+  Single-sample, not a leverage claim. PASS.
+- Suite 104/104, evidence gate exit 0.
