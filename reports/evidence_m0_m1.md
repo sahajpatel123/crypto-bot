@@ -1664,3 +1664,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   updateId 11788779995733. Completes BTC/ETH/BNB/SOL depth
   coverage; single sample, not a liquidity claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 139 (SOL 1m-kline snapshot PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 90e84f2. E-004 acked (option a, W2 not started, worker-side
+  go-ahead pending); V-001R (W1) still awaiting go-ahead; W3 idle.
+- Public klines SOLUSDT 1m x60 (fetch 244ms): 0 bar gaps; 1m
+  log-return stdev 7.99bps; hour range 112.9bps; quote volume
+  $76.8M. Completes BTC/ETH/SOL 1m-vol coverage for per-market
+  S1 threshold work; single hour each, not a regime claim. PASS.
+- Suite 104/104, evidence gate exit 0.
