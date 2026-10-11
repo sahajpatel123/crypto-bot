@@ -1477,3 +1477,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   median notional $120. Fourth-symbol tape datum alongside
   BTC/SOL/ETH turns; single snapshot, not a flow claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 122 (BNBUSDT open-interest snapshot PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 1c65dbe. E-004 acked (option a, W2 not started, worker-side
+  go-ahead pending); V-001R (W1) still awaiting go-ahead; W3 idle.
+- Public openInterest (fetch 636ms with ticker): 561,856 BNB at
+  $750.93 ~= $421.9M notional; completes the BNB set (funding/
+  ticker/depth/tape/OI) alongside BTC/SOL/ETH. Single snapshot,
+  not a positioning claim. PASS.
+- Suite 104/104, evidence gate exit 0.
