@@ -4411,3 +4411,12 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   BTC ratio 1.4027 @18:10Z; ETH ratio 2.8344 @18:10Z.
   Single-sample, not a sentiment claim. PASS.
 - Suite 105/105, evidence gate exit 0.
+
+## Addendum — turn 400 (XRP/DOGE L/S PASS, cycle 3)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 4eee220. E-004 accepted; W2 standing by. V-001R (W1)
+  still awaiting go-ahead; W3 idle.
+- Public globalLongShortAccountRatio 5m x1 (fetch 653ms):
+  XRP ratio 2.2949 @18:10Z; DOGE ratio 2.3693 @18:10Z.
+  Single-sample, not a sentiment claim. PASS.
+- Suite 105/105, evidence gate exit 0.
