@@ -167,3 +167,14 @@ Meta Muse Spark.
   W1 retention assertion corrected to release-False +
   booked_net-nonzero. Q-003 fix-after 19/20, one correction
   outstanding. E-002-style residuals recorded, not promoted.
+- D-017: Q-003 accepted and integrated: 20 black-box CEO
+  regressions (15F/5P baseline record identical on 871d104 +
+  branch, 20/20 fix-after on integrated main) + resumable
+  EXP runner + 150/150 executed trials (EXP-001 90, EXP-002 60,
+  promotion NONE) + split audit (embargo insufficient for
+  future return scoring: 12 vs 135-bar horizon). Manager
+  integration fix: tests/ceo_review/conftest.py renamed to
+  helpers.py — the duplicate top-level conftest module broke
+  4 V-004 tests in full runs (proven: 264/264 after rename).
+  Merged-tree 264/264, M1 exit 0, gate PASS. Packet 1
+  (V-004/E-005/Q-003) fully accepted.

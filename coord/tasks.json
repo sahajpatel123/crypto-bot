@@ -88,7 +88,7 @@
    "contract_version": "v0.2.0",
    "dispatch_utc": "2026-10-11T21:32:00Z",
    "inbox": "coord/inbox/E-006.json",
-   "note": "Dispatched: sustained capture + replay + latency per CEO directive Sec 4. Ack pending.",
+   "note": "Dispatched: sustained capture + replay + latency per CEO directive Sec 4. Ack pending. Ack received (scope understood, base d1dff76); NOT STARTED, worker-side go-ahead pending.",
    "owner_session": "cloud-vega",
    "role": "Worker 2 \u2014 Market Data and Execution Engineer",
    "state": "assigned"
@@ -160,10 +160,10 @@
    "contract_version": "v0.1.1 black-box",
    "dispatch_utc": "2026-10-11T20:44:02Z",
    "inbox": "coord/inbox/Q-003.json",
-   "note": "Dispatched: independent repro + executable EXP-001/002 per CEO directive Sec 3. Ack pending. Ack+START received 2026-10-11T20:52:00Z (worker1/q-003 @027cc6e, /tmp/cryto-bot-w1q3, baseline 167/167). Phase 1 COMPLETE 2026-10-11T21:05:00Z: 16 tests (11F/5P identical on 871d104+ec7dd62, symptom-cross-checked); 170/170 untouched. Phase 2 started; fix-after runs await integration. Build VERIFIED 2026-10-11T21:15:00Z (12/12 hashes, 176 green, 15F/5P, EXP 150/150 reproduced; 90/60 counts confirmed correct grain). One assertion reword requested (unresolved observables). Fix-after runs await V-004 fixup + E-005. Fix-after pre-check 2026-10-11T21:30:00Z: 19/20 on integrated main; one assertion correction outstanding (consumed-vs-unresolved ruling); EXP 150/150 stands.",
+   "note": "Dispatched: independent repro + executable EXP-001/002 per CEO directive Sec 3. Ack pending. Ack+START received 2026-10-11T20:52:00Z (worker1/q-003 @027cc6e, /tmp/cryto-bot-w1q3, baseline 167/167). Phase 1 COMPLETE 2026-10-11T21:05:00Z: 16 tests (11F/5P identical on 871d104+ec7dd62, symptom-cross-checked); 170/170 untouched. Phase 2 started; fix-after runs await integration. Build VERIFIED 2026-10-11T21:15:00Z (12/12 hashes, 176 green, 15F/5P, EXP 150/150 reproduced; 90/60 counts confirmed correct grain). One assertion reword requested (unresolved observables). Fix-after runs await V-004 fixup + E-005. Fix-after pre-check 2026-10-11T21:30:00Z: 19/20 on integrated main; one assertion correction outstanding (consumed-vs-unresolved ruling); EXP 150/150 stands. Fix-after 20/20 CONFIRMED 2026-10-11T21:45:00Z (correction per consumed-vs-unresolved ruling). ACCEPTED + integrated via provenance copy (12 files). Manager integration fix: tests/ceo_review/conftest.py renamed to helpers.py (top-level conftest collision broke 4 V-004 tests in full runs). Merged-tree 264/264, M1 exit 0, gate PASS.",
    "owner_session": "whisper-redshift",
    "role": "Worker 1 \u2014 Quant Research and Strategy Engineer",
-   "state": "running"
+   "state": "accepted"
   },
   "V-001": {
    "acceptance": [
