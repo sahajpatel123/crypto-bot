@@ -4613,3 +4613,12 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   +0.827%; DOGE last 0.086910 +1.105%. Single-sample, not
   a momentum claim. PASS.
 - Suite 105/105, evidence gate exit 0.
+
+## Addendum — turn 422 (SOL/BNB ticker PASS, cycle 4)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 4349f81. E-004 accepted; W2 standing by. V-001R (W1)
+  still awaiting go-ahead; W3 idle.
+- Public ticker/24hr x1 (fetch 483ms): SOL last 111.9200
+  +1.773%; BNB last 754.170 +0.525%. Single-sample, not
+  a momentum claim. PASS.
+- Suite 105/105, evidence gate exit 0.
