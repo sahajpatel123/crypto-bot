@@ -398,3 +398,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   statuses honest (W1+W2 awaiting-go-ahead, W3 idle). README claims
   re-checked against reality (87 green, E-003/V-001R in flight) — current,
   no edit needed.
+
+## Addendum — turn 32 (coord schema sweep; still awaiting go-aheads)
+
+- No new outbox filings, commits, or worker activity; E-003 + V-001R still
+  await worker-side go-aheads.
+- First full coord/ schema sweep (motivated by the turn-24 owner-key slip):
+  14/14 JSON files parse; 12/12 inbox/outbox messages carry the README
+  schema keys (incl. the turn-28/29 amended E-003/V-001R inboxes); 7/7
+  tasks have valid state + owner; 3/3 workers have valid status +
+  heartbeat + note. ALL PASS.
