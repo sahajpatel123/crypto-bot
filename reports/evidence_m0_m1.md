@@ -3089,3 +3089,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   buySellRatio 1.2957 (buy 174,110.2/sell 134,380.1).
   Single-sample, not a flow claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 273 (XRP/DOGE taker PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at babf3cd. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public takerlongshortRatio 1h x1 (fetch 509ms): XRPUSDT
+  buySellRatio 1.6871 (buy 34,809,930.8/sell 20,632,958.2);
+  DOGEUSDT buySellRatio 1.2070 (buy 163,450,292.0/sell
+  135,424,133.0). Single-sample, not a flow claim. PASS.
+- Suite 104/104, evidence gate exit 0.
