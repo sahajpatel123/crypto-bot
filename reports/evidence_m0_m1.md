@@ -4111,3 +4111,11 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   index 112.35520032; BNB mark 755.16649935 / index 754.99190137.
   Single-sample, not a premium claim. PASS.
 - Suite 105/105, evidence gate exit 0.
+
+## Addendum — turn 366 (BTC/ETH L/S PASS, cycle 2)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at cdecf9a. E-004 accepted; W2 standing by. V-001R (W1)
+  still awaiting go-ahead; W3 idle.
+- Public globalLongShortAccountRatio 5m x1 (fetch 595ms): BTC
+  1.4131; ETH 2.8241. Single-sample, not a sentiment claim. PASS.
+- Suite 105/105, evidence gate exit 0.
