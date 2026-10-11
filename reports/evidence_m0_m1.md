@@ -2026,3 +2026,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   range $2,526.24-$2,539.87. Single-sample candle datum,
   not a regime claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 174 (SOL kline snapshot PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at ef41f7b. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public klines SOLUSDT 1m x6, 15:55-16:00Z (fetch 272ms):
+  closes 111.46/111.79/111.79/111.95/111.94/111.98,
+  range $110.99-$112.10. Single-sample candle datum,
+  not a regime claim. PASS.
+- Suite 104/104, evidence gate exit 0.
