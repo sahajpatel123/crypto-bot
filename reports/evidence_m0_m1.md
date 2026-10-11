@@ -4926,3 +4926,8 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   oi2314717.717 T1791744943225. Single-sample, not a
   positioning claim. PASS. Suite 167/167, evidence
   gate exit 0.
+- Turn-443 (cycle 5): public openInterest x1 (XRP 261ms,
+  DOGE 226ms): XRP oi294993410.0 T1791744981522; DOGE
+  oi2704630877 T1791744977275. Single-sample, not a
+  positioning claim. PASS. Suite 167/167, evidence
+  gate exit 0.
