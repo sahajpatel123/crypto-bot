@@ -4088,3 +4088,17 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
 - V-001R (W1) still awaiting go-ahead; W3 idle. Note: turn-363
   commit message predates this heartbeat.
 - Suite 104/104, evidence gate exit 0 (re-verified pre-push).
+
+## Addendum — turn 364 (E-004 ACCEPTED + integrated)
+- W2 completion reviewed, not auto-accepted: diff in-scope (4
+  files, label + pinning test + README + refreshed sample);
+  INPUT_OBSERVED reused from recorder, no contract change; old
+  sample removed via rename; stale filename refs only in
+  historical records (left intact).
+- Suite independently reproduced: 105/105 on worker2/e-004 AND
+  on main post-merge. Drift 0 added/0 removed (924/525/524).
+  Merged via f74fc3c; outbox E-004.json committed; board
+  E-004 running -> accepted.
+- V-001R (W1) still awaiting go-ahead; W3 idle. W2 standing by
+  for next dispatch.
+- Suite 105/105, evidence gate exit 0.

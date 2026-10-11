@@ -69,9 +69,9 @@
    "state": "accepted"
   },
   "E-004": {
-   "note": "Turn-86: dispatched F-DATA-01 fix (option a preferred / b acceptable); inbox msg-E-004-01. Turn-87b: W2 acked, chose option (a). Turn-363b: W2 STARTED (heartbeat verified): branch worker2/e-004 from 5ca2f86 in /tmp/cryto-bot-w2, discovery.py edit in progress; main at 788adc9.",
+   "note": "Turn-86: dispatched F-DATA-01 fix; Turn-87b: W2 acked option (a). Turn-363b: started. Turn-364: completion verified + ACCEPTED \u2014 merged worker2/e-004 ce0e6db via f74fc3c; 105/105 reproduced on worker branch and main; drift 0/0; no unresolved issues.",
    "owner_session": "cloud-vega",
-   "state": "running"
+   "state": "accepted"
   },
   "Q-001": {
    "acceptance": [
