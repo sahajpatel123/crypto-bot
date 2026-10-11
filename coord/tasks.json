@@ -69,7 +69,7 @@
    "state": "accepted"
   },
   "E-004": {
-   "note": "Turn-86: dispatched F-DATA-01 fix (discovery label, option a preferred / b acceptable); inbox msg-E-004-01; ack pending.",
+   "note": "Turn-86: dispatched F-DATA-01 fix (option a preferred / b acceptable); inbox msg-E-004-01. Turn-87b: W2 acked, chose option (a) with justification (discovery output genuinely is observed-public; labelling preserves README guarantee); branch worker2/e-004 from 8cb875c; NOT STARTED, awaiting worker-side user go-ahead.",
    "owner_session": "cloud-vega",
    "state": "assigned"
   },
@@ -181,6 +181,6 @@
    "state": "accepted"
   }
  },
- "updated_utc": "2026-10-11T15:09:30Z",
+ "updated_utc": "2026-10-11T15:10:35Z",
  "version": 1
 }

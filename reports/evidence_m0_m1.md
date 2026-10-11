@@ -1126,3 +1126,16 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   at 15:02:32Z (D-009 clean); branch base 8cb875c exists and is an
   ancestor of HEAD. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 87b (E-004 acked by W2; not started)
+- Worker-originated ack (cloud-vega): E-004 received, inbox + F-DATA-01
+  scoping read. Scope decision option (a) — label discovery_summary()
+  output INPUT_OBSERVED, refresh the committed sample from a live run
+  with drift check, pin the label in a test. Justification: discovery
+  output genuinely is observed-public venue data, so labelling preserves
+  the README guarantee. Branch worker2/e-004 from 8cb875c as directed.
+  NOT STARTED — W2 surfacing to its user for go-ahead.
+- Board: E-004 assigned (ack recorded, option a); W2 heartbeat updated
+  (worker-originated, D-009), still awaiting-go-ahead. V-001R (W1)
+  still awaiting go-ahead; W3 idle.
+- Suite 104/104, evidence gate exit 0.
