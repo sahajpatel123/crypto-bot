@@ -4995,3 +4995,10 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   qv4297359333.63 n1781304 T1791745527382.
   Single-sample, not a volume/liquidity claim. PASS.
   Suite 167/167, evidence gate exit 0.
+- Turn-455 (cycle 5): public ticker/24hr (XRP 323ms,
+  DOGE 280ms): XRP last1.4092 chg%0.420 h1.4260
+  l1.3865 qv437718615.2966 n760681 T1791745572708;
+  DOGE last0.086770 chg%0.813 h0.087620 l0.084850
+  qv211006483.585960 n571788 T1791745569401.
+  Single-sample, not a volume/liquidity claim. PASS.
+  Suite 167/167, evidence gate exit 0.
