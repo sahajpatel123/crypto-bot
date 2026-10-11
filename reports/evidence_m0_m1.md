@@ -5238,3 +5238,8 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   1.4083/1.4084; DOGE 0.086860/
   0.086870. PASS. Suite 167/167,
   evidence gate exit 0.
+- Turn-495 (cycle 6): public bookTicker x1
+  (SOL 332ms, BNB 303ms): SOL
+  111.3600/111.3700; BNB 753.290/
+  753.300. PASS. Suite 167/167,
+  evidence gate exit 0.
