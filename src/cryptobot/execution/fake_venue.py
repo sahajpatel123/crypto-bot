@@ -120,6 +120,9 @@ class FakeVenue:
         if existing is not None:
             # Idempotent client ID: no duplicate order, report current state.
             return SubmitResult(client_id, existing.status != "REJECTED", f"duplicate-client-id:{existing.status}")
+        if kind in ("MARKET", "LIMIT") and price is None and symbol not in self._last_price:
+            # F-E001-04: reject before storing, so a caller bug leaves no venue-side residue.
+            raise ValueError(f"no price reference for {kind} submit of {client_id}")
         fault = self._faults.popleft() if self._faults else None
         if fault is not None and fault.mode == "reject":
             self._orders[client_id] = _Order(client_id, symbol, side, kind, qty, price, stop_price, status="REJECTED")
@@ -144,6 +147,10 @@ class FakeVenue:
         """Reconciliation read. Returns None when the venue never saw the ID."""
         order = self._orders.get(client_id)
         return order.view() if order is not None else None
+
+    def list_orders(self) -> list[VenueOrderView]:
+        """List every order the venue holds, in submission order (for orphan sweeps)."""
+        return [order.view() for order in self._orders.values()]
 
     def cancel(self, client_id: str) -> VenueOrderView | None:
         order = self._orders.get(client_id)
@@ -176,9 +183,13 @@ class FakeVenue:
 
     # -- internals ---------------------------------------------------------
     def _ref_price(self, order: _Order) -> float:
+        # F-E001-04: never fill at an invented 0.0; a market order with no
+        # price reference is a caller bug and must raise loudly.
         if order.price is not None:
             return order.price
-        return self._last_price.get(order.symbol, 0.0)
+        if order.symbol in self._last_price:
+            return self._last_price[order.symbol]
+        raise ValueError(f"no price reference for MARKET fill of {order.client_id}")
 
     def _try_immediate_fill(self, order: _Order) -> None:
         if order.kind in ("MARKET", "LIMIT"):
