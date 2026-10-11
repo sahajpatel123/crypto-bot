@@ -378,3 +378,12 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   no new files after the probe. This run proves runnability only — V-001
   acceptance still requires Worker 1's independent V-001R filing. FYI + start
   request sent to Worker 1.
+
+## Addendum — turn 30 (M1 report drift check; still awaiting go-aheads)
+
+- No new outbox filings, commits, or worker activity; E-003 + V-001R still
+  await worker-side go-aheads.
+- Committed-report drift check: fresh M1 run (/tmp/m1_fresh.json) vs
+  committed reports/m1_report.json → MATCH (327 bytes, identical keys and
+  values). The committed report is current, and this is the 5th determinism
+  confirmation (evidence_bar 154 shape unchanged).
