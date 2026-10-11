@@ -58,6 +58,10 @@ Meta Muse Spark.
   edits inside worker-owned implementation files.
 - D-005: NautilusTrader version pin deferred until Worker 2 capability matrix
   lands (bounded check). No framework code in M1 scaffold.
+  [Turn-40 annotation: the matrix landed under E-001, satisfying the
+  original trigger; the pin decision itself is re-deferred by D-011
+  pending a future import+adapter smoke pass. D-005's deferral rationale
+  stands, its trigger wording is superseded by D-011.]
 - D-006: Workers may write exactly their own completion file
   (coord/outbox/Q-001.json, E-001.json, V-001.json); the rest of coord/
   stays manager-owned. Uncommitted-branch-diff evidence is acceptable for

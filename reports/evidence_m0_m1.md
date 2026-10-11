@@ -512,3 +512,17 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   D-011, outbox) with the cherry-picked content — expected, not drift.
   PASS.
 - Suite 87/87, evidence gate exit 0.
+
+## Addendum — turn 40 (decision-ledger staleness audit; still awaiting go-aheads)
+
+- No new outbox filings, commits, or worker activity; E-003 (W2, acked
+  14:11Z) + V-001R (W1, acked 13:44Z, ~46min wait) still await worker-side
+  go-aheads. W3 idle.
+- Re-read all of DECISIONS.md (D-001..D-011 + model-config note) against
+  current state. Ten decisions hold as written; one staleness found and
+  fixed: D-005's trigger wording ("deferred until the matrix lands") is
+  spent — the matrix landed under E-001 — while D-011 keeps the pin
+  decision re-deferred pending an import+adapter smoke pass. Annotated
+  D-005 in place (manager-owned file): rationale stands, trigger wording
+  superseded by D-011. No semantic change.
+- Suite 87/87, evidence gate exit 0.
