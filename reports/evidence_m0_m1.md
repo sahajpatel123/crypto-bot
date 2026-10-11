@@ -1374,3 +1374,12 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   16:00 UTC. Second-symbol funding datum alongside turn-104 BTC;
   single snapshot, not a cost claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 111 (ETHUSDT 24h ticker snapshot PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 1342bea. E-004 acked (option a, W2 not started, worker-side
+  go-ahead pending); V-001R (W1) still awaiting go-ahead; W3 idle.
+- Public ticker/24hr (fetch 265ms): last 2507.98, 24h range 0.89%,
+  $2.49B quote vol, 1,216,557 trades. Second-symbol ticker datum
+  alongside turn-106 BTC; single snapshot, not a regime claim. PASS.
+- Suite 104/104, evidence gate exit 0.
