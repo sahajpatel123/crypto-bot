@@ -178,3 +178,17 @@ Meta Muse Spark.
   4 V-004 tests in full runs (proven: 264/264 after rename).
   Merged-tree 264/264, M1 exit 0, gate PASS. Packet 1
   (V-004/E-005/Q-003) fully accepted.
+- D-018: M1 rewired to the integrated lifecycle (F-CEO-08
+  closed): labelled synthetic recording through the real
+  replay boundary (asserted input class, lossless transport,
+  clean gap/stale stats) -> S1 -> coordinator (1 rejection)
+  -> V-004 risk -> shared OrderManager + fault venue on one
+  virtual clock: partial entry, sibling protection,
+  crash/restart with exposure open (orders/risk/ledger
+  rebuilt, fills/booked/cash agree), remainder expiry
+  without release, stop exit, verified sibling cancel, flat
+  reconciliation, closed-trade report (realized -0.0285 on
+  100 USDT synthetic, within 0.25 budget). Numerics
+  deterministic across runs. 264/264, gate PASS. Q-003 rider
+  (EXP-001 90/90, EXP-002 60/60 statuses) integrated.
+  E-006 started (W2).
