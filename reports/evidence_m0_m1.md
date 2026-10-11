@@ -4466,3 +4466,12 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   @83857.30; ETH 0.011 SELL @2540.35. Single-sample, not a
   liquidity claim. PASS.
 - Suite 105/105, evidence gate exit 0.
+
+## Addendum — turn 406 (XRP/DOGE aggTrades PASS, cycle 4)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 50f7140. E-004 accepted; W2 standing by. V-001R (W1)
+  still awaiting go-ahead; W3 idle.
+- Public aggTrades x3 (fetch 607ms): XRP 7.0 BUY @1.4148;
+  DOGE 327 BUY @0.086950. Single-sample, not a
+  liquidity claim. PASS.
+- Suite 105/105, evidence gate exit 0.
