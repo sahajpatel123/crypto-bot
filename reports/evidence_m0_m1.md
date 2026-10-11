@@ -4382,3 +4382,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   2538.93 / index 2540.47 / last 2538.91. Single-sample, not
   a cost claim. PASS.
 - Suite 105/105, evidence gate exit 0.
+
+## Addendum — turn 397 (XRP/DOGE premiumIndex PASS, cycle 3)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 668757a. E-004 accepted; W2 standing by. V-001R (W1)
+  still awaiting go-ahead; W3 idle.
+- Public premiumIndex+price x1 (fetch 965ms): XRP mark
+  1.41421 / index 1.41485 / last 1.4143; DOGE mark
+  0.086930 / index 0.086967 / last 0.086930. Single-sample,
+  not a cost claim. PASS.
+- Suite 105/105, evidence gate exit 0.
