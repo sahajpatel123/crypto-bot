@@ -5044,3 +5044,11 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   T1791745930187. Single-sample, not a
   depth/liquidity claim. PASS. Suite 167/167,
   evidence gate exit 0.
+- Turn-462 (cycle 5): public depth limit=5 (SOL
+  282ms, BNB 221ms): SOL id11790005898308
+  bid111.3700x238.73 ask111.3800x3000.54
+  T1791745970893; BNB id11790005907544
+  bid752.760x20.50 ask752.770x14.92
+  T1791745971100. Single-sample, not a
+  depth/liquidity claim. PASS. Suite 167/167,
+  evidence gate exit 0.
