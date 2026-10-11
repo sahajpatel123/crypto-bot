@@ -2110,3 +2110,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   spread 0.04bps, bid $530k / ask $267k top-20 notional.
   Single-sample depth datum, not a liquidity claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 182 (SOL depth snapshot PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 9506f9f. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public depth SOLUSDT L20 (fetch 340ms): mid $111.78,
+  spread 0.89bps, bid $5.34M / ask $4.60M top-20 notional.
+  Single-sample depth datum, not a liquidity claim. PASS.
+- Suite 104/104, evidence gate exit 0.
