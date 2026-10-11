@@ -4049,3 +4049,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   1.4188 x46208.4; DOGE top 0.087350 x24300 / 0.087360 x905013.
   Single-sample, not a liquidity claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 361 (SOL/BNB depth PASS, cycle 2)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 175ddcd. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public depth L5 x1 (fetch 608ms): SOL top 112.3800 x942.29 /
+  112.3900 x366.82; BNB top 755.580 x48.25 / 755.590 x19.09.
+  Single-sample, not a liquidity claim. PASS.
+- Suite 104/104, evidence gate exit 0.
