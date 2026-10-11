@@ -1241,3 +1241,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   28bcded70d29, S5 147e5d2583ed — 4/4 MATCH, drafts unmodified. The
   pending D-010 correction still applies to exactly these texts. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 97 (M1 report freshness PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 63185a1. E-004 acked (option a, W2 not started, worker-side
+  go-ahead pending); V-001R (W1) still awaiting go-ahead; W3 idle.
+- Fresh M1 slice run (exit 0) byte-compares equal to the filed
+  reports/m1_report.json on all 11 keys (bar 154, 1 rejected,
+  risk-stub, slice-local-fake, recovery clean). The filed report is
+  current with the post-E-003 code; no refresh needed. PASS.
+- Suite 104/104, evidence gate exit 0.
