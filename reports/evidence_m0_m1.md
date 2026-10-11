@@ -3067,3 +3067,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   L/S 2.4270 (long 0.7082/short 0.2918).
   Single-sample, not a sentiment claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 271 (SOL/BNB L/S PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 5d8c877. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public globalLongShortAccountRatio 1h x1 (fetch 613ms):
+  SOLUSDT L/S 2.4471 (long 0.7099/short 0.2901); BNBUSDT
+  L/S 2.1807 (long 0.6856/short 0.3144).
+  Single-sample, not a sentiment claim. PASS.
+- Suite 104/104, evidence gate exit 0.
