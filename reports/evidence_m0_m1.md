@@ -1073,3 +1073,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   outbox filing yet; E-003 stays running. V-001R (W1) still awaiting
   go-ahead; W3 idle.
 - Suite 87/87, evidence gate exit 0.
+
+## Addendum — turn 84 (E-003 test phase; V-001R waiting)
+
+- W2 entered the test phase on worker2/e-003: new untracked
+  tests/unit/test_execution_handoff.py (267 lines), matching the E-003
+  allowed test glob; implementation diff steady at fake_venue +12/-1
+  and order_manager +163. Read-only checks, no interference. No outbox
+  filing yet; E-003 stays running. V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Suite 87/87, evidence gate exit 0.
