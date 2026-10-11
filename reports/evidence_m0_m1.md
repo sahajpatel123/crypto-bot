@@ -1261,3 +1261,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   fetch_latency 244.5ms. Second-symbol M2 data point; REST-backfill
   age != feed health. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 99 (BNBUSDT replay determinism PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 5273323. E-004 acked (option a, W2 not started, worker-side
+  go-ahead pending); V-001R (W1) still awaiting go-ahead; W3 idle.
+- BNB capture replayed twice via replay_public: outputs byte-identical
+  (stdout sha c528b2826249), events 30, gaps [], replay_sha256
+  fb836e50..., deterministic=true. Second-symbol replay confirms the
+  tool path. PASS.
+- Suite 104/104, evidence gate exit 0.
