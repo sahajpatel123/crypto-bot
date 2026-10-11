@@ -1828,3 +1828,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   0.00000%, next 16:00 UTC, mark $754.13. Joins SOL/ETH funding
   data; single sample, not a cost claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 156 (BTC funding snapshot PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at f20b38b. E-004 acked (option a, W2 not started, worker-side
+  go-ahead pending); V-001R (W1) still awaiting go-ahead; W3 idle.
+- Public premiumIndex BTCUSDT (fetch 415ms): last funding
+  0.00148%, next 16:00 UTC, mark $83,439.8. Completes
+  BTC/ETH/BNB/SOL funding set; single sample, not a cost
+  claim. PASS.
+- Suite 104/104, evidence gate exit 0.
