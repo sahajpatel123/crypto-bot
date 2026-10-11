@@ -1050,3 +1050,15 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   outbox filing yet; E-003 stays running. V-001R (W1) still awaiting
   go-ahead; W3 idle. No action needed.
 - Suite 87/87, evidence gate exit 0.
+
+## Addendum — turn 82 (E-003 advancing; draft-hash baseline; V-001R waiting)
+
+- W2 advancing on worker2/e-003: order_manager.py now +111/-6
+  (was +39), fake_venue.py unchanged at +12/-1 — still 2 files, both
+  inside E-003 allowed paths. Read-only stat check, no interference.
+  No outbox filing yet; E-003 stays running. V-001R (W1) still
+  awaiting go-ahead; W3 idle.
+- Recorded first sha256 baseline for the S2-S5 drafts (D-010
+  correction inputs): S2 09e22e7a78f2, S3 4e5618eff6cc, S4 28bcded70d29,
+  S5 147e5d2583ed — stability verifiable from here.
+- Suite 87/87, evidence gate exit 0.
