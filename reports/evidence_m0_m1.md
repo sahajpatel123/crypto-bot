@@ -4529,3 +4529,12 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   295083942.8 @18:00Z bar; DOGE 2712178624.0 @18:00Z
   bar. Single-sample, not a leverage claim. PASS.
 - Suite 105/105, evidence gate exit 0.
+
+## Addendum — turn 413 (SOL/BNB OI-history PASS, cycle 4)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at a5715cc. E-004 accepted; W2 standing by. V-001R (W1)
+  still awaiting go-ahead; W3 idle.
+- Public openInterestHist 1h x1 (fetch 614ms): SOL
+  8499378.86 @18:00Z bar; BNB 564820.58 @18:00Z bar.
+  Single-sample, not a leverage claim. PASS.
+- Suite 105/105, evidence gate exit 0.
