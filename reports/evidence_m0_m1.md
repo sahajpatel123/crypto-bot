@@ -3514,3 +3514,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   DOGEUSDT mark=0.0873 last=0.0873 funding=0.0070%.
   Single-sample, not a cost claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 310 (SOL/BNB funding PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 10293f8. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public premiumIndex+ticker/price (fetch 981ms):
+  SOLUSDT mark=112.25 last=112.26 funding=0.0100%;
+  BNBUSDT mark=756.69 last=756.73 funding=0.0000%.
+  Single-sample, not a cost claim. PASS.
+- Suite 104/104, evidence gate exit 0.
