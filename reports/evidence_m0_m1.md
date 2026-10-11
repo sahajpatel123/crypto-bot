@@ -997,3 +997,16 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   turn-72 /ping baseline), gaps 0 on all three. A second M2 data point
   showing age/latency stability across symbols. PASS.
 - Suite 87/87, evidence gate exit 0.
+
+## Addendum — turn 77 (worktree-vs-main drift check; still awaiting go-aheads)
+
+- No new outbox filings, commits, or worker activity; E-003 (W2) +
+  V-001R (W1) still await worker-side go-aheads. W3 idle.
+- Compared worker worktrees against integrated main: W1's Q-001 files
+  (strategies/features/research/specs + 4 test files) are byte-identical
+  on both sides — faithful integration, no post-landing edits. W3's
+  V-001 diff (risk/, accounting/, specs/acceptance*) exists only in the
+  worktree with nothing on main to diverge from — correct pending
+  state awaiting V-001R. Noted one empty untracked risk/ scaffold dir
+  on main (no tracked files, harmless). Zero drift. PASS.
+- Suite 87/87, evidence gate exit 0.
