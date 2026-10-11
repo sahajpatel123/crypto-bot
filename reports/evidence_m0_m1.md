@@ -225,3 +225,22 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   wheels incl. macosx_arm64 confirmed; 156MB cp314 wheel downloading.
   Recorded ea2acae. worker3/v-001 moved to 4290233 base (diff intact).
 - Checks: pytest 85 green; M1 stable (bar 154, third confirmation).
+
+## Addendum — turns 12–14 (hygiene; E-002 approaching bound)
+
+- Turn 12: evidence report refreshed (this file, turns 8–11 addenda);
+  .gitignore now covers .venv-trial/ (verified via git check-ignore) so the
+  E-002 trial venv can never be committed; heads-up sent to Worker 2.
+  Pushed 8c6d6ce. Worker acks recorded (e75730f): E-001 confirm (Worker 2,
+  reminded E-002 is active, worktree kept), V-002 confirm (Worker 3,
+  corrected: manager-only integration).
+- Turn 13: README updated to real, verified entry points (capture discover/
+  capture, replay --in) + accepted scope (E-001, Q-001, V-002); every
+  documented command executed live before commit. Pushed 5245107. Worker 3
+  confirmed the integration correction (4a17566).
+- Turn 14: D-009 tightened heartbeat semantics (worker-originated contact
+  only; manager turns do not refresh). E-002 bound notice sent to Worker 2
+  (~23min elapsed, lapses ~14:06Z): land install or file the
+  documented-blocker finding. Pushed 84f03ef. Suite 85 green throughout.
+- Standing waits: V-001R (Worker 1 go-ahead, 5th turn, no escalation yet —
+  worker-side approvals have historically landed); E-002 verdict/blocker.
