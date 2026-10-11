@@ -1713,3 +1713,12 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   trades; VWAP $2,507.76. Single-symbol session context; single
   sample, not a session claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 144 (SOL taker-flow snapshot PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 381f327. E-004 acked (option a, W2 not started, worker-side
+  go-ahead pending); V-001R (W1) still awaiting go-ahead; W3 idle.
+- Public takerlongshortRatio SOLUSDT 5m x6 (fetch 242ms): range
+  0.819-2.691, last 0.826. Completes BTC/ETH/SOL taker-flow
+  coverage; single sample, not a flow claim. PASS.
+- Suite 104/104, evidence gate exit 0.
