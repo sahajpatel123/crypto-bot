@@ -749,3 +749,17 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   E-002, 2a33173, 77df093 observed-sample commit, cbb722f stale-base
   reference). No dangling or mistyped citation. PASS.
 - Suite 87/87, evidence gate exit 0.
+
+## Addendum — turn 57 (remote-ref sweep; still awaiting go-aheads)
+
+- No new outbox filings, commits, or worker activity; E-003 (W2, acked
+  14:11Z) + V-001R (W1, acked 13:44Z, ~61min wait) still await worker-side
+  go-aheads. W3 idle. FLAG: V-001R's wait has crossed ~60min; no
+  manager-side unblock exists (inbox complete per turn 50, repro base
+  verified per turn 47) — activation depends on the worker session.
+- Swept remote refs: origin holds only main (+HEAD) — no worker
+  branches, no hidden unreviewed commits. Local worker branches are
+  exactly the four previously reviewed (worker1/q-001, worker2/e-001,
+  worker2/e-002, worker3/v-001); no worker2/e-003 exists anywhere yet,
+  consistent with E-003 not started. PASS.
+- Suite 87/87, evidence gate exit 0.
