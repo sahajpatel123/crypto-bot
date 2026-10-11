@@ -4736,3 +4736,28 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   nextFunding 1791763200000 both. Single-sample, not a
   funding/liquidity claim. PASS.
 - Suite 139/139, evidence gate exit 0.
+
+## Addendum — turn 430 (Q-002 RUNNING, V-003 progressing,
+  XRP/DOGE premiumIndex PASS, cycle 4)
+- W1 (whisper-redshift) acked Q-002 START via real message
+  (auto-start per standing instruction; inbox msg-Q-002-01
+  read): worktree /tmp/cryto-bot-w1q2 on worker1/q-002 from
+  eb85157 (origin/main tip verified), baseline 139/139 green,
+  contract delta checked (intent.py unchanged); plan = D-010
+  correction by adopting directive hypotheses for S2/S3/S4
+  (no substitution rationale needed), S2 baseline mirroring S1
+  (3 arms, warmup, long/short split) + SYNTH_V1 + EXP-002,
+  ETA this session. Board: Q-002 -> running. Verified: branch
+  at eb85157, tree clean (just started).
+- V-003 progressing: w3 worktree shows M ledger.py,
+  risk/__init__.py, risk/types.py + new risk/slice.py (wiring
+  module), all within V-003 allowed paths; no commits yet.
+  Read-only check; manager did not touch the worktree. W2
+  still awaiting E-004 go-ahead (unchanged).
+- Public premiumIndex x1 + ticker/price x1 (fetch 970ms): XRP
+  mark 1.41188461 / index 1.41243204 / last 1.4118 /
+  lastFunding 0.00009376; DOGE mark 0.08685025 / index
+  0.08689805 / last 0.086840 / lastFunding 0.00007681;
+  nextFunding 1791763200000 both. Single-sample, not a
+  funding/liquidity claim. PASS.
+- Suite 139/139, evidence gate exit 0.

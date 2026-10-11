@@ -14,10 +14,10 @@
    "current_task": "V-003"
   },
   "whisper-redshift": {
-   "last_heartbeat_utc": "2026-10-11T18:30:36Z",
+   "last_heartbeat_utc": "2026-10-11T18:41:00Z",
    "note": "Q-001 RUNNING: user go-ahead received, isolated worktree /tmp/cryto-bot-w1 on worker1/q-001 at c66aca1. Re-read contracts + coordination sources. Plan: S1 spec + builders reusing coordination package, features, 3-arm baseline, fixtures, EXP-001, S2-S5 drafts, tests. No commits without user approval (D-006 diff evidence noted). Turn-8: implementation observed (S1-S5 specs, EXP-001, contract, s1.py, breakout features, research harness); rebase-onto-new-main plan accepted; observed sample flagged for post-EXP-001 validation only (EXP-001 stays synthetic). Turn-9: Q-001 ACCEPTED + integrated (18/18 sha256, 85 green on main, M1 byte-identical). V-001R dispatched (independent V-001 repro, read-only, evidence only). Turn-10: V-001R receipt acked (inbox read, w3 path confirmed); NOT STARTED, awaiting worker-side user go-ahead. Turn-14: V-001R still awaiting worker-side go-ahead (4th turn); no escalation yet \u2014 worker-side approvals have historically landed (Q-001, E-002). Turn-17: FYI sent on F-Q001-01/D-010 (S2-S4 drafts deviate from directive hypotheses); no action required, correction rides with S2-S5 follow-up. Turn-25: status vocabulary formalised in coord/README; W1 set awaiting-go-ahead (V-001R acked turn-10, still awaiting worker-side go-ahead ~31min); manager nudge sent (transport-accepted, receipt unconfirmed). No heartbeat refresh (manager-originated, D-009). Turn-427 HEARTBEAT (filing+message): V-001R COMPLETE filed 18:30:36Z (user go-ahead received; standing auto-start instruction saved for future dispatches); ACCEPTED (34/34 x2, hand halt-case Rejected halt:daily-loss, R-001..R-012 all pass, read-only proof, no unresolved); V-001 accepted+integrated on this repro.",
    "proposed_role": "Worker 1 \u2014 Quant Research and Strategy Engineer",
-   "status": "assigned",
+   "status": "running",
    "current_task": "Q-002"
   }
  }
