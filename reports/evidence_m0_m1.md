@@ -709,3 +709,18 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   REST-backfill-age property, not feed degradation. The klines endpoint
   path still works and the record shape is stable. PASS.
 - Suite 87/87, evidence gate exit 0.
+
+## Addendum — turn 54 (D-010 correction-input verification; still awaiting go-aheads)
+
+- No new outbox filings, commits, or worker activity; E-003 (W2, acked
+  14:11Z) + V-001R (W1, acked 13:44Z, ~58min wait) still await worker-side
+  go-aheads. W3 idle.
+- Pre-verified the D-010 correction input for the post-V-001R S2-S5
+  follow-up: all four draft files present on main with titles matching
+  the recorded deviations (S2 range-fade, S3 funding-tilt scalp, S4 ATR
+  volatility breakout, S5 micro-imbalance scalp), and the D-010 ledger
+  text accurately describes each deviation vs the directive's S2
+  trend-pullback / S3 reversion / S4 failed-breakout / S5 order-flow
+  hypotheses. The correction dispatch can quote this record verbatim.
+  PASS. (No task dispatched — follow-up stays gated on V-001R.)
+- Suite 87/87, evidence gate exit 0.
