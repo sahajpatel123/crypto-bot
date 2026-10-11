@@ -2349,3 +2349,15 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   2026-10-12T00:00:00Z lastRate +0.0015%. Single-sample
   datum, not a cost claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 204 (SOL/BNB funding-timing PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 8f93584. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public premiumIndex (fetch 479ms): SOL nextFunding
+  2026-10-12T00:00:00Z lastRate +0.0073%; BNB nextFunding
+  2026-10-12T00:00:00Z lastRate +0.0000%. Four-symbol
+  funding-timing set complete. Single-sample datum, not a
+  cost claim. PASS.
+- Suite 104/104, evidence gate exit 0.
