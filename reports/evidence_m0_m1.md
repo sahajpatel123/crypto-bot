@@ -4965,3 +4965,8 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   rate0.00003448 T1791734400002. Single-sample, not
   a cost/positioning claim. PASS. Suite 167/167,
   evidence gate exit 0.
+- Turn-450 (cycle 5): public fundingRate x1 (SOL 352ms,
+  BNB 273ms): SOL rate0.00006592 T1791734400002; BNB
+  rate0.00000000 T1791734400002. Single-sample, not
+  a cost/positioning claim. PASS. Suite 167/167,
+  evidence gate exit 0.
