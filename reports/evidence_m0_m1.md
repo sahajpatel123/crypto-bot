@@ -3714,3 +3714,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   XRP L/S 2.3636/2.3580; DOGE 2.4072/2.4025
   @17:33Z. Single-sample, not a sentiment claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 328 (SOL/BNB long/short PASS, cycle 2)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 1af6723. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public globalLongShortAccountRatio 5m x2 (fetch 509ms):
+  SOL L/S 2.3795/2.3807; BNB 2.1348/2.1319
+  @17:33Z. Single-sample, not a sentiment claim. PASS.
+- Suite 104/104, evidence gate exit 0.
