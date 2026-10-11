@@ -2713,3 +2713,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   buy-init $56,599.2 / sell-init $25,442.2 last $756.51.
   Single-sample, not a flow claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 238 (funding-timing PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 05567a2. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public premiumIndex (fetch 462ms): BTC mark $83,804.16
+  lastRate +0.0015%; ETH mark $2,542.46 lastRate +0.0018%;
+  both nextFunding 2026-10-12T00:00:00Z.
+  Single-sample, not a cost claim. PASS.
+- Suite 104/104, evidence gate exit 0.
