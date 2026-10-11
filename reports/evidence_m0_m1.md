@@ -1512,3 +1512,15 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   dynamic discovery (no hardcoded whitelist). Single-sample
   metadata census, not an eligibility/liquidity claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 125 (min-notional distribution PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 6895293. E-004 acked (option a, W2 not started, worker-side
+  go-ahead pending); V-001R (W1) still awaiting go-ahead; W3 idle.
+- Public exchangeInfo MIN_NOTIONAL across the 525-symbol universe
+  (fetch 1118ms): $5.00 on 519 symbols, $20.00 on 5, $50.00 on 1;
+  min=p50=$5.00, max=$50.00. Feeds M2 admissible-order-size work
+  (all minima far below the illustrative ~Rs25 planned-risk scale
+  at order level; sizing still needs depth/cost evidence per
+  market). Metadata snapshot, not a sizing claim. PASS.
+- Suite 104/104, evidence gate exit 0.
