@@ -1150,3 +1150,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   risk-stub + slice-local-fake honesty labels intact. The merged
   v0.1.1 handoff code does not regress the runnable slice. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 89 (live discovery re-probe: 924/525, zero drift)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at b171c0f. E-004 acked (option a, W2 not started, worker-side
+  go-ahead pending); V-001R (W1) still awaiting go-ahead; W3 idle.
+- Fresh public discover run: 924 symbols seen, 525 USDT-perp trading,
+  525 eligible; membership identical to the committed
+  discovery_20261011T131845Z sample (added 0, removed 0). Fetch
+  latency 1192ms (single-sample point, not a percentile). PASS.
+- Suite 104/104, evidence gate exit 0.
