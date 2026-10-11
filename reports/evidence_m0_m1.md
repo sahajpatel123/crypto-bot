@@ -1318,3 +1318,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   lastFundingRate 0.00154%, next funding 16:00 UTC (in ~38min).
   Single-sample cost-accounting datum, not a funding model. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 105 (BTCUSDT contract-filter snapshot PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at ca9208e. E-004 acked (option a, W2 not started, worker-side
+  go-ahead pending); V-001R (W1) still awaiting go-ahead; W3 idle.
+- exchangeInfo (fetch 1114ms): BTCUSDT TRADING PERPETUAL, tick 0.10,
+  minQty/step 0.001, MIN_NOTIONAL 50 USDT. Illustrative check only:
+  50 USDT fits under a ~Rs5000 planned notional at an assumed ~83
+  INR/USD (FX assumption, not a measured rate). Single-sample datum.
+  PASS.
+- Suite 104/104, evidence gate exit 0.
