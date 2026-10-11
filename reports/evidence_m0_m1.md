@@ -1760,3 +1760,12 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   KeyError, retried with ticker/price); pairs with BTC OI-history
   datum. Single sample, not a leverage claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 149 (BTC 24h-stat snapshot PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 017b954. E-004 acked (option a, W2 not started, worker-side
+  go-ahead pending); V-001R (W1) still awaiting go-ahead; W3 idle.
+- Public ticker/24hr BTCUSDT (fetch 316ms): $83,351.40, +0.43% on
+  day, $3,131.2M quote vol, 784,450 trades. Completes
+  BTC/ETH/BNB/SOL 24h set; single sample, not a regime claim. PASS.
+- Suite 104/104, evidence gate exit 0.
