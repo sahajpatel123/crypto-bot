@@ -827,3 +827,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   D-001..D-011, no gaps, each defined once (list format; D-005/D-011
   cross-refs are intentional prose). PASS.
 - Suite 87/87, evidence gate exit 0.
+
+## Addendum — turn 63 (E-002 suite stability; still awaiting go-aheads)
+
+- No new outbox filings, commits, or worker activity; E-003 (W2) +
+  V-001R (W1, ~67min wait) still await worker-side go-aheads. W3 idle.
+  The ~60min V-001R flag (turn 57) stands; no manager-side unblock.
+- Re-ran E-002's claimed full-suite repro verbatim in /tmp/cryto-bot-w2
+  (main venv + worktree PYTHONPATH): 52 passed, identical to the prior
+  52/52 record — no drift in the accepted E-002 tree. (The nautilus
+  pip-install step was not re-attempted per D-011 deferral.) PASS.
+- Suite 87/87, evidence gate exit 0.
