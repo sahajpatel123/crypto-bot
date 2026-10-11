@@ -179,6 +179,70 @@
    "owner_session": "cool-amalthea",
    "role": "Worker 3 \u2014 Risk, Verification and Reliability Engineer",
    "state": "accepted"
+  },
+  "Q-002": {
+   "objective": "S2-S5 follow-up: correct the S2-S4 spec deviation (D-010/F-Q001-01), implement the causal S2 baseline with fixtures and a preregistered EXP-002 comparison.",
+   "allowed_paths": [
+    "specs/strategies/",
+    "src/cryptobot/strategies/",
+    "src/cryptobot/features/",
+    "src/cryptobot/research/",
+    "tests/unit/test_strategies_*",
+    "coord/outbox/Q-002.json"
+   ],
+   "acceptance": [
+    "Specs S2/S3/S4 rewritten to match directive hypotheses (S2 trend pullback continuation, S3 range mean reversion, S4 failed-breakout reversal) OR a written substitution rationale filed in specs/ for CEO/owner review (goal-content change, not routine engineering)",
+    "Causal S2 baseline + features + replay fixtures (synthetic labelled) with long/short separation, mirroring the accepted Q-001 S1 structure",
+    "Preregistered EXP-002 comparison for S2 with bounded alternatives",
+    "Full suite green on the branch (139/139 baseline plus any new tests); seed params documented, none promoted to live"
+   ],
+   "dependencies": [
+    "Accepted Q-001 (S1 + contract) on main",
+    "D-010 / F-Q001-01 in DECISIONS.md (turn on S2-S4 spec deviation)",
+    "Accepted V-001 risk contracts (intent schema unchanged)"
+   ],
+   "evidence_required": [
+    "repro commands with outputs",
+    "base/branch commit IDs",
+    "test counts (existing + new)",
+    "unresolved issues"
+   ],
+   "contract_version": "v0.1.1",
+   "role": "quant-research",
+   "owner_session": "whisper-redshift",
+   "state": "assigned"
+  },
+  "V-003": {
+   "objective": "v0.1.1 risk wiring: make the accepted V-001 risk policy + ledger runnable in the M1 slice path (no more risk-stub) and dispose the U-003 unmeasured-defaults item.",
+   "allowed_paths": [
+    "src/cryptobot/risk/",
+    "src/cryptobot/accounting/",
+    "tests/acceptance/",
+    "tests/fixtures/",
+    "specs/acceptance*",
+    "coord/outbox/V-003.json"
+   ],
+   "acceptance": [
+    "Wiring module that runs the accepted V-001 RiskPolicy + accounting ledger against M1-slice-shaped intents (replacing the risk-stub labelling), delivered inside your allowed paths; manager integrates it into tools/m1_vertical_slice.py",
+    "U-003 disposition: stress-multiplier and evidence-age defaults either measured/bounded or pinned as simulation defaults with tests + a written measurement plan in specs/",
+    "U-001 stays out of scope (single-process design); note it, do not build cross-process locking",
+    "Full suite green on the branch (139/139 baseline plus any new tests)"
+   ],
+   "dependencies": [
+    "Accepted V-001 (risk policy + ledger + 34 acceptance tests) on main",
+    "E-003 v0.1.1 + RiskOutcomeSink contract (sink interface, not manager-owned coordination/ files)",
+    "tools/m1_vertical_slice.py read-only reference (manager-owned; do not edit)"
+   ],
+   "evidence_required": [
+    "repro commands with outputs",
+    "base/branch commit IDs",
+    "test counts (existing + new)",
+    "U-003 disposition + unresolved issues"
+   ],
+   "contract_version": "v0.1.1",
+   "role": "risk-verification",
+   "owner_session": "cool-amalthea",
+   "state": "assigned"
   }
  },
  "updated_utc": "2026-10-11T15:10:35Z",

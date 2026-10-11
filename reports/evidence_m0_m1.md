@@ -4691,3 +4691,26 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   V-001R -> accepted; W1 + W3 idle; D-012 recorded. U-001/U-002/U-003
   carry forward. W2 still awaiting E-004 go-ahead (unchanged).
 - Suite 139/139, evidence gate exit 0.
+
+## Addendum — turn 428 (Q-002 + V-003 DISPATCHED, SOL/BNB depth
+  PASS, cycle 4)
+- Q-002 dispatched to W1 (whisper-redshift), inbox msg-Q-002-01:
+  S2-S5 follow-up with the D-010 correction (S2/S3/S4 specs must
+  match directive hypotheses or carry a substitution rationale for
+  CEO/owner review), causal S2 baseline + fixtures + EXP-002, on
+  new branch worker1/q-002 from eb85157. Board: assigned.
+- V-003 dispatched to W3 (cool-amalthea), inbox msg-V-003-01:
+  v0.1.1 risk wiring (run accepted V-001 RiskPolicy + ledger in
+  the M1 slice path; risk//accounting/tests/specs only, manager
+  integrates) plus U-003 disposition, on new branch worker3/v-003
+  from eb85157. Board: assigned.
+- Both dispatch messages transport-handed, delivery unconfirmed
+  (standard pattern). W1 saved a standing auto-start instruction
+  on its side (turn-427), so Q-002 may start without a fresh
+  go-ahead; V-003 needs the owner to activate W3. W2 still
+  awaiting E-004 go-ahead (unchanged).
+- Public depth limit=5 x1 (fetch 797ms): SOL best bid
+  111.9700x185.10 / ask 111.9800x2542.56; BNB best bid
+  754.140x1.93 / ask 754.150x60.42. Single-sample, not
+  a liquidity claim. PASS.
+- Suite 139/139, evidence gate exit 0.
