@@ -88,10 +88,10 @@
    "contract_version": "v0.2.0",
    "dispatch_utc": "2026-10-11T21:32:00Z",
    "inbox": "coord/inbox/E-006.json",
-   "note": "Dispatched: sustained capture + replay + latency per CEO directive Sec 4. Ack pending. Ack received (scope understood, base d1dff76); NOT STARTED, worker-side go-ahead pending. STARTED 2026-10-11T21:55:00Z (worker2/e-006 @d1dff76; WS docs recheck first). CAPTURE RUNNING 2026-10-11T21:47:00Z: run cap-30min PID 78565 (tools/capture_stream.py --top-n 2 --duration-s 1800 --chaos-disconnect-after-s 900); 8 routed channels BTC/ETH; prior smoke-60s + agreement-30s runs observed.",
+   "note": "Dispatched: sustained capture + replay + latency per CEO directive Sec 4. Ack pending. Ack received (scope understood, base d1dff76); NOT STARTED, worker-side go-ahead pending. STARTED 2026-10-11T21:55:00Z (worker2/e-006 @d1dff76; WS docs recheck first). CAPTURE RUNNING 2026-10-11T21:47:00Z: run cap-30min PID 78565 (tools/capture_stream.py --top-n 2 --duration-s 1800 --chaos-disconnect-after-s 900); 8 routed channels BTC/ETH; prior smoke-60s + agreement-30s runs observed. Manager review PASSED 2026-10-11T23:00:00Z (281 reproduced, hashes 3/3, replay SHA + bar agreement reproduced, methodology + Nautilus smoke verified, full code read). ACCEPTED + merged 7dc90ea. V-005 independent verification OPEN (dispatched, session route containment-limited, unacknowledged).",
    "owner_session": "cloud-vega",
    "role": "Worker 2 \u2014 Market Data and Execution Engineer",
-   "state": "running"
+   "state": "accepted"
   },
   "Q-001": {
    "acceptance": [
@@ -299,7 +299,7 @@
    "contract_version": "v0.2.0",
    "dispatch_utc": "2026-10-11T22:50:00Z",
    "inbox": "coord/inbox/V-005.json",
-   "note": "Dispatched: independent E-006 verification (both-confirm rule). Ack pending; first two session sends returned containment-limited, inbox is the durable record.",
+   "note": "Dispatched: independent E-006 verification (both-confirm rule). Ack pending; first two session sends returned containment-limited, inbox is the durable record. No ack as of 2026-10-11T23:00:00Z (5 session sends containment-limited). Durable inbox on main; stays open with fixup authority; retry activation when route recovers.",
    "owner_session": "cool-amalthea",
    "role": "Worker 3 \u2014 Risk, Verification and Reliability Engineer",
    "state": "assigned"

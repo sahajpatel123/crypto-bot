@@ -192,3 +192,20 @@ Meta Muse Spark.
   deterministic across runs. 264/264, gate PASS. Q-003 rider
   (EXP-001 90/90, EXP-002 60/60 statuses) integrated.
   E-006 started (W2).
+- D-019: E-006 accepted on manager review, merged as 7dc90ea
+  (22 files, +3039/-33): routed-WS collector, depth sync,
+  normalized events, causal 1s bars, supervised 30-min
+  capture (1,129,445 events, chaos recovered), deterministic
+  replay (SHA 129f0f55, exact bar agreement), latency/DQ
+  report (event-age p50 74ms, decision p50 0.02ms, order
+  latency explicitly unclaimed). Manager independently
+  reproduced suite/replay/hashes/methodology/Nautilus smoke.
+  V-005 independent verification DISPATCHED but unacknowl-
+  edged: session-message route containment-limited (5 sends);
+  inbox V-005.json on main is the durable record; V-005 stays
+  open with fixup authority. D-005 adoption ruling: pin
+  nautilus_trader==1.231.0 recorded as import+adapter
+  verified (trial venv); NO project-.venv install now (keep
+  env light, no second engine); backtest-trial follow-up
+  scoped; live submission unverified (no creds by policy).
+  Merged-tree 340/340, gate PASS. cap-2h follow-up pending.
