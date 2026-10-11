@@ -2581,3 +2581,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   (buy 52,414 / sell 42,084); BNB 0.545 (buy 396 /
   sell 727). Single-sample, not a flow claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 226 (funding-history PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at a7dc189. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public fundingRate x3 (fetch 684ms): BTC 00Z -0.0027% /
+  08Z -0.0010% / 16Z +0.0013%; ETH 00Z -0.0118% /
+  08Z -0.0117% / 16Z +0.0012%.
+  Single-sample, not a cost claim. PASS.
+- Suite 104/104, evidence gate exit 0.
