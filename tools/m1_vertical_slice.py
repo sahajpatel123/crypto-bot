@@ -1,12 +1,13 @@
 """M1 runnable vertical slice on SYNTHETIC data (manager-owned scaffold).
 
-Flow: synthetic metadata -> synthetic replay -> S1 stub intent -> coordinator ->
-risk stub -> fake-venue execution -> reconciled ledger -> report.
+Flow: SYNTH_V1 synthetic fixture -> real S1 baseline intent (ARM_BASE) ->
+coordinator -> risk stub -> fake-venue execution -> reconciled ledger -> report.
 
 Includes one demonstrably rejected trade (stale/expired) and one fault-recovery
 path (ambiguous order reconciled before retry, no duplicate exposure).
 
-Not a validated trading system. Every input here is synthetic.
+Risk gate is still a labelled stub until V-001 lands. Not a validated trading
+system. Every input here is synthetic.
 """
 from __future__ import annotations
 
@@ -19,7 +20,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from cryptobot.coordination import Coordinator, DataQuality, DecisionRecord, FeatureEvidence, ForecastCost, Intent, Side
+from cryptobot.coordination import Coordinator, DataQuality, ForecastCost, Intent, Side
+from cryptobot.research.synthetic import SCENARIO_LONG, generate_fixture
+from cryptobot.strategies.contract import ARM_BASE
+from cryptobot.strategies.s1 import Bar, evaluate_side
 
 
 @dataclass
@@ -77,16 +81,30 @@ def main() -> int:
     args = parser.parse_args()
 
     now = datetime.now(timezone.utc)
+    # Real S1 baseline on a labelled synthetic fixture. The fixture clock is
+    # fixed, so bars are truncated at the first LONG fire and shifted so the
+    # evidence bar sits 5s in the past (1s spacing preserved, no future bars).
+    fixture = generate_fixture(seed=11, scenario=SCENARIO_LONG)
+    fire_t = next(
+        (t for t in range(120, len(fixture.bars))
+         if evaluate_side(list(fixture.bars), t, Side.LONG, ARM_BASE,
+                           "BTCUSDT").intent is not None),
+        None,
+    )
+    assert fire_t is not None, "SYNTH_V1 long-breakout must fire S1 LONG"
+    shift = (now - timedelta(seconds=5)) - fixture.bars[fire_t].ts_utc
+    shifted = [
+        Bar(ts_utc=b.ts_utc + shift, open=b.open, high=b.high, low=b.low,
+            close=b.close, volume=b.volume, trades=b.trades,
+            buy_frac=b.buy_frac, spread_bps=b.spread_bps, source=b.source)
+        if b is not None else None
+        for b in fixture.bars[:fire_t + 1]
+    ]
+    s1 = evaluate_side(shifted, fire_t, Side.LONG, ARM_BASE, "BTCUSDT")
+    assert s1.intent is not None and s1.record is not None, "shifted S1 must re-fire"
+    good = s1.intent
+    assert good.evidence_ref == s1.record.record_id, "intent must point at its decision record"
     forecast = ForecastCost(fee_bps=5, spread_bps=5, slippage_bps=5, funding_bps=0)
-    record = DecisionRecord("synthetic-decision-1", Side.LONG, "compression",
-                            (FeatureEvidence("range120s", "120s", "<0.5*vol", "0.3*vol"),),
-                            "close>upper+flow", ("chase=pass", "depth=pass"),
-                            DataQuality.CLEAN)
-    good = Intent("S1", "0.1.0-stub", "BTCUSDT", Side.LONG, now - timedelta(seconds=5),
-                  67000.0, 67010.0, now + timedelta(seconds=60), 66850.0,
-                  "invalidation-or-300s", 300, forecast, record.record_id,
-                  DataQuality.CLEAN)
-    assert good.evidence_ref == record.record_id, "intent must point at its decision record"
     stale = Intent("S1", "0.1.0-stub", "BTCUSDT", Side.LONG, now - timedelta(seconds=120),
                    67000.0, 67010.0, now - timedelta(seconds=1), 66850.0,
                    "invalidation-or-300s", 300, forecast, "synthetic-decision-2",
@@ -101,19 +119,23 @@ def main() -> int:
     assert ok, f"risk stub should approve good intent: {reason}"
 
     venue = FakeVenue()
+    mid = (good.entry_low + good.entry_high) / 2
+    qty = notional / mid
     cid = "m1-0001"
-    first = venue.submit(cid, 67005.0, 0.001)
+    first = venue.submit(cid, mid, qty)
     assert first == "ambiguous", "fault injection must trigger once"
     rec = venue.reconcile(cid)
     assert rec == "cancelled-unknown", "reconcile must resolve ambiguity before retry"
     cid2 = "m1-0002"
-    final = venue.submit(cid2, 67005.0, 0.001)
+    final = venue.submit(cid2, mid, qty)
     assert final == "filled", "retry with new client ID must fill once"
     assert len(venue.fills) == 1, "no duplicate exposure after recovery"
 
     report = {
         "slice": "M1",
         "synthetic": True,
+        "s1_source": "SYNTH_V1:long-breakout:seed11:ARM_BASE",
+        "evidence_bar": fire_t,
         "coordinator_reason": decision.reason,
         "rejected_count": len(decision.rejected),
         "risk": reason,
