@@ -3290,3 +3290,15 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   BNBUSDT @17:09Z 755.54>755.21v104 | 755.20>755.20v2
   (forming). Single-sample, not a signal claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 290 (BTC/ETH tape PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 9f48ada. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public aggTrades x5 (fetch 545ms): BTCUSDT last5
+  83,796.40S 83,796.50B 83,796.50B 83,796.40S 83,796.50B
+  buys=3 sells=2; ETHUSDT last5 2,543.31B 2,543.31B
+  2,543.31B 2,543.30S 2,543.31B buys=4 sells=1.
+  Single-sample, not a flow claim. PASS.
+- Suite 104/104, evidence gate exit 0.
