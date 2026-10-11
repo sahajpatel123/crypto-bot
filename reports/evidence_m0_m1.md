@@ -5223,3 +5223,8 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   1.4093 (+0.299%); DOGE last 0.086890
   (+0.871%). PASS. Suite 167/167,
   evidence gate exit 0.
+- Turn-492 (cycle 6): public ticker24 x1
+  (SOL 263ms, BNB 218ms): SOL last
+  111.4000 (+0.842%); BNB last 753.360
+  (+0.212%). PASS. Suite 167/167,
+  evidence gate exit 0.
