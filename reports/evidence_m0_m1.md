@@ -3208,3 +3208,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   0.08703 lastFunding 0.6305 bps next 00:00Z.
   Single-sample, not a cost claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 283 (SOL/BNB funding PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 26d3182. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public premiumIndex (fetch 695ms): SOLUSDT mark 111.86
+  lastFunding 0.9786 bps next 00:00Z; BNBUSDT mark
+  755.91 lastFunding 0.0000 bps next 00:00Z.
+  Single-sample, not a cost claim. PASS.
+- Suite 104/104, evidence gate exit 0.
