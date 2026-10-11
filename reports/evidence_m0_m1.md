@@ -942,3 +942,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   notes, and V-001R inbox pins v0.1.0 only (verbatim repro of the V-001
   baseline). CONTRACTS.md carries both baseline + addendum. PASS.
 - Suite 87/87, evidence gate exit 0.
+
+## Addendum — turn 72 (REST latency baseline; still awaiting go-aheads)
+
+- No new outbox filings, commits, or worker activity; E-003 (W2) +
+  V-001R (W1, ~81min wait) still await worker-side go-aheads. W3 idle.
+  The ~60min V-001R flag (turn 57) stands; no manager-side unblock.
+- Measured Binance USD-M REST round-trip (/ping, n=7) from this host:
+  min 223ms / med 233ms / max 332ms — consistent with earlier fetch
+  latencies (267ms klines, ~1.1s full discovery) and a first data point
+  for M2 execution-path latency evidence. PASS.
+- Suite 87/87, evidence gate exit 0.
