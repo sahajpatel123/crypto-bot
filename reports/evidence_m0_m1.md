@@ -3929,3 +3929,12 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
 - Public fundingRate x1 (fetch 553ms): XRP 0.006007%, DOGE
   0.003448% @16:00Z. Single-sample, not a cost claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 349 (SOL/BNB fundingRate PASS, cycle 2)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at c995743. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public fundingRate x1 (fetch 1510ms): SOL 0.006592%, BNB
+  0.000000% @16:00Z. Single-sample, not a cost claim. PASS.
+- Suite 104/104, evidence gate exit 0.
