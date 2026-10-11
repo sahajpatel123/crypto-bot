@@ -5274,3 +5274,7 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   x1 (BTC 337ms, ETH 275ms): BTC 1.3923;
   ETH 2.8358. PASS.
   Suite 167/167, evidence gate exit 0.
+- Turn-503 (cycle 6): public global L/S
+  x1 (XRP 339ms, DOGE 217ms): XRP 2.3167;
+  DOGE 2.3535. PASS.
+  Suite 167/167, evidence gate exit 0.
