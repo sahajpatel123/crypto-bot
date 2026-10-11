@@ -599,3 +599,16 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   drift: stdout wraps the digest with path/formatting bytes. Observed
   samples untouched since 77df093. PASS.
 - Suite 87/87, evidence gate exit 0.
+
+## Addendum — turn 46 (E-002/D-011 re-confirmation; still awaiting go-aheads)
+
+- No new outbox filings, commits, or worker activity; E-003 (W2, acked
+  14:11Z) + V-001R (W1, acked 13:44Z, ~52min wait) still await worker-side
+  go-aheads. W3 idle.
+- Re-confirmed the accepted E-002 on current main: capability-matrix test
+  standalone 7 passed; verdict string `blocked-on-transfer` intact in
+  capabilities.py with PyPI pins labelled proposal/unverified; zero
+  `import`/`from nautilus` statements anywhere in src/tools/tests. D-011
+  holds — engine remains stdlib-urllib + fake venue, no accidental
+  adoption. PASS.
+- Suite 87/87, evidence gate exit 0.
