@@ -4556,3 +4556,12 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   DOGE 0.003448% @16:00Z. Single-sample, not a cost claim.
   PASS.
 - Suite 105/105, evidence gate exit 0.
+
+## Addendum — turn 416 (SOL/BNB fundingRate PASS, cycle 4)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 57f18b9. E-004 accepted; W2 standing by. V-001R (W1)
+  still awaiting go-ahead; W3 idle.
+- Public fundingRate x1 (fetch 599ms): SOL 0.006592% @16:00Z;
+  BNB 0.000000% @16:00Z. Single-sample, not a cost claim.
+  PASS.
+- Suite 105/105, evidence gate exit 0.
