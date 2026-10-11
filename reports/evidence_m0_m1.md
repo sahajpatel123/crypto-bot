@@ -287,3 +287,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   incompatibility demonstrated); retry deferred to better throughput or a
   pre-seeded cache. Next E-task (v0.1.1 execution + crash fix) dispatches
   after this integration.
+
+## Addendum — turn 22 (E-003 dispatched; M1 reconfirmed)
+
+- E-003 dispatched to Worker 2 (inbox msg-E-003-01, branch worker2/e-003):
+  v0.1.1 execution side (reservation_id threading, exactly-once outcome
+  callbacks via recording stub, halt→exit-only persistence, reservation
+  reconciliation) + F-E001-02 fsync/orphan-sweep fix + F-E001-03/04 nits +
+  F-E001-05 live note. Awaiting ack. E-002 acceptance message sent.
+- M1 slice re-run post-E-002-integration (4th determinism confirmation):
+  evidence_bar 154, 1 rejected, 1 fill, ambiguous-reconciled-no-duplicate
+  — identical shape to prior runs. Suite 86/86.
