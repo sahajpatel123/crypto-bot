@@ -2702,3 +2702,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   buy-init $58,691.1 / sell-init $70,715.2 last $0.08707.
   Single-sample, not a flow claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 237 (tape PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at ef48281. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public aggTrades n=100 (fetch 621ms): SOL buy-init
+  $457,693.1 / sell-init $352,249.5 last $111.80; BNB
+  buy-init $56,599.2 / sell-init $25,442.2 last $756.51.
+  Single-sample, not a flow claim. PASS.
+- Suite 104/104, evidence gate exit 0.
