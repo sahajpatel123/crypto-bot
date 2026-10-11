@@ -2015,3 +2015,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   buy, median $64 / p90 $6,397. Single-sample tape datum,
   not a flow claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 173 (ETH kline snapshot PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 31c12f5. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public klines ETHUSDT 1m x6, 15:54-15:59Z (fetch 249ms):
+  closes 2526.49/2529.07/2536.24/2533.54/2535.65/2536.26,
+  range $2,526.24-$2,539.87. Single-sample candle datum,
+  not a regime claim. PASS.
+- Suite 104/104, evidence gate exit 0.
