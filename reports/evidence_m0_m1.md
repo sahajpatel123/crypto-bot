@@ -4842,3 +4842,18 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   2.1377 (long 0.6813 / short 0.3187); ts 1791744000000.
   Single-sample, not a sentiment/positioning claim. PASS.
 - Suite 148/148, evidence gate exit 0.
+
+## Addendum — turn 435 (Q-002 steady, BTC/ETH taker PASS,
+  cycle 4)
+- Q-002 unchanged since turn-434: w1 worktree still shows
+  the same 13 entries (S2/S3/S4 specs, features/research/
+  strategies edits, new pullback.py/_shared.py/s2.py), all
+  within allowed paths; branch at eb85157, no commits or
+  outbox filing yet. Read-only check; manager touched
+  nothing. W3 idle (confirmed), W2 still awaiting E-004
+  go-ahead (unchanged).
+- Public takerlongshortRatio 5m x1 (fetch 843ms): BTC
+  buySellRatio 0.6119 (buy 29.7090 / sell 48.5530); ETH
+  buySellRatio 1.0596 (buy 981.4450 / sell 926.2240); ts
+  1791743700000. Single-sample, not a flow claim. PASS.
+- Suite 148/148, evidence gate exit 0.
