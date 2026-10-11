@@ -1194,3 +1194,18 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   review-pass stands unchanged; still gated on the independent V-001R
   repro. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 93 (D-003 compliance re-audit PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 8ad852c. E-004 acked (option a, W2 not started, worker-side
+  go-ahead pending); V-001R (W1) still awaiting go-ahead; W3 idle.
+- D-003 re-audit since the turn-75 checkpoint (6430e9b): changed files
+  are coord/* + reports/* (manager-owned) plus exactly 4 W2-owned
+  files (execution/fake_venue.py, order_manager.py and 2 handoff
+  tests), touched solely by W2's own commit d54a251, integrated via
+  manager merge 28461d3. No manager-authored edit to any worker-owned
+  file; no competing edits. PASS.
+- Record correction: 08bc082 is the Turn-35 D-003 audit, not turn-75;
+  the turn-75 checkpoint is 6430e9b ("only manager-owned files since
+  08bc082"). This audit ran against the correct anchor.
+- Suite 104/104, evidence gate exit 0.
