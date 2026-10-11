@@ -4911,3 +4911,8 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   T1791744814527. Single-sample, not a flow claim. PASS.
   W1 -> idle (Q-002 accepted); W3 idle, W2 still awaiting
   E-004 go-ahead. Suite 167/167, evidence gate exit 0.
+- Turn-440 (cycle 5): public aggTrades x1 (XRP 270ms, DOGE
+  234ms): XRP a788083331 p1.4072 q5.7 mFalse T1791744875798;
+  DOGE a1039788654 p0.086580 q92 mFalse T1791744875799.
+  Single-sample, not a flow claim. PASS. Suite 167/167,
+  evidence gate exit 0.
