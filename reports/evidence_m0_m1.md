@@ -1114,3 +1114,15 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   last_heartbeat_utc and immediately reverted to 15:02:32Z — manager
   contact is not worker-originated contact.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 87 (E-004 dispatch self-check PASS; still awaiting acks)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 949b01d. E-004 (W2, ack pending) + V-001R (W1, awaiting
+  go-ahead) outstanding; W3 idle. Peers reachable 3/3.
+- Self-verified the turn-86 dispatch before W2 reads it: all 8 inbox
+  messages carry the required keys + body fields; all 8 task_ids link
+  to a board entry whose owner_session resolves to a known worker;
+  E-004 assigned/cloud-vega, W2 awaiting-go-ahead, heartbeat intact
+  at 15:02:32Z (D-009 clean); branch base 8cb875c exists and is an
+  ancestor of HEAD. PASS.
+- Suite 104/104, evidence gate exit 0.
