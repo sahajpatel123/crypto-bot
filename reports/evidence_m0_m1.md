@@ -1859,3 +1859,15 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   UTC). Single-sample funding datum, not a funding-cost claim.
   PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 159 (bookTicker spread snapshot PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 4615de7. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public bookTicker all symbols (fetch 442ms, N=741 USDT-named,
+  non-delivery): best-bid/ask spread p10 0.75bps / p50 3.42bps /
+  p90 8.06bps / max 34.10bps. Top-of-book only, no size
+  weighting; single-sample cost-input datum, not an execution
+  cost claim. PASS.
+- Suite 104/104, evidence gate exit 0.
