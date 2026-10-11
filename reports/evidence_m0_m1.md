@@ -3009,3 +3009,15 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   BNBUSDT OI 563,139.3.
   Single-sample, not a leverage claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 266 (BTC/ETH OI-history PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 4e59c5c. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public openInterestHist 1h x2 (fetch 1303ms): BTCUSDT OI
+  [93,342.5, 92,546.0] price 83,967.30; ETHUSDT OI
+  [2,326,391.2, 2,301,084.5] price 2,552.15.
+  OI-history rows carry no symbolPrice — prices via separate
+  ticker call. Single-sample, not a leverage/flow claim. PASS.
+- Suite 104/104, evidence gate exit 0.
