@@ -5322,3 +5322,7 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   x1 (BTC 326ms, ETH 281ms): BTC 92656.078;
   ETH 2315032.086. PASS.
   Suite 167/167, evidence gate exit 0.
+- Turn-515 (cycle 7): public openInterest
+  x1 (XRP 301ms, DOGE 286ms): XRP 295353908.5;
+  DOGE 2700397283. PASS.
+  Suite 167/167, evidence gate exit 0.
