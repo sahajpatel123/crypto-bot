@@ -3255,3 +3255,15 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   lo 744.91 quoteVol 157,960,963 trades 433133.
   Single-sample, not a regime claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 287 (BTC/ETH kline PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 042f3b9. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public klines 1m x2 (fetch 564ms): BTCUSDT @17:08Z
+  83,763.70>83,765.00v20.8 | 83,765.10>83,765.00v2.2
+  (forming); ETHUSDT @17:08Z 2,541.72>2,541.49v1,385.4 |
+  2,541.49>2,541.50v49.4 (forming).
+  Single-sample, not a signal claim. PASS.
+- Suite 104/104, evidence gate exit 0.
