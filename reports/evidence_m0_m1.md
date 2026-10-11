@@ -3606,3 +3606,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   OIV 2,315,086.7 px 2,545.11 @17:26Z.
   Single-sample, not a flow claim. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 318 (XRP/DOGE OI-history PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at d0868a0. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public openInterestHist 5m x2 latest + ticker prices (fetch
+  1175ms): XRP OIV 297,470,659 px 1.4214;
+  DOGE OIV 2,707,213,431 px 0.08719 @17:27Z.
+  Single-sample, not a flow claim. PASS.
+- Suite 104/104, evidence gate exit 0.
