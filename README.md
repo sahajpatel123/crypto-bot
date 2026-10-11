@@ -20,14 +20,27 @@ pytest -q
 ## Entry points (manager-owned, evolving)
 
 - `python tools/m1_vertical_slice.py` — M1 runnable vertical slice on synthetic data
-  (metadata → replay → S1 stub intent → coordinator → risk stub → fake venue → ledger → report).
-  Every synthetic input is labelled. Not a validated trading system.
-- `pytest -q` — maintained tests.
+  (SYNTH_V1 fixture → real S1 baseline intent → coordinator → risk stub → fake venue → report).
+  Every synthetic input is labelled. Risk gate stays a stub until V-001 lands.
+  Not a validated trading system.
+- `pytest -q` — maintained tests (85 green on main: coordination + market-data +
+  execution + strategies suites).
 - `python tools/generate_evidence.py` — reproducible status-evidence collector.
 
-Worker-owned entry points for discovery/capture, deterministic replay, historical
-research, live-feed paper trading, fault/integration checks and evidence reports
-are tracked in [coord/tasks.json](/Users/sahajpatel/Code/cryto-bot/coord/tasks.json).
+Worker-owned entry points (accepted, live on main):
+
+- `python tools/capture_public.py discover` — list current USDT-perp symbols
+  from Binance USD-M metadata (no hardcoded whitelist).
+- `python tools/capture_public.py capture` — record public klines to JSONL
+  under data/observed/.
+- `python tools/replay_public.py --in <recording>` — deterministic replay
+  with gap/stale detection.
+
+Accepted scope so far: E-001 (market data + execution skeleton + observed
+sample), Q-001 (S1 baseline + fixtures + preregistered EXP-001), V-002 (S1
+verification, clean). V-001 risk policy is review-passed, landing after
+independent reproduction. Historical research, live-feed paper trading and
+fault/integration harnesses are tracked in [coord/tasks.json](/Users/sahajpatel/Code/cryto-bot/coord/tasks.json).
 Documented commands only; no invented package commands in status reports.
 
 ## Safety
