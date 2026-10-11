@@ -1299,3 +1299,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   +36.8..+84.5ms, median +47.6ms; median RTT 239.8ms. Clocks agree
   within ~0.1s; M2 timestamp-ordering datum. PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 103 (BTCUSDT depth snapshot PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at da6c96e. E-004 acked (option a, W2 not started, worker-side
+  go-ahead pending); V-001R (W1) still awaiting go-ahead; W3 idle.
+- Public depth limit=20 (fetch 251ms): spread 0.01bps, top-20 bid
+  $358k / ask $657k notional, all within 5bps of touch. Single
+  snapshot only -- an M2 depth-at-size datum, not a liquidity claim.
+  PASS.
+- Suite 104/104, evidence gate exit 0.
