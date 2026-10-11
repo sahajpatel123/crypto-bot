@@ -977,3 +977,13 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   content checks PASS — rejected trade, fault recovery, and honesty
   labels all present in the committed artifact.
 - Suite 87/87, evidence gate exit 0.
+
+## Addendum — turn 75 (D-003 ongoing compliance; still awaiting go-aheads)
+
+- No new outbox filings, commits, or worker activity; E-003 (W2) +
+  V-001R (W1) still await worker-side go-aheads. W3 idle.
+- Re-checked D-003 file-ownership compliance for all main commits
+  since the turn-34 audit (08bc082): only reports/evidence_m0_m1.md
+  (39 commits), CONTRACTS.md, and DECISIONS.md were touched — all
+  manager-owned. Zero worker-owned files modified. PASS.
+- Suite 87/87, evidence gate exit 0.
