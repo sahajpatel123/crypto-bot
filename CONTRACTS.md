@@ -88,3 +88,44 @@ tasks. v0.1.0 remains the implemented baseline until those land.
   E-003 stubs and the future V-001 wiring both conform to it; signatures
   mirror the V-001 policy surface (release → bool, note_fill(id),
   note_flat()).
+
+## Addendum v0.2.0 — fill-delta propagation (MG-001; F-CEO-02/03 seam)
+
+Status: PUBLISHED by manager. V-004 implements the risk/ledger side, E-005
+the execution side. Supersedes v0.1.x callback semantics only where stated.
+Protocol code update lands at integration with both sides.
+
+- New sink method (risk implements, execution calls):
+  `note_fill_delta(reservation_id: str, exec_id: str, symbol: str,
+  venue_side: str, qty: float, price: float, fee: float, ts_utc: str) -> None`
+  - Execution calls it for EVERY new fill increment (partial or full),
+    at-least-once per exec_id. `venue_side` is "BUY"|"SELL"; `ts_utc` is an
+    ISO-8601 UTC timestamp; `fee` is the venue-reported fee for this
+    increment (0.0 on venues that model no fee, labelled as such).
+  - Risk/ledger books idempotently keyed by exec_id: duplicate delivery is
+    ignored, never double-charged. First booked nonzero delta for a
+    reservation marks exposure.
+  - Rejects (before booking): nonfinite/negative qty/price/fee, unknown
+    venue_side, naive/non-UTC ts (extends F-CEO-07 validation).
+- `note_fill(reservation_id)` redefined: fires exactly-once on the FIRST
+  nonzero fill (partial or full), converting reservation → open-position
+  state. The first increment is ALSO delivered via note_fill_delta (delta
+  first for booking, then the transition). Never call note_fill for a
+  zero-fill reservation.
+- `release(reservation_id) -> bool` tightened: execution may call it only
+  when lifetime fills == 0 AND no live/ambiguous/settling orders remain for
+  the reservation (reconciliation-proven). Risk returns False — retaining
+  the block — when booked deltas show nonzero open exposure or the id is
+  unknown; True only when a live reservation was actually freed. An expired
+  reservation with booked exposure is NEVER silently purged; flat booking +
+  reconciliation lifts the block.
+- `note_flat()` retained: risk clears open-position state only when booked
+  exposure reconciles flat (net-zero).
+- Exec identity: OrderManager mints one exec_id per fill increment, unique,
+  persisted in the order log (fsync) BEFORE the sink call, stable across
+  recovery, and traceable to its client_id. Format at execution discretion.
+- Execution-local (no contract change, W2 tests): expiry settle window —
+  expired entries are re-reconciled until the window passes fill-free; late
+  fills are booked and protected. Overfill residual: exit fills beyond entry
+  fills are booked truthfully, logged, and freeze further exits for that
+  reservation; full prevention needs venue-side OCO (documented residual).
