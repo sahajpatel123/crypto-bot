@@ -1951,3 +1951,14 @@ Manager: young-polaris. Contract: v0.1.0. Mode: replay/simulation only. No live 
   taker datum; single-sample taker datum, not a flow claim.
   PASS.
 - Suite 104/104, evidence gate exit 0.
+
+## Addendum — turn 167 (SOL taker-L/S snapshot PASS)
+- No new outbox filings, commits, or worker activity; tree clean on
+  main at 1eebd55. E-004 acked (option a, W2 not started,
+  worker-side go-ahead pending); V-001R (W1) still awaiting
+  go-ahead; W3 idle.
+- Public takerlongshortRatio SOLUSDT 5m x6 (fetch 271ms):
+  0.849/1.552/0.826/1.259/1.368/1.158, last 1.158. Joins
+  BTC/ETH taker data; single-sample taker datum, not a flow
+  claim. PASS.
+- Suite 104/104, evidence gate exit 0.
