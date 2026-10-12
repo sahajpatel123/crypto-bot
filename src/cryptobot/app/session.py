@@ -24,8 +24,7 @@ from cryptobot.coordination.selector import (Candidate, Selector,
 from cryptobot.market_data.bars import (BarAggregator, BarMissing,
                                         to_s1_bar)
 from cryptobot.market_data.bridge import load_snapshots
-from cryptobot.market_data.replayer import (assert_input_class, load_events,
-                                            replay_events)
+from cryptobot.market_data.replayer import assert_input_class
 from cryptobot.market_data.views import DepthStore, book_flow_for
 from cryptobot.risk.policy import RiskPolicy
 from cryptobot.risk.types import AccountSnapshot, Approved, RiskConfig
