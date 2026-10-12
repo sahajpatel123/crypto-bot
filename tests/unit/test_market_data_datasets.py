@@ -160,19 +160,22 @@ def test_prepare_marks_publish_at_close_availability(tmp_path):
              "taker_buy_volume", "taker_buy_quote_volume", "ignore"],
             ["1000000", "10.0", "11.0", "9.0", "10.5", "1059999",
              "0", "0", "0", "60", "0", "0", "0"]]
-    [(open_ms, avail_ms, o, h, low, close)] = prep._convert_marks(rows)
-    assert (open_ms, avail_ms) == (1_000_000, 1_059_999)  # never open+close.
-    assert (o, h, low, close) == (10.0, 11.0, 9.0, 10.5)
+    [(ts, mark, avail_ms, open_ms, o, h, low)] = prep._convert_marks(rows)
+    assert (ts, avail_ms, open_ms) == (1_059_999, 1_059_999, 1_000_000)
+    assert (mark, o, h, low) == (10.5, 10.0, 11.0, 9.0)
     day = __import__("datetime").date(1970, 1, 1)
-    grid = [(m * 60_000, m * 60_000 + 59_999, 10.0, 11.0, 9.0, 10.5)
+    grid = [(m * 60_000 + 59_999, 10.5, m * 60_000 + 59_999,
+             m * 60_000, 10.0, 11.0, 9.0)
             for m in range(1440) if m != 5]
     assert prep._missing_minutes(grid, day) == [5]  # grids on open_time.
 
 
 def test_prepare_absent_funding_is_null_with_status(tmp_path):
     prep = _prepare()
-    marks = [(100_000_000, 100_059_999, 10.0, 11.0, 9.0, 10.5),
-             (200_000_000, 200_059_999, 10.5, 12.0, 10.0, 11.0)]
+    marks = [(100_059_999, 10.5, 100_059_999, 100_000_000,
+              10.0, 11.0, 9.0),
+             (200_059_999, 11.0, 200_059_999, 200_000_000,
+              10.5, 12.0, 10.0)]
     fundings = [(1_000_000, 8, 0.0001)]  # last calc a day back: stale.
     dest = tmp_path / "mark.parquet"
     n, ts_min, ts_max, absent = prep._join_marks(marks, fundings, dest)

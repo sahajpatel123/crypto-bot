@@ -346,11 +346,22 @@ class Collector:
             conn = self._conns.get(route)
             if conn is None:
                 continue
-            try:
-                message = conn.recv_message_nowait()
-            except WsClosed:
-                self._drop_connection(route, injected=False)
-                continue
+            drain = getattr(conn, "recv_message_nowait", None)
+            if drain is None:
+                # Legacy/foreign conn: honor has_pending() without select.
+                if not getattr(conn, "has_pending", lambda: False)():
+                    continue
+                try:
+                    message = conn.recv_message(timeout_s=0)
+                except WsClosed:
+                    self._drop_connection(route, injected=False)
+                    continue
+            else:
+                try:
+                    message = drain()
+                except WsClosed:
+                    self._drop_connection(route, injected=False)
+                    continue
             if message is None:
                 continue
             if self._handle_message(route, *message, raw_fh, events_fh, bars_fh):

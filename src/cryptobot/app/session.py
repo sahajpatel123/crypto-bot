@@ -23,6 +23,7 @@ from cryptobot.coordination.selector import (Candidate, Selector,
                                              SelectorConfig)
 from cryptobot.market_data.bars import (BarAggregator, BarMissing,
                                         to_s1_bar)
+from cryptobot.market_data.bridge import load_snapshots
 from cryptobot.market_data.replayer import (assert_input_class, load_events,
                                             replay_events)
 from cryptobot.market_data.views import DepthStore, book_flow_for
@@ -446,9 +447,15 @@ class Session:
         book, flow, reason = book_flow_for(
             symbol, evidence_ms, self._depth_store)
         depth, flow_view, reasons = _map_b4_views(book, flow, reason)
+        missing = len(bars) - len(present)
+        quality = (DataQuality.CLEAN if missing == 0
+                   else DataQuality.DEGRADED)
+        if missing:
+            reasons = list(reasons) + [
+                f"gap:missing-windows:{missing}"]
         view = MarketView(
             instrument=symbol, bars=tuple(bars), now_utc=self.now_utc(),
-            depth=depth, flow=flow_view, quality=DataQuality.CLEAN,
+            depth=depth, flow=flow_view, quality=quality,
             quality_reason=";".join(reasons))
         for name, adapter in adapters.items():
             start = time.perf_counter()
@@ -852,6 +859,61 @@ class Session:
                               {"reason": reason, "net": net})
 
     # -- replay --------------------------------------------------------------
+    def _prime_replay_books(self, capture_dir: Path) -> dict[str, Any]:
+        """Install persisted depth snapshots so replay books can sync.
+
+        E-009 exports the APIs; the priming call is Session-owned. A
+        missing depth_snapshots.jsonl (captures predating E-007) is
+        recorded as absent — books stay unsynced on those replays ever.
+        """
+        path = capture_dir / "depth_snapshots.jsonl"
+        summary: dict[str, Any] = {"source": "depth_snapshots.jsonl",
+                                   "present": path.exists(), "applied": 0,
+                                   "synced": [], "errors": 0}
+        for snap in load_snapshots(path):
+            try:
+                outcome = self._depth_store.apply_snapshot_record(snap)
+            except (KeyError, TypeError, ValueError):
+                summary["errors"] += 1
+                continue
+            summary["applied"] += 1
+            if outcome == "synced":
+                summary["synced"].append(str(snap.get("symbol", "")))
+        return summary
+
+    def _prime_live_books(self) -> dict[str, Any]:
+        """REST depth snapshot per configured symbol at live start.
+
+        Dynamic discovery (empty symbols) cannot prime upfront: recorded
+        as skipped. A failed fetch never aborts the run; the symbol is
+        recorded unprimed and its book stays unsynced.
+        """
+        import urllib.request
+        summary: dict[str, Any] = {"source": "rest:fapi/v1/depth",
+                                   "primed": [], "failed": {}}
+        if not self.config.symbols:
+            summary["skipped"] = "dynamic-symbols"
+            return summary
+        for symbol in self.config.symbols:
+            url = ("https://fapi.binance.com/fapi/v1/depth"
+                   f"?symbol={symbol}&limit=1000")
+            try:
+                req = urllib.request.Request(url, headers={
+                    "User-Agent": "cryptobot-paper/0.1"})
+                with urllib.request.urlopen(req, timeout=15.0) as resp:
+                    payload = json.loads(resp.read().decode("utf-8"))
+                recv_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
+                self._depth_store.apply_snapshot_record({
+                    "symbol": symbol, "bids": payload["bids"],
+                    "asks": payload["asks"],
+                    "last_update_id": int(payload["lastUpdateId"]),
+                    "rest_recv_ms": recv_ms})
+            except Exception as exc:  # noqa: BLE001 - priming never aborts.
+                summary["failed"][symbol] = f"{type(exc).__name__}"
+                continue
+            summary["primed"].append(symbol)
+        return summary
+
     def run_replay(self, capture_dir: str | Path, *,
                    expect_class: str = "observed-public",
                    resume: bool = False,
@@ -870,6 +932,8 @@ class Session:
             self.store.checkpoint(self.run_id, "open",
                                   {"equity": opening, "capture": str(capture_dir)})
         self._init_run_files()
+        prime = self._prime_replay_books(capture_dir)
+        self.store.checkpoint(self.run_id, "depth-prime", prime)
         records = load_events(events_path)
         for record in records:
             assert_input_class({"input_class": record["input_class"]}, expect_class)
@@ -1247,6 +1311,8 @@ class Session:
             self.store.checkpoint(self.run_id, "open",
                                   {"equity": self.config.paper_capital_usdt})
         self._init_run_files()
+        prime = self._prime_live_books()
+        self.store.checkpoint(self.run_id, "depth-prime", prime)
         adapters, modules = self._strategy_adapters()
         self._set_state("warming", "paper-start")
         deadline = time.monotonic() + duration_s

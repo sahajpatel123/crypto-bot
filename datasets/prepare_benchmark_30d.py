@@ -162,19 +162,24 @@ def _idle_gaps(ts_list: list[int], threshold_ms: int) -> list[tuple[int, int]]:
 
 
 def _convert_marks(rows: list[list[str]]
-                 ) -> list[tuple[int, int, float, float, float, float]]:
-    """Minute klines -> (open, close_avail, open_px, high, low, close) tuples.
+                 ) -> list[tuple[int, float, int, int, float, float, float]]:
+    """Minute klines -> (ts, mark, avail, open, open_px, high, low) tuples.
 
-    The close is published at its availability (close_time), never at the
-    minute open — pairing open_time with close was lookahead (E-009).
+    ts == avail == close_time: the close is published at its availability,
+    never at the minute open — pairing open_time with close was lookahead
+    (E-009; ts-first so consumers cannot mistake open for publish time).
     """
     header, body = rows[0], rows[1:]
     col = {name: header.index(name) for name in (
         "open_time", "open", "high", "low", "close", "close_time")}
-    return [(int(row[col["open_time"]]), int(row[col["close_time"]]),
-             float(row[col["open"]]), float(row[col["high"]]),
-             float(row[col["low"]]), float(row[col["close"]]))
-            for row in body]
+    out = []
+    for row in body:
+        avail = int(row[col["close_time"]])
+        out.append((avail, float(row[col["close"]]), avail,
+                    int(row[col["open_time"]]),
+                    float(row[col["open"]]), float(row[col["high"]]),
+                    float(row[col["low"]])))
+    return out
 
 
 def _convert_funding(rows: list[list[str]]) -> list[tuple[int, int, float]]:
@@ -186,7 +191,7 @@ def _convert_funding(rows: list[list[str]]) -> list[tuple[int, int, float]]:
             for row in body]
 
 
-def _join_marks(marks: list[tuple[int, int, float, float, float, float]],
+def _join_marks(marks: list[tuple[int, float, int, int, float, float, float]],
                 fundings: list[tuple[int, int, float]],
                 dest: Path) -> tuple[int, int, int, bool]:
     """Minute marks + funding terms -> markPrice channel (causal, explicit).
@@ -202,7 +207,7 @@ def _join_marks(marks: list[tuple[int, int, float, float, float, float]],
         "ts_ms", "open_time", "close_time", "mark", "open_px", "high_px",
         "low_px", "funding_rate", "funding_status", "next_funding_ms")}
     terms_absent = False
-    for open_ms, avail_ms, open_px, high, low, close in sorted(marks):
+    for ts_ms, close, avail_ms, open_ms, open_px, high, low in sorted(marks):
         nxt = 0
         last_calc: tuple[int, int, float] | None = None
         for calc, hours, value in fundings:
@@ -231,11 +236,11 @@ def _join_marks(marks: list[tuple[int, int, float, float, float, float]],
     return n, cols["ts_ms"][0], cols["ts_ms"][-1], terms_absent
 
 
-def _missing_minutes(marks: list[tuple[int, int, float, float, float, float]],
+def _missing_minutes(marks: list[tuple[int, float, int, int, float, float, float]],
                      day: date) -> list[int]:
     day_start = int(datetime(day.year, day.month, day.day,
                              tzinfo=timezone.utc).timestamp() * 1000)
-    have = {open_ms for open_ms, _, _, _, _, _ in marks
+    have = {open_ms for _, _, _, open_ms, _, _, _ in marks
             if day_start <= open_ms < day_start + 86_400_000}
     return [m for m in range(1440) if day_start + m * 60_000 not in have]
 

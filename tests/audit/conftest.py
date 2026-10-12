@@ -8,17 +8,10 @@ fix's integration. (Manager integration fixup; probes authored by W5.)
 """
 import pytest
 
-KNOWN_FAILURES = (
-    # Finding 1 fixed by Q-008 (causal-first-trade-v1); entries trimmed.
-    # Finding 2: 2/3 fixed by E-009 v2 freeze (trimmed); close-at-open open.
-    "test_finding_2_mark_close.py::test_close_not_published_at_open",
-    # Finding 3 fixed by Q-008 (venue-aware dedup); entries trimmed.
-    # Finding 4: 2/3 fixed by E-009 gap fix (trimmed); session view open.
-    "test_finding_4_gap_quality.py::test_session_view_propagates_gap_quality",
-    # Finding 5: 2/3 fixed by E-009 fair drain (trimmed); no-readability open.
-    "test_finding_5_select_strand.py"
-    "::test_buffered_message_drained_without_readability",
-)
+# All 5 findings fixed: 1+3 by Q-008, 2/4/5 core by E-009, residuals
+# (ts-first marks, session gap view, has_pending fallback) by manager.
+# List retained (empty) so future findings reuse the pattern.
+KNOWN_FAILURES = ()
 
 
 def pytest_collection_modifyitems(items):

@@ -1117,3 +1117,57 @@ def test_b4_wiring_flow_present_depth_precise(tmp_path):
         assert book is None and flow is not None
     finally:
         store.close()
+
+
+def _snap(symbol="BTCUSDT", last_id=100):
+    return {"symbol": symbol, "bids": [["99.5", "1.0"]],
+            "asks": [["100.5", "1.0"]], "last_update_id": last_id,
+            "rest_recv_ms": T0, "rest_mono_ns": 1, "limit": 1000,
+            "outcome": "synced"}
+
+
+def test_replay_primes_depth_books(tmp_path):
+    """Manager: replay installs depth_snapshots.jsonl before events."""
+    session, store = _session(tmp_path, warmup_bars=3)
+    try:
+        cap = _capture(tmp_path / "cap")
+        (cap / "depth_snapshots.jsonl").write_text(
+            json.dumps(_snap()) + "\n")
+        report = session.run_replay(cap, expect_class=CLASS)
+        assert report["events_seen"] > 0
+        from cryptobot.market_data.views import book_flow_for
+        book, _, _ = book_flow_for(
+            "BTCUSDT", T0 + 60_000, session._depth_store)
+        assert book is not None, "primed book must sync"
+        ckpt = json.loads(store._db.execute(
+            "SELECT payload FROM checkpoints WHERE run_id=? AND kind=?",
+            ("sess-test", "depth-prime")).fetchone()[0])
+        assert ckpt["present"] is True and ckpt["applied"] == 1
+        assert ckpt["synced"] == ["BTCUSDT"]
+    finally:
+        store.close()
+
+
+def test_replay_missing_snapshots_recorded_absent(tmp_path):
+    """Manager: pre-E-007 captures record the book gap explicitly."""
+    session, store = _session(tmp_path, warmup_bars=3)
+    try:
+        cap = _capture(tmp_path / "cap")
+        session.run_replay(cap, expect_class=CLASS)
+        ckpt = json.loads(store._db.execute(
+            "SELECT payload FROM checkpoints WHERE run_id=? AND kind=?",
+            ("sess-test", "depth-prime")).fetchone()[0])
+        assert ckpt["present"] is False and ckpt["applied"] == 0
+    finally:
+        store.close()
+
+
+def test_live_prime_skipped_for_dynamic_symbols(tmp_path):
+    """Manager: live priming with undiscovered symbols records skip."""
+    session, store = _session(tmp_path, warmup_bars=3)
+    try:
+        assert session.config.symbols == ()
+        summary = session._prime_live_books()
+        assert summary["skipped"] == "dynamic-symbols"
+    finally:
+        store.close()
