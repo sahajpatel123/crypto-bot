@@ -38,17 +38,49 @@ def test_admits_single_intent():
     assert decision.scoring_label == "heuristic-v1"
 
 
-def test_expired_halt_cost_rejected():
+def _tight_rule():
+    return encode_exit_rule(ExitPolicy(
+        stop_price=99.0, target_price=100.6,
+        time_exit_utc=NOW + timedelta(seconds=120), policy_id="t"))
+
+
+def test_expired_halt_rejected():
     sel = Selector()
     cands = [Candidate("S1", _intent(expiry=NOW - timedelta(seconds=1),
                                      ts=NOW - timedelta(seconds=61))),
-             Candidate("S2", _intent(strategy="S2", dq=DataQuality.HALT)),
-             Candidate("S3", _intent(strategy="S3", cost_bps=99.0))]
+             Candidate("S2", _intent(strategy="S2", dq=DataQuality.HALT))]
     decision = sel.select(cands, now_utc=NOW, position_busy=False)
     assert decision.admitted is None
     reasons = sorted(r for _, r in decision.rejections)
-    assert reasons == ["selection:cost-infeasible", "selection:expired",
-                       "selection:halt-quality"]
+    assert reasons == ["selection:expired", "selection:halt-quality"]
+
+
+def test_reward_below_cost_rejected():
+    # Reward |100.6-100.5|/100.5 ~ 10bps < round-trip 2*(4*3)+0 = 24bps.
+    sel = Selector()
+    d = sel.select([Candidate("S1", _intent(rule=_tight_rule()))],
+                   now_utc=NOW, position_busy=False)
+    assert d.admitted is None
+    assert d.rejections[0][1] == "selection:reward-below-cost"
+
+
+def test_reward_unknown_rejected():
+    rule = encode_exit_rule(ExitPolicy(
+        stop_price=99.0, target_price=None,
+        time_exit_utc=NOW + timedelta(seconds=120), policy_id="t"))
+    sel = Selector()
+    d = sel.select([Candidate("S1", _intent(rule=rule))],
+                   now_utc=NOW, position_busy=False)
+    assert d.admitted is None
+    assert d.rejections[0][1] == "selection:reward-unknown"
+
+
+def test_reward_multiple_scales():
+    # Same 10bps reward vs 24bps round-trip passes only below 0.4x.
+    lax = Selector(SelectorConfig(min_reward_multiple=0.4))
+    d = lax.select([Candidate("S1", _intent(rule=_tight_rule()))],
+                   now_utc=NOW, position_busy=False)
+    assert d.admitted is not None
 
 
 def test_opposing_stands_aside():
@@ -88,7 +120,9 @@ def test_undecodable_rule_blocks_unless_legacy():
     legacy = Selector(SelectorConfig(allow_legacy_exit_rules=True))
     d2 = legacy.select([Candidate("S1", _intent(rule="S1_EXIT_V1:take_r=1.5"))],
                        now_utc=NOW, position_busy=False)
-    assert d2.admitted is not None and d2.legacy_exit is True
+    # Legacy rules pass the grammar gate but carry no verifiable reward.
+    assert d2.admitted is None
+    assert d2.rejections[0][1] == "selection:reward-unknown"
 
 
 def test_cooldown_blocks_repeat():

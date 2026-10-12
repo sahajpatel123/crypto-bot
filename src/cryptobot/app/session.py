@@ -108,7 +108,7 @@ class Session:
                                  now_utc=self.now_utc)
         self.policy.bind_ledger(self.ledger)
         self.selector = Selector(SelectorConfig(
-            max_forecast_cost_bps=config.max_forecast_cost_bps,
+            min_reward_multiple=config.min_reward_multiple,
             cooldown_s=config.cooldown_s,
             allow_legacy_exit_rules=config.allow_legacy_exit_rules))
         if engine is not None:
@@ -135,13 +135,22 @@ class Session:
         self._flatten_pending = False
         self._warmed = False
         self._last_seq = 0
+        self._last_equity_sample: datetime | None = None
+        self._equity_dirty = True
         self._crash_after: int | None = None
         self._stop_flag: str | None = None
         self._pid = pid
 
     # -- lifecycle ---------------------------------------------------------
     def _set_state(self, state: str, reason: str = "") -> None:
+        try:
+            old = (self.store.get_run(self.run_id) or {}).get("state", "")
+        except Exception:
+            old = ""
         self.store.set_state(self.run_id, state, reason)
+        self._append_run_file("risk.jsonl", {
+            "ts_utc": self.now_utc().isoformat(), "kind": "run-state",
+            "from_state": old, "to_state": state, "reason": reason})
 
     # -- run-mode filter arming (paper only) -----------------------------------
     def arm_run_mode(self, symbols: list[str], *, http_get: Any = None) -> None:
@@ -189,6 +198,29 @@ class Session:
             net_realised_global=self.ledger.net_realised(),
             open_position=self.ledger.has_position() or self._position is not None,
             flows_cumulative=self.ledger.total_flows())
+
+    def _sample_equity(self, source: str, *, force: bool = False) -> None:
+        """Append an equity curve point (periodic + on fills + on day roll)."""
+        now = self.now_utc()
+        if not force and not self._equity_dirty:
+            if self._last_equity_sample is not None and (
+                    now - self._last_equity_sample).total_seconds() < \
+                    self.config.equity_sample_s:
+                return
+        mark = self._reference_mark()
+        qty = self.ledger.position_qty()
+        basis = self.ledger.entry_basis()
+        open_pnl = qty * (mark - basis) if basis is not None and mark > 0 else 0.0
+        cash = self.ledger.marked_equity(mark) - qty * mark if mark > 0 else \
+            self.ledger.marked_equity(0.0)
+        self._append_run_file("equity.jsonl", {
+            "ts_utc": now.isoformat(),
+            "marked_equity": self.ledger.marked_equity(mark),
+            "cash": cash, "position_qty": qty,
+            "position_symbol": self._position_symbol() or "",
+            "open_pnl": open_pnl, "source": source})
+        self._last_equity_sample = now
+        self._equity_dirty = False
 
     def _reference_mark(self) -> float:
         if self._position is not None:
@@ -293,12 +325,26 @@ class Session:
                         seconds=intent.holding_limit_s), True)
 
     # -- position management --------------------------------------------------
+    @staticmethod
+    def _split_ref(ref: str) -> tuple[str, str, str]:
+        """evidence_ref -> (strategy, instrument, side); bare ids pass through."""
+        parts = ref.split(":")
+        if len(parts) >= 4:
+            return parts[0], parts[2], parts[3]
+        return ref, "", ""
+
     def _maybe_admit(self, candidates: list[Candidate]) -> None:
         if self._position is not None:
             for cand in candidates:
                 ref = cand.intent.evidence_ref if cand.intent else cand.strategy_id
                 reason = cand.reject_reason if cand.intent is None else "selection:position-busy"
-                self._note_reject(reason)
+                if cand.intent is not None:
+                    self._note_reject(reason, cand.intent.strategy,
+                                      cand.intent.instrument,
+                                      cand.intent.side.value)
+                else:
+                    strat, _, _ = self._split_ref(cand.strategy_id)
+                    self._note_reject(reason, strat)
                 self.store.record_intent(
                     self.run_id, ref, cand.strategy_id,
                     cand.intent.instrument if cand.intent else "",
@@ -310,7 +356,8 @@ class Session:
                                         position_busy=False)
         self._decide_ms.append((time.perf_counter() - start) * 1000)
         for ref, reason in decision.rejections:
-            self._note_reject(reason)
+            strat, inst, side = self._split_ref(ref)
+            self._note_reject(reason, strat, inst, side)
         for cand in candidates:
             if cand.intent is None:
                 continue
@@ -328,7 +375,12 @@ class Session:
         intent = decision.admitted
         verdict = self.policy.evaluate(intent, self._snapshot_account())
         if not isinstance(verdict, Approved):
-            self._note_reject(f"risk:{verdict.reason}")
+            self._note_reject(f"risk:{verdict.reason}", intent.strategy,
+                              intent.instrument, intent.side.value)
+            self._append_run_file("risk.jsonl", {
+                "ts_utc": self.now_utc().isoformat(), "kind": "risk-decision",
+                "from_state": "", "to_state": "rejected",
+                "reason": verdict.reason})
             self.store.record_intent(
                 self.run_id, intent.evidence_ref, intent.strategy,
                 intent.instrument, intent.side.value, "rejected",
@@ -340,7 +392,8 @@ class Session:
         try:
             stop, target, time_exit, legacy = self._derive_exits(intent)
         except ValueError:
-            self._note_reject("selection:exit-undecodable")
+            self._note_reject("selection:exit-undecodable", intent.strategy,
+                              intent.instrument, intent.side.value)
             self.store.record_intent(
                 self.run_id, intent.evidence_ref, intent.strategy,
                 intent.instrument, intent.side.value, "rejected",
@@ -357,19 +410,39 @@ class Session:
                           "entry_pre_id": pre_id, "entry_id": None,
                           "legs": [], "stop": stop, "target": target,
                           "time_exit": time_exit, "legacy_exit": legacy,
-                          "protected": False}
+                          "protected": False, "protect_attempts": 0}
         self._admitted += 1
         self._set_state("holding", f"admitted:{intent.evidence_ref}")
         self.store.checkpoint(self.run_id, "admit", {
             "reservation_id": verdict.reservation_id, "qty": verdict.qty,
             "notional": verdict.notional_usdt, "legacy_exit": legacy})
 
-    def _note_reject(self, reason: str) -> None:
+    def _note_reject(self, reason: str, strategy: str = "",
+                     instrument: str = "", side: str = "") -> None:
         self._reject_counts[reason] = self._reject_counts.get(reason, 0) + 1
+        stage = reason.split(":")[0] if ":" in reason else "unknown"
+        self._append_run_file("rejections.jsonl", {
+            "ts_utc": self.now_utc().isoformat(), "stage": stage,
+            "reason": reason, "strategy": strategy, "instrument": instrument,
+            "side": side})
 
     def _drain_engine(self) -> None:
         for event in self.engine.poll():
             self._on_engine_event(event)
+
+    def _append_run_file(self, name: str, record: dict[str, Any]) -> None:
+        """Append one JSON record to a per-run result file (B9 reporting).
+
+        Schemas (stable, consumed by reporting/build):
+        - fills.jsonl: {execution_id, client_order_id, instrument, side, qty,
+          price, fee, liquidity, ts_utc}
+        - rejections.jsonl: {ts_utc, stage, reason, strategy, instrument, side}
+        - risk.jsonl: {ts_utc, kind, from_state, to_state, reason}
+        - equity.jsonl: {ts_utc, marked_equity, cash, position_qty,
+          position_symbol, open_pnl, source}
+        """
+        with (self.workdir / name).open("a", encoding="utf-8") as fh:
+            fh.write(json.dumps(record, sort_keys=True) + "\n")
 
     def _on_engine_event(self, event: EngineEvent) -> None:
         payload = event.payload
@@ -385,6 +458,14 @@ class Session:
             if submitted is not None:
                 self._dispatch_ms.append(
                     (payload.ts_utc - submitted).total_seconds() * 1000)
+            self._append_run_file("fills.jsonl", {
+                "execution_id": payload.execution_id,
+                "client_order_id": payload.client_order_id,
+                "instrument": payload.instrument, "side": payload.side,
+                "qty": payload.qty, "price": payload.price, "fee": payload.fee,
+                "liquidity": payload.liquidity,
+                "ts_utc": payload.ts_utc.isoformat()})
+            self._equity_dirty = True
             self.store.record_event(
                 self.run_id, payload.execution_id, "fill",
                 {"client_order_id": payload.client_order_id,
@@ -412,15 +493,7 @@ class Session:
         statuses = {s.client_order_id: s for s in self.engine.open_orders()}
         entry = statuses.get(pos["entry_id"] or "")
         if entry is not None and entry.filled_qty > 1e-12 and not pos["protected"]:
-            try:
-                legs = self.engine.attach_protection(
-                    entry.client_order_id, pos["stop"], pos["target"])
-            except ValueError as exc:
-                self.store.checkpoint(self.run_id, "protection-failed",
-                                      {"reason": str(exc)})
-                legs = []
-            pos["legs"] = legs
-            pos["protected"] = True
+            self._ensure_protection(pos)
         # Time exit: cancel legs, flatten the remainder at market.
         if (self.ledger.has_position()
                 and self.now_utc() >= pos["time_exit"]):
@@ -438,6 +511,58 @@ class Session:
                 "rejected", "cancelled", "expired"):
             self._position = None
             self._set_state("ready", f"entry-dead:{entry.state}")
+
+    def _ensure_protection(self, pos: dict[str, Any]) -> None:
+        """Attach + VERIFY required stop cover (B8 protection invariant).
+
+        protected flips True only when the stop leg is acknowledged and
+        verified live with covering quantity. On failure: entries stay
+        blocked (position retained), retries are bounded (3), then a
+        reduce-only emergency close is attempted. Never falsely protected.
+        """
+        entry_id = pos["entry_id"] or ""
+        if not pos["legs"]:
+            if pos["protect_attempts"] >= 3:
+                self.store.checkpoint(self.run_id, "protection-emergency",
+                                      {"attempts": pos["protect_attempts"]})
+                self._flatten("protection-emergency-close")
+                self._drain_engine()
+                return
+            pos["protect_attempts"] += 1
+            try:
+                pos["legs"] = self.engine.attach_protection(
+                    entry_id, pos["stop"], pos["target"])
+            except (ValueError, KeyError) as exc:
+                self.store.checkpoint(self.run_id, "protection-failed",
+                                      {"attempt": pos["protect_attempts"],
+                                       "reason": str(exc)})
+                return
+        # Acknowledgement gate: queued legs resolve on a later drain.
+        resolved = [self.engine.resolve(lid) for lid in pos["legs"]]
+        if any(rid is None for rid in resolved):
+            return
+        pos["legs"] = resolved
+        # Verify against a FRESH snapshot: stop leg live + covering.
+        statuses = {s.client_order_id: s for s in self.engine.open_orders()}
+        net = abs(self.ledger.position_qty())
+        stop = statuses.get(pos["legs"][0])
+        if stop is None or stop.state not in ("open", "partial"):
+            self.store.checkpoint(self.run_id, "protection-unverified",
+                                  {"leg": pos["legs"][0],
+                                   "state": stop.state if stop else "missing"})
+            pos["legs"] = []
+            return
+        if stop.qty - stop.filled_qty + 1e-9 < net:
+            self.store.checkpoint(self.run_id, "protection-unverified",
+                                  {"leg": pos["legs"][0], "reason": "qty-short",
+                                   "open_qty": stop.qty - stop.filled_qty,
+                                   "net": net})
+            pos["legs"] = []
+            return
+        if not pos["protected"]:
+            pos["protected"] = True
+            self.store.checkpoint(self.run_id, "protection-verified",
+                                  {"legs": pos["legs"]})
 
     def _retry_pending_flatten(self, reason: str) -> None:
         if not self.ledger.has_position():
@@ -605,6 +730,8 @@ class Session:
                     self._warmed = True
                     self._set_state("ready", "warmup-complete")
                 self._maybe_admit(self._evaluate_symbol(symbol, adapters, modules))
+        if closed:
+            self._sample_equity("bar")
         health = self.policy.check_health(self._snapshot_account())
         if not health.ok:
             self.engine.set_exit_only(True, ";".join(health.reasons))
@@ -617,6 +744,7 @@ class Session:
             self.policy.reconcile_day(marked, self.ledger.total_flows())
             self.engine.set_exit_only(False, "day-reconciled")
             self._set_state("ready", "day-reconciled")
+            self._sample_equity("day-roll", force=True)
             self.store.checkpoint(self.run_id, "day-roll",
                                   {"day": today, "marked": marked})
         self._day = today

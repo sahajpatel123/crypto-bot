@@ -28,7 +28,7 @@ class Candidate:
 
 @dataclass(frozen=True)
 class SelectorConfig:
-    max_forecast_cost_bps: float = 25.0
+    min_reward_multiple: float = 1.0
     cooldown_s: int = 300
     allow_legacy_exit_rules: bool = False
 
@@ -46,9 +46,23 @@ class Selector:
         self.config = config or SelectorConfig()
         self._cooldowns: dict[tuple[str, str], datetime] = {}
 
-    def _forecast_bps(self, intent: Intent) -> float:
+    def _round_trip_bps(self, intent: Intent) -> float:
         fc = intent.forecast_cost
-        return fc.fee_bps + fc.spread_bps + fc.slippage_bps + fc.funding_bps
+        one_way = fc.fee_bps + fc.spread_bps + fc.slippage_bps
+        return 2.0 * one_way + fc.funding_bps
+
+    def _reward_bps(self, intent: Intent) -> float | None:
+        """Planned gross reward from the decoded exit target (None if unknown)."""
+        try:
+            policy = decode_exit_rule(intent.exit_rule)
+        except ValueError:
+            return None
+        if policy.target_price is None:
+            return None
+        ref = intent.entry_high if intent.side.value == "LONG" else intent.entry_low
+        if ref <= 0:
+            return None
+        return abs(policy.target_price - ref) / ref * 10_000.0
 
     def select(self, candidates: list[Candidate], *,
                now_utc: datetime, position_busy: bool) -> SelectorDecision:
@@ -76,8 +90,12 @@ class Selector:
                     rejections.append((ref, "selection:exit-undecodable"))
                     continue
                 legacy = True
-            if self._forecast_bps(intent) > cfg.max_forecast_cost_bps:
-                rejections.append((ref, "selection:cost-infeasible"))
+            reward = self._reward_bps(intent)
+            if reward is None:
+                rejections.append((ref, "selection:reward-unknown"))
+                continue
+            if reward < self._round_trip_bps(intent) * cfg.min_reward_multiple:
+                rejections.append((ref, "selection:reward-below-cost"))
                 continue
             key = (intent.strategy, intent.instrument)
             if key in self._cooldowns:

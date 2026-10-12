@@ -68,10 +68,11 @@ class AppConfig:
     warmup_bars: int = 130
     storage_dir: str = "runs"
     storage_budget_mb: int = 2048
+    equity_sample_s: int = 60
     strategies_enabled: tuple[str, ...] = ("S1", "S2", "S3", "S4")
     strategies_arms: str = "base"
     cooldown_s: int = 300
-    max_forecast_cost_bps: float = 25.0
+    min_reward_multiple: float = 1.0
     allow_legacy_exit_rules: bool = True
     fingerprint: str = ""
     source_path: str = ""
@@ -176,11 +177,13 @@ def load_config(path: str | Path) -> AppConfig:
         warmup_bars=int(_positive(data.get("warmup_bars", 130), "data.warmup_bars")),
         storage_dir=str(storage.get("dir", "runs")),
         storage_budget_mb=int(_positive(storage.get("budget_mb", 2048), "storage.budget_mb")),
+        equity_sample_s=int(_positive(storage.get("equity_sample_s", 60),
+                                      "storage.equity_sample_s")),
         strategies_enabled=enabled,
         strategies_arms=arms,
         cooldown_s=int(_finite(strategies.get("cooldown_s", 300), "strategies.cooldown_s")),
-        max_forecast_cost_bps=_positive(
-            strategies.get("max_forecast_cost_bps", 25.0), "strategies.max_forecast_cost_bps"),
+        min_reward_multiple=_positive(
+            strategies.get("min_reward_multiple", 1.0), "strategies.min_reward_multiple"),
         allow_legacy_exit_rules=bool(strategies.get("allow_legacy_exit_rules", True)),
         source_path=str(path),
     )
@@ -191,7 +194,7 @@ def load_config(path: str | Path) -> AppConfig:
         "engine": cfg.engine_kind, "submit_delay_ms": cfg.submit_delay_ms,
         "fill_delay_ms": cfg.fill_delay_ms, "symbols": list(cfg.symbols),
         "strategies": list(cfg.strategies_enabled), "arms": cfg.strategies_arms,
-        "cooldown_s": cfg.cooldown_s, "max_cost_bps": cfg.max_forecast_cost_bps,
+        "cooldown_s": cfg.cooldown_s, "min_reward_multiple": cfg.min_reward_multiple,
         "legacy_exits": cfg.allow_legacy_exit_rules,
     }, sort_keys=True)
     fingerprint = hashlib.sha256(

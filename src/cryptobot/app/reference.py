@@ -158,6 +158,12 @@ class ReferenceEngine:
             raise ValueError("submit_immediate is exits-only; entries use submit()")
         return self._submit_now(cmd)
 
+    def submit_protected(self, cmd: EngineOrder, limit_price: float) -> str:
+        """Not supported: the reference engine is a fault-test tool, and
+        price-protected IOC entries exist only on the economic path."""
+        raise NotImplementedError(
+            "reference engine has no protected IOC (non-economic tool)")
+
     def open_orders(self) -> list[EngineOrderStatus]:
         return [EngineOrderStatus(
             client_order_id=o.client_id, instrument=o.symbol,

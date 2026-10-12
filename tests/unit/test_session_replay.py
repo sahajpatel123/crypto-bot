@@ -166,6 +166,68 @@ def test_admit_protect_flatten_cycle(tmp_path):
         store.close()
 
 
+def test_run_files_match_b9_schemas(tmp_path):
+    session, store = _session(tmp_path, warmup_bars=3)
+    try:
+        cap = _capture(tmp_path / "cap")
+        session.run_replay(cap, expect_class=CLASS)
+        fills = [json.loads(line) for line in
+                 (session.workdir / "fills.jsonl").open()
+                 if line.strip()] if (session.workdir / "fills.jsonl").exists() else []
+        assert fills == []  # no-trade loop books nothing
+        rej = [json.loads(line) for line in
+               (session.workdir / "rejections.jsonl").read_text().splitlines()]
+        assert rej, "no-trade must persist rejection rows"
+        assert set(rej[0]) == {"ts_utc", "stage", "reason", "strategy",
+                               "instrument", "side"}
+        eq = [json.loads(line) for line in
+              (session.workdir / "equity.jsonl").read_text().splitlines()]
+        assert eq and set(eq[0]) == {"ts_utc", "marked_equity", "cash",
+                                     "position_qty", "position_symbol",
+                                     "open_pnl", "source"}
+        risk = [json.loads(line) for line in
+                (session.workdir / "risk.jsonl").read_text().splitlines()]
+        assert risk and set(risk[0]) == {"ts_utc", "kind", "from_state",
+                                         "to_state", "reason"}
+    finally:
+        store.close()
+
+
+def test_fill_rows_match_b9_schema(tmp_path):
+    session, store = _session(tmp_path, warmup_bars=3)
+    try:
+        now = datetime(2026, 10, 12, 6, 0, tzinfo=timezone.utc)
+        session.clock.set_ms(int(now.timestamp() * 1000))
+        session.policy.reconcile_day(120.0, 0.0)
+        session.store.create_run("sess-test", "replay", "fp",
+                                 str(session.workdir), None)
+        session.engine.note_mark("BTCUSDT", 100.2)
+        intent = Intent(
+            strategy="S1", version="0.1.0", instrument="BTCUSDT",
+            side=Side.LONG, evidence_ts_utc=now,
+            entry_low=100.0, entry_high=100.5,
+            entry_expiry_utc=now + timedelta(seconds=60),
+            invalidation_price=99.0,
+            exit_rule=encode_exit_rule(ExitPolicy(
+                stop_price=99.0, target_price=102.0,
+                time_exit_utc=now + timedelta(seconds=600),
+                policy_id="test")),
+            holding_limit_s=600,
+            forecast_cost=ForecastCost(5.0, 5.0, 5.0, 1.0),
+            evidence_ref="test:1", data_quality=DataQuality.CLEAN)
+        session._maybe_admit([Candidate("S1", intent)])
+        session.clock.set_ms(int(now.timestamp() * 1000) + 5000)
+        session._drain_engine()
+        fills = [json.loads(line) for line in
+                 (session.workdir / "fills.jsonl").read_text().splitlines()]
+        assert len(fills) == 1
+        assert set(fills[0]) == {"execution_id", "client_order_id",
+                                  "instrument", "side", "qty", "price", "fee",
+                                  "liquidity", "ts_utc"}
+    finally:
+        store.close()
+
+
 def test_short_uses_venue_sell_side(tmp_path):
     # Regression: session must submit venue SELL (never "SHORT") for shorts.
     session, store = _session(tmp_path, warmup_bars=3)
@@ -298,6 +360,128 @@ def test_paper_session_requires_injected_engine(tmp_path):
         with pytest.raises(ValueError, match="injected Nautilus"):
             Session(load_config(cfg_path), store, tmp_path / "runs" / "x",
                     "x")
+    finally:
+        store.close()
+
+
+class _ScriptedEngine:
+    """Fault-injecting PaperEngine stub for protection tests."""
+
+    model_label = "script-stub"
+    assumptions = ("stub",)
+
+    def __init__(self):
+        self.attach_script: list = []
+        self.leg_states: dict = {}
+        self.submitted_immediate: list = []
+        self.cancelled: list = []
+        self.attaches = 0
+
+    def submit(self, cmd):
+        raise AssertionError("not used")
+    def submit_immediate(self, cmd):
+        self.submitted_immediate.append(cmd)
+        return "imm-1"
+    def submit_protected(self, cmd, limit):
+        raise AssertionError("not used")
+    def resolve(self, cid):
+        return cid
+    def cancel(self, cid, reason):
+        self.cancelled.append(cid)
+    def poll(self):
+        return []
+    def attach_protection(self, entry_id, stop, target):
+        self.attaches += 1
+        action = self.attach_script.pop(0) if self.attach_script else ["s1"]
+        if action == "raise":
+            raise ValueError("venue refused legs")
+        return action
+    def open_orders(self):
+        from cryptobot.app.engine import EngineOrderStatus
+        return [EngineOrderStatus(cid, "BTCUSDT", st, 1.0, 0.0)
+                for cid, st in self.leg_states.items()]
+    def filled_qty(self, cid):
+        return 0.0
+    def set_exit_only(self, h, reason=""):
+        pass
+    def note_mark(self, i, p):
+        pass
+    def recover(self, sink):
+        pass
+    def close(self):
+        pass
+
+
+def _protection_session(tmp_path):
+    cfg = load_config(_config(tmp_path, warmup_bars=3))
+    store = RunStore(tmp_path / "runs" / "cryptobot.db")
+    engine = _ScriptedEngine()
+    session = Session(cfg, store, tmp_path / "runs" / "prot", "prot",
+                      engine=engine)
+    store.create_run("prot", "replay", "fp", str(session.workdir), None)
+    session.ledger.record_fill(
+        "BUY", 1.0, 100.0, 0.05,
+        datetime(2026, 10, 12, 6, 0, tzinfo=timezone.utc), "e1")
+    session._position = {"reservation_id": "r-1", "instrument": "BTCUSDT",
+                         "side": "LONG", "entry_pre_id": "p", "entry_id": "e",
+                         "legs": [], "stop": 99.0, "target": 102.0,
+                         "time_exit": datetime(2026, 10, 12, 7, 0,
+                                               tzinfo=timezone.utc),
+                         "legacy_exit": False, "protected": False,
+                         "protect_attempts": 0}
+    return session, store, engine
+
+
+def _checkpoints(store, run_id="prot"):
+    return [r[0] for r in store._db.execute(
+        "SELECT kind FROM checkpoints WHERE run_id=? ORDER BY id", (run_id,))]
+
+
+def test_protection_verified_only_on_live_covering_stop(tmp_path):
+    session, store, engine = _protection_session(tmp_path)
+    try:
+        engine.attach_script = [["stop-1", "tgt-1"]]
+        engine.leg_states = {"stop-1": "open", "tgt-1": "open"}
+        session._ensure_protection(session._position)
+        assert session._position["protected"] is True
+        assert "protection-verified" in _checkpoints(store)
+    finally:
+        store.close()
+
+
+def test_protection_failure_never_marks_protected(tmp_path):
+    session, store, engine = _protection_session(tmp_path)
+    try:
+        engine.attach_script = ["raise", "raise", "raise"]
+        for _ in range(3):
+            session._ensure_protection(session._position)
+            assert session._position["protected"] is False
+        assert session._position["legs"] == []
+        # Fourth call crosses the bound -> emergency close attempted.
+        session._ensure_protection(session._position)
+        assert session._position["protected"] is False
+        assert len(engine.submitted_immediate) == 1
+        assert engine.submitted_immediate[0].reduce_only is True
+        kinds = _checkpoints(store)
+        assert "protection-emergency" in kinds
+        # Exposure retained: entries stay blocked via _position being set.
+        assert session._position is not None
+    finally:
+        store.close()
+
+
+def test_protection_dead_leg_retries(tmp_path):
+    session, store, engine = _protection_session(tmp_path)
+    try:
+        engine.attach_script = [["stop-1"], ["stop-2"]]
+        engine.leg_states = {"stop-1": "rejected"}
+        session._ensure_protection(session._position)
+        assert session._position["protected"] is False
+        assert session._position["legs"] == []  # cleared for retry
+        assert "protection-unverified" in _checkpoints(store)
+        engine.leg_states = {"stop-2": "open"}
+        session._ensure_protection(session._position)
+        assert session._position["protected"] is True
     finally:
         store.close()
 

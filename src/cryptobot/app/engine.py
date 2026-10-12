@@ -106,6 +106,13 @@ class PaperEngine(Protocol):
         """Submit bypassing modeled delays. Exits/flatten ONLY, never entries."""
         ...
 
+    def submit_protected(self, cmd: EngineOrder, limit_price: float) -> str:
+        """Price-protected marketable IOC: fill at-or-better or not at all.
+
+        Session uses this for ALL economic entries (B2). E-008 implements.
+        """
+        ...
+
     def resolve(self, client_id: str) -> str | None:
         """Map a submit-time id to the durable order id (None while queued)."""
         ...
@@ -119,7 +126,10 @@ class PaperEngine(Protocol):
 
     def attach_protection(self, entry_client_id: str, stop_price: float,
                           target_price: float | None) -> list[str]:
-        """Independent reduce-only exit legs sized to filled qty. No OCO."""
+        """Independent reduce-only exit legs sized to filled qty. No OCO.
+
+        Returns [stop_id] or [stop_id, target_id] — STOP FIRST, always.
+        """
         ...
 
     def open_orders(self) -> list[EngineOrderStatus]:
