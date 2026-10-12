@@ -51,6 +51,58 @@ def _timing_block(name: str, entry: dict, definition: str, window: str) -> dict:
     }
 
 
+def bar_to_record(bar, symbol: str, input_class: str) -> dict:
+    """Canonical bar record. MUST match collector._bar_record field-for-field.
+
+    Any new bar field must be added here and in the collector together;
+    otherwise numeric replay agreement silently stops covering it.
+    """
+    if isinstance(bar, BarMissing):
+        return {"type": "missing", "input_class": input_class, "symbol": symbol,
+                "window_start_ms": bar.window_start_ms, "gap_before": bar.gap_before}
+    return {"type": "bar", "input_class": input_class, "symbol": symbol,
+            "window_start_ms": bar.window_start_ms, "o": bar.open, "h": bar.high,
+            "l": bar.low, "c": bar.close, "volume": bar.volume, "trades": bar.trades,
+            "buy_volume": bar.buy_volume, "first_id": bar.first_id, "last_id": bar.last_id,
+            "spread_bps": bar.spread_bps, "gap_before": bar.gap_before}
+
+
+def compare_bar_records(replayed: list[dict], captured: list[dict]) -> dict | None:
+    """Numeric agreement: per-symbol ordered full-record comparison.
+
+    Returns None on full agreement, else a first-mismatch diagnostic.
+    Mutating any value, adding a duplicate, removing a record, reordering a
+    symbol's series, or changing the symbol set all fail. Cross-symbol file
+    order is NOT compared (capture drains per symbol; replay closes across
+    symbols in arrival order) — causal order within each symbol is.
+    """
+    def _by_symbol(rows: list[dict]) -> dict[str, list[dict]]:
+        grouped: dict[str, list[dict]] = {}
+        for row in rows:
+            grouped.setdefault(row.get("symbol"), []).append(row)
+        return grouped
+
+    rep, cap = _by_symbol(replayed), _by_symbol(captured)
+    if set(rep) != set(cap):
+        return {"kind": "symbol-set",
+                "only_replayed": sorted(set(rep) - set(cap)),
+                "only_captured": sorted(set(cap) - set(rep))}
+    for symbol in sorted(rep):
+        r_list, c_list = rep[symbol], cap[symbol]
+        if len(r_list) != len(c_list):
+            return {"kind": "count", "symbol": symbol,
+                    "replayed": len(r_list), "captured": len(c_list)}
+        for idx, (r, c) in enumerate(zip(r_list, c_list)):
+            if r != c:
+                keys = sorted(set(r) | set(c))
+                diffs = {k: {"replayed": r.get(k), "captured": c.get(k)}
+                         for k in keys if r.get(k) != c.get(k)}
+                return {"kind": "record", "symbol": symbol, "index": idx,
+                        "window_start_ms": r.get("window_start_ms"),
+                        "differing_fields": diffs}
+    return None
+
+
 def cmd_replay(args: argparse.Namespace) -> int:
     run_dir = Path(args.run_dir)
     records = load_events(run_dir / "events.jsonl")
@@ -60,12 +112,11 @@ def cmd_replay(args: argparse.Namespace) -> int:
     second = events_hash(load_events(run_dir / "events.jsonl"))
     # Rebuild bars from the replayed stream through the real aggregator.
     aggregators: dict[str, BarAggregator] = {}
-    replayed: set[tuple[str, int, str]] = set()
+    replayed: list[dict] = []
 
     def _note(symbol: str, closed) -> None:
         for bar in closed:
-            kind = "missing" if isinstance(bar, BarMissing) else "bar"
-            replayed.add((symbol, bar.window_start_ms, kind))
+            replayed.append(bar_to_record(bar, symbol, args.expect_class))
 
     for event in replay_events(records):
         symbol = event["symbol"]
@@ -78,17 +129,17 @@ def cmd_replay(args: argparse.Namespace) -> int:
     for symbol, agg in aggregators.items():
         _note(symbol, agg.flush())
     captured = [json.loads(line) for line in (run_dir / "bars.jsonl").read_text().splitlines() if line.strip()]
-    captured_set = {(b.get("symbol"), b.get("window_start_ms"), b.get("type")) for b in captured}
+    mismatch = compare_bar_records(replayed, captured)
+    agree = mismatch is None
     n_bar = sum(1 for b in captured if b.get("type") == "bar")
     n_missing = sum(1 for b in captured if b.get("type") == "missing")
-    agree = replayed == captured_set
     print(json.dumps({"run_dir": str(run_dir), "input_class": args.expect_class,
                       "events": len(records), "deterministic": first == second,
-                      "events_sha256": first, "replayed_windows": len(replayed),
+                      "events_sha256": first, "replayed_records": len(replayed),
                       "captured_bar_records": n_bar, "captured_missing_records": n_missing,
+                      "comparison": "per-symbol ordered full-record (OHLCV, trades, flow, spread, gap flags)",
                       "bar_rebuild_agrees": agree,
-                      "only_replayed": sorted(replayed - captured_set)[:10],
-                      "only_captured": sorted(captured_set - replayed)[:10]}, indent=2))
+                      "first_mismatch": mismatch}, indent=2))
     return 0 if first == second and agree else 1
 
 
@@ -104,9 +155,10 @@ def cmd_report(args: argparse.Namespace) -> int:
         "Includes venue fan-out + network transit; NOT order latency.",
         window)
     proc = _timing_block(
-        "decision_latency_ms", stats.get("proc_latency_ms", {}),
-        "local receipt -> finished processing one event, monotonic clock "
-        "(parse + book/bar update + write buffering). Local pipeline cost only.",
+        "collector_processing_latency_ms", stats.get("proc_latency_ms", {}),
+        "local receipt -> finished collector processing of one event, monotonic "
+        "clock (parse + book/bar update + write buffering). Collector cost only; "
+        "excludes strategy evaluation, selection, risk and order submission.",
         window)
     report = {
         "run_id": stats.get("run_id"), "input_class": "observed-public",
