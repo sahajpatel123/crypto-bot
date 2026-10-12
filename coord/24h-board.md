@@ -41,6 +41,11 @@ W3 risk changes need manager/W5 review; W5 metric changes need manager review.
    test script ready (W3). Never in chat.
 4. Oct funding: W2 verifies public history API availability first.
 
+## Manager baselines
+
+- Network-blocked suite @3cadfca: 825 passed in ~39s (blocker verified:
+  external refused, loopback allowed). W5's guard must preserve this.
+
 ## Evidence preserved
 
 Prior: reports/archive/48h-baseline/, /tmp/bt48h/*comparison.json,
