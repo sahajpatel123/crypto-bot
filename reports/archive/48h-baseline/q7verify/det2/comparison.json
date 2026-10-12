@@ -1,0 +1,40 @@
+{
+  "dataset_id": "synth_quotes",
+  "dataset_manifest_sha": "01450adc481061e9ea32f74d4d2aae995c8ccb2bb3bc4ac2cb11d1c828f1bcad",
+  "symbols": [
+    "XRPUSDT"
+  ],
+  "splits": [
+    "dev"
+  ],
+  "armsets": [
+    "S1"
+  ],
+  "filter_profile": "frozen-assumed",
+  "engine_delays_ms": {
+    "note": "base config values (production parity); E-008 GTC/valuation-only marks verified healthy by this harness"
+  },
+  "promotion_rule": "NONE - descriptive baseline; no tuning on any split",
+  "cells": {
+    "S1|dev": {
+      "closing_equity": 119.82480208,
+      "net_return_pct": -0.14599826666666926,
+      "paid_costs": 0.10063791999999999,
+      "funding_net": 0.0,
+      "realised": -0.17519791999999101,
+      "intents_admitted": 2,
+      "events_seen": 18000,
+      "reject_counts": {
+        "selection:position-busy": 220,
+        "selection:reward-below-cost": 6,
+        "strategy:breakout:fail|breakout:fail": 8090,
+        "strategy:breakout:fail|momentum:fail": 275,
+        "strategy:momentum:fail|breakout:fail": 276
+      },
+      "n_fills": 6,
+      "run_dir": "/tmp/q7verify/det2/runs/dev/S1"
+    }
+  },
+  "s5_ineligibility": {},
+  "sensitivity": {}
+}

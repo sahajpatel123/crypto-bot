@@ -1,0 +1,3 @@
+ts_utc,stage,reason,strategy,instrument,side
+2026-10-10T11:00:00+00:00,selector,cost:reward-below-multiple,S1,BTCUSDT,LONG
+2026-10-10T12:00:00+00:00,risk,exposure:one-position,S1,BTCUSDT,SHORT

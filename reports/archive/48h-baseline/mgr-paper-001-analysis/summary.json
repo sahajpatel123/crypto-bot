@@ -1,0 +1,153 @@
+{
+  "behavior": {
+    "completed_episodes": 0,
+    "end_of_data_episodes": 0,
+    "episode_legs": 0,
+    "episodes_with_partials": 0,
+    "exit_reasons": {},
+    "exposure_time_s": 0,
+    "fills": 0,
+    "holding_p50_s": null,
+    "holding_p95_s": null,
+    "long_episodes": 0,
+    "per_strategy": {},
+    "short_episodes": 0
+  },
+  "costs": {
+    "entry_fees": 0.0,
+    "execution_effects": "unmodeled: run files carry no quote reference; slippage vs arrival is not observable here",
+    "exit_fees": 0.0,
+    "funding_total": 0,
+    "total_fees": 0
+  },
+  "daily": {
+    "best": null,
+    "days": [
+      {
+        "date": "2026-10-12",
+        "full_day": false,
+        "label": "no-trade",
+        "n_episodes": 0,
+        "ret": 0.0
+      }
+    ],
+    "fraction_ge_2pct": null,
+    "fraction_ge_3pct": null,
+    "full_covered_days": 0,
+    "mean": null,
+    "median": null,
+    "worst": null
+  },
+  "dataset": "live-public-feed",
+  "drawdown": {
+    "max_drawdown_pct": 0.0,
+    "max_drawdown_usdt": 0.0,
+    "peak_ts_utc": null,
+    "trough_ts_utc": null
+  },
+  "expectancy": {
+    "label": "insufficient: no episodes",
+    "mean_net": null,
+    "n": 0
+  },
+  "labels": [
+    "no-trades: zero completed episodes in window"
+  ],
+  "mode": "paper",
+  "n_episodes": 0,
+  "n_fills": 0,
+  "net_return": {
+    "close_cost_assumption": "open exposure marked, not liquidated; close costs excluded from return",
+    "end_marked_equity": 120.0,
+    "flows_total": 0,
+    "net_return": 0.0,
+    "open_exposure_end_usdt": 0.0
+  },
+  "provenance": {
+    "builder": "cryptobot.reporting.build",
+    "dataset_manifest": {
+      "dataset": "live-public-feed",
+      "note": "live public feed; no frozen manifest",
+      "window": "2026-10-12T08:27:53.502062+00:00..2026-10-12T09:49:06.057688+00:00"
+    },
+    "run_strategy": "unknown"
+  },
+  "reconciliation": {
+    "checks": [
+      "fees",
+      "funding",
+      "realised",
+      "episode-fees",
+      "cash",
+      "equity-cash",
+      "equity-position"
+    ],
+    "status": "agree"
+  },
+  "reliability": {
+    "equity_gaps": {
+      "count": 0,
+      "max_s": 0.0,
+      "total_s": 0
+    },
+    "lost_events": "not recorded: run files carry no loss counter",
+    "rejections_by_stage_reason": {
+      "selection": {
+        "selection:reward-below-cost": 4
+      },
+      "strategy": {
+        "strategy:breakout:fail|breakout:fail": 620,
+        "strategy:breakout:fail|momentum:fail": 15,
+        "strategy:depth:unsynced-no-snapshot|depth:unsynced-no-snapshot": 9083,
+        "strategy:gap:fail|gap:fail": 31504,
+        "strategy:history:fail|history:fail": 2232,
+        "strategy:momentum:fail|breakout:fail": 10,
+        "strategy:momentum:fail|pierce:fail": 2,
+        "strategy:pierce:fail|pierce:fail": 547,
+        "strategy:pierce:fail|reclaim:fail": 41,
+        "strategy:quality:empty-window": 590,
+        "strategy:range:fail|range:fail": 649,
+        "strategy:reclaim:fail|pierce:fail": 59,
+        "strategy:sequence:fail|trend:fail": 156,
+        "strategy:trend:fail|sequence:fail": 144,
+        "strategy:trend:fail|trend:fail": 349
+      }
+    },
+    "restarts": 0,
+    "risk_kinds": {
+      "run-state": 7
+    },
+    "risk_transitions": {
+      "run-state|ready|recovering": 1,
+      "run-state|ready|stopping": 1,
+      "run-state|recovering|warming": 1,
+      "run-state|starting|warming": 1,
+      "run-state|stopping|stopped": 1,
+      "run-state|warming|ready": 2
+    }
+  },
+  "speed_resources": {
+    "events": {
+      "equity_rows": 82,
+      "fills": 0,
+      "rejections": 46005,
+      "risk_events": 7
+    },
+    "status": "not recorded: run files carry no timing/counters payload"
+  },
+  "splits": {
+    "buckets": {},
+    "status": "unassigned: no splits declared; results are one window"
+  },
+  "starting_equity": 120.0,
+  "win_loss": {
+    "flats": 0,
+    "losses": 0,
+    "profit_factor": null,
+    "profit_factor_label": "undefined: no losing episodes",
+    "win_rate": null,
+    "wins": 0
+  },
+  "window_end_utc": "2026-10-12T09:49:06.057688+00:00",
+  "window_start_utc": "2026-10-12T08:27:53.502062+00:00"
+}

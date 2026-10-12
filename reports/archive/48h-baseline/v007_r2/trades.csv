@@ -1,0 +1,2 @@
+episode_id,symbol,side,strategy,open_ts_utc,close_ts_utc,holding_s,qty,entry_px,exit_px,gross,fees,funding,net,exit_reason,legs,end_of_data,mfe_usdt,mae_usdt
+1,BTCUSDT,LONG,S1,2026-10-10T12:00:00+00:00,2026-10-10T15:00:00+00:00,10800.0,1.0,100.0,108.8,8.8,3.0,-0.5,5.3,unknown,3,False,,

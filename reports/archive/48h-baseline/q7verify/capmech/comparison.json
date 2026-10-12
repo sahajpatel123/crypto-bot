@@ -1,0 +1,76 @@
+{
+  "dataset_id": "external",
+  "dataset_manifest_sha": "796941a525f3b9b6ad348041376dfb5f31e503cc498bf81cb7256128dbc74332",
+  "symbols": [
+    "BTCUSDT"
+  ],
+  "splits": [
+    "mechanism"
+  ],
+  "armsets": [
+    "S1",
+    "COMBINED",
+    "CASH"
+  ],
+  "filter_profile": "frozen-assumed",
+  "engine_delays_ms": {
+    "note": "base config values (production parity); E-008 GTC/valuation-only marks verified healthy by this harness"
+  },
+  "promotion_rule": "NONE - descriptive baseline; no tuning on any split",
+  "cells": {
+    "S1|mechanism": {
+      "closing_equity": 120.0,
+      "net_return_pct": 0.0,
+      "paid_costs": 0.0,
+      "funding_net": 0.0,
+      "realised": 0.0,
+      "intents_admitted": 0,
+      "events_seen": 400000,
+      "reject_counts": {
+        "strategy:gap:fail|gap:fail": 1313,
+        "strategy:history:fail|history:fail": 73,
+        "strategy:quality:empty-window": 137
+      },
+      "n_fills": 0,
+      "run_dir": "/tmp/q7verify/capmech/runs/mechanism/S1"
+    },
+    "COMBINED|mechanism": {
+      "closing_equity": 120.0,
+      "net_return_pct": 0.0,
+      "paid_costs": 0.0,
+      "funding_net": 0.0,
+      "realised": 0.0,
+      "intents_admitted": 0,
+      "events_seen": 400000,
+      "reject_counts": {
+        "strategy:depth:unsynced-no-snapshot|depth:unsynced-no-snapshot": 1386,
+        "strategy:gap:fail|gap:fail": 5252,
+        "strategy:history:fail|history:fail": 292,
+        "strategy:quality:empty-window": 685
+      },
+      "n_fills": 0,
+      "run_dir": "/tmp/q7verify/capmech/runs/mechanism/COMBINED"
+    },
+    "CASH|mechanism": {
+      "closing_equity": 120.0,
+      "net_return_pct": 0.0,
+      "paid_costs": 0.0,
+      "funding_net": 0.0,
+      "realised": 0.0,
+      "intents_admitted": 0,
+      "events_seen": 400000,
+      "reject_counts": {},
+      "n_fills": 0,
+      "run_dir": "/tmp/q7verify/capmech/runs/mechanism/CASH"
+    }
+  },
+  "s5_ineligibility": {
+    "COMBINED|mechanism": {
+      "windows": 1386,
+      "reasons": {
+        "strategy:depth:unsynced-no-snapshot|depth:unsynced-no-snapshot": 1386
+      }
+    }
+  },
+  "sensitivity": {}
+}

@@ -1,0 +1,144 @@
+{
+  "behavior": {
+    "completed_episodes": 1,
+    "end_of_data_episodes": 0,
+    "episode_legs": 3,
+    "episodes_with_partials": 1,
+    "exit_reasons": {
+      "unknown": 1
+    },
+    "exposure_time_s": 10800.0,
+    "fills": 3,
+    "holding_p50_s": 10800.0,
+    "holding_p95_s": 10800.0,
+    "long_episodes": 1,
+    "per_strategy": {
+      "S1": {
+        "n": 1,
+        "net": 5.300000000000001,
+        "wins": 1
+      }
+    },
+    "short_episodes": 0
+  },
+  "costs": {
+    "entry_fees": 1.0,
+    "execution_effects": "unmodeled: run files carry no quote reference; slippage vs arrival is not observable here",
+    "exit_fees": 2.0,
+    "funding_total": -0.5,
+    "total_fees": 3.0
+  },
+  "daily": {
+    "best": null,
+    "days": [
+      {
+        "date": "2026-10-10",
+        "full_day": false,
+        "label": "trade",
+        "n_episodes": 1,
+        "ret": 0.0005299999999999272
+      }
+    ],
+    "fraction_ge_2pct": null,
+    "fraction_ge_3pct": null,
+    "full_covered_days": 0,
+    "mean": null,
+    "median": null,
+    "worst": null
+  },
+  "dataset": "synthetic-v007",
+  "drawdown": {
+    "max_drawdown_pct": 0.00014989806931286725,
+    "max_drawdown_usdt": 1.5,
+    "peak_ts_utc": "2026-10-10T13:30:00+00:00",
+    "trough_ts_utc": "2026-10-10T15:30:00+00:00"
+  },
+  "expectancy": {
+    "ci95_half_width": null,
+    "label": "insufficient: n<30",
+    "mean_net": 5.300000000000001,
+    "n": 1,
+    "std": 0.0
+  },
+  "labels": [],
+  "mode": "backtest",
+  "n_episodes": 1,
+  "n_fills": 3,
+  "net_return": {
+    "close_cost_assumption": "open exposure marked, not liquidated; close costs excluded from return",
+    "end_marked_equity": 10105.3,
+    "flows_total": 100.0,
+    "net_return": 0.0005299999999999272,
+    "open_exposure_end_usdt": 0.0
+  },
+  "provenance": {
+    "builder": "cryptobot.reporting.build",
+    "dataset_manifest": {
+      "dataset": "synthetic-v007",
+      "manifest_sha": "fixture",
+      "window": "2026-10-10T12:00:00+00:00..2026-10-10T17:00:00+00:00"
+    },
+    "run_strategy": "S1"
+  },
+  "reconciliation": {
+    "checks": [
+      "fees",
+      "funding",
+      "realised",
+      "episode-fees",
+      "cash",
+      "equity-cash",
+      "equity-position"
+    ],
+    "status": "agree"
+  },
+  "reliability": {
+    "equity_gaps": {
+      "count": 0,
+      "max_s": 0.0,
+      "total_s": 0
+    },
+    "lost_events": "not recorded: run files carry no loss counter",
+    "rejections_by_stage_reason": {
+      "risk": {
+        "exposure:one-position": 1
+      },
+      "selector": {
+        "cost:reward-below-multiple": 1
+      }
+    },
+    "restarts": 0,
+    "risk_kinds": {
+      "risk-decision": 1,
+      "run-state": 1
+    },
+    "risk_transitions": {
+      "risk-decision||rejected": 1,
+      "run-state|init|running": 1
+    }
+  },
+  "speed_resources": {
+    "events": {
+      "equity_rows": 5,
+      "fills": 3,
+      "rejections": 2,
+      "risk_events": 2
+    },
+    "status": "not recorded: run files carry no timing/counters payload"
+  },
+  "splits": {
+    "buckets": {},
+    "status": "unassigned: no splits declared; results are one window"
+  },
+  "starting_equity": 10000.0,
+  "win_loss": {
+    "flats": 0,
+    "losses": 0,
+    "profit_factor": null,
+    "profit_factor_label": "undefined: no losing episodes",
+    "win_rate": 1.0,
+    "wins": 1
+  },
+  "window_end_utc": "2026-10-10T17:00:00+00:00",
+  "window_start_utc": "2026-10-10T12:00:00+00:00"
+}
