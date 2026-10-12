@@ -93,6 +93,163 @@
    "role": "Worker 2 \u2014 Market Data and Execution Engineer",
    "state": "accepted"
   },
+  "E-007": {
+   "acceptance": [
+    "nautilus 1.231.0 reproducible runtime; BacktestEngine + live TradingNode/Sandbox proven",
+    "data bridge, no creds",
+    "depth snapshot+diff persistence",
+    "PaperEngine seam per S3",
+    "protection semantics",
+    "e2e fee-bearing example",
+    "depth_flow_availability.md early"
+   ],
+   "allowed_paths": [
+    "src/cryptobot/adapters/",
+    "src/cryptobot/execution/runtime_*",
+    "src/cryptobot/market_data/",
+    "tests/unit/test_execution_*",
+    "tests/unit/test_market_data_*",
+    "tests/unit/test_adapters_*",
+    "coord/outbox/E-007.json"
+   ],
+   "contract_version": "v0.2.0+app_runtime_interfaces.md S3",
+   "dependencies": [
+    "specs/app_runtime_interfaces.md S3",
+    "V-006 fee signatures via manager"
+   ],
+   "evidence_required": [
+    "env fingerprint",
+    "proof commands",
+    "e2e record",
+    "assumptions log",
+    "base/branch IDs"
+   ],
+   "owner_session": "cloud-vega",
+   "role": "Worker 2 \u2014 Market Data and Execution Engineer",
+   "state": "accepted"
+  },
+  "E-008": {
+   "acceptance": [
+    "native execution both modes",
+    "valuation-only marks",
+    "virtual clock + strict replay",
+    "1s heartbeat timers",
+    "book/flow views + funding",
+    "margin accessor + protected IOC",
+    "ingestion profiled",
+    "30d dataset frozen"
+   ],
+   "accepted": {
+    "note": "repro 426 branch + 471 overlay, 5 manager probes green, replay fill at trade cross, dataset shas match, M1 exit 0; replay-offline + funding-doc fixups; datasets promoted",
+    "sha": "e1a45b8",
+    "suite": "624/624"
+   },
+   "allowed_paths": [
+    "src/cryptobot/adapters/",
+    "src/cryptobot/market_data/",
+    "src/cryptobot/execution/runtime_*",
+    "datasets/manifests/",
+    "tests/unit/test_adapters_*",
+    "tests/unit/test_market_data_*",
+    "tests/unit/test_execution_*",
+    "coord/outbox/E-008.json"
+   ],
+   "contract_version": "v0.2.0+backtest_interfaces.md",
+   "dependencies": [
+    "specs/backtest_interfaces.md"
+   ],
+   "evidence_required": [
+    "repro + counts",
+    "manifest + coverage",
+    "profile",
+    "base/branch IDs"
+   ],
+   "owner_session": "cloud-vega",
+   "role": "Worker 2 \u2014 Data and Execution",
+   "state": "accepted"
+  },
+  "E-009": {
+   "acceptance": [
+    "WS transport drains app-buffered + TLS-pending messages (coalesced/frag/ping/burst tests)",
+    "Causal marks/funding conversion (availability times preserved), derived data versioned + rebuilt",
+    "Live books synchronized on the normal CLI path; streaming readers (no day tables)"
+   ],
+   "allowed_paths": [
+    "src/cryptobot/adapters/",
+    "src/cryptobot/execution/",
+    "src/cryptobot/market_data/",
+    "datasets/*.py",
+    "tests/unit/test_adapters_*",
+    "tests/unit/test_execution_*",
+    "tests/unit/test_market_data_*"
+   ],
+   "contract_version": "six-agent-48h",
+   "dependencies": [
+    "01487ac integrated"
+   ],
+   "evidence_required": [
+    "suite",
+    "repro"
+   ],
+   "owner_session": "cloud-vega",
+   "role": "execution",
+   "state": "accepted"
+  },
+  "EV-001": {
+   "acceptance": [
+    "Event store with ID/source/schedule-TZ/first-seen/fetch/revisions/horizon/expiry",
+    "FOMC+CPI fixtures from official calendars, TZ/DST correct, IST display",
+    "Entry-gate API + stale-source-explicit behavior, tested"
+   ],
+   "accepted": {
+    "note": "repro 49 + 713, FOMC 8/8 vs Fed page, no fixups",
+    "sha": "d27e2a1",
+    "suite": "713/713"
+   },
+   "allowed_paths": [
+    "src/cryptobot/events/",
+    "tests/unit/test_events_*.py",
+    "specs/events.md"
+   ],
+   "contract_version": "six-agent-48h",
+   "dependencies": [
+    "01487ac integrated"
+   ],
+   "evidence_required": [
+    "suite",
+    "repro"
+   ],
+   "owner_session": "white-aldebaran",
+   "role": "events",
+   "state": "accepted"
+  },
+  "OP-001": {
+   "acceptance": [
+    "5 review findings reproduced as executable probes (fail on 01487ac)",
+    "Measured replay profile (memory/throughput, bottleneck named)",
+    "No src/ edits in this task"
+   ],
+   "accepted": {
+    "note": "14F/1P + 5x exit-1 verified; strict-xfail conftest added; profile preserved",
+    "sha": "fdacf09",
+    "suite": "714 passed + 14 xfailed"
+   },
+   "allowed_paths": [
+    "tests/audit/",
+    "tools/audit/"
+   ],
+   "contract_version": "six-agent-48h",
+   "dependencies": [
+    "01487ac integrated"
+   ],
+   "evidence_required": [
+    "suite",
+    "repro"
+   ],
+   "owner_session": "crystal-parallax",
+   "role": "verification",
+   "state": "accepted"
+  },
   "Q-001": {
    "acceptance": [
     "Exact deterministic S1 breakout-momentum rules (setup, trigger, reject, invalidation, exit) with causal windows/thresholds",
@@ -174,6 +331,179 @@
    "owner_session": "whisper-redshift",
    "role": "Worker 1 \u2014 Quant Research and Strategy Engineer",
    "state": "accepted"
+  },
+  "Q-005": {
+   "acceptance": [
+    "S1-S4 runtime boundary + typed exits",
+    "causal time, pure evaluate",
+    "S5 recheck + baseline or precise ineligible reason",
+    "frozen S5 params",
+    "suite green"
+   ],
+   "allowed_paths": [
+    "src/cryptobot/strategies/",
+    "src/cryptobot/features/",
+    "specs/strategies/",
+    "tests/unit/test_strategies_*",
+    "coord/outbox/Q-005.json"
+   ],
+   "contract_version": "v0.2.0+app_runtime_interfaces.md S1/S2",
+   "dependencies": [
+    "specs/app_runtime_interfaces.md S1/S2",
+    "specs/depth_flow_availability.md (E-007 via manager)"
+   ],
+   "evidence_required": [
+    "repro + counts",
+    "boundary trace",
+    "S5 verdict",
+    "base/branch IDs"
+   ],
+   "owner_session": "whisper-redshift",
+   "role": "Worker 1 \u2014 Quant Research and Strategy Engineer",
+   "state": "accepted"
+  },
+  "Q-005-F1": {
+   "acceptance": [
+    "MarketView.bars carries aligned None slots (tuple[Bar|None,...]); adapters pass through without compressing time",
+    "gate handles trailing/leading Nones (last non-None staleness; all-None -> quality:empty-window)",
+    "S5 view path same alignment; suite green"
+   ],
+   "allowed_paths": [
+    "src/cryptobot/strategies/runtime.py",
+    "src/cryptobot/strategies/s5.py",
+    "tests/unit/test_strategies_runtime.py",
+    "tests/unit/test_strategies_s5.py",
+    "coord/outbox/Q-005-F1.json"
+   ],
+   "contract_version": "v0.2.0+app_runtime_interfaces.md S1",
+   "dependencies": [
+    "Q-005 runtime.py on main"
+   ],
+   "evidence_required": [
+    "repro + counts",
+    "base/branch IDs"
+   ],
+   "owner_session": "whisper-redshift",
+   "role": "Worker 1 \u2014 Quant Research and Strategy Engineer",
+   "state": "accepted"
+  },
+  "Q-006": {
+   "acceptance": [
+    "EXP-003 60 + EXP-004 40 trials, totals reconciled, NONE",
+    "observed return eval, embargo + holdout",
+    "closed-trade gross/net with costs",
+    "suite green"
+   ],
+   "allowed_paths": [
+    "src/cryptobot/research/",
+    "tests/unit/test_research_*",
+    "specs/exp-*",
+    "specs/EXP-*",
+    "coord/outbox/Q-006.json"
+   ],
+   "contract_version": "v0.2.0+app_runtime_interfaces.md",
+   "dependencies": [
+    "EXP-003/004 manifests",
+    "runtime policy via integration"
+   ],
+   "evidence_required": [
+    "trial totals",
+    "method + holdout record",
+    "return tables",
+    "base/branch IDs"
+   ],
+   "owner_session": "whisper-redshift",
+   "role": "Worker 1 \u2014 Quant Research and Strategy Engineer",
+   "state": "accepted"
+  },
+  "Q-007": {
+   "acceptance": [
+    "5 strategy cards",
+    "S5 on views",
+    "portfolio runner via Session",
+    "frozen comparisons + splits",
+    "spread assumption profile",
+    "determinism proof"
+   ],
+   "accepted": {
+    "note": "repro 659, synth headlines match, determinism 6-fill identical, captured 0/0/0; data-note: benchmark-30d bulk IS present in main workspace (datasets/cache), W1 fallback unnecessary post-merge",
+    "sha": "b784013",
+    "suite": "659/659"
+   },
+   "allowed_paths": [
+    "src/cryptobot/strategies/",
+    "src/cryptobot/features/",
+    "src/cryptobot/research/",
+    "specs/cards/",
+    "tests/unit/test_strategies_*",
+    "tests/unit/test_research_*",
+    "coord/outbox/Q-007.json"
+   ],
+   "contract_version": "v0.2.0+backtest_interfaces.md",
+   "dependencies": [
+    "specs/backtest_interfaces.md",
+    "E-008 reader/views via manager"
+   ],
+   "evidence_required": [
+    "repro + counts",
+    "comparison tables",
+    "two-run diff",
+    "base/branch IDs"
+   ],
+   "owner_session": "whisper-redshift",
+   "role": "Worker 1 \u2014 Strategies and Backtesting",
+   "state": "accepted"
+  },
+  "Q-008": {
+   "acceptance": [
+    "Causal spread quotes (no future VWAP); future-data invariance proof",
+    "Symbol-scoped dedup + conflicting-duplicate detection",
+    "Streaming orchestration: bounded prep/replay/report, BTC+ETH frozen comparisons"
+   ],
+   "allowed_paths": [
+    "src/cryptobot/research/",
+    "src/cryptobot/strategies/",
+    "specs/cards/",
+    "tests/unit/test_research_*",
+    "tests/unit/test_strategies_*"
+   ],
+   "contract_version": "six-agent-48h",
+   "dependencies": [
+    "01487ac integrated"
+   ],
+   "evidence_required": [
+    "suite",
+    "repro"
+   ],
+   "owner_session": "whisper-redshift",
+   "role": "quant",
+   "state": "accepted"
+  },
+  "R2": {
+   "acceptance": [
+    "1h supervised paper",
+    "controlled interruption + recovery",
+    "reconciled flat"
+   ],
+   "allowed_paths": [],
+   "evidence_required": [
+    "run report"
+   ],
+   "owner_session": "young-polaris",
+   "role": "Manager",
+   "state": "complete"
+  },
+  "R3": {
+   "acceptance": [
+    "24h paper per R3_LAUNCH.md"
+   ],
+   "allowed_paths": [],
+   "evidence_required": [
+    "run report"
+   ],
+   "owner_session": "owner",
+   "role": "Owner launch",
+   "state": "ready-to-launch"
   },
   "V-001": {
    "acceptance": [
@@ -304,109 +634,7 @@
    "role": "Worker 3 \u2014 Risk, Verification and Reliability Engineer",
    "state": "assigned"
   },
-  "Q-005": {
-   "owner_session": "whisper-redshift",
-   "role": "Worker 1 \u2014 Quant Research and Strategy Engineer",
-   "state": "accepted",
-   "contract_version": "v0.2.0+app_runtime_interfaces.md S1/S2",
-   "dependencies": [
-    "specs/app_runtime_interfaces.md S1/S2",
-    "specs/depth_flow_availability.md (E-007 via manager)"
-   ],
-   "acceptance": [
-    "S1-S4 runtime boundary + typed exits",
-    "causal time, pure evaluate",
-    "S5 recheck + baseline or precise ineligible reason",
-    "frozen S5 params",
-    "suite green"
-   ],
-   "evidence_required": [
-    "repro + counts",
-    "boundary trace",
-    "S5 verdict",
-    "base/branch IDs"
-   ],
-   "allowed_paths": [
-    "src/cryptobot/strategies/",
-    "src/cryptobot/features/",
-    "specs/strategies/",
-    "tests/unit/test_strategies_*",
-    "coord/outbox/Q-005.json"
-   ]
-  },
-  "Q-006": {
-   "owner_session": "whisper-redshift",
-   "role": "Worker 1 \u2014 Quant Research and Strategy Engineer",
-   "state": "accepted",
-   "contract_version": "v0.2.0+app_runtime_interfaces.md",
-   "dependencies": [
-    "EXP-003/004 manifests",
-    "runtime policy via integration"
-   ],
-   "acceptance": [
-    "EXP-003 60 + EXP-004 40 trials, totals reconciled, NONE",
-    "observed return eval, embargo + holdout",
-    "closed-trade gross/net with costs",
-    "suite green"
-   ],
-   "evidence_required": [
-    "trial totals",
-    "method + holdout record",
-    "return tables",
-    "base/branch IDs"
-   ],
-   "allowed_paths": [
-    "src/cryptobot/research/",
-    "tests/unit/test_research_*",
-    "specs/exp-*",
-    "specs/EXP-*",
-    "coord/outbox/Q-006.json"
-   ]
-  },
-  "E-007": {
-   "owner_session": "cloud-vega",
-   "role": "Worker 2 \u2014 Market Data and Execution Engineer",
-   "state": "accepted",
-   "contract_version": "v0.2.0+app_runtime_interfaces.md S3",
-   "dependencies": [
-    "specs/app_runtime_interfaces.md S3",
-    "V-006 fee signatures via manager"
-   ],
-   "acceptance": [
-    "nautilus 1.231.0 reproducible runtime; BacktestEngine + live TradingNode/Sandbox proven",
-    "data bridge, no creds",
-    "depth snapshot+diff persistence",
-    "PaperEngine seam per S3",
-    "protection semantics",
-    "e2e fee-bearing example",
-    "depth_flow_availability.md early"
-   ],
-   "evidence_required": [
-    "env fingerprint",
-    "proof commands",
-    "e2e record",
-    "assumptions log",
-    "base/branch IDs"
-   ],
-   "allowed_paths": [
-    "src/cryptobot/adapters/",
-    "src/cryptobot/execution/runtime_*",
-    "src/cryptobot/market_data/",
-    "tests/unit/test_execution_*",
-    "tests/unit/test_market_data_*",
-    "tests/unit/test_adapters_*",
-    "coord/outbox/E-007.json"
-   ]
-  },
   "V-006": {
-   "owner_session": "cool-amalthea",
-   "role": "Worker 3 \u2014 Risk, Verification and Reliability Engineer",
-   "state": "accepted",
-   "contract_version": "v0.2.0+app_runtime_interfaces.md S4",
-   "dependencies": [
-    "specs/app_runtime_interfaces.md S4",
-    "integrated main SHA (manager announces)"
-   ],
    "acceptance": [
     "V-005 continuation: capture + cap-2h + numeric replay + S5 inventory",
     "strict metadata enforcement",
@@ -417,12 +645,6 @@
     "idempotent recovery",
     "runtime regressions + early fee signatures"
    ],
-   "evidence_required": [
-    "files/hashes checked",
-    "repro + counts",
-    "verdict table",
-    "base/branch IDs"
-   ],
    "allowed_paths": [
     "src/cryptobot/risk/",
     "src/cryptobot/accounting/",
@@ -430,171 +652,48 @@
     "tests/ceo_review/test_runtime_*",
     "specs/acceptance-*",
     "coord/outbox/V-006.json"
-   ]
-  },
-  "Q-005-F1": {
-   "owner_session": "whisper-redshift",
-   "role": "Worker 1 \u2014 Quant Research and Strategy Engineer",
-   "state": "accepted",
-   "contract_version": "v0.2.0+app_runtime_interfaces.md S1",
-   "dependencies": [
-    "Q-005 runtime.py on main"
    ],
-   "acceptance": [
-    "MarketView.bars carries aligned None slots (tuple[Bar|None,...]); adapters pass through without compressing time",
-    "gate handles trailing/leading Nones (last non-None staleness; all-None -> quality:empty-window)",
-    "S5 view path same alignment; suite green"
-   ],
-   "evidence_required": [
-    "repro + counts",
-    "base/branch IDs"
-   ],
-   "allowed_paths": [
-    "src/cryptobot/strategies/runtime.py",
-    "src/cryptobot/strategies/s5.py",
-    "tests/unit/test_strategies_runtime.py",
-    "tests/unit/test_strategies_s5.py",
-    "coord/outbox/Q-005-F1.json"
-   ]
-  },
-  "V-006-F1": {
-   "owner_session": "cool-amalthea",
-   "role": "Worker 3 \u2014 Risk, Verification and Reliability Engineer",
-   "state": "accepted",
    "contract_version": "v0.2.0+app_runtime_interfaces.md S4",
    "dependencies": [
-    "V-006 integration on main"
+    "specs/app_runtime_interfaces.md S4",
+    "integrated main SHA (manager announces)"
    ],
+   "evidence_required": [
+    "files/hashes checked",
+    "repro + counts",
+    "verdict table",
+    "base/branch IDs"
+   ],
+   "owner_session": "cool-amalthea",
+   "role": "Worker 3 \u2014 Risk, Verification and Reliability Engineer",
+   "state": "accepted"
+  },
+  "V-006-F1": {
    "acceptance": [
     "complete() venue-satisfiable; max-notional optional cap",
     "MARKET_LOT_SIZE handling noted",
     "suite green"
-   ],
-   "evidence_required": [
-    "exchangeInfo evidence",
-    "repro + counts",
-    "base/branch IDs"
    ],
    "allowed_paths": [
     "src/cryptobot/risk/types.py",
     "src/cryptobot/risk/sizing.py",
     "tests/acceptance/test_risk_v006.py",
     "coord/outbox/V-006-F1.json"
-   ]
-  },
-  "R2": {
-   "owner_session": "young-polaris",
-   "role": "Manager",
-   "state": "complete",
-   "acceptance": [
-    "1h supervised paper",
-    "controlled interruption + recovery",
-    "reconciled flat"
    ],
-   "evidence_required": [
-    "run report"
-   ],
-   "allowed_paths": []
-  },
-  "R3": {
-   "owner_session": "owner",
-   "role": "Owner launch",
-   "state": "ready-to-launch",
-   "acceptance": [
-    "24h paper per R3_LAUNCH.md"
-   ],
-   "evidence_required": [
-    "run report"
-   ],
-   "allowed_paths": []
-  },
-  "E-008": {
-   "owner_session": "cloud-vega",
-   "role": "Worker 2 \u2014 Data and Execution",
-   "state": "accepted",
-   "contract_version": "v0.2.0+backtest_interfaces.md",
+   "contract_version": "v0.2.0+app_runtime_interfaces.md S4",
    "dependencies": [
-    "specs/backtest_interfaces.md"
-   ],
-   "acceptance": [
-    "native execution both modes",
-    "valuation-only marks",
-    "virtual clock + strict replay",
-    "1s heartbeat timers",
-    "book/flow views + funding",
-    "margin accessor + protected IOC",
-    "ingestion profiled",
-    "30d dataset frozen"
+    "V-006 integration on main"
    ],
    "evidence_required": [
+    "exchangeInfo evidence",
     "repro + counts",
-    "manifest + coverage",
-    "profile",
     "base/branch IDs"
    ],
-   "allowed_paths": [
-    "src/cryptobot/adapters/",
-    "src/cryptobot/market_data/",
-    "src/cryptobot/execution/runtime_*",
-    "datasets/manifests/",
-    "tests/unit/test_adapters_*",
-    "tests/unit/test_market_data_*",
-    "tests/unit/test_execution_*",
-    "coord/outbox/E-008.json"
-   ],
-   "accepted": {
-    "sha": "e1a45b8",
-    "suite": "624/624",
-    "note": "repro 426 branch + 471 overlay, 5 manager probes green, replay fill at trade cross, dataset shas match, M1 exit 0; replay-offline + funding-doc fixups; datasets promoted"
-   }
-  },
-  "Q-007": {
-   "owner_session": "whisper-redshift",
-   "role": "Worker 1 \u2014 Strategies and Backtesting",
-   "state": "accepted",
-   "contract_version": "v0.2.0+backtest_interfaces.md",
-   "dependencies": [
-    "specs/backtest_interfaces.md",
-    "E-008 reader/views via manager"
-   ],
-   "acceptance": [
-    "5 strategy cards",
-    "S5 on views",
-    "portfolio runner via Session",
-    "frozen comparisons + splits",
-    "spread assumption profile",
-    "determinism proof"
-   ],
-   "evidence_required": [
-    "repro + counts",
-    "comparison tables",
-    "two-run diff",
-    "base/branch IDs"
-   ],
-   "allowed_paths": [
-    "src/cryptobot/strategies/",
-    "src/cryptobot/features/",
-    "src/cryptobot/research/",
-    "specs/cards/",
-    "tests/unit/test_strategies_*",
-    "tests/unit/test_research_*",
-    "coord/outbox/Q-007.json"
-   ],
-   "accepted": {
-    "sha": "b784013",
-    "suite": "659/659",
-    "note": "repro 659, synth headlines match, determinism 6-fill identical, captured 0/0/0; data-note: benchmark-30d bulk IS present in main workspace (datasets/cache), W1 fallback unnecessary post-merge"
-   }
+   "owner_session": "cool-amalthea",
+   "role": "Worker 3 \u2014 Risk, Verification and Reliability Engineer",
+   "state": "accepted"
   },
   "V-007": {
-   "owner_session": "cool-amalthea",
-   "role": "Worker 3 \u2014 Risk and Reporting",
-   "state": "accepted",
-   "contract_version": "v0.2.0+backtest_interfaces.md",
-   "dependencies": [
-    "specs/backtest_interfaces.md",
-    "manager run-file format B9"
-   ],
    "acceptance": [
     "protection/margin/funding invariants",
     "independent reconciliation",
@@ -603,12 +702,11 @@
     "episodes",
     "daily evidence + reliability"
    ],
-   "evidence_required": [
-    "repro + counts",
-    "sample report",
-    "reconciliation proof",
-    "base/branch IDs"
-   ],
+   "accepted": {
+    "note": "repro read-only 585 green, report build byte-identical x2, 7-check agree, corrupt-fill loud",
+    "sha": "c770aa7",
+    "suite": "585/585"
+   },
    "allowed_paths": [
     "src/cryptobot/risk/",
     "src/cryptobot/accounting/",
@@ -617,131 +715,27 @@
     "tests/unit/test_reporting_*",
     "coord/outbox/V-007.json"
    ],
-   "accepted": {
-    "sha": "c770aa7",
-    "suite": "585/585",
-    "note": "repro read-only 585 green, report build byte-identical x2, 7-check agree, corrupt-fill loud"
-   }
-  },
-  "EV-001": {
-   "contract_version": "six-agent-48h",
-   "state": "accepted",
+   "contract_version": "v0.2.0+backtest_interfaces.md",
    "dependencies": [
-    "01487ac integrated"
+    "specs/backtest_interfaces.md",
+    "manager run-file format B9"
    ],
    "evidence_required": [
-    "suite",
-    "repro"
-   ],
-   "owner_session": "white-aldebaran",
-   "role": "events",
-   "allowed_paths": [
-    "src/cryptobot/events/",
-    "tests/unit/test_events_*.py",
-    "specs/events.md"
-   ],
-   "acceptance": [
-    "Event store with ID/source/schedule-TZ/first-seen/fetch/revisions/horizon/expiry",
-    "FOMC+CPI fixtures from official calendars, TZ/DST correct, IST display",
-    "Entry-gate API + stale-source-explicit behavior, tested"
-   ],
-   "accepted": {
-    "sha": "d27e2a1",
-    "suite": "713/713",
-    "note": "repro 49 + 713, FOMC 8/8 vs Fed page, no fixups"
-   }
-  },
-  "OP-001": {
-   "contract_version": "six-agent-48h",
-   "state": "accepted",
-   "dependencies": [
-    "01487ac integrated"
-   ],
-   "evidence_required": [
-    "suite",
-    "repro"
-   ],
-   "owner_session": "crystal-parallax",
-   "role": "verification",
-   "allowed_paths": [
-    "tests/audit/",
-    "tools/audit/"
-   ],
-   "acceptance": [
-    "5 review findings reproduced as executable probes (fail on 01487ac)",
-    "Measured replay profile (memory/throughput, bottleneck named)",
-    "No src/ edits in this task"
-   ],
-   "accepted": {
-    "sha": "fdacf09",
-    "suite": "714 passed + 14 xfailed",
-    "note": "14F/1P + 5x exit-1 verified; strict-xfail conftest added; profile preserved"
-   }
-  },
-  "Q-008": {
-   "contract_version": "six-agent-48h",
-   "state": "running",
-   "dependencies": [
-    "01487ac integrated"
-   ],
-   "evidence_required": [
-    "suite",
-    "repro"
-   ],
-   "owner_session": "whisper-redshift",
-   "role": "quant",
-   "allowed_paths": [
-    "src/cryptobot/research/",
-    "src/cryptobot/strategies/",
-    "specs/cards/",
-    "tests/unit/test_research_*",
-    "tests/unit/test_strategies_*"
-   ],
-   "acceptance": [
-    "Causal spread quotes (no future VWAP); future-data invariance proof",
-    "Symbol-scoped dedup + conflicting-duplicate detection",
-    "Streaming orchestration: bounded prep/replay/report, BTC+ETH frozen comparisons"
-   ]
-  },
-  "E-009": {
-   "contract_version": "six-agent-48h",
-   "state": "running",
-   "dependencies": [
-    "01487ac integrated"
-   ],
-   "evidence_required": [
-    "suite",
-    "repro"
-   ],
-   "owner_session": "cloud-vega",
-   "role": "execution",
-   "allowed_paths": [
-    "src/cryptobot/adapters/",
-    "src/cryptobot/execution/",
-    "src/cryptobot/market_data/",
-    "datasets/*.py",
-    "tests/unit/test_adapters_*",
-    "tests/unit/test_execution_*",
-    "tests/unit/test_market_data_*"
-   ],
-   "acceptance": [
-    "WS transport drains app-buffered + TLS-pending messages (coalesced/frag/ping/burst tests)",
-    "Causal marks/funding conversion (availability times preserved), derived data versioned + rebuilt",
-    "Live books synchronized on the normal CLI path; streaming readers (no day tables)"
-   ]
-  },
-  "V-008": {
-   "contract_version": "six-agent-48h",
-   "state": "running",
-   "dependencies": [
-    "01487ac integrated"
-   ],
-   "evidence_required": [
-    "suite",
-    "repro"
+    "repro + counts",
+    "sample report",
+    "reconciliation proof",
+    "base/branch IDs"
    ],
    "owner_session": "cool-amalthea",
-   "role": "risk",
+   "role": "Worker 3 \u2014 Risk and Reporting",
+   "state": "accepted"
+  },
+  "V-008": {
+   "acceptance": [
+    "Margin/entry/protection invariants incl. available margin + fee buffers + commitments to admission",
+    "Funding reconciliation ledger/engine; mark-age/close-cost semantics shared with reports",
+    "Disabled real-venue adapter contract + recorded tests (no production funds)"
+   ],
    "allowed_paths": [
     "src/cryptobot/risk/",
     "src/cryptobot/accounting/",
@@ -751,11 +745,17 @@
     "tests/acceptance/test_risk_v008.py",
     "tests/acceptance/test_venue_*"
    ],
-   "acceptance": [
-    "Margin/entry/protection invariants incl. available margin + fee buffers + commitments to admission",
-    "Funding reconciliation ledger/engine; mark-age/close-cost semantics shared with reports",
-    "Disabled real-venue adapter contract + recorded tests (no production funds)"
-   ]
+   "contract_version": "six-agent-48h",
+   "dependencies": [
+    "01487ac integrated"
+   ],
+   "evidence_required": [
+    "suite",
+    "repro"
+   ],
+   "owner_session": "cool-amalthea",
+   "role": "risk",
+   "state": "accepted"
   }
  },
  "updated_utc": "2026-10-12T08:30:00Z",
