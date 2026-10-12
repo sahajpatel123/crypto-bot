@@ -1,28 +1,36 @@
-"""Frozen-dataset reader for backtests (W2, E-008; B5).
+"""Frozen-dataset reader for backtests (W2, E-009; B5).
 
 :func:`open_dataset` opens a manifest TOML (``vision-archive`` or
 ``captured-runs`` kind) and returns a handle with ``.events(symbol, day)``,
 ``.coverage()``, and ``.manifest_sha()``. Event streams are normalized to
 the live record schema (``input_class="observed-archive"`` /
 ``"observed-public"``) with B3 idle heartbeats (``None``, one per idle
-virtual second). Reads stream per day/file — a month of ticks is never
-loaded into one list — and replay performs no fetch (offline after
-preparation).
+virtual second). Reads stream (Parquet iterators + bounded heap merge for
+vision; line iteration for captures) — a day table or a month of ticks is
+never loaded into one list — and replay performs no fetch (offline after
+preparation). :func:`verify_dataset` checks every derived file present and
+hash-matching before a run.
 
 ``local`` paths in the manifest resolve against the TOML's own directory
 (portable dataset dirs) unless absolute (durable machine-local bulk).
+
+Vision archives require transform v2 (causal close availability, explicit
+absent funding); v1 derivations (close-at-open lookahead) fail closed.
 """
 from __future__ import annotations
 
 import hashlib
+import heapq
 import json
 import tomllib
 from pathlib import Path
 from typing import Any, Iterator
 
-__all__ = ["DatasetHandle", "open_dataset"]
+__all__ = ["DatasetHandle", "open_dataset", "verify_dataset"]
 
 _HEARTBEAT_IDLE_MS = 1000
+_TRANSFORM_VERSION = 2
+_STREAM_BATCH_ROWS = 65536
 
 
 def open_dataset(toml: str | Path) -> "DatasetHandle":
@@ -30,6 +38,37 @@ def open_dataset(toml: str | Path) -> "DatasetHandle":
     path = Path(toml)
     manifest = tomllib.loads(path.read_bytes().decode("utf-8"))
     return DatasetHandle(path, manifest)
+
+
+def verify_dataset(handle: "DatasetHandle") -> list[str]:
+    """Check every manifest ``local`` file present and hash-matching.
+
+    Vision sources verify ``derived_sha256`` (source archives were verified
+    at freeze/resume time); captured runs verify ``sha256`` (the file
+    itself). Returns problem descriptions; empty means verified.
+    """
+    problems: list[str] = []
+    for entry in handle.manifest.get("source", []):
+        local = entry.get("local", "")
+        label = entry.get("day") or entry.get("month") or entry.get("file") or local
+        if not local:
+            problems.append(f"{entry.get('symbol', '?')}/{label}: no local path")
+            continue
+        resolved = handle._resolve(local)
+        if not resolved.exists():
+            problems.append(f"{entry.get('symbol', '?')}/{label}: missing {local}")
+            continue
+        want = entry.get("derived_sha256") or entry.get("sha256")
+        if not want:
+            problems.append(f"{entry.get('symbol', '?')}/{label}: no hash recorded")
+            continue
+        digest = hashlib.sha256()
+        with open(resolved, "rb") as fh:
+            for chunk in iter(lambda: fh.read(1 << 20), b""):
+                digest.update(chunk)
+        if digest.hexdigest() != want:
+            problems.append(f"{entry.get('symbol', '?')}/{label}: hash mismatch for {local}")
+    return problems
 
 
 class DatasetHandle:
@@ -45,6 +84,13 @@ class DatasetHandle:
         if dataset.get("manifest_version") != 1:
             raise ValueError("unsupported manifest_version (want 1)")
         self.kind = kind
+        if kind == "vision-archive":
+            transform = dataset.get("transform_version")
+            if transform != _TRANSFORM_VERSION:
+                raise ValueError(
+                    f"stale vision transform v{transform} (want v{_TRANSFORM_VERSION}): "
+                    "rebuild with prepare_benchmark_30d.py; v1 minute closes "
+                    "carry lookahead and v1 funding invents zeros")
         self._sha: str | None = None
 
     # -- manifest-level -------------------------------------------------
@@ -65,6 +111,8 @@ class DatasetHandle:
             "dataset": self.manifest.get("dataset", {}).get("name"),
             "kind": self.kind,
             "manifest_sha": self.manifest_sha(),
+            "transform_version": self.manifest.get("dataset", {}).get(
+                "transform_version"),
             "sources": sources,
             "gaps": list(self.manifest.get("gap", [])),
             "filters": self.manifest.get("filters", {}),
@@ -91,15 +139,14 @@ class DatasetHandle:
 
     # -- vision-archive ---------------------------------------------------
     def _vision_events(self, symbol: str, day: str) -> Iterator[dict[str, Any] | None]:
-        tables: list[list[tuple[int, dict[str, Any]]]] = []
-        for channel in ("aggTrade", "markPrice"):
+        streams = []
+        for order, channel in enumerate(("aggTrade", "markPrice")):
             entry = self._vision_source(symbol, day, channel)
             if entry is None:
                 continue  # channel missing for this symbol/day (manifest gap).
-            tables.append([(ts, event) for ts, event in self._read_parquet_channel(
-                entry, symbol, day, channel)])
-        merged = sorted(((ts, i, event) for i, table in enumerate(tables)
-                         for ts, event in table), key=lambda t: (t[0], t[1]))
+            streams.append(self._stream_parquet_channel(entry, symbol, channel,
+                                                        order))
+        merged = heapq.merge(*streams, key=lambda item: (item[0], item[1]))
         run_id = f"replay:{self.manifest_sha()[:8]}:{symbol}:{day}"
         seq = 0
         last_ts: int | None = None
@@ -123,42 +170,49 @@ class DatasetHandle:
                 return entry
         return None
 
-    def _read_parquet_channel(self, entry: dict[str, Any], symbol: str,
-                              day: str, channel: str,
-                              ) -> Iterator[tuple[int, dict[str, Any]]]:
+    def _stream_parquet_channel(self, entry: dict[str, Any], symbol: str,
+                                channel: str, order: int,
+                                ) -> Iterator[tuple[int, int, dict[str, Any]]]:
+        """Yield (ts, order, event) per row via bounded Parquet batch reads."""
         import pyarrow.parquet as pq
 
-        table = pq.read_table(str(self._resolve(entry["local"])))
-        cols = {name: table.column(name).to_pylist() for name in table.column_names}
-        n = table.num_rows
-        for i in range(n):
-            ts = int(cols["ts_ms"][i])
-            if channel == "aggTrade":
-                payload = {
-                    "agg_id": int(cols["agg_id"][i]), "price": float(cols["price"][i]),
-                    "qty": float(cols["qty"][i]),
-                    "first_id": int(cols["first_id"][i]),
-                    "last_id": int(cols["last_id"][i]),
-                    "trade_ts_ms": ts,
-                    "buyer_is_maker": bool(cols["buyer_is_maker"][i]),
+        streamer = pq.ParquetFile(str(self._resolve(entry["local"])))
+        for batch in streamer.iter_batches(batch_size=_STREAM_BATCH_ROWS):
+            cols = {name: batch.column(batch.schema.get_field_index(name)).to_pylist()
+                    for name in batch.schema.names}
+            n = batch.num_rows
+            for i in range(n):
+                ts = int(cols["ts_ms"][i])
+                if channel == "aggTrade":
+                    payload = {
+                        "agg_id": int(cols["agg_id"][i]), "price": float(cols["price"][i]),
+                        "qty": float(cols["qty"][i]),
+                        "first_id": int(cols["first_id"][i]),
+                        "last_id": int(cols["last_id"][i]),
+                        "trade_ts_ms": ts,
+                        "buyer_is_maker": bool(cols["buyer_is_maker"][i]),
+                    }
+                    venue_seq: int | None = int(cols["agg_id"][i])
+                else:
+                    rate = cols["funding_rate"][i]
+                    payload = {
+                        "mark": float(cols["mark"][i]),
+                        "open_time": int(cols["open_time"][i]),
+                        "close_time": int(cols["close_time"][i]),
+                        "funding_rate": None if rate is None else float(rate),
+                        "funding_status": str(cols["funding_status"][i]),
+                        "next_funding_ms": int(cols["next_funding_ms"][i]),
+                    }
+                    venue_seq = None
+                yield ts, order, {
+                    "v": 1, "format": "cryptobot-events/1",
+                    "input_class": "observed-archive", "source": "binance-vision",
+                    "route": "market", "run_id": "", "seq": 0,
+                    "channel": channel, "symbol": symbol,
+                    "exchange_ts_ms": ts, "local_recv_ms": ts,
+                    "local_mono_ns": ts * 1_000_000, "gap_kind": None,
+                    "venue_seq": venue_seq, "payload": payload,
                 }
-                venue_seq: int | None = int(cols["agg_id"][i])
-            else:
-                payload = {
-                    "mark": float(cols["mark"][i]),
-                    "funding_rate": float(cols["funding_rate"][i]),
-                    "next_funding_ms": int(cols["next_funding_ms"][i]),
-                }
-                venue_seq = None
-            yield ts, {
-                "v": 1, "format": "cryptobot-events/1",
-                "input_class": "observed-archive", "source": "binance-vision",
-                "route": "market", "run_id": "", "seq": 0,
-                "channel": channel, "symbol": symbol,
-                "exchange_ts_ms": ts, "local_recv_ms": ts,
-                "local_mono_ns": ts * 1_000_000, "gap_kind": None,
-                "venue_seq": venue_seq, "payload": payload,
-            }
 
     # -- captured-runs ----------------------------------------------------
     def _captured_events(self, symbol: str, day: str) -> Iterator[dict[str, Any] | None]:

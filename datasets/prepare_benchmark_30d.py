@@ -28,6 +28,11 @@ from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 VISION = "https://data.binance.vision/data/futures/um"
+# Transform versions: 1 = E-008 (minute close published at minute open —
+# lookahead; zero substituted for absent funding); 2 = E-009 (close at
+# close availability with open/close/availability preserved; absent
+# funding is NULL + status, never zero). The reader refuses v1.
+TRANSFORM_VERSION = 2
 SYMBOLS = ("BTCUSDT", "ETHUSDT", "SOLUSDT", "ZECUSDT",
            "NEARUSDT", "STRKUSDT", "XRPUSDT", "WUSDT")
 DAY_START = date(2026, 9, 11)   # UTC days covering 30 IST accounting days...
@@ -43,7 +48,7 @@ FUNDING_PATH = "monthly/fundingRate/{s}/{s}-fundingRate-{m}.zip"
 
 
 def _http_get(url: str, timeout: float = 60.0) -> bytes:
-    req = urllib.request.Request(url, headers={"User-Agent": "cryptobot-e008-freeze"})
+    req = urllib.request.Request(url, headers={"User-Agent": "cryptobot-e009-freeze"})
     last: Exception | None = None
     for attempt in range(4):
         try:
@@ -112,6 +117,14 @@ def _to_parquet(path: Path, columns: dict[str, list]) -> int:
     return table.num_rows
 
 
+def _file_sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with open(path, "rb") as fh:
+        for chunk in iter(lambda: fh.read(1 << 20), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
 def _convert_agg(rows: list[list[str]], dest: Path
                ) -> tuple[int, int, int, list, list]:
     header, body = rows[0], rows[1:]
@@ -148,10 +161,20 @@ def _idle_gaps(ts_list: list[int], threshold_ms: int) -> list[tuple[int, int]]:
     return gaps
 
 
-def _convert_marks(rows: list[list[str]]) -> list[tuple[int, float]]:
+def _convert_marks(rows: list[list[str]]
+                 ) -> list[tuple[int, int, float, float, float, float]]:
+    """Minute klines -> (open, close_avail, open_px, high, low, close) tuples.
+
+    The close is published at its availability (close_time), never at the
+    minute open — pairing open_time with close was lookahead (E-009).
+    """
     header, body = rows[0], rows[1:]
-    open_i, close_i = header.index("open_time"), header.index("close")
-    return [(int(row[open_i]), float(row[close_i])) for row in body]
+    col = {name: header.index(name) for name in (
+        "open_time", "open", "high", "low", "close", "close_time")}
+    return [(int(row[col["open_time"]]), int(row[col["close_time"]]),
+             float(row[col["open"]]), float(row[col["high"]]),
+             float(row[col["low"]]), float(row[col["close"]]))
+            for row in body]
 
 
 def _convert_funding(rows: list[list[str]]) -> list[tuple[int, int, float]]:
@@ -163,48 +186,57 @@ def _convert_funding(rows: list[list[str]]) -> list[tuple[int, int, float]]:
             for row in body]
 
 
-def _join_marks(marks: list[tuple[int, float]],
+def _join_marks(marks: list[tuple[int, int, float, float, float, float]],
                 fundings: list[tuple[int, int, float]],
                 dest: Path) -> tuple[int, int, int, bool]:
-    """Minute marks + funding terms -> markPrice channel (sourced, labeled).
+    """Minute marks + funding terms -> markPrice channel (causal, explicit).
 
-    A rate applies only within two funding intervals of its calc time; older
-    terms yield 0.0 (unknown — the engine skips settlement) instead of a
-    stale carry-forward. Returns (rows, ts_min, ts_max, terms_absent).
+    Rows publish at close availability with open/close/availability times
+    preserved. A rate applies only within two funding intervals of its calc
+    time; older terms yield NULL + status "absent" (unknown — the engine
+    must skip settlement, never treat it as zero). Returns
+    (rows, ts_min, ts_max, terms_absent).
     """
     fundings = sorted(fundings)
     cols: dict[str, list] = {k: [] for k in (
-        "ts_ms", "mark", "funding_rate", "next_funding_ms")}
+        "ts_ms", "open_time", "close_time", "mark", "open_px", "high_px",
+        "low_px", "funding_rate", "funding_status", "next_funding_ms")}
     terms_absent = False
-    for ts, mark in sorted(marks):
-        rate, nxt = 0.0, 0
+    for open_ms, avail_ms, open_px, high, low, close in sorted(marks):
+        nxt = 0
         last_calc: tuple[int, int, float] | None = None
         for calc, hours, value in fundings:
-            if calc <= ts:
+            if calc <= avail_ms:
                 last_calc = (calc, hours, value)
             elif nxt == 0:
                 nxt = calc
+        rate: float | None = None
         if last_calc is not None:
             calc, hours, value = last_calc
-            if ts - calc <= hours * 3_600_000 * 2:
+            if avail_ms - calc <= hours * 3_600_000 * 2:
                 rate = value
-            else:
-                terms_absent = True
-        else:
+        if rate is None:
             terms_absent = True
-        cols["ts_ms"].append(ts)
-        cols["mark"].append(mark)
+        cols["ts_ms"].append(avail_ms)
+        cols["open_time"].append(open_ms)
+        cols["close_time"].append(avail_ms)
+        cols["mark"].append(close)
+        cols["open_px"].append(open_px)
+        cols["high_px"].append(high)
+        cols["low_px"].append(low)
         cols["funding_rate"].append(rate)
+        cols["funding_status"].append("sourced" if rate is not None else "absent")
         cols["next_funding_ms"].append(nxt)
     n = _to_parquet(dest, cols)
     return n, cols["ts_ms"][0], cols["ts_ms"][-1], terms_absent
 
 
-def _missing_minutes(marks: list[tuple[int, float]], day: date) -> list[int]:
+def _missing_minutes(marks: list[tuple[int, int, float, float, float, float]],
+                     day: date) -> list[int]:
     day_start = int(datetime(day.year, day.month, day.day,
                              tzinfo=timezone.utc).timestamp() * 1000)
-    have = {ts for ts, _ in marks
-            if day_start <= ts < day_start + 86_400_000}
+    have = {open_ms for open_ms, _, _, _, _, _ in marks
+            if day_start <= open_ms < day_start + 86_400_000}
     return [m for m in range(1440) if day_start + m * 60_000 not in have]
 
 
@@ -237,14 +269,20 @@ def _toml_str(value: str) -> str:
 
 def _write_manifest(path: Path, *, symbols, sources, gaps, filters, filters_url) -> None:
     lines = [
-        "# Frozen 30-accounting-day benchmark (W2, E-008; B5).",
-        "# Generated by prepare_benchmark_30d.py; content-addressed via `sha256`.",
+        "# Frozen 30-accounting-day benchmark (W2, E-009; B5).",
+        "# Generated by prepare_benchmark_30d.py; `sha256` addresses the source",
+        "# archive, `derived_sha256` the converted Parquet named by `local`.",
         "# `local` paths resolve against this file's directory.",
         "",
         "[dataset]",
         f"name = {_toml_str('benchmark-30d')}",
         f"kind = {_toml_str('vision-archive')}",
         "manifest_version = 1",
+        f"transform_version = {TRANSFORM_VERSION}",
+        ("transform_notes = " + _toml_str(
+            "v2 causal: minute closes publish at close availability (open/close/"
+            "availability preserved); absent funding is NULL + status, never "
+            "zero; v1 (close-at-open lookahead) refused by the reader.")),
         f"created_utc = {_toml_str(datetime.now(timezone.utc).isoformat())}",
         f"window_utc = [{_toml_str(str(DAY_START))}, {_toml_str(str(DAY_END))}]",
         "window_ist = [\"2026-09-12\", \"2026-10-11\"]",
@@ -261,7 +299,8 @@ def _write_manifest(path: Path, *, symbols, sources, gaps, filters, filters_url)
     for entry in sources:
         lines.append("[[source]]")
         for key in ("symbol", "day", "month", "channel", "url", "sha256",
-                    "local", "rows", "bytes", "ts_min_ms", "ts_max_ms", "notes"):
+                    "local", "derived_sha256", "rows", "bytes",
+                    "ts_min_ms", "ts_max_ms", "notes"):
             if key not in entry or entry[key] is None:
                 continue
             value = entry[key]
@@ -353,6 +392,7 @@ def main() -> int:
             sources.append({"symbol": symbol, "month": month,
                             "channel": "fundingRate", "url": url, "sha256": sha,
                             "local": str(parquet.relative_to(out)),
+                            "derived_sha256": _file_sha256(parquet),
                             "rows": n, "bytes": len(data),
                             "ts_min_ms": cols["ts_ms"][0] if n else None,
                             "ts_max_ms": cols["ts_ms"][-1] if n else None})
@@ -382,6 +422,7 @@ def main() -> int:
                 sources.append({"symbol": symbol, "day": iso, "channel": "aggTrade",
                                 "url": agg["url"], "sha256": agg["sha"],
                                 "local": str(dest.relative_to(out)),
+                                "derived_sha256": _file_sha256(dest),
                                 "rows": n, "bytes": agg["bytes"],
                                 "ts_min_ms": ts_min, "ts_max_ms": ts_max,
                                 "notes": "; ".join(notes) if notes else None})
@@ -410,6 +451,7 @@ def main() -> int:
                 sources.append({"symbol": symbol, "day": iso, "channel": "markPrice",
                                 "url": mark["url"], "sha256": mark["sha"],
                                 "local": str(dest.relative_to(out)),
+                                "derived_sha256": _file_sha256(dest),
                                 "rows": n, "bytes": mark["bytes"],
                                 "ts_min_ms": ts_min, "ts_max_ms": ts_max})
                 if terms_absent:

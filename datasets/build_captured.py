@@ -16,7 +16,8 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
-FILES = ("events.jsonl", "manifest.json", "heartbeat.json", "run_stats.json")
+FILES = ("events.jsonl", "manifest.json", "heartbeat.json", "run_stats.json",
+         "depth_snapshots.jsonl")  # absent in pre-E-007 captures: skipped, noted.
 GAP_MS = 60_000
 
 

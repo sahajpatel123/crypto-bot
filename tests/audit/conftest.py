@@ -10,22 +10,14 @@ import pytest
 
 KNOWN_FAILURES = (
     # Finding 1 fixed by Q-008 (causal-first-trade-v1); entries trimmed.
-    # Finding 2: mark close published at open.
+    # Finding 2: 2/3 fixed by E-009 v2 freeze (trimmed); close-at-open open.
     "test_finding_2_mark_close.py::test_close_not_published_at_open",
-    "test_finding_2_mark_close.py::test_open_close_availability_preserved",
-    "test_finding_2_mark_close.py::test_joined_marks_preserve_availability",
     # Finding 3 fixed by Q-008 (venue-aware dedup); entries trimmed.
-    # Finding 4: gap-bar quality.
-    "test_finding_4_gap_quality.py"
-    "::test_gap_bar_not_usable_as_clean_strategy_bar",
+    # Finding 4: 2/3 fixed by E-009 gap fix (trimmed); session view open.
     "test_finding_4_gap_quality.py::test_session_view_propagates_gap_quality",
-    "test_finding_4_gap_quality.py::test_recovery_requires_causal_warmup",
-    # Finding 5: select-stranded frames.
-    "test_finding_5_select_strand.py::test_coalesced_second_frame_stranded",
+    # Finding 5: 2/3 fixed by E-009 fair drain (trimmed); no-readability open.
     "test_finding_5_select_strand.py"
     "::test_buffered_message_drained_without_readability",
-    "test_finding_5_select_strand.py"
-    "::test_fragmented_ping_burst_and_quiet_routes",
 )
 
 

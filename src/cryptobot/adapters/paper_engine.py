@@ -128,7 +128,6 @@ _SEAM_STATE = {
 _ACCOUNT_EVENTS = (OrderAccepted, OrderCanceled, OrderExpired, OrderRejected,
                    OrderUpdated, OrderFilled)
 
-_FUNDING_INTERVAL_MS = 8 * 3600 * 1000
 
 
 def _venue_side(side: str) -> OrderSide:
@@ -730,8 +729,16 @@ class NautilusPaperEngine:
     def _note_funding_terms(self, symbol: str, payload: dict[str, Any]) -> None:
         state = self._funding_terms.setdefault(symbol, {"rate": 0.0, "next_ms": 0,
                                                         "settled_ms": 0})
+        rate = payload.get("funding_rate")
+        if payload.get("funding_status") == "absent" or rate is None:
+            # Explicitly unknown terms: invalidate so nothing settles on
+            # stale rates or projected boundaries (E-009; no silent zero).
+            # Live venue records carry no status and always assert a rate.
+            state["rate"] = 0.0
+            state["next_ms"] = 0
+            return
         try:
-            state["rate"] = float(payload.get("funding_rate", 0.0) or 0.0)
+            state["rate"] = float(rate)
             state["next_ms"] = int(payload.get("next_funding_ms", 0) or 0)
         except (TypeError, ValueError):
             pass  # malformed terms: keep the last known, never invent.
@@ -746,7 +753,10 @@ class NautilusPaperEngine:
             return
         funding_ms = state["next_ms"]
         state["settled_ms"] = funding_ms
-        state["next_ms"] = funding_ms + _FUNDING_INTERVAL_MS
+        # No self-projection: the next boundary must be asserted by a newer
+        # sourced record (per-minute live, per-minute archive). Settlement
+        # past the last asserted boundary would invent terms (E-009).
+        state["next_ms"] = 0
         position = self._cache.position(
             PositionId(f"{symbol}.{VENUE.value}-{self._strategy_id}"))
         qty = (float(position.signed_decimal_qty())
@@ -961,10 +971,12 @@ class NautilusPaperEngine:
             "deterministic ids (B1): client ids derive from random_seed's RNG stream "
             "(stable across same-seed runs); trade ids are venue FNV-1a; restart "
             "replays the RNG stream past journaled ids",
-            "funding (B2): markPrice terms feed 8h-boundary settlements from open "
+            "funding (B2): markPrice terms feed boundary settlements from open "
             "cache positions as pure rate x notional (no venue settlement tax "
-            "exists or is applied); unpriced/flat/zero-rate settlements book "
-            "nothing",
+            "exists or is applied); only venue-asserted boundaries settle "
+            "(no self-projection past the last record); absent/unknown terms "
+            "invalidate (settle nothing, never zero); unpriced/flat/zero-rate "
+            "settlements book nothing",
             "margins (B2): account_margin reads the simulated MarginAccount filed "
             "through nautilus' own portfolio path (update_order/update_account on "
             "each fill); leverage is engine-owned (matches the risk cap)",

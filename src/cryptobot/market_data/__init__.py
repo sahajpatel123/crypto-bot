@@ -13,7 +13,7 @@ from .bridge import (
 )
 from .capabilities import CONNECTOR_CANDIDATES, ConnectorCapability, build_matrix, render_markdown
 from .collector import Collector, CollectorConfig, RunStats, measure_clock_offset_ms, select_capture_set
-from .datasets import DatasetHandle, open_dataset
+from .datasets import DatasetHandle, open_dataset, verify_dataset
 from .depth import DepthBook, DepthState
 from .discovery import (
     DiscoveryResult,
@@ -82,4 +82,5 @@ __all__ = [
     "snapshot_record",
     "to_nautilus_ticks",
     "to_s1_bar",
+    "verify_dataset",
 ]

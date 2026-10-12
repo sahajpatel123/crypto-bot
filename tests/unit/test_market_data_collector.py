@@ -21,7 +21,7 @@ def _config(tmp_path, **kw):
 
 
 class FakeConn:
-    """Scripted connection: select() fires only while scripted, then idles forever."""
+    """Scripted connection: one scripted item per nowait poll, None when quiet."""
 
     def __init__(self, script=()):
         self.sock, self.peer = socket.socketpair()
@@ -29,14 +29,15 @@ class FakeConn:
         if self.script:
             self.peer.send(b"x")  # arm exactly one readable trigger.
         self.closed = False
+        self.buffered_bytes = 0
 
     @property
     def native_socket(self):
         return self.sock
 
-    def recv_message(self, timeout_s=None):
+    def _next(self):
         if not self.script:
-            raise WsClosed("drained")  # unreachable: select never fires when quiet.
+            return None
         item = self.script.popleft()
         if not self.script:
             self.sock.setblocking(False)  # last item: disarm so select idles after.
@@ -47,6 +48,15 @@ class FakeConn:
         if isinstance(item, Exception):
             raise item
         return item
+
+    def recv_message(self, timeout_s=None):
+        item = self._next()
+        if item is None:
+            raise WsClosed("drained")
+        return item
+
+    def recv_message_nowait(self):
+        return self._next()
 
     def close(self):
         self.closed = True
@@ -97,6 +107,43 @@ def test_ingest_counts_malformed_without_crashing(tmp_path):
     _pump(collector, FakeConn([("text", b"not json{"), ("binary", b"\x00")]), tmp_path)
     assert collector.stats.malformed == 1  # binary frames are skipped, not malformed.
     assert collector.stats.events_total == 0
+
+
+def _pump_both(tmp_path, market, public):
+    collector = Collector(_config(tmp_path))
+    run_dir = Path(collector.config.run_dir)
+    run_dir.mkdir(parents=True, exist_ok=True)
+    collector._conns = {"market": market, "public": public}
+    with (run_dir / "raw.jsonl").open("w") as raw_fh, \
+         (run_dir / "events.jsonl").open("w") as events_fh, \
+         (run_dir / "bars.jsonl").open("w") as bars_fh:
+        n = collector._pump_once(raw_fh, events_fh, bars_fh)
+    return collector, n
+
+
+def test_pump_serves_both_routes_fairly(tmp_path):
+    market = FakeConn([_trade_msg(1)] * 5)
+    public = FakeConn([_trade_msg(2)])
+    collector, n = _pump_both(tmp_path, market, public)
+    assert n == 2  # one per route: the burst cannot starve the quiet route.
+    assert collector.stats.events_total == 2
+
+
+def test_stale_partial_drops_and_reconnects_with_natural_gap(tmp_path):
+    stuck = FakeConn([])
+    stuck.buffered_bytes = 9  # fragment bytes that never assemble.
+    collector = Collector(_config(tmp_path), connect=lambda url: FakeConn())
+    collector._conns = {"market": stuck}
+    collector._route_last_msg = {"market": collector._mono_ns() - 10_000_000_000}
+    run_dir = Path(collector.config.run_dir)
+    run_dir.mkdir(parents=True, exist_ok=True)
+    with (run_dir / "raw.jsonl").open("w") as raw_fh, \
+         (run_dir / "events.jsonl").open("w") as events_fh, \
+         (run_dir / "bars.jsonl").open("w") as bars_fh:
+        assert collector._pump_once(raw_fh, events_fh, bars_fh) == 0
+    assert collector.stats.disconnects_natural == 1
+    assert collector.stats.reconnects == 1
+    assert collector._pending_gap["market"] == "natural"
 
 
 def test_depth_chain_break_resyncs_via_rest(tmp_path):

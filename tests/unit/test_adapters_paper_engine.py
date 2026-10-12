@@ -581,15 +581,18 @@ def test_assumptions_logged_and_doctored():
         assert needle in text
 
 
-def _mark_record(recv_ms, mark, rate=0.0001, next_ms=None):
+def _mark_record(recv_ms, mark, rate=0.0001, next_ms=None, status=None):
+    payload = {"mark": mark, "funding_rate": rate,
+               "next_funding_ms": recv_ms if next_ms is None else next_ms}
+    if status is not None:
+        payload["funding_status"] = status
     return {
         "v": 1, "format": "cryptobot-events/1", "input_class": "observed-public",
         "source": "binance-fapi-ws", "route": "public", "run_id": "r1", "seq": 9,
         "channel": "markPrice", "symbol": "BTCUSDT", "exchange_ts_ms": recv_ms,
         "local_recv_ms": recv_ms, "local_mono_ns": recv_ms * 1_000_000,
         "gap_kind": None, "venue_seq": 9,
-        "payload": {"mark": mark, "funding_rate": rate,
-                    "next_funding_ms": recv_ms if next_ms is None else next_ms},
+        "payload": payload,
     }
 
 
@@ -778,6 +781,43 @@ def test_funding_skipped_when_flat_or_zero_rate():
     assert engine.poll()
     engine.note_event(_mark_record(t0ms + 1000, 60001.0, rate=0.0,
                                    next_ms=t0ms + 1000))  # zero rate: nothing.
+    assert [e for e in engine.poll() if e.kind == "funding"] == []
+
+
+def test_funding_absent_terms_invalidate_no_silent_zero():
+    engine = _engine()
+    t0ms = int(T0.timestamp() * 1000)
+    _quote(engine, 0, 60000.00, 60000.50)
+    engine.submit(EngineOrder("BTCUSDT", "BUY", 0.001, "MARKET"))
+    _quote(engine, 1, 60001.00, 60001.50)
+    assert engine.poll()
+    engine.note_event(_mark_record(t0ms + 1000, 60000.0, rate=0.0001,
+                                   next_ms=t0ms + 1000))
+    assert len([e for e in engine.poll() if e.kind == "funding"]) == 1
+    # Terms go explicitly unknown: no settlement on stale rates, no zero fill.
+    engine.note_event(_mark_record(t0ms + 2000, 60000.0, rate=None,
+                                   next_ms=0, status="absent"))
+    engine.advance_to(T0 + timedelta(hours=9))
+    assert [e for e in engine.poll() if e.kind == "funding"] == []
+    # Sourced terms re-establish settlement afterwards.
+    engine.note_event(_mark_record(t0ms + 9 * 3600_000, 60000.0, rate=0.0001,
+                                   next_ms=t0ms + 9 * 3600_000))
+    assert len([e for e in engine.poll() if e.kind == "funding"]) == 1
+
+
+def test_funding_never_projects_past_last_asserted_boundary():
+    engine = _engine()
+    t0ms = int(T0.timestamp() * 1000)
+    _quote(engine, 0, 60000.00, 60000.50)
+    engine.submit(EngineOrder("BTCUSDT", "BUY", 0.001, "MARKET"))
+    _quote(engine, 1, 60001.00, 60001.50)
+    assert engine.poll()
+    engine.note_event(_mark_record(t0ms + 1000, 60000.0, rate=0.0001,
+                                   next_ms=t0ms + 1000))
+    assert len([e for e in engine.poll() if e.kind == "funding"]) == 1
+    # Clock crosses where the old +8h self-projection would have fired:
+    # nothing settles without a newer sourced record asserting it.
+    engine.advance_to(T0 + timedelta(hours=9))
     assert [e for e in engine.poll() if e.kind == "funding"] == []
 
 

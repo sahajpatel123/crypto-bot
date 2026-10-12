@@ -42,6 +42,7 @@ __all__ = [
 MARKET_ROUTE = "wss://fstream.binance.com/market/stream?streams="
 PUBLIC_ROUTE = "wss://fstream.binance.com/public/stream?streams="
 REST_BASE = FAPI_BASE_URL
+_STALE_PARTIAL_S = 5.0  # incomplete buffered bytes this old mean a sick connection.
 
 
 @dataclass(frozen=True)
@@ -148,6 +149,8 @@ class Collector:
         self._chaos_done = False
         self._snapshot_due: dict[str, float] = {}  # symbol -> mono deadline for buffer-fill window.
         self._conns: dict[str, WsClient] = {}
+        self._turn: list[str] = ["market", "public"]  # rotated each pump: fair service.
+        self._route_last_msg: dict[str, int] = {}
         self._started_mono = 0
         self._deadline_mono: int | None = None
         self._clock_start: dict[str, float] = {}
@@ -164,6 +167,7 @@ class Collector:
     def _open(self, route: str) -> None:
         self._conns[route] = self._connect(self._stream_url(route))
         self._conns[route].native_socket.settimeout(0.2)
+        self._route_last_msg[route] = self._mono_ns()
 
     def _snapshot_symbol(self, symbol: str, raw_fh, events_fh, bars_fh, snaps_fh) -> None:
         """Fetch a depth snapshot, drain in-flight diffs into the buffer, then install.
@@ -326,49 +330,79 @@ class Collector:
 
     # -- per-iteration -------------------------------------------------------
     def _pump_once(self, raw_fh, events_fh, bars_fh) -> int:
-        """Process at most one message per readable connection. Returns messages read."""
+        """Process at most one message per route (round-robin). Returns messages read.
+
+        Routes are polled via ``recv_message_nowait`` so complete
+        application-buffered messages and TLS pending data drain without
+        awaiting new kernel readability (E-009); ``select`` is only an idle
+        sleep. A route holding incomplete bytes past the stale threshold is
+        dropped as sick and reconnected with a natural gap.
+        """
         if not self._conns:
             time.sleep(0.2)
             return 0
-        readable, _, _ = select.select(
-            [c.native_socket for c in self._conns.values()], [], [], 0.2)
-        routes = {id(c.native_socket): r for r, c in self._conns.items()}
         processed = 0
-        for sock in readable:
-            route = routes[id(sock)]
+        for route in list(self._turn):
+            conn = self._conns.get(route)
+            if conn is None:
+                continue
             try:
-                # select() already bounds the idle wait; allow slow frame assembly.
-                kind, payload = self._conns[route].recv_message(timeout_s=10.0)
+                message = conn.recv_message_nowait()
             except WsClosed:
                 self._drop_connection(route, injected=False)
                 continue
-            if kind != "text":
+            if message is None:
                 continue
-            processed += 1
-            recv_wall = self._wall_ms()
-            recv_mono = self._mono_ns()
+            if self._handle_message(route, *message, raw_fh, events_fh, bars_fh):
+                processed += 1
+        self._turn = self._turn[1:] + self._turn[:1]
+        if processed:
+            return processed
+        now_mono = self._mono_ns()
+        for route, conn in list(self._conns.items()):
+            buffered = getattr(conn, "buffered_bytes", 0)
+            last = self._route_last_msg.get(route, now_mono)
+            if buffered and (now_mono - last) / 1e9 > _STALE_PARTIAL_S:
+                self._drop_connection(route, injected=False)  # sick: never assembles.
+                break
+        else:
             try:
-                message = json.loads(payload.decode("utf-8"))
-            except (UnicodeDecodeError, ValueError):
-                self.stats.malformed += 1
-                continue
-            self._seq += 1
-            self._write_json(raw_fh, raw_envelope(message, route=route, local_recv_ms=recv_wall,
-                                                  local_mono_ns=recv_mono, seq=self._seq,
-                                                  run_id=self.config.run_id))
-            try:
-                event = parse_message(message, route=route, local_recv_ms=recv_wall,
-                                      local_mono_ns=recv_mono, seq=self._seq,
-                                      run_id=self.config.run_id)
-                self._ingest(event, bars_fh)
-            except (ValueError, KeyError, TypeError):
-                # One bad message must never kill a capture: raw is preserved,
-                # the failure is counted, and the loop continues.
-                self.stats.malformed += 1
-                continue
-            self._write_json(events_fh, event)
-            self._proc_samples.add((self._mono_ns() - event["local_mono_ns"]) / 1e6)
-        return processed
+                select.select([c.native_socket for c in self._conns.values()],
+                              [], [], 0.2)
+            except (OSError, ValueError):
+                time.sleep(0.2)  # dead socket set: never busy-spin.
+        return 0
+
+    def _handle_message(self, route: str, kind: str, payload: bytes,
+                        raw_fh, events_fh, bars_fh) -> bool:
+        """Normalize + persist one message; True when it became an event."""
+        if kind != "text":
+            return False
+        recv_wall = self._wall_ms()
+        recv_mono = self._mono_ns()
+        try:
+            message = json.loads(payload.decode("utf-8"))
+        except (UnicodeDecodeError, ValueError):
+            self.stats.malformed += 1
+            return False
+        self._seq += 1
+        self._write_json(raw_fh, raw_envelope(message, route=route, local_recv_ms=recv_wall,
+                                              local_mono_ns=recv_mono, seq=self._seq,
+                                              run_id=self.config.run_id))
+        try:
+            event = parse_message(message, route=route, local_recv_ms=recv_wall,
+                                  local_mono_ns=recv_mono, seq=self._seq,
+                                  run_id=self.config.run_id)
+            self._ingest(event, bars_fh)
+        except (ValueError, KeyError, TypeError):
+            # One bad message must never kill a capture: raw is preserved,
+            # the failure is counted, and the loop continues.
+            self.stats.malformed += 1
+            return False
+        self._write_json(events_fh, event)
+        self._route_last_msg[route] = recv_mono
+        self._proc_samples.add((self._mono_ns() - event["local_mono_ns"]) / 1e6)
+        return True
 
     def _ingest(self, event: dict[str, Any], bars_fh) -> None:
         self.stats.events_total += 1

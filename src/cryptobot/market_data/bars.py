@@ -65,8 +65,14 @@ class BarMissing:
 
 
 def to_s1_bar(bar: Bar1s | BarMissing | None):
-    """Convert to the strategies-side Bar, or None when unbuildable (missing window/spread)."""
+    """Convert to the strategies-side Bar, or None when unbuildable (missing window/spread).
+
+    A set ``gap_before`` also yields None: a trade-ID discontinuity may hide
+    trades inside the window, so the bar must fail safe (E-009 finding 4).
+    """
     if bar is None or isinstance(bar, BarMissing) or bar.spread_bps is None:
+        return None
+    if bar.gap_before:
         return None
     from cryptobot.strategies.s1 import Bar  # lazy: strategies stay an integration edge, not a dep.
 

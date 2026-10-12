@@ -17,15 +17,16 @@ class FakeLiveConn:
             self.peer.send(b"x")
         self.closed = False
         self.recvs = 0
+        self.buffered_bytes = 0  # tests set this to simulate a stuck partial.
 
     @property
     def native_socket(self):
         return self.sock
 
-    def recv_message(self, timeout_s=None):
+    def _next(self):
         self.recvs += 1
         if not self.script:
-            raise WsClosed("drained")
+            return None
         item = self.script.popleft()
         if not self.script:
             self.sock.setblocking(False)
@@ -36,6 +37,15 @@ class FakeLiveConn:
         if isinstance(item, Exception):
             raise item
         return item
+
+    def recv_message(self, timeout_s=None):
+        item = self._next()
+        if item is None:
+            raise WsClosed("drained")
+        return item
+
+    def recv_message_nowait(self):
+        return self._next()
 
     def close(self):
         self.closed = True
@@ -217,3 +227,46 @@ def test_malformed_frames_skipped_stream_continues():
     it = live_events(symbols=["BTCUSDT"], connect=connect)
     events = _take(it, 1)
     assert events[0]["channel"] == "aggTrade"
+
+
+def test_bursting_route_cannot_starve_quiet_route():
+    market = FakeLiveConn([_trade(agg_id=i) for i in range(1, 11)])
+    public = FakeLiveConn([_ticker()])
+
+    def connect(url):
+        return market if "/market/" in url else public
+
+    it = live_events(symbols=["BTCUSDT"], connect=connect,
+                     heartbeat_every_s=30.0)
+    events = _take(it, 3)  # round-robin: public served on the first pass.
+    assert [e["channel"] for e in events] == ["aggTrade", "bookTicker", "aggTrade"]
+
+
+def test_stale_partial_bytes_force_reconnect():
+    market = FakeLiveConn([])
+    market.buffered_bytes = 7  # stuck fragment that never assembles.
+    public = FakeLiveConn([])
+
+    def connect(url):
+        return market if "/market/" in url else public
+
+    it = live_events(symbols=["BTCUSDT"], connect=connect, max_reconnects=0,
+                     stale_partial_s=0.05)
+    with pytest.raises(ConnectionError, match="routes-exhausted"):
+        for _ in it:
+            pass
+    assert market.recvs >= 1
+
+
+def test_quiet_route_with_zero_bytes_never_trips_stale_rule():
+    market, public = FakeLiveConn([]), FakeLiveConn([])
+
+    def connect(url):
+        return market if "/market/" in url else public
+
+    stats: dict = {}
+    it = live_events(symbols=["BTCUSDT"], connect=connect, heartbeat_every_s=0.2,
+                     stale_partial_s=0.05, stats=stats)
+    (beat,) = _take(it, 1)
+    assert beat is None  # idle heartbeat, not a reconnect.
+    assert stats["reconnects"] == {"market": 0, "public": 0}

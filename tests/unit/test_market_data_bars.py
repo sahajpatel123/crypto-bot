@@ -60,6 +60,30 @@ def test_bar_without_spread_converts_to_missing():
     assert to_s1_bar(bar) is None  # spread never invented or carried forward.
 
 
+def test_gap_bar_converts_to_none_then_recovers():
+    agg = BarAggregator("BTCUSDT", lateness_ms=0)
+    agg.on_bbo(99.0, 101.0, 0)  # spread observed: only the gap fails the bar.
+    agg.on_trade(_trade(0, 1))
+    out = agg.on_trade(_trade(1100, 3))  # ID jump 1 -> 3.
+    (bar,) = [b for b in out if isinstance(b, Bar1s)]
+    assert bar.gap_before is True
+    assert to_s1_bar(bar) is None  # hidden trades possible: fail safe, not clean.
+    good = 0
+    for sec in range(2, 34):  # window [1000] also flagged; then 31 fresh.
+        agg.on_bbo(99.0, 101.0, sec * 1000)  # spread observed in each window.
+        for closed in agg.on_trade(_trade(sec * 1000 + 100, sec + 2)):
+            if not isinstance(closed, Bar1s):
+                continue
+            if closed.window_start_ms == 1000:
+                assert closed.gap_before is True  # jump span covers both sides.
+                assert to_s1_bar(closed) is None
+                continue
+            assert closed.gap_before is False
+            assert to_s1_bar(closed) is not None
+            good += 1
+    assert good == 31
+
+
 def test_flush_drains_and_duplicate_ids_drop():
     agg = BarAggregator("BTCUSDT", lateness_ms=10_000)
     agg.on_trade(_trade(100, 1))
