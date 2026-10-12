@@ -927,6 +927,11 @@ class Session:
                    expect_class: str = "observed-public",
                    resume: bool = False,
                    crash_after: int | None = None) -> dict[str, Any]:
+        # Streaming replay (W1-24H): single O(1)-memory pass over the
+        # capture — no load_events list, no full-list sort. Local import
+        # keeps this shared-file-queue patch inside this method.
+        from cryptobot.market_data.replayer import RollingEventHash, stream_events
+
         capture_dir = Path(capture_dir)
         events_path = capture_dir / "events.jsonl"
         if not events_path.exists():
@@ -943,19 +948,33 @@ class Session:
         self._init_run_files()
         prime = self._prime_replay_books(capture_dir)
         self.store.checkpoint(self.run_id, "depth-prime", prime)
-        records = load_events(events_path)
-        for record in records:
-            assert_input_class({"input_class": record["input_class"]}, expect_class)
+        events = stream_events(events_path)
+        first = next(events, None)
+        if first is None:
+            raise ValueError(f"no events in {events_path}")
+        assert_input_class({"input_class": first["input_class"]}, expect_class)
         adapters, modules = self._strategy_adapters()
         if not resume:
             # Day baseline at first event time (causal).
-            first_ts = min(int(r["exchange_ts_ms"]) for r in records)
-            self.clock.set_ms(first_ts)
+            self.clock.set_ms(int(first["exchange_ts_ms"]))
             self.policy.reconcile_day(self.config.paper_capital_usdt, 0.0)
             self._day = accounting_date(self.now_utc()).isoformat()
         self._set_state("warming", "replay-start")
-        for event in replay_events(records):
+        rolling = RollingEventHash()
+        first_ms: int | None = None
+        last_ms: int | None = None
+        skipped_prefix = 0
+        from itertools import chain as _chain
+
+        for event in _chain((first,), events):
+            assert_input_class({"input_class": event["input_class"]},
+                               expect_class)
+            rolling.update(event)
+            ts = int(event["exchange_ts_ms"])
+            first_ms = ts if first_ms is None else min(first_ms, ts)
+            last_ms = ts if last_ms is None else max(last_ms, ts)
             if int(event.get("seq", 0)) <= self._last_seq:
+                skipped_prefix += 1
                 continue
             self._ingest(event, adapters, modules)
             self._last_seq = int(event.get("seq", 0))
@@ -985,9 +1004,7 @@ class Session:
         self._drain_engine()
         self._persist_local_state()
         self._sample_equity("run-end", force=True)
-        if records:
-            first_ms = min(int(r["exchange_ts_ms"]) for r in records)
-            last_ms = max(int(r["exchange_ts_ms"]) for r in records)
+        if first_ms is not None and last_ms is not None:
             w0 = _EPOCH + timedelta(milliseconds=first_ms)
             w1 = _EPOCH + timedelta(milliseconds=last_ms)
         else:
@@ -1003,6 +1020,14 @@ class Session:
                             "capture": str(capture_dir)})
         self._set_state("stopped", "run-complete")
         report = self._build_report(str(capture_dir), expect_class)
+        report["replay_stream"] = {
+            "mode": "streaming-v1",
+            "events_hashed": rolling.count,
+            "events_hash": rolling.hexdigest(),
+            "skipped_prefix": skipped_prefix,
+            "first_ms": first_ms,
+            "last_ms": last_ms,
+        }
         (self.workdir / "report.json").write_text(json.dumps(report, indent=2))
         (self.workdir / "report.md").write_text(self._render_report(report))
         return report

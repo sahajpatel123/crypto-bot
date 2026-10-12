@@ -117,3 +117,70 @@ def events_hash(records: Iterable[dict[str, Any]], *, order: str = "arrival") ->
     for event in replay_events(records, order=order):
         digest.update(json.dumps(event, sort_keys=True).encode("utf-8"))
     return digest.hexdigest()
+
+
+def iter_events(path: str | Path) -> Iterator[dict[str, Any]]:
+    """Stream a normalized event file line by line (O(1) memory).
+
+    Same per-record contract as load_events (input_class presence
+    enforced); yields dicts in file order without materializing.
+    """
+    with open(path, encoding="utf-8") as fh:
+        for line in fh:
+            if not line.strip():
+                continue
+            record = json.loads(line)
+            if "input_class" not in record:
+                raise ValueError(
+                    "event record missing mandatory input_class label")
+            yield record
+
+
+def stream_events(path: str | Path, *,
+                  order: str = "arrival") -> Iterator[dict[str, Any]]:
+    """Yield capture events in deterministic order without sorting.
+
+    Captures are seq-ordered by construction, so ``order="arrival"``
+    enforces non-decreasing seq (ValueError naming the regressing
+    record) instead of buffering a full-list sort. ``order="exchange_ts"``
+    additionally enforces non-decreasing (exchange_ts_ms, seq). Output
+    on a compliant file is identical to replay_events(load_events(path));
+    non-compliant files raise rather than reorder — use replay_events on
+    a loaded list when reordering foreign files is required.
+    """
+    if order == "arrival":
+        def key(record: dict[str, Any]):
+            return int(record["seq"])
+    elif order == "exchange_ts":
+        def key(record: dict[str, Any]):
+            return (int(record["exchange_ts_ms"]), int(record["seq"]))
+    else:
+        raise ValueError(f"unknown replay order: {order!r}")
+    prev = None
+    for record in iter_events(path):
+        cur = key(record)
+        if prev is not None and cur < prev:
+            raise ValueError(
+                f"capture not {order}-ordered: seq {record.get('seq')} "
+                f"regresses after {prev!r}")
+        prev = cur
+        yield record
+
+
+class RollingEventHash:
+    """Incremental events_hash over a streamed replay (O(1) memory).
+
+    update() applies the exact events_hash step per event, so the final
+    hexdigest equals events_hash() over the same ordered stream.
+    """
+
+    def __init__(self) -> None:
+        self._digest = hashlib.sha256()
+        self.count = 0
+
+    def update(self, event: dict[str, Any]) -> None:
+        self._digest.update(json.dumps(event, sort_keys=True).encode("utf-8"))
+        self.count += 1
+
+    def hexdigest(self) -> str:
+        return self._digest.hexdigest()
