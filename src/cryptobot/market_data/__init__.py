@@ -13,6 +13,7 @@ from .bridge import (
 )
 from .capabilities import CONNECTOR_CANDIDATES, ConnectorCapability, build_matrix, render_markdown
 from .collector import Collector, CollectorConfig, RunStats, measure_clock_offset_ms, select_capture_set
+from .datasets import DatasetHandle, open_dataset
 from .depth import DepthBook, DepthState
 from .discovery import (
     DiscoveryResult,
@@ -25,6 +26,7 @@ from .discovery import (
 from .events import EVENT_FORMAT, channel_of, parse_message, raw_envelope
 from .recorder import KlineRecorder, RecordingStats, analyze_klines
 from .replayer import ReplayEvent, events_hash, load_events, load_recording, replay, replay_events, replay_hash
+from .views import BookView, DepthStore, FlowView2, book_flow_for
 from .ws import WsClient, WsClosed, WsHandshakeError
 
 __all__ = [
@@ -32,12 +34,16 @@ __all__ = [
     "Bar1s",
     "BarAggregator",
     "BarMissing",
+    "BookView",
     "Collector",
     "CollectorConfig",
     "ConnectorCapability",
     "DepthBook",
     "DepthState",
+    "DepthStore",
+    "DatasetHandle",
     "DiscoveryResult",
+    "FlowView2",
     "KlineRecorder",
     "RecordingStats",
     "ReplayEvent",
@@ -51,6 +57,7 @@ __all__ = [
     "WsHandshakeError",
     "analyze_klines",
     "book_features",
+    "book_flow_for",
     "build_matrix",
     "channel_of",
     "discover_usdt_perps",
@@ -64,6 +71,7 @@ __all__ = [
     "load_recording",
     "load_snapshots",
     "measure_clock_offset_ms",
+    "open_dataset",
     "parse_message",
     "raw_envelope",
     "render_markdown",

@@ -1,0 +1,196 @@
+"""Frozen-dataset reader for backtests (W2, E-008; B5).
+
+:func:`open_dataset` opens a manifest TOML (``vision-archive`` or
+``captured-runs`` kind) and returns a handle with ``.events(symbol, day)``,
+``.coverage()``, and ``.manifest_sha()``. Event streams are normalized to
+the live record schema (``input_class="observed-archive"`` /
+``"observed-public"``) with B3 idle heartbeats (``None``, one per idle
+virtual second). Reads stream per day/file — a month of ticks is never
+loaded into one list — and replay performs no fetch (offline after
+preparation).
+
+``local`` paths in the manifest resolve against the TOML's own directory
+(portable dataset dirs) unless absolute (durable machine-local bulk).
+"""
+from __future__ import annotations
+
+import hashlib
+import json
+import tomllib
+from pathlib import Path
+from typing import Any, Iterator
+
+__all__ = ["DatasetHandle", "open_dataset"]
+
+_HEARTBEAT_IDLE_MS = 1000
+
+
+def open_dataset(toml: str | Path) -> "DatasetHandle":
+    """Open a frozen-dataset manifest; raises on unknown kind/version."""
+    path = Path(toml)
+    manifest = tomllib.loads(path.read_bytes().decode("utf-8"))
+    return DatasetHandle(path, manifest)
+
+
+class DatasetHandle:
+    """Handle over one frozen manifest (offline; streaming reads)."""
+
+    def __init__(self, toml_path: Path, manifest: dict[str, Any]) -> None:
+        self.toml_path = toml_path
+        self.manifest = manifest
+        dataset = manifest.get("dataset", {})
+        kind = dataset.get("kind")
+        if kind not in ("vision-archive", "captured-runs"):
+            raise ValueError(f"unknown dataset kind: {kind!r}")
+        if dataset.get("manifest_version") != 1:
+            raise ValueError("unsupported manifest_version (want 1)")
+        self.kind = kind
+        self._sha: str | None = None
+
+    # -- manifest-level -------------------------------------------------
+    def manifest_sha(self) -> str:
+        """sha256 of the manifest TOML bytes (run fingerprint input)."""
+        if self._sha is None:
+            self._sha = hashlib.sha256(self.toml_path.read_bytes()).hexdigest()
+        return self._sha
+
+    def coverage(self) -> dict[str, Any]:
+        """Per-source inventory + gaps from the manifest (stats locals, no reads)."""
+        sources = []
+        for entry in self.manifest.get("source", []):
+            local = entry.get("local", "")
+            resolved = self._resolve(local) if local else None
+            sources.append({**entry, "local_exists": bool(resolved and resolved.exists())})
+        return {
+            "dataset": self.manifest.get("dataset", {}).get("name"),
+            "kind": self.kind,
+            "manifest_sha": self.manifest_sha(),
+            "sources": sources,
+            "gaps": list(self.manifest.get("gap", [])),
+            "filters": self.manifest.get("filters", {}),
+        }
+
+    def _resolve(self, local: str) -> Path:
+        candidate = Path(local)
+        if candidate.is_absolute():
+            return candidate
+        return (self.toml_path.parent / candidate)
+
+    # -- event streams --------------------------------------------------
+    def events(self, symbol: str, day: str) -> Iterator[dict[str, Any] | None]:
+        """Normalized events for one symbol + UTC day, with None heartbeats.
+
+        ``day`` is a ``YYYY-MM-DD`` UTC date. Each ``None`` marks one idle
+        virtual second (B3); the session advances its virtual clock 1 s per
+        ``None`` and ticks timers on every wake.
+        """
+        if self.kind == "vision-archive":
+            yield from self._vision_events(symbol, day)
+        else:
+            yield from self._captured_events(symbol, day)
+
+    # -- vision-archive ---------------------------------------------------
+    def _vision_events(self, symbol: str, day: str) -> Iterator[dict[str, Any] | None]:
+        tables: list[list[tuple[int, dict[str, Any]]]] = []
+        for channel in ("aggTrade", "markPrice"):
+            entry = self._vision_source(symbol, day, channel)
+            if entry is None:
+                continue  # channel missing for this symbol/day (manifest gap).
+            tables.append([(ts, event) for ts, event in self._read_parquet_channel(
+                entry, symbol, day, channel)])
+        merged = sorted(((ts, i, event) for i, table in enumerate(tables)
+                         for ts, event in table), key=lambda t: (t[0], t[1]))
+        run_id = f"replay:{self.manifest_sha()[:8]}:{symbol}:{day}"
+        seq = 0
+        last_ts: int | None = None
+        for ts, _, event in merged:
+            if last_ts is not None:
+                idle = last_ts + _HEARTBEAT_IDLE_MS
+                while idle < ts:
+                    yield None
+                    idle += _HEARTBEAT_IDLE_MS
+            seq += 1
+            event["run_id"] = run_id
+            event["seq"] = seq
+            yield event
+            last_ts = ts
+
+    def _vision_source(self, symbol: str, day: str,
+                       channel: str) -> dict[str, Any] | None:
+        for entry in self.manifest.get("source", []):
+            if (entry.get("symbol") == symbol and entry.get("day") == day
+                    and entry.get("channel") == channel):
+                return entry
+        return None
+
+    def _read_parquet_channel(self, entry: dict[str, Any], symbol: str,
+                              day: str, channel: str,
+                              ) -> Iterator[tuple[int, dict[str, Any]]]:
+        import pyarrow.parquet as pq
+
+        table = pq.read_table(str(self._resolve(entry["local"])))
+        cols = {name: table.column(name).to_pylist() for name in table.column_names}
+        n = table.num_rows
+        for i in range(n):
+            ts = int(cols["ts_ms"][i])
+            if channel == "aggTrade":
+                payload = {
+                    "agg_id": int(cols["agg_id"][i]), "price": float(cols["price"][i]),
+                    "qty": float(cols["qty"][i]),
+                    "first_id": int(cols["first_id"][i]),
+                    "last_id": int(cols["last_id"][i]),
+                    "trade_ts_ms": ts,
+                    "buyer_is_maker": bool(cols["buyer_is_maker"][i]),
+                }
+                venue_seq: int | None = int(cols["agg_id"][i])
+            else:
+                payload = {
+                    "mark": float(cols["mark"][i]),
+                    "funding_rate": float(cols["funding_rate"][i]),
+                    "next_funding_ms": int(cols["next_funding_ms"][i]),
+                }
+                venue_seq = None
+            yield ts, {
+                "v": 1, "format": "cryptobot-events/1",
+                "input_class": "observed-archive", "source": "binance-vision",
+                "route": "market", "run_id": "", "seq": 0,
+                "channel": channel, "symbol": symbol,
+                "exchange_ts_ms": ts, "local_recv_ms": ts,
+                "local_mono_ns": ts * 1_000_000, "gap_kind": None,
+                "venue_seq": venue_seq, "payload": payload,
+            }
+
+    # -- captured-runs ----------------------------------------------------
+    def _captured_events(self, symbol: str, day: str) -> Iterator[dict[str, Any] | None]:
+        import datetime as _dt
+
+        start = _dt.datetime.strptime(day, "%Y-%m-%d").replace(
+            tzinfo=_dt.timezone.utc).timestamp() * 1000
+        end = start + 86_400_000
+        run_id = f"replay:{self.manifest_sha()[:8]}:{symbol}:{day}"
+        seq = 0
+        last_ts: int | None = None
+        for entry in self.manifest.get("source", []):
+            if symbol not in entry.get("symbols", []):
+                continue
+            with open(self._resolve(entry["local"]), encoding="utf-8") as fh:
+                for line in fh:
+                    if not line.strip():
+                        continue
+                    record = json.loads(line)
+                    if record.get("symbol") != symbol:
+                        continue
+                    ts = int(record.get("exchange_ts_ms")
+                             or record.get("local_recv_ms") or 0)
+                    if not (start <= ts < end):
+                        continue
+                    if last_ts is not None:
+                        idle = last_ts + _HEARTBEAT_IDLE_MS
+                        while idle < ts:
+                            yield None
+                            idle += _HEARTBEAT_IDLE_MS
+                    seq += 1
+                    record["run_id"] = run_id
+                    record["seq"] = seq
+                    yield record
+                    last_ts = ts

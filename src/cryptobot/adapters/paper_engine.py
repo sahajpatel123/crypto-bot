@@ -1,4 +1,4 @@
-"""Nautilus-backed paper execution engine (Worker 2, E-007, S3 seam).
+"""Nautilus-backed paper execution engine (Worker 2, E-008, S3 seam).
 
 Implements the canonical :class:`cryptobot.app.engine.PaperEngine` protocol
 (manager-owned; this module imports those types and defines no competing
@@ -37,17 +37,18 @@ from __future__ import annotations
 import json
 import math
 import os
-import uuid
+import random
 from datetime import datetime, timezone
 from decimal import Decimal
 from pathlib import Path
 from typing import Any, Callable
 
+from nautilus_trader.accounting.manager import AccountsManager
 from nautilus_trader.backtest.engine import SimulatedExchange
 from nautilus_trader.backtest.execution_client import BacktestExecClient
 from nautilus_trader.backtest.models import FillModel, LatencyModel, MakerTakerFeeModel
 from nautilus_trader.cache.cache import Cache
-from nautilus_trader.common.component import MessageBus, TestClock
+from nautilus_trader.common.component import Logger, MessageBus, TestClock
 from nautilus_trader.common.factories import OrderFactory
 from nautilus_trader.core.data import Data
 from nautilus_trader.core.datetime import dt_to_unix_nanos, unix_nanos_to_dt
@@ -65,12 +66,19 @@ from nautilus_trader.model.enums import (
     TimeInForce,
 )
 from nautilus_trader.model.events import (
+    OrderAccepted,
     OrderCanceled,
     OrderCancelRejected,
     OrderEvent,
     OrderExpired,
     OrderFilled,
     OrderRejected,
+    OrderUpdated,
+)
+from nautilus_trader.model.events.position import (
+    PositionChanged,
+    PositionClosed,
+    PositionOpened,
 )
 from nautilus_trader.model.identifiers import (
     ClientId,
@@ -92,6 +100,7 @@ from cryptobot.app.engine import (
     EngineEvent,
     EngineExpire,
     EngineFill,
+    EngineFunding,
     EngineOrder,
     EngineOrderStatus,
     EngineReject,
@@ -100,7 +109,7 @@ from cryptobot.market_data.discovery import FAPI_BASE_URL, urllib_json_get
 
 __all__ = ["ENGINE_VERSION", "NautilusPaperEngine"]
 
-ENGINE_VERSION = "e007-4"
+ENGINE_VERSION = "e008-1"
 
 VENUE = Venue("BINANCE")
 
@@ -114,10 +123,11 @@ _SEAM_STATE = {
     12: "open", 13: "partial", 14: "filled", 15: "cancelled",
 }
 
-# Nominal quote size (base units) for mark-quote ticks. The mark carries no
-# size; this labeled nominal lets modeled fills resolve while the quote feed
-# (with real sizes) stays the size-realistic path.
-_MARK_QUOTE_SIZE = 1.0
+# Order events that move account state (mirrors nautilus portfolio's set).
+_ACCOUNT_EVENTS = (OrderAccepted, OrderCanceled, OrderExpired, OrderRejected,
+                   OrderUpdated, OrderFilled)
+
+_FUNDING_INTERVAL_MS = 8 * 3600 * 1000
 
 
 def _venue_side(side: str) -> OrderSide:
@@ -150,6 +160,10 @@ class NautilusPaperEngine:
         client_id_prefix: str = "pe",
         random_seed: int = 42,
         rest_get: Callable | None = None,
+        strict_replay: bool = False,
+        default_leverage: int = 1,
+        max_queued_submits: int = 1000,
+        max_pending_events: int = 10000,
     ) -> None:
         if taker_bps <= 0:
             raise ValueError("taker_bps must be > 0 (run-mode fees are never zero)")
@@ -159,14 +173,23 @@ class NautilusPaperEngine:
             raise ValueError("submit_delay_ms must be >= 0")
         if starting_balance_usdt <= 0:
             raise ValueError("starting_balance_usdt must be > 0")
+        if default_leverage <= 0:
+            raise ValueError("default_leverage must be > 0 (aligns with risk cap)")
+        if max_queued_submits <= 0 or max_pending_events <= 0:
+            raise ValueError("queue bounds must be > 0 (B10 bounded ingestion)")
         self._sink = outcome_sink
         self.taker_bps = float(taker_bps)
         self.maker_bps = float(taker_bps if maker_bps is None else maker_bps)
         self._now_utc = now_utc or (lambda: datetime.now(timezone.utc))
         self.submit_delay_ms = int(submit_delay_ms)
         self.fill_delay_ms = int(fill_delay_ms)
+        self.strict_replay = bool(strict_replay)
+        self.default_leverage = int(default_leverage)
+        self.max_queued_submits = int(max_queued_submits)
+        self.max_pending_events = int(max_pending_events)
         self.journal_path = Path(journal_path) if journal_path else None
         self._rest_get = rest_get or urllib_json_get
+        self._rng = random.Random(random_seed)  # deterministic client ids (B1).
         self._clock = TestClock()
         self._trader_id = TraderId(trader_id)
         self._strategy_id = StrategyId(strategy_id)
@@ -174,13 +197,15 @@ class NautilusPaperEngine:
         self._msgbus = MessageBus(trader_id=self._trader_id, clock=self._clock)
         self._cache = Cache(database=None)
         self._portfolio = Portfolio(msgbus=self._msgbus, clock=self._clock, cache=self._cache)
+        self._accounts = AccountsManager(self._cache, Logger("W2-ACCOUNTS"),
+                                         self._clock)
         self._exchange = SimulatedExchange(
             venue=VENUE,
             oms_type=OmsType.NETTING,
             account_type=AccountType.MARGIN,
             starting_balances=[Money(starting_balance_usdt, USDT)],
             base_currency=USDT,
-            default_leverage=Decimal(1),
+            default_leverage=Decimal(self.default_leverage),
             leverages={},
             modules=[],
             portfolio=self._portfolio,
@@ -213,6 +238,7 @@ class NautilusPaperEngine:
         self._roles: dict[str, str] = {}  # client id -> role.
         self._reservations: dict[str, str | None] = {}  # client id -> reservation.
         self._marks: dict[str, float] = {}
+        self._funding_terms: dict[str, dict[str, Any]] = {}  # symbol -> rate/next/settled.
         self._pending: list[EngineEvent] = []
         self._submit_queue: list[tuple[int, EngineOrder, str]] = []  # (due_ns, cmd, id).
         self._pre2real: dict[str, str] = {}  # queue id -> durable id (same value here).
@@ -221,6 +247,13 @@ class NautilusPaperEngine:
         self._seq = 0
         self._closed = False
         self._exit_only = False
+        self.stats: dict[str, int] = {  # engine-owned counters (B1/B10).
+            "engine_events_total": 0,
+            "pending_events": 0,
+            "queued_submits": 0,
+            "restamped_ticks": 0,
+            "funding_events": 0,
+        }
         if self.journal_path is not None:
             self.journal_path.parent.mkdir(parents=True, exist_ok=True)
         self._msgbus.register(endpoint="ExecEngine.process", handler=self._on_order_event)
@@ -263,8 +296,16 @@ class NautilusPaperEngine:
             ts_init=ts_ns,
             maker_fee=Decimal(str(self.maker_bps / 10_000)),
             taker_fee=Decimal(str(self.taker_bps / 10_000)),
+            # Margin requirements (labeled assumption, linear model): with
+            # nautilus' default LeveragedMarginModel, init = notional/L
+            # (matches Binance cross initial at leverage L) and maint =
+            # notional/(2L) (conservative linear stand-in for the venue's
+            # tiered MMR schedule; the venue's real tiers are NOT modeled).
+            margin_init=Decimal(1),
+            margin_maint=Decimal("0.5"),
         )
         self._exchange.add_instrument(instrument)
+        self._cache.add_instrument(instrument)  # portfolio margin/balance path.
         self._instruments[symbol.upper()] = instrument
         self._filters[symbol.upper()] = {
             "tick": float(tick_size), "step": float(step_size),
@@ -324,6 +365,10 @@ class NautilusPaperEngine:
         return round(round(price / tick) * tick, 12)
 
     # -- S3 seam ----------------------------------------------------------
+    def _new_client_id(self) -> str:
+        self._seq += 1
+        return f"{self._prefix}-{self._seq:06d}-{self._rng.getrandbits(32):08x}"
+
     def submit(self, cmd: EngineOrder) -> str:
         """Submit (modeled submit-delay may apply); returns id for resolve()."""
         if self._closed:
@@ -331,14 +376,35 @@ class NautilusPaperEngine:
         if self._exit_only and cmd.role == "entry":
             raise PermissionError("exit-only mode refuses new entries")
         self._validate(cmd)
-        self._seq += 1
-        client_id = f"{self._prefix}-{self._seq:06d}-{uuid.uuid4().hex[:8]}"
+        client_id = self._new_client_id()
         if self.submit_delay_ms > 0:
+            if len(self._submit_queue) >= self.max_queued_submits:
+                raise OverflowError(
+                    f"submit queue full ({self.max_queued_submits}); "
+                    "advance the clock (feed/advance_to) to drain it")
             due = self._clock.timestamp_ns() + self.submit_delay_ms * 1_000_000
             self._submit_queue.append((due, cmd, client_id))
+            self.stats["queued_submits"] = len(self._submit_queue)
             self._drain_pending()
+            self.stats["queued_submits"] = len(self._submit_queue)
             return client_id
         return self._submit_now(cmd, client_id)
+
+    def submit_protected(self, cmd: EngineOrder, limit_price: float) -> str:
+        """Price-protected marketable IOC entry: fills at-or-better or not at all.
+
+        The limit bounds the cross (BUY fills at ask <= limit, SELL at bid >=
+        limit); when bounds cannot be honored the order cancels on the next
+        data tick (opportunity expired — never chased, never faked).
+        """
+        if limit_price <= 0:
+            raise ValueError("limit_price must be > 0")
+        protected = EngineOrder(
+            instrument=cmd.instrument, side=cmd.side, qty=cmd.qty, kind="LIMIT",
+            price=limit_price, reduce_only=cmd.reduce_only,
+            reservation_id=cmd.reservation_id, expire_at_utc=cmd.expire_at_utc,
+            role=cmd.role)
+        return self.submit(protected)
 
     def submit_immediate(self, cmd: EngineOrder) -> str:
         """Submit bypassing modeled delays. Exits/flatten ONLY, never entries."""
@@ -347,8 +413,7 @@ class NautilusPaperEngine:
         if self._closed:
             raise RuntimeError("engine is closed")
         self._validate(cmd)
-        self._seq += 1
-        client_id = f"{self._prefix}-{self._seq:06d}-{uuid.uuid4().hex[:8]}"
+        client_id = self._new_client_id()
         # Bypass the venue-latency model for this one command (urgent exit);
         # the configured model is restored immediately afterwards.
         prev = self._exchange.latency_model
@@ -381,13 +446,23 @@ class NautilusPaperEngine:
         side = _venue_side(cmd.side)
         coid = ClientOrderId(client_id)
         kind = cmd.kind.upper()
-        use_gtd = cmd.expire_at_utc is not None and kind != "MARKET"
+        # MARKET works through arriving liquidity (GTC/GTD), never cancels
+        # for thin prints: with a live book it still resolves on the next
+        # tick; on trade-only replay it fills across prints at observed
+        # prices instead of fake-cancelling the remainder (IOC would cancel
+        # anything the next print cannot cover — real markets never do that).
+        # Only price-protected LIMIT stays IOC (marketable-or-cancel).
+        use_gtd = cmd.expire_at_utc is not None
         tif = TimeInForce.GTD if use_gtd else TimeInForce.GTC
         if kind == "MARKET":
+            # GTC so thin prints never fake-cancel the remainder (sweeps
+            # complete across ticks; nautilus market() takes no expire_time
+            # and in-sim markets resolve on the next tick by construction —
+            # entry windows bind pre-submit and in the submit queue below).
             order = self._factory.market(
                 instrument_id=iid, order_side=side,
                 quantity=Quantity(qty, instrument.size_precision),
-                time_in_force=TimeInForce.IOC,
+                time_in_force=TimeInForce.GTC,
                 reduce_only=cmd.reduce_only, client_order_id=coid,
             )
         elif kind == "LIMIT":
@@ -422,6 +497,7 @@ class NautilusPaperEngine:
                 reduce_only=cmd.reduce_only, client_order_id=coid,
             )
         self._orders[client_id] = order
+        self._cache.add_order(order)  # portfolio balance/margin path.
         self._symbols[client_id] = symbol
         self._roles[client_id] = cmd.role
         self._reservations[client_id] = cmd.reservation_id
@@ -444,6 +520,16 @@ class NautilusPaperEngine:
         # legs) must never compare EngineOrder (integration fix: TypeError
         # crashed R2 on its first live protection attach).
         for _, cmd, client_id in sorted(due_now, key=lambda item: item[0]):
+            if (cmd.expire_at_utc is not None
+                    and now_ns > dt_to_unix_nanos(cmd.expire_at_utc)):
+                # Window passed while queued: expire, never submit late.
+                ts_utc = unix_nanos_to_dt(now_ns).replace(tzinfo=timezone.utc)
+                self._journal("terminal", {"client_id": client_id, "kind": "expire",
+                                          "reason": "queued-past-window"})
+                self._enqueue(EngineEvent(
+                    "expire", EngineExpire(client_id, cmd.instrument.upper(),
+                                           "queued-past-window", ts_utc), ts_utc))
+                continue
             self._submit_now(cmd, client_id)
             self._pre2real[client_id] = client_id
 
@@ -509,6 +595,19 @@ class NautilusPaperEngine:
         """Non-blocking drain of simulator-produced events (never advances time)."""
         self._drain_pending()
         drained, self._pending = self._pending, []
+        self.stats["pending_events"] = 0
+        return drained
+
+    def pop_events(self, max_events: int = 1000) -> list[EngineEvent]:
+        """Bounded drain for the B1 seam (never advances time).
+
+        The live session calls this per wake; max_events bounds the backlog
+        served per wake so a burst cannot starve the strategy loop. ``poll``
+        remains the unbounded drain for replay harnesses.
+        """
+        self._drain_pending()
+        drained, self._pending = self._pending[:max_events], self._pending[max_events:]
+        self.stats["pending_events"] = len(self._pending)
         return drained
 
     def open_orders(self) -> list[EngineOrderStatus]:
@@ -536,49 +635,57 @@ class NautilusPaperEngine:
         self._journal("exit-only", {"halted": halted, "reason": reason})
 
     def note_mark(self, instrument: str, price: float) -> None:
-        """Record the session mark AND drive the sim (mark-quote model).
+        """Record a valuation-only mark. NEVER executable (B2).
 
-        The mark feeds the simulator as a zero-spread quote at engine-now, so
-        live-paper orders resolve against the same fill basis the session
-        prices (reference-equivalent basis; labeled assumption). Real
-        spread/size realism comes from the quote feed (``feed``/``note_event``).
+        Captured fills cross real bid/ask + liquidity from ``note_event``
+        quotes/trades/depth only. A mid-mark can never become a fill price:
+        with BBO 59999/60001 and mark 60000, a market buy fills at 60001
+        (ask cross) and submit_protected(limit 60000) cancels (CEO probe).
         """
-        if price <= 0:
-            return
-        symbol = instrument.upper()
-        self._marks[symbol] = price
-        inst = self._ensure_instrument(symbol)
-        px = self._round_tick(symbol, price)
-        ts_ns = self._live_now_ns()
-        self._clock.set_time(ts_ns)
-        tick = QuoteTick(
-            instrument_id=self.instrument_id(symbol),
-            bid_price=Price(px, inst.price_precision),
-            ask_price=Price(px, inst.price_precision),
-            bid_size=Quantity(_MARK_QUOTE_SIZE, inst.size_precision),
-            ask_size=Quantity(_MARK_QUOTE_SIZE, inst.size_precision),
-            ts_event=ts_ns, ts_init=ts_ns,
-        )
-        self._drain_pending()
-        self._exchange.process_quote_tick(tick)
-        self._exchange.process(ts_ns)
+        if price > 0:
+            self._marks[instrument.upper()] = price
+
+    def valuation_mark(self, instrument: str) -> float | None:
+        """Latest valuation-only mark (accounting/valuation use, never fills)."""
+        return self._marks.get(instrument.upper())
+
+    def latest_mark(self, instrument: str) -> float | None:
+        return self.valuation_mark(instrument)
+
+    def account_margin(self) -> tuple[float, float]:
+        """(available_margin_usdt, free_margin_usdt) from the SIMULATED account.
+
+        Balances move through nautilus' own portfolio/accounting path (fills
+        post commissions/realized PnL; open exposure locks maintenance
+        margin). available = free balance; free = free balance minus total
+        maintenance requirement. Resting-stop order margin is NOT locked in
+        the sim — risk-side sizing is the control there.
+        """
+        account = self._portfolio.account(VENUE)
+        if account is None:  # pre-first-fill: nothing filed yet; report starting equity.
+            account = self._exchange.get_account()
+        free = float(account.balance_free(USDT))
+        maint = float(account.total_margin_maint(USDT))
+        return free, free - maint
 
     def note_event(self, event: dict[str, Any]) -> None:
-        """Feed one NORMALIZED market-data event to the simulator (additive).
+        """Feed one NORMALIZED market-data event to the simulator.
 
-        Not in the canonical protocol (yet): maps bookTicker/aggTrade/depth
-        records to nautilus ticks/deltas for true taker-cross fills. markPrice
-        records only refresh the reference mark. Proposed session adoption:
-        ``if hasattr(engine, "note_event"): engine.note_event(event)``.
+        bookTicker/aggTrade/depth records map to nautilus ticks/deltas for
+        true taker-cross fills; markPrice records refresh the valuation mark
+        and funding terms (never executable).
         """
         from cryptobot.market_data.bridge import to_nautilus_ticks
         symbol = str(event.get("symbol", "")).upper()
         if not symbol:
             return
         if event.get("channel") == "markPrice":
-            mark = event.get("payload", {}).get("mark")
+            payload = event.get("payload", {})
+            mark = payload.get("mark")
             if mark:
                 self._marks[symbol] = float(mark)
+            self._note_funding_terms(symbol, payload)
+            self._settle_funding(symbol)
             return
         self._ensure_instrument(symbol)
         inst = self._instruments[symbol]
@@ -586,8 +693,44 @@ class NautilusPaperEngine:
                                       {symbol: (inst.price_precision, inst.size_precision)}):
             self.feed(tick)
 
-    def latest_mark(self, instrument: str) -> float | None:
-        return self._marks.get(instrument.upper())
+    def _note_funding_terms(self, symbol: str, payload: dict[str, Any]) -> None:
+        state = self._funding_terms.setdefault(symbol, {"rate": 0.0, "next_ms": 0,
+                                                        "settled_ms": 0})
+        try:
+            state["rate"] = float(payload.get("funding_rate", 0.0) or 0.0)
+            state["next_ms"] = int(payload.get("next_funding_ms", 0) or 0)
+        except (TypeError, ValueError):
+            pass  # malformed terms: keep the last known, never invent.
+
+    def _settle_funding(self, symbol: str) -> None:
+        """Emit one funding event when engine time crosses a settlement boundary."""
+        state = self._funding_terms.get(symbol)
+        if not state or not state["next_ms"]:
+            return
+        now_ms = self._clock.timestamp_ns() // 1_000_000
+        if now_ms < state["next_ms"] or state["settled_ms"] >= state["next_ms"]:
+            return
+        funding_ms = state["next_ms"]
+        state["settled_ms"] = funding_ms
+        state["next_ms"] = funding_ms + _FUNDING_INTERVAL_MS
+        position = self._cache.position(
+            PositionId(f"{symbol}.{VENUE.value}-{self._strategy_id}"))
+        qty = (float(position.signed_decimal_qty())
+               if position is not None and position.is_open else 0.0)
+        rate, ref = state["rate"], self._marks.get(symbol, 0.0)
+        if qty == 0.0 or rate == 0.0 or ref <= 0:
+            return  # flat/zero-rate/unpriced: no cash flow, nothing to book.
+        amount = -qty * ref * rate  # rate>0: longs pay.
+        if amount == 0.0:
+            return
+        ts_utc = datetime.fromtimestamp(funding_ms / 1000, tz=timezone.utc)
+        self._enqueue(EngineEvent(
+            "funding",
+            EngineFunding(event_id=f"funding:{symbol}:{funding_ms}",
+                          instrument=symbol, amount=amount, ts_utc=ts_utc),
+            ts_utc))
+        self.stats["funding_events"] += 1
+        self.stats["engine_events_total"] += 1
 
     def recover(self, outcome_sink: Any) -> None:
         """Rebuild tracking from the durable journal; replay fills to the sink."""
@@ -611,8 +754,7 @@ class NautilusPaperEngine:
             if event == "submitted":
                 submitted[detail["client_id"]] = detail
                 try:
-                    seq = int(detail["client_id"].split("-")[1])
-                    self._seq = max(self._seq, seq)
+                    self._seq = max(self._seq, int(detail["client_id"].split("-")[1]))
                 except (IndexError, ValueError):
                     pass
             elif event == "fill":
@@ -628,6 +770,8 @@ class NautilusPaperEngine:
         for client_id, detail in submitted.items():
             if client_id not in terminal:
                 self._lost[client_id] = detail  # sim orders never survive restart.
+        for _ in range(self._seq):  # advance seeded RNG past journaled ids.
+            self._rng.getrandbits(64)
         if halted is not None:
             self._exit_only = halted
         replayed = 0
@@ -690,12 +834,11 @@ class NautilusPaperEngine:
     def feed(self, data: Data) -> None:
         """Process one market-data object; engine time never moves backward.
 
-        Live ticks carry receipt-time ts_init, which lags the mark-quote
-        clock by sub-ms and interleaves across symbols — normal live data,
-        not an error. Stale ticks are re-stamped to engine-now (exchange
-        ts_event preserved) so the book still updates and nautilus time
-        stays monotonic. Ordered replay streams pass through untouched.
-        (Integration fix: a hard raise here crashed R2 on 2 symbols.)
+        Lenient mode (live default): ticks older than the clock (receipt lag,
+        cross-symbol interleave) are re-stamped to engine-now with ts_event
+        preserved, so the book still updates and nautilus time stays
+        monotonic. Strict mode (``strict_replay=True``): shuffled history
+        fails closed with ValueError instead of silently reordering.
         """
         if self._closed:
             raise RuntimeError("engine is closed")
@@ -704,7 +847,11 @@ class NautilusPaperEngine:
         if ts_init > now_ns:
             self._clock.set_time(ts_init)
         elif ts_init < now_ns:
+            if self.strict_replay:
+                raise ValueError(
+                    f"strict replay: out-of-order ts_init {ts_init} < clock {now_ns}")
             data = self._restamp(data, now_ns)
+            self.stats["restamped_ticks"] += 1
             ts_init = now_ns
         self._drain_pending()
         if isinstance(data, QuoteTick):
@@ -722,6 +869,8 @@ class NautilusPaperEngine:
         else:
             raise TypeError(f"unsupported feed data: {type(data).__name__}")
         self._exchange.process(ts_init)
+        for symbol in list(self._funding_terms):
+            self._settle_funding(symbol)
 
     def advance_to(self, ts_utc: datetime) -> None:
         """Advance engine time without market data (drains latency-delayed commands).
@@ -739,15 +888,12 @@ class NautilusPaperEngine:
         self._clock.set_time(ts_ns)
         self._drain_pending()
         self._exchange.process(ts_ns)
+        for symbol in list(self._funding_terms):
+            self._settle_funding(symbol)
 
     @property
     def now_utc(self) -> datetime:
         return unix_nanos_to_dt(self._clock.timestamp_ns())
-
-    def _live_now_ns(self) -> int:
-        """Wall-now floored at the engine clock (live-paper mark timestamps)."""
-        wall_ns = dt_to_unix_nanos(self._now_utc())
-        return max(wall_ns, self._clock.timestamp_ns())
 
     # -- simulator assumptions (S3: logged at startup, printed by doctor) ---
     @property
@@ -764,10 +910,30 @@ class NautilusPaperEngine:
             "canonical LIMIT maps to nautilus LIMIT IOC (marketable-or-cancel, keeps price "
             "protection); resting GTC limits unsupported (no queue model); non-taker fills "
             "fail closed",
-            "mark-quote model (session live-paper path): note_mark feeds the sim as a "
-            "zero-spread quote at the session mark with nominal 1.0 size — fill basis "
-            "equals the mark (reference-equivalent); true spread/size crossing needs the "
-            "quote feed (feed/note_event)",
+            "markets are GTC (never IOC-cancelled for thin prints): with quotes they "
+            "resolve on the next tick; on trade-only replay prints seed L1 size, the "
+            "print size fills at-print and swept excess walks one tick adverse "
+            "(nautilus empty-book model); queued submits that outlive expire_at_utc "
+            "expire unsubmitted (queued-past-window)",
+            "valuation-only marks (B2): note_mark records the reference mark for "
+            "accounting only — it can NEVER produce a fill; all fills cross real "
+            "bid/ask + liquidity from the quote/trade/depth feed (feed/note_event); "
+            "submit_protected limit entries cancel when the touch cannot be lifted",
+            "time model: engine clock advances on fed data/receipts only; poll/advance "
+            "never invent market ticks; strict_replay=True fails closed on out-of-order "
+            "replay input instead of restamping (live default stays receipt-lenient)",
+            "deterministic ids (B1): client ids derive from random_seed's RNG stream "
+            "(stable across same-seed runs); trade ids are venue FNV-1a; restart "
+            "replays the RNG stream past journaled ids",
+            "funding (B2): markPrice terms feed 8h-boundary settlements from open "
+            "cache positions as pure rate x notional (no venue settlement tax "
+            "exists or is applied); unpriced/flat/zero-rate settlements book "
+            "nothing",
+            "margins (B2): account_margin reads the simulated MarginAccount filed "
+            "through nautilus' own portfolio path (update_order/update_account on "
+            "each fill); leverage is engine-owned (matches the risk cap)",
+            "bounds (B10): max_queued_submits/max_pending_events fail closed with "
+            "OverflowError so bursts surface instead of growing unbounded",
             "instruments auto-register from live venue filters (PRICE_FILTER/LOT_SIZE/"
             "MIN_NOTIONAL) on first sight; qty floored to step, prices rounded to tick, "
             "REST failure fails closed (filters never invented)",
@@ -801,23 +967,32 @@ class NautilusPaperEngine:
             return
         with self.journal_path.open("a", encoding="utf-8") as fh:
             fh.write(json.dumps({
-                "ts_utc": self._now_utc().isoformat(),
+                "ts_utc": self.now_utc.isoformat(),
                 "event": event,
                 "detail": detail,
             }) + "\n")
             fh.flush()
             os.fsync(fh.fileno())
 
+    def _enqueue(self, event: EngineEvent) -> None:
+        self.stats["pending_events"] = len(self._pending)
+        if len(self._pending) >= self.max_pending_events:
+            raise OverflowError(
+                f"pending event queue full ({self.max_pending_events}); "
+                "poll() the engine to drain it")
+        self._pending.append(event)
+        self.stats["pending_events"] = len(self._pending)
+
     def _on_order_event(self, event: OrderEvent) -> None:
-        # Mirror ExecutionEngine's apply-role for local state (fills/cancels still
-        # originate in the simulator): without this, tracked orders never leave
-        # SUBMITTED and cancels/expiry cannot resolve.
+        # Mirror ExecutionEngine's apply/filing role for local state (fills and
+        # cancels still originate in the simulator): without this, tracked
+        # orders never leave SUBMITTED and cancels/expiry cannot resolve.
         coid = getattr(event, "client_order_id", None)
         order = self._orders.get(coid.value if coid is not None else "")
         if order is not None:
             order.apply(event)
         if isinstance(event, OrderFilled):
-            self._track_position(event)
+            self._file_fill(event)
         mapped = self._translate(event)
         if mapped is not None:
             kind, payload = mapped.kind, mapped.payload
@@ -829,13 +1004,14 @@ class NautilusPaperEngine:
                     "symbol": payload.instrument, "venue_side": payload.side,
                     "qty": payload.qty, "price": payload.price, "fee": payload.fee,
                     "ts_utc": payload.ts_utc.isoformat()})
-                self._pending.append(mapped)
+                self._enqueue(mapped)
                 self._propagate_live(payload)
             else:
                 self._journal("terminal", {"client_id": getattr(payload, "client_order_id", ""),
                                           "kind": kind,
                                           "reason": getattr(payload, "reason", "")})
-                self._pending.append(mapped)
+                self._enqueue(mapped)
+            self.stats["engine_events_total"] += 1
 
     def _propagate_live(self, fill: EngineFill) -> None:
         """Propagate a live fill to the bound sink (exactly-once-accounted)."""
@@ -870,32 +1046,79 @@ class NautilusPaperEngine:
                                  record["price"], record["fee"], record["ts_utc"])
             self._journal("delta-propagated", {"exec_id": record["exec_id"]})
 
-    def _track_position(self, fill: OrderFilled) -> None:
-        # ExecutionEngine-equivalent netting bookkeeping: stamp the netting
-        # position ID on a copy of the fill and index/extend the position in
-        # the shared cache, so the venue's own reduce-only checks
-        # (process_order reads cache positions) see real exposure. Fills
-        # originate in the simulator; this only files them where the venue
-        # expects. PnL book of record stays our ledger.
+    def _file_fill(self, fill: OrderFilled) -> None:
+        # ExecutionEngine-equivalent margin-account filing (netting OMS), same
+        # order as nautilus' own _handle_order_fill: balances first (balance
+        # PnL needs the pre-fill cached position), then position update with
+        # PositionOpened/Changed/Closed events into the portfolio so margins
+        # track open exposure. Fills originate in the simulator; this only
+        # files them where the venue/portfolio expect. PnL book of record
+        # stays our ledger.
         # (position_id is readonly from Python, hence the stamped copy.)
+        instrument = self._instruments[fill.instrument_id.symbol.value]
         pid = PositionId(f"{fill.instrument_id}-{fill.strategy_id}")
-        stamped = OrderFilled(
+        stamped = self._stamp_position(fill, pid)
+        self._portfolio.update_order(stamped)
+        position = self._cache.position(pid)
+        if position is None or position.is_closed:
+            if position is not None:
+                self._cache.snapshot_position(position)  # NETTING reopen cycle.
+            position = Position(instrument, stamped)
+            self._cache.add_position(position, OmsType.NETTING)
+            self._portfolio.update_position(PositionOpened.create(
+                position, stamped, UUID4(), self._clock.timestamp_ns()))
+        elif (position.is_opposite_side(stamped.order_side)
+                and stamped.last_qty > position.quantity):
+            self._flip_position(instrument, position, stamped)
+        else:
+            position.apply(stamped)
+            self._cache.update_position(position)
+            event_cls = PositionClosed if position.is_closed else PositionChanged
+            self._portfolio.update_position(event_cls.create(
+                position, stamped, UUID4(), self._clock.timestamp_ns()))
+
+    def _flip_position(self, instrument: Instrument, position: Position,
+                       fill: OrderFilled) -> None:
+        # Over-close split (nautilus _flip_position, NETTING): close the
+        # original position with its share of commission, open the flipped
+        # remainder under the same netting ID.
+        difference = fill.last_qty - position.quantity
+        fill_percent = position.quantity / fill.last_qty
+        commission1 = Money(fill.commission * fill_percent, fill.commission.currency)
+        commission2 = fill.commission - commission1
+        split1 = self._stamp_position(fill, fill.position_id,
+                                      last_qty=position.quantity,
+                                      commission=commission1, event_id=fill.id)
+        position.apply(split1)
+        self._cache.update_position(position)
+        self._portfolio.update_position(PositionClosed.create(
+            position, split1, UUID4(), self._clock.timestamp_ns()))
+        self._cache.snapshot_position(position)
+        if float(difference) == 0.0:
+            return
+        split2 = self._stamp_position(fill, fill.position_id, last_qty=difference,
+                                      commission=commission2, event_id=UUID4())
+        flipped = Position(instrument, split2)
+        self._cache.add_position(flipped, OmsType.NETTING)
+        self._portfolio.update_position(PositionOpened.create(
+            flipped, split2, UUID4(), self._clock.timestamp_ns()))
+
+    @staticmethod
+    def _stamp_position(fill: OrderFilled, position_id: PositionId,
+                        last_qty: Quantity | None = None,
+                        commission: Money | None = None,
+                        event_id: UUID4 | None = None) -> OrderFilled:
+        return OrderFilled(
             trader_id=fill.trader_id, strategy_id=fill.strategy_id,
             instrument_id=fill.instrument_id, client_order_id=fill.client_order_id,
             venue_order_id=fill.venue_order_id, account_id=fill.account_id,
-            trade_id=fill.trade_id, position_id=pid, order_side=fill.order_side,
-            order_type=fill.order_type, last_qty=fill.last_qty, last_px=fill.last_px,
-            currency=fill.currency, commission=fill.commission,
-            liquidity_side=fill.liquidity_side, event_id=UUID4(),
+            trade_id=fill.trade_id, position_id=position_id, order_side=fill.order_side,
+            order_type=fill.order_type, last_qty=last_qty or fill.last_qty,
+            last_px=fill.last_px, currency=fill.currency,
+            commission=commission or fill.commission,
+            liquidity_side=fill.liquidity_side, event_id=event_id or UUID4(),
             ts_event=fill.ts_event, ts_init=fill.ts_init, info=dict(fill.info or {}),
         )
-        position = self._cache.position(pid)
-        if position is None or position.is_closed:
-            instrument = self._instruments[fill.instrument_id.symbol.value]
-            position = Position(instrument, stamped)
-            self._cache.add_position(position, OmsType.NETTING)
-        else:
-            position.apply(stamped)
 
     def _translate(self, event: OrderEvent) -> EngineEvent | None:
         ts_utc = unix_nanos_to_dt(int(event.ts_event)).replace(tzinfo=timezone.utc)

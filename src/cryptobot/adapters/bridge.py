@@ -1,4 +1,4 @@
-"""Live public-market bridge iterator (Worker 2, E-007).
+"""Live public-market bridge iterator (Worker 2, E-008).
 
 :func:`live_events` streams NORMALIZED public events (the same record shape
 the file collector writes to ``events.jsonl``) for the session live-paper
@@ -8,6 +8,15 @@ submission on this path.
 Depth diffs are normalized but NOT synchronized here; consumers needing the
 synced book use :func:`cryptobot.market_data.bridge.iter_market_stream`
 (file captures with persisted snapshots) and sync client-side.
+
+Liveness (B3): the iterator yields ``None`` as a 1 s idle heartbeat, so the
+consumer never blocks more than ~1 s on ``next()`` in steady state — each
+wake (event or ``None``) ticks session timers, and the pump advances engine
+time on ``None`` so stops/GTD expire in quiet markets. Cumulative stats go
+to the optional ``stats`` dict (updated in place). The only unbounded-ish
+op is the socket dial itself (bounded by the callee: ``WsClient.connect``
+defaults to a 10 s timeout); reconnect backoff sleeps are chunked so
+heartbeats keep flowing through them.
 """
 from __future__ import annotations
 
@@ -34,6 +43,9 @@ __all__ = ["live_events"]
 _MARKET_STREAMS = ("aggTrade", "markPrice@1s")
 _PUBLIC_STREAMS = ("bookTicker", "depth@100ms")
 
+_SELECT_TIMEOUT_S = 0.2
+_FRAME_TIMEOUT_S = 1.0  # a ready socket that cannot complete a frame in 1 s is sick: reconnect.
+
 
 def _stream_url(route: str, symbols: tuple[str, ...]) -> str:
     base = MARKET_ROUTE if route == "market" else PUBLIC_ROUTE
@@ -49,7 +61,9 @@ def live_events(
     connect: Callable[[str], WsClient] = WsClient.connect,
     rest_get: Callable = urllib_json_get,
     max_reconnects: int = 10,
-) -> Iterator[dict[str, Any]]:
+    heartbeat_every_s: float = 1.0,
+    stats: dict[str, Any] | None = None,
+) -> Iterator[dict[str, Any] | None]:
     """Yield normalized public events until the consumer stops iterating.
 
     ``symbols=None`` selects the top-``max_symbols`` USDT perps by 24h quote
@@ -59,6 +73,12 @@ def live_events(
     exchange_ts_ms/local_recv_ms/local_mono_ns/gap_kind/venue_seq/payload``).
     Reconnects are labeled ``gap_kind="natural"`` on the next record per
     route; routes-exhausted raises ConnectionError (never trade blind).
+
+    ``None`` is yielded whenever the stream has been quiet for
+    ``heartbeat_every_s`` (B3 1 s idle heartbeat; heartbeats do not consume
+    run seq). When ``stats`` is given it is updated in place on every wake
+    with ``events``, ``heartbeats``, ``reconnects`` (per route),
+    ``malformed_frames``, ``uptime_s``, ``symbols``, and ``pending_gap``.
     """
     if symbols is not None:
         chosen = tuple(s.upper() for s in symbols)
@@ -76,39 +96,74 @@ def live_events(
     conns: dict[str, WsClient] = {}
     pending_gap: dict[str, str | None] = {"market": None, "public": None}
     reconnects = {"market": 0, "public": 0}
+    counts = {"events": 0, "heartbeats": 0, "malformed": 0}
     seq = 0
+    start_mono = time.perf_counter_ns()
+    last_yield_mono = start_mono
 
     def _open(route: str) -> None:
         sock = connect(_stream_url(route, chosen))
-        sock.native_socket.settimeout(0.2)
+        sock.native_socket.settimeout(_SELECT_TIMEOUT_S)
         conns[route] = sock
+
+    def _heartbeat_due() -> bool:
+        return ((time.perf_counter_ns() - last_yield_mono) / 1e9
+                >= heartbeat_every_s)
+
+    def _refresh_stats() -> None:
+        if stats is None:
+            return
+        stats.update({
+            "events": counts["events"], "heartbeats": counts["heartbeats"],
+            "reconnects": dict(reconnects),
+            "malformed_frames": counts["malformed"],
+            "uptime_s": (time.perf_counter_ns() - start_mono) / 1e9,
+            "symbols": list(chosen),
+            "pending_gap": {r: (g is not None) for r, g in pending_gap.items()},
+        })
+
+    def _heartbeat() -> None:
+        nonlocal last_yield_mono
+        last_yield_mono = time.perf_counter_ns()
+        counts["heartbeats"] += 1
+        _refresh_stats()
+        return None
 
     try:
         for route in ("market", "public"):
             _open(route)
         while True:
+            if _heartbeat_due():
+                yield _heartbeat()
             if not conns:
-                time.sleep(0.2)
+                time.sleep(_SELECT_TIMEOUT_S)
                 continue
             try:
                 readable, _, _ = select.select(
-                    [c.native_socket for c in conns.values()], [], [], 0.2)
+                    [c.native_socket for c in conns.values()], [], [],
+                    _SELECT_TIMEOUT_S)
             except (OSError, ValueError):
                 readable = []
+                time.sleep(_SELECT_TIMEOUT_S)  # dead socket set: never busy-spin.
             routes = {id(c.native_socket): r for r, c in conns.items()}
             for sock in readable:
                 route = routes.get(id(sock))
                 if route is None:
                     continue
                 try:
-                    kind, payload_bytes = conns[route].recv_message(timeout_s=10.0)
+                    kind, payload_bytes = conns[route].recv_message(
+                        timeout_s=_FRAME_TIMEOUT_S)
                 except WsClosed:
                     reconnects[route] += 1
                     if reconnects[route] > max_reconnects:
                         raise ConnectionError(
                             f"routes-exhausted: {route} exceeded "
                             f"{max_reconnects} reconnects") from None
-                    time.sleep(min(2.0 ** reconnects[route], 10.0))
+                    deadline = time.monotonic() + min(2.0 ** reconnects[route], 10.0)
+                    while time.monotonic() < deadline:  # chunked: beats flow through.
+                        time.sleep(max(0.0, min(_SELECT_TIMEOUT_S, deadline - time.monotonic())))
+                        if _heartbeat_due():
+                            yield _heartbeat()
                     try:
                         _open(route)
                     except OSError:
@@ -116,10 +171,12 @@ def live_events(
                     pending_gap[route] = "natural"
                     continue
                 if kind != "text":
+                    counts["malformed"] += 1
                     continue
                 try:
                     message = json.loads(payload_bytes.decode("utf-8"))
                 except (UnicodeDecodeError, ValueError):
+                    counts["malformed"] += 1
                     continue  # malformed frame: skip, stream continues.
                 seq += 1
                 recv_wall = int(time.time() * 1000)
@@ -128,11 +185,15 @@ def live_events(
                     event = parse_message(message, route=route, local_recv_ms=recv_wall,
                                           local_mono_ns=recv_mono, seq=seq, run_id=run_id)
                 except (ValueError, KeyError, TypeError):
+                    counts["malformed"] += 1
                     continue  # unparseable message: skip, stream continues.
                 gap = pending_gap.get(route)
                 if gap is not None:
                     event["gap_kind"] = gap
                     pending_gap[route] = None
+                last_yield_mono = recv_mono
+                counts["events"] += 1
+                _refresh_stats()
                 yield event
     finally:
         for conn in conns.values():

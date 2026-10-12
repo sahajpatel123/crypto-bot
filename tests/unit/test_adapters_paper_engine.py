@@ -16,6 +16,7 @@ from cryptobot.app.engine import (  # noqa: E402
     EngineEvent,
     EngineExpire,
     EngineFill,
+    EngineFunding,
     EngineOrder,
     EngineOrderStatus,
     EngineReject,
@@ -327,19 +328,66 @@ def test_exit_only_refuses_entries_but_allows_exits():
     assert engine.resolve(cid2) == cid2
 
 
-def test_note_mark_drives_mark_quote_fills():
-    now = [T0]
-    engine = _engine(now)
+def test_note_mark_is_valuation_only_never_executable():
+    # B2: a mid-mark can never become a fill price (CEO probe). BBO
+    # 59999/60001 with mark 60000: a market BUY crosses the ask at 60001.
+    engine = _engine()
     engine.note_mark("BTCUSDT", 60000.00)
     assert engine.latest_mark("BTCUSDT") == 60000.00
+    assert engine.valuation_mark("BTCUSDT") == 60000.00
     assert engine.latest_mark("ETHUSDT") is None
     cid = engine.submit(EngineOrder("BTCUSDT", "BUY", 0.001, "MARKET"))
-    now[0] = T0 + timedelta(seconds=1)
+    # Marks alone — even a rising one — never produce a fill. With no book the
+    # venue rejects (correct venue behavior); the mark price never fills.
     engine.note_mark("BTCUSDT", 60001.00)
+    engine.advance_to(T0 + timedelta(seconds=30))
+    events = engine.poll()
+    assert [e for e in events if e.kind == "fill"] == []
+    assert [e.payload.client_order_id for e in events if e.kind == "reject"] == [cid]
+    # Real quotes resolve by crossing the touch, never the mark.
+    engine2 = _engine()
+    engine2.note_mark("BTCUSDT", 60000.00)
+    cid2 = engine2.submit(EngineOrder("BTCUSDT", "BUY", 0.001, "MARKET"))
+    _quote(engine2, 0, 59999.00, 60001.00)
+    fills = [e for e in engine2.poll() if e.kind == "fill"]
+    assert [f.payload.client_order_id for f in fills] == [cid2]
+    assert fills[0].payload.price == pytest.approx(60001.00)  # the ask, not 60000.
+    assert fills[0].payload.liquidity == "taker"
+
+
+def test_submit_protected_fills_at_or_better():
+    engine = _engine()
+    _quote(engine, 0, 60000.00, 60000.50)
+    cid = engine.submit_protected(
+        EngineOrder("BTCUSDT", "BUY", 0.001, "MARKET"), 60002.00)
+    _quote(engine, 1, 60001.00, 60001.50)
     fills = [e for e in engine.poll() if e.kind == "fill"]
     assert [f.payload.client_order_id for f in fills] == [cid]
-    assert fills[0].payload.price == pytest.approx(60001.00)  # mark-quote basis.
-    assert fills[0].payload.liquidity == "taker"
+    assert fills[0].payload.price == pytest.approx(60001.50)  # lifted the ask...
+    assert fills[0].payload.price < 60002.00  # ...better than the limit.
+
+
+def test_submit_protected_cancels_when_touch_unreachable():
+    # CEO probe, second half: protected BUY at 60000 with ask 60001 cancels
+    # (opportunity expired) instead of filling at the mark or chasing.
+    engine = _engine()
+    _quote(engine, 0, 59999.00, 60001.00)
+    engine.note_mark("BTCUSDT", 60000.00)
+    cid = engine.submit_protected(
+        EngineOrder("BTCUSDT", "BUY", 0.001, "MARKET"), 60000.00)
+    _quote(engine, 1, 59999.00, 60001.00)
+    _quote(engine, 2, 59999.00, 60001.00)
+    events = engine.poll()
+    assert [e for e in events if e.kind == "fill"] == []
+    cancels = [e for e in events if e.kind == "cancel"]
+    assert [c.payload.client_order_id for c in cancels] == [cid]
+
+
+def test_submit_protected_rejects_bad_limit():
+    engine = _engine()
+    _quote(engine, 0, 60000.00, 60000.50)
+    with pytest.raises(ValueError, match="limit_price"):
+        engine.submit_protected(EngineOrder("BTCUSDT", "BUY", 0.001, "MARKET"), 0.0)
 
 
 def test_note_event_feeds_true_taker_cross():
@@ -526,6 +574,224 @@ def test_assumptions_logged_and_doctored():
     text = engine.doctor()
     for needle in ("taker-only", "support_contingent_orders=False", "R0",
                    "never double-charged", "no Binance live execution client",
-                   "LIMIT IOC", "submit_delay_ms=50", "mark-quote",
-                   "auto-register", "lost-on-restart"):
+                   "LIMIT IOC", "submit_delay_ms=50", "valuation-only",
+                   "auto-register", "lost-on-restart", "strict_replay",
+                   "deterministic ids", "funding", "account_margin",
+                   "max_queued_submits"):
         assert needle in text
+
+
+def _mark_record(recv_ms, mark, rate=0.0001, next_ms=None):
+    return {
+        "v": 1, "format": "cryptobot-events/1", "input_class": "observed-public",
+        "source": "binance-fapi-ws", "route": "public", "run_id": "r1", "seq": 9,
+        "channel": "markPrice", "symbol": "BTCUSDT", "exchange_ts_ms": recv_ms,
+        "local_recv_ms": recv_ms, "local_mono_ns": recv_ms * 1_000_000,
+        "gap_kind": None, "venue_seq": 9,
+        "payload": {"mark": mark, "funding_rate": rate,
+                    "next_funding_ms": recv_ms if next_ms is None else next_ms},
+    }
+
+
+def _trade_tick(engine, i, price, qty, aggressor=None):
+    from nautilus_trader.model.data import TradeTick
+    from nautilus_trader.model.enums import AggressorSide
+    from nautilus_trader.model.identifiers import TradeId
+    from nautilus_trader.model.objects import Price, Quantity
+    tick = TradeTick(
+        instrument_id=engine.instrument_id("BTCUSDT"),
+        price=Price(price, 2), size=Quantity(qty, 3),
+        aggressor_side=aggressor or AggressorSide.BUYER,
+        trade_id=TradeId(f"T-{i}"),
+        ts_event=int((T0 + timedelta(seconds=i)).timestamp() * 1e9),
+        ts_init=int((T0 + timedelta(seconds=i)).timestamp() * 1e9),
+    )
+    engine.feed(tick)
+    return tick
+
+
+def test_market_fills_across_thin_trade_prints_without_cancel():
+    # Trade-only replay (archive basis): prints seed L1 size; the print size
+    # fills at-print and the swept remainder walks one tick adverse
+    # (nautilus empty-book model — conservative, labeled in assumptions).
+    # The remainder is never fake-cancelled the way IOC would.
+    engine = _engine()
+    cid = engine.submit(EngineOrder("BTCUSDT", "BUY", 0.01, "MARKET"))
+    _trade_tick(engine, 0, 77191.10, 0.001)
+    _trade_tick(engine, 1, 77191.00, 0.012)
+    events = engine.poll()
+    fills = [e for e in events if e.kind == "fill"]
+    assert [e for e in events if e.kind == "cancel"] == []
+    assert sum(f.payload.qty for f in fills) == pytest.approx(0.01)
+    assert fills[0].payload.price == pytest.approx(77191.10)  # the print.
+    assert {f.payload.price for f in fills} <= {77191.10, 77191.11}
+    assert engine.filled_qty(cid) == pytest.approx(0.01)
+
+
+def test_queued_submit_past_window_expires_never_submitted():
+    engine = _engine(submit_delay_ms=60_000)
+    cid = engine.submit(EngineOrder("BTCUSDT", "BUY", 0.01, "MARKET",
+                                    expire_at_utc=T0 + timedelta(seconds=10)))
+    assert engine.resolve(cid) is None  # queued, not yet in the sim.
+    engine.advance_to(T0 + timedelta(seconds=61))  # due, but past the window.
+    events = engine.poll()
+    expires = [e for e in events if e.kind == "expire"]
+    assert [x.payload.client_order_id for x in expires] == [cid]
+    assert expires[0].payload.reason == "queued-past-window"
+    assert isinstance(expires[0].payload, EngineExpire)
+    with pytest.raises(KeyError):
+        engine.order_status(cid)  # never reached the simulator.
+
+
+def test_queued_submit_within_window_fills_normally():
+    engine = _engine(submit_delay_ms=1_000)
+    cid = engine.submit(EngineOrder("BTCUSDT", "BUY", 0.001, "MARKET",
+                                    expire_at_utc=T0 + timedelta(seconds=60)))
+    _quote(engine, 2, 60000.00, 60000.50)
+    _quote(engine, 3, 60000.00, 60000.50)  # second tick clears fill latency.
+    fills = [e for e in engine.poll() if e.kind == "fill"]
+    assert [f.payload.client_order_id for f in fills] == [cid]
+
+
+def test_strict_replay_fails_closed_on_shuffle():
+    from nautilus_trader.model.data import QuoteTick
+    from nautilus_trader.model.objects import Price, Quantity
+    engine = _engine(strict_replay=True)
+    _quote(engine, 10, 60000.00, 60000.50)
+    stale = QuoteTick(
+        instrument_id=engine.instrument_id("BTCUSDT"),
+        bid_price=Price(59999.00, 2), ask_price=Price(59999.50, 2),
+        bid_size=Quantity(1.0, 3), ask_size=Quantity(1.0, 3),
+        ts_event=int((T0 + timedelta(seconds=9)).timestamp() * 1e9),
+        ts_init=int((T0 + timedelta(seconds=9)).timestamp() * 1e9),
+    )
+    with pytest.raises(ValueError, match="strict replay"):
+        engine.feed(stale)
+    # Lenient default restamps and counts instead of raising.
+    lax = _engine()
+    _quote(lax, 10, 60000.00, 60000.50)
+    lax.feed(stale)
+    assert lax.stats["restamped_ticks"] == 1
+
+
+def test_seeded_client_ids_deterministic():
+    a = _engine(random_seed=7)
+    b = _engine(random_seed=7)
+    c = _engine(random_seed=8)
+    ids_a = [a.submit(EngineOrder("BTCUSDT", "BUY", 0.001, "MARKET"))
+             for _ in range(3)]
+    ids_b = [b.submit(EngineOrder("BTCUSDT", "BUY", 0.001, "MARKET"))
+             for _ in range(3)]
+    ids_c = [c.submit(EngineOrder("BTCUSDT", "BUY", 0.001, "MARKET"))
+             for _ in range(3)]
+    assert ids_a == ids_b  # same seed: stable execution ids (B1).
+    assert ids_a != ids_c  # different seed: different stream.
+    assert len(set(ids_a)) == 3
+
+
+def test_submit_queue_bound_fails_closed():
+    engine = _engine(submit_delay_ms=60_000, max_queued_submits=2)
+    _quote(engine, 0, 60000.00, 60000.50)
+    engine.submit(EngineOrder("BTCUSDT", "BUY", 0.001, "MARKET"))
+    engine.submit(EngineOrder("BTCUSDT", "BUY", 0.001, "MARKET"))
+    assert engine.stats["queued_submits"] == 2
+    with pytest.raises(OverflowError, match="submit queue full"):
+        engine.submit(EngineOrder("BTCUSDT", "BUY", 0.001, "MARKET"))
+
+
+def test_pending_events_bound_fails_closed():
+    engine = _engine(max_pending_events=1)
+    _quote(engine, 0, 60000.00, 60000.50)
+    engine.submit(EngineOrder("BTCUSDT", "BUY", 0.001, "MARKET"))
+    _quote(engine, 1, 60001.00, 60001.50)  # first fill enqueued (no poll).
+    engine.submit(EngineOrder("BTCUSDT", "BUY", 0.001, "MARKET"))
+    with pytest.raises(OverflowError, match="pending event queue full"):
+        _quote(engine, 2, 60002.00, 60002.50)  # second fill overflows.
+
+
+def test_pop_events_is_bounded():
+    engine = _engine()
+    _quote(engine, 0, 60000.00, 60000.50)
+    c1 = engine.submit(EngineOrder("BTCUSDT", "BUY", 0.001, "MARKET"))
+    c2 = engine.submit(EngineOrder("BTCUSDT", "BUY", 0.001, "MARKET"))
+    _quote(engine, 1, 60001.00, 60001.50)
+    first = engine.pop_events(max_events=1)
+    assert [e.payload.client_order_id for e in first] == [c1]
+    assert engine.stats["pending_events"] == 1
+    rest = engine.pop_events()
+    assert [e.payload.client_order_id for e in rest] == [c2]
+    assert engine.stats["pending_events"] == 0
+
+
+def test_account_margin_locks_and_releases():
+    engine = _engine(default_leverage=5)
+    assert engine.default_leverage == 5  # B2 session asserts the same number.
+    assert engine.account_margin() == (10000.0, 10000.0)
+    _quote(engine, 0, 60000.00, 60000.50)
+    engine.submit(EngineOrder("BTCUSDT", "BUY", 0.1, "MARKET"))
+    _quote(engine, 1, 60001.00, 60001.50)
+    assert engine.poll()
+    available, free = engine.account_margin()
+    assert (available, free) == (pytest.approx(9396.984925),
+                                 pytest.approx(8796.969925))
+    assert free < available < 10000.0  # exposure locks margin.
+    engine.submit(EngineOrder("BTCUSDT", "SELL", 0.1, "MARKET", role="target"))
+    _quote(engine, 2, 60002.00, 60002.50)
+    assert engine.poll()
+    available, free = engine.account_margin()
+    assert available == pytest.approx(free)  # flat: no maintenance lock.
+    assert (available, free) == (pytest.approx(9994.049825),
+                                 pytest.approx(9994.049825))
+
+
+def test_funding_settles_from_mark_price_terms():
+    engine = _engine()
+    t0ms = int(T0.timestamp() * 1000)
+    _quote(engine, 0, 60000.00, 60000.50)
+    engine.submit(EngineOrder("BTCUSDT", "BUY", 0.001, "MARKET"))
+    _quote(engine, 1, 60001.00, 60001.50)
+    assert [e for e in engine.poll() if e.kind == "fill"]
+    # Settlement boundary reached at t0+1s with a positive rate: long pays.
+    engine.note_event(_mark_record(t0ms + 1000, 60000.0, rate=0.0001,
+                                   next_ms=t0ms + 1000))
+    fundings = [e for e in engine.poll() if e.kind == "funding"]
+    assert len(fundings) == 1
+    payload = fundings[0].payload
+    assert isinstance(payload, EngineFunding)
+    assert payload.instrument == "BTCUSDT"
+    assert payload.amount == pytest.approx(-0.001 * 60000.0 * 0.0001)
+    assert engine.stats["funding_events"] == 1
+    # Same boundary never settles twice.
+    engine.note_event(_mark_record(t0ms + 1000, 60000.0, rate=0.0001,
+                                   next_ms=t0ms + 1000))
+    assert [e for e in engine.poll() if e.kind == "funding"] == []
+
+
+def test_funding_skipped_when_flat_or_zero_rate():
+    engine = _engine()
+    t0ms = int(T0.timestamp() * 1000)
+    _quote(engine, 0, 60000.00, 60000.50)
+    engine.note_event(_mark_record(t0ms, 60000.0))  # flat: no cash flow.
+    assert engine.poll() == []
+    engine.submit(EngineOrder("BTCUSDT", "BUY", 0.001, "MARKET"))
+    _quote(engine, 1, 60001.00, 60001.50)
+    assert engine.poll()
+    engine.note_event(_mark_record(t0ms + 1000, 60001.0, rate=0.0,
+                                   next_ms=t0ms + 1000))  # zero rate: nothing.
+    assert [e for e in engine.poll() if e.kind == "funding"] == []
+
+
+def test_recover_advances_seeded_ids(tmp_path):
+    journal = tmp_path / "journal.jsonl"
+    first = _engine(journal_path=journal, random_seed=7)
+    _quote(first, 0, 60000.00, 60000.50)
+    journaled = [first.submit(EngineOrder("BTCUSDT", "BUY", 0.001, "MARKET"))
+                 for _ in range(2)]
+    fresh = _engine(random_seed=7)  # same seed, no journal: replays id stream.
+    fresh_first = fresh.submit(EngineOrder("BTCUSDT", "BUY", 0.001, "MARKET"))
+    assert fresh_first == journaled[0]
+    second = _engine(journal_path=journal, random_seed=7)
+    second.recover(_Sink())
+    resumed = second.submit(EngineOrder("BTCUSDT", "BUY", 0.001, "MARKET"))
+    assert resumed not in journaled  # RNG advanced past journaled ids.
+    assert resumed.split("-")[1] == "000003"  # sequence continues.
