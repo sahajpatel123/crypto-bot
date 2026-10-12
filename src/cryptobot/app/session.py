@@ -1445,8 +1445,10 @@ class Session:
             pass
         feed = self._feeds.get(symbol)
         bars = list(getattr(feed, "bars", []) or [])
-        if len(bars) >= 2 and getattr(bars[-2], "close", 0) > 0:
-            abs_ret = abs(bars[-1].close / bars[-2].close - 1.0) * 1e4
+        closes = [b.close for b in bars[-2:] if b is not None
+                  and getattr(b, "close", 0) > 0]
+        if len(closes) == 2:
+            abs_ret = abs(closes[1] / closes[0] - 1.0) * 1e4
         if self._age_ms:
             latency = float(self._age_ms[-1])
         unknown = getattr(self.engine, "unknown_ids", None)

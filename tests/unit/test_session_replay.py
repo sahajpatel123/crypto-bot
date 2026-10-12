@@ -1322,3 +1322,26 @@ def test_ingest_resync_marks_book_unsynced(tmp_path):
         assert rep["synced"] is False and rep["needs_snapshot"] is True
     finally:
         store.close()
+
+
+def test_protection_reading_skips_gap_bars(tmp_path):
+    """§12 regression: None (gap) bars must not crash anomaly inputs."""
+    from types import SimpleNamespace
+
+    from cryptobot.app.session import _SymbolFeed
+    session, store = _session(tmp_path, warmup_bars=3)
+    try:
+        feed = _SymbolFeed("BTCUSDT", 3)
+        feed.bars.append(SimpleNamespace(close=100.0))
+        feed.bars.append(None)  # BarMissing gap.
+        session._feeds["BTCUSDT"] = feed
+        reading, _ = session._protection_reading("BTCUSDT")
+        assert reading.abs_return_bps is None
+        feed.bars.append(SimpleNamespace(close=101.0))
+        reading, _ = session._protection_reading("BTCUSDT")
+        assert reading.abs_return_bps is None  # trailing gap still skips.
+        feed.bars.append(SimpleNamespace(close=102.0))
+        reading, _ = session._protection_reading("BTCUSDT")
+        assert reading.abs_return_bps == abs(102.0 / 101.0 - 1.0) * 1e4
+    finally:
+        store.close()
