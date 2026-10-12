@@ -2,13 +2,19 @@
 import json
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
+import cryptobot.research.backtest as backtest_mod
 from cryptobot.research.backtest import (
     ARM_SETS,
     DEV_DAYS,
     MECHANISM_SPLIT,
+    OverlapDedup,
+    _default_symbols,
+    assemble_split_capture,
+    build_partition,
     SPLITS,
     TEST_DAYS,
     VAL_DAYS,
@@ -66,7 +72,9 @@ def test_prepare_noquotes_applies_labeled_profile(tmp_path):
                for d in manifest["day_manifest"])
     assert all(d["spread_bps_assumed"] == 1.0
                for d in manifest["day_manifest"])
-    assert all(not d["quotes_observed"] for d in manifest["day_manifest"])
+    assert all(not d["quotes_expected"] for d in manifest["day_manifest"])
+    assert all("bookTicker" not in d["quotes_observed_channels"]
+               for d in manifest["day_manifest"])
     n_bbo = sum(1 for line in
                 (tmp_path / "cap" / "events.jsonl").read_text().splitlines()
                 if '"bookTicker"' in line
@@ -80,7 +88,7 @@ def test_prepare_noquotes_without_profile_records_absence(tmp_path):
                                      (SYMBOL,))
     assert all(d["spread_profile"] is None
                for d in manifest["day_manifest"])
-    assert all(not d["quotes_observed"] for d in manifest["day_manifest"])
+    assert all(not d["quotes_expected"] for d in manifest["day_manifest"])
 
 
 def _tiny_capture(path: Path) -> Path:
@@ -129,6 +137,76 @@ def test_determinism_two_runs_identical(tmp_path):
     assert diff["fills_equal"] and diff["curve_equal"]
     assert diff["metrics_equal"] and diff["deterministic"]
     assert curve_signature(a["journal"]) == curve_signature(b["journal"])
+
+
+def _noquotes_day_with_profile(mutate_after_s=None):
+    # Day 1 without quotes + causal spread profile. Optional mutation:
+    # reprice all trades at/after the cutoff (future-data invariance).
+    from cryptobot.research.spread import SpreadProfile, apply_profile
+    from cryptobot.research.synth_benchmark import SynthBenchmark
+    bench = SynthBenchmark(dataset_id="synth_noquotes")
+    events = []
+    for e in bench.events("XRPUSDT", 1):
+        if mutate_after_s is not None and e["exchange_ts_ms"] >= (
+                e["exchange_ts_ms"] // 600000 * 600000 + mutate_after_s * 1000):
+            e = dict(e)
+            e["payload"] = dict(e["payload"], price=e["payload"]["price"] * 1.5)
+        events.append(e)
+    merged, manifest = apply_profile(events, "XRPUSDT",
+                                     SpreadProfile().default_bps)
+    assert manifest["modeled_windows"] > 0
+    return merged
+
+
+def _write_capture(events, path: Path) -> Path:
+    path.mkdir(parents=True, exist_ok=True)
+    for seq, e in enumerate(events, start=1):
+        e["seq"] = seq
+        e["local_mono_ns"] = seq
+    (path / "events.jsonl").write_text(
+        "\n".join(json.dumps(e) for e in events) + "\n")
+    return path
+
+
+def _journal_prefix(journal_path, cutoff_ms):
+    # Normalized (event, ts, detail) records strictly before the cutoff.
+    from datetime import datetime
+    out = []
+    for line in open(journal_path):
+        line = line.strip()
+        if not line:
+            continue
+        rec = json.loads(line)
+        ts_ms = int(datetime.fromisoformat(rec["ts_utc"]).timestamp() * 1000)
+        if ts_ms >= cutoff_ms:
+            continue
+        det = {k: v for k, v in rec["detail"].items()
+               if k not in ("client_id", "reservation_id")}
+        out.append((rec["event"], rec["ts_utc"],
+                    json.dumps(det, sort_keys=True)))
+    return out
+
+
+def test_future_trades_do_not_move_earlier_fills(tmp_path):
+    # Q-008: repricing trades from t=200s leaves every order/fill before
+    # the cutoff identical (causal spread + replay); the jump itself
+    # SHOULD propagate afterwards (sensitivity sanity: the risen price
+    # meets protection legs differently than the flat hold).
+    base = _noquotes_day_with_profile()
+    variant = _noquotes_day_with_profile(mutate_after_s=200)
+    assert base != variant  # sanity: the mutation changed the input
+    cutoff_ms = variant[0]["exchange_ts_ms"] // 600000 * 600000 + 200 * 1000
+    cap_a = _write_capture([dict(e) for e in base], tmp_path / "cap-a")
+    cap_b = _write_capture([dict(e) for e in variant], tmp_path / "cap-b")
+    a = run_cell(CONFIG, cap_a, ("S1",), tmp_path / "a", "inv-a", (SYMBOL,))
+    b = run_cell(CONFIG, cap_b, ("S1",), tmp_path / "b", "inv-b", (SYMBOL,))
+    pre_a = _journal_prefix(a["journal"], cutoff_ms)
+    pre_b = _journal_prefix(b["journal"], cutoff_ms)
+    assert len(pre_a) >= 3  # non-vacuous: submits + fills before cutoff
+    assert pre_a == pre_b
+    full_a = [json.loads(line)["event"] for line in open(a["journal"])]
+    full_b = [json.loads(line)["event"] for line in open(b["journal"])]
+    assert full_a != full_b  # the jump propagates: sensitivity, not stasis
 
 
 def test_compare_runs_detects_divergence(tmp_path):
@@ -249,12 +327,118 @@ def test_preflight_passes_present_raises_absent(tmp_path):
         raise AssertionError("expected FileNotFoundError")
 
 
+def test_default_symbols_is_btc_eth_pair():
+    both = SimpleNamespace(manifest={"dataset": {"symbols": ["BTCUSDT",
+                                                             "ETHUSDT"]}})
+    assert _default_symbols(both) == ["BTCUSDT", "ETHUSDT"]
+    one = SimpleNamespace(manifest={"dataset": {"symbols": ["BTCUSDT"]}})
+    assert _default_symbols(one) == ["BTCUSDT"]
+    other = SimpleNamespace(manifest={"dataset": {"symbols": ["XRPUSDT"]}})
+    assert _default_symbols(other) == ["XRPUSDT"]
+    bare = SimpleNamespace(manifest={"dataset": {}})
+    assert _default_symbols(bare) == ["BTCUSDT"]
+
+
 def test_mechanism_split_covers_all_days(tmp_path):
     manifest = prepare_split_capture(_FakeVision(), MECHANISM_SPLIT,
                                      tmp_path / "cap", ("BTCUSDT",))
     assert [d["day"] for d in manifest["day_manifest"]] == [
         "2026-09-12", "2026-09-13"]
     assert manifest["n_events"] == 30
+
+
+def test_partition_checkpoint_reused_across_runs(tmp_path):
+    bench = SynthBenchmark()
+    path = tmp_path / "parts" / "synth_quotes_XRPUSDT_1.jsonl"
+    first = build_partition(bench, SYMBOL, 1, path)
+    assert first["reused"] is False
+    assert first["n_events"] == 1200
+    assert first["channels"] == {"aggTrade": 600, "bookTicker": 600}
+    second = build_partition(bench, SYMBOL, 1, path)
+    assert second["reused"] is True
+    assert second["sha256"] == first["sha256"]
+    forced = build_partition(bench, SYMBOL, 1, path, force=True)
+    assert forced["reused"] is False
+    assert forced["sha256"] == first["sha256"]
+
+
+def test_partitions_shared_across_spread_profiles(tmp_path):
+    bench = SynthBenchmark(dataset_id="synth_noquotes")
+    parts = tmp_path / "parts"
+    manifest_a = prepare_split_capture(bench, "dev", tmp_path / "cap_a",
+                                       (SYMBOL,), SpreadProfile(),
+                                       partition_dir=parts)
+    manifest_b = prepare_split_capture(bench, "dev", tmp_path / "cap_b",
+                                       (SYMBOL,), None,
+                                       partition_dir=parts)
+    assert all(p["reused"] is False
+               for d in manifest_a["day_manifest"]
+               for p in [d["partition"]])
+    assert all(p["reused"] is True
+               for d in manifest_b["day_manifest"]
+               for p in [d["partition"]])
+    assert all(d["spread_profile"] == PROFILE_ID
+               for d in manifest_a["day_manifest"])
+    assert all(d["spread_profile"] is None
+               for d in manifest_b["day_manifest"])
+    lines_a = (tmp_path / "cap_a" / "events.jsonl").read_text().splitlines()
+    lines_b = (tmp_path / "cap_b" / "events.jsonl").read_text().splitlines()
+    assert len(lines_a) == 15 * 1200 and len(lines_b) == 15 * 600
+
+
+def test_assembly_max_events_never_reads_tail(tmp_path, monkeypatch):
+    bench = SynthBenchmark()
+    parts = tmp_path / "parts"
+    partitions = [build_partition(bench, SYMBOL, day,
+                                  parts / f"synth_quotes_{SYMBOL}_{day}.jsonl")
+                  for day in range(1, 6)]
+    consumed: list[int] = [0]
+    real_events = backtest_mod._partition_events
+
+    def counting(path):
+        for event in real_events(path):
+            consumed[0] += 1
+            yield event
+
+    monkeypatch.setattr(backtest_mod, "_partition_events", counting)
+    manifest = assemble_split_capture(partitions, "probe", tmp_path / "cap",
+                                      (SYMBOL,), bench, None, 100)
+    assert manifest["n_events"] == 100
+    assert manifest["truncated_prefix"] is True
+    # Five 1200-event partitions merged: heads advance in lockstep, so a
+    # 100-event prefix touches a few hundred lines, never all 6000.
+    assert consumed[0] < 6000 // 2
+    trailing = json.loads(
+        (tmp_path / "cap" / "events.jsonl").read_text().splitlines()[-1])
+    assert trailing["seq"] == 100
+
+
+def test_day_has_quotes_is_day_scoped_captured():
+    import datetime as _dt
+
+    base = _dt.datetime(2026, 9, 12, tzinfo=_dt.timezone.utc).timestamp()
+    manifest = {"source": [{
+        "symbol": "BTCUSDT", "channels": ["aggTrade", "bookTicker"],
+        "ts_min_ms": int(base * 1000),
+        "ts_max_ms": int(base * 1000) + 3_600_000}]}
+    handle = SimpleNamespace(kind="captured-runs", manifest=manifest)
+    assert day_has_quotes(handle, "BTCUSDT", "2026-09-12") is True
+    assert day_has_quotes(handle, "BTCUSDT", "2026-09-13") is False
+    assert day_has_quotes(handle, "ETHUSDT", "2026-09-12") is False
+
+
+def test_day_has_quotes_is_day_scoped_vision():
+    manifest = {"source": [
+        {"symbol": "BTCUSDT", "channel": "bookTicker",
+         "day": "2026-09-12"},
+        {"symbol": "BTCUSDT", "channel": "aggTrade",
+         "day": "2026-09-13"},
+    ]}
+    handle = SimpleNamespace(kind="vision-archive", manifest=manifest)
+    # 2026-09-13 IST spans UTC 09-12/13: the 09-12 quote entry counts.
+    assert day_has_quotes(handle, "BTCUSDT", "2026-09-13") is True
+    # 2026-09-12 IST spans UTC 09-11/12: aggTrade-only UTC day outside it.
+    assert day_has_quotes(handle, "BTCUSDT", "2026-09-14") is False
 
 
 def test_max_events_keeps_causal_labeled_prefix(tmp_path):
@@ -268,6 +452,83 @@ def test_max_events_keeps_causal_labeled_prefix(tmp_path):
     assert len(lines) == 500
     first = json.loads(lines[0])
     assert first["seq"] == 1  # renumbered from the prefix start
+
+
+def test_venue_seq_is_event_identity(tmp_path):
+    base = {"channel": "bookTicker", "symbol": "BTCUSDT", "source": "v",
+            "exchange_ts_ms": 1_700_000_000_000,
+            "payload": {"bid": 1.0, "ask": 1.1}}
+    first = {**base, "venue_seq": 101}
+    distinct = {**base, "venue_seq": 102}
+    changed = {**base, "venue_seq": 101,
+               "payload": {"bid": 2.0, "ask": 2.1}}
+    assert OverlapDedup().fingerprint(first) != \
+        OverlapDedup().fingerprint(distinct)
+    dedup = OverlapDedup()
+    assert dedup.check(first) == "keep"
+    assert dedup.check(distinct) == "keep"  # distinct identity: both kept
+    assert dedup.check(changed) == "conflict-drop"  # same 101, new body
+    assert dedup.conflicts == 1
+    zero = OverlapDedup()  # venue_seq 0/None = "no sequence", never identity
+    assert zero.check({**base, "venue_seq": 0}) == "keep"
+    assert zero.check({**base}) == "drop"  # same body still dedups
+    assert zero.conflicts == 0
+
+
+def _evt(symbol="BTCUSDT", channel="aggTrade", ts=1_700_000_000_000,
+         source="v", **payload):
+    base = {"price": 100.0, "qty": 0.5} if channel == "aggTrade" else {
+        "bid": 99.0, "ask": 101.0}
+    base.update(payload)
+    return {"channel": channel, "symbol": symbol, "source": source,
+            "exchange_ts_ms": ts, "payload": base}
+
+
+def test_dedup_keeps_cross_symbol_identical_payloads():
+    from cryptobot.research.backtest import OverlapDedup
+    d = OverlapDedup()
+    assert d.check(_evt(symbol="BTCUSDT")) == "keep"
+    # Review's case: another symbol, byte-identical payload+ts -> keep.
+    assert d.check(_evt(symbol="ETHUSDT")) == "keep"
+    assert d.check(_evt(source="other-venue")) == "keep"
+    assert d.dropped == 0 and d.conflicts == 0
+
+
+def test_dedup_drops_exact_overlap_repeats():
+    from cryptobot.research.backtest import OverlapDedup
+    d = OverlapDedup()
+    assert d.check(_evt()) == "keep"
+    assert d.check(_evt()) == "drop"
+    assert d.dropped == 1
+
+
+def test_dedup_detects_conflicting_duplicates_keep_first():
+    from cryptobot.research.backtest import OverlapDedup
+    d = OverlapDedup()
+    assert d.check(_evt(agg_id=7, price=100.0)) == "keep"
+    # Same venue identity, different body -> conflict, first kept.
+    assert d.check(_evt(agg_id=7, price=101.0)) == "conflict-drop"
+    assert d.conflicts == 1 and len(d.examples) == 1
+
+
+def test_dedup_preserves_legitimate_repeats():
+    from cryptobot.research.backtest import OverlapDedup
+    d = OverlapDedup()
+    # Distinct trades, same ms/price/qty, different ids -> both kept.
+    assert d.check(_evt(agg_id=1)) == "keep"
+    assert d.check(_evt(agg_id=2)) == "keep"
+    # Same-ms quote updates without identity, different bodies -> kept.
+    assert d.check(_evt(channel="bookTicker", bid=99.0)) == "keep"
+    assert d.check(_evt(channel="bookTicker", bid=99.5)) == "keep"
+    assert d.dropped == 0 and d.conflicts == 0
+
+
+def test_dedup_cache_bounded_by_time_window():
+    from cryptobot.research.backtest import OverlapDedup
+    d = OverlapDedup(window_ms=1000)
+    for i in range(10):
+        d.check(_evt(ts=1_700_000_000_000 + i * 5000, agg_id=i))
+    assert len(d._seen) <= 2  # only the trailing window survives
 
 
 def test_short_data_refuses_frozen_splits(tmp_path):
