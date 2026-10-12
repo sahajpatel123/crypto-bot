@@ -551,7 +551,7 @@
   "Q-007": {
    "owner_session": "whisper-redshift",
    "role": "Worker 1 \u2014 Strategies and Backtesting",
-   "state": "dispatched",
+   "state": "accepted",
    "contract_version": "v0.2.0+backtest_interfaces.md",
    "dependencies": [
     "specs/backtest_interfaces.md",
@@ -579,7 +579,12 @@
     "tests/unit/test_strategies_*",
     "tests/unit/test_research_*",
     "coord/outbox/Q-007.json"
-   ]
+   ],
+   "accepted": {
+    "sha": "b784013",
+    "suite": "659/659",
+    "note": "repro 659, synth headlines match, determinism 6-fill identical, captured 0/0/0; data-note: benchmark-30d bulk IS present in main workspace (datasets/cache), W1 fallback unnecessary post-merge"
+   }
   },
   "V-007": {
    "owner_session": "cool-amalthea",
