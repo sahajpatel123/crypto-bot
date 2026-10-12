@@ -1,4 +1,10 @@
-"""24h directive manager reproductions (A1/A2/A5/A6 runtime, A3/A4 static-confirmed)."""
+"""24h directive manager reproductions (A1/A2/A5/A6 runtime, A3/A4 static-confirmed).
+
+PRE-FIX ARTIFACT: asserts the buggy behavior, so on fixed code it aborts
+at A1 (future snapshot correctly hidden -> None). Post-fix proof lives
+in tests/audit/ (D1-D6 probes, green in the suite). Do not "fix" this
+script to pass; it reproduces by design.
+"""
 import json
 import sys
 from pathlib import Path
