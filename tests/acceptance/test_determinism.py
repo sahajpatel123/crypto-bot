@@ -28,12 +28,17 @@ def test_identical_inputs_identical_approval_and_state(tmp_path):
 
 def test_identical_inputs_identical_rejection(tmp_path):
     outs = []
+    # W3-24H: zero stressed costs keep the tiny stop over the 3x cap
+    # under the 0.125% budget (rejection stays deterministic).
+    spec = dict(INTENTS["tiny_stop"])
+    spec["forecast_cost"] = {"fee_bps": 0.0, "spread_bps": 0.0,
+                             "slippage_bps": 0.0, "funding_bps": 0.0}
     for tag in ("a", "b"):
         sub = tmp_path / tag
         sub.mkdir()
         policy = make_policy(sub)
         policy.reconcile_day(10000.0)
         outs.append(policy.evaluate(
-            build_intent(INTENTS["tiny_stop"]), build_account(ACCOUNTS["healthy_10k"])))
+            build_intent(spec), build_account(ACCOUNTS["healthy_10k"])))
     assert all(isinstance(o, Rejected) for o in outs)
     assert outs[0] == outs[1]

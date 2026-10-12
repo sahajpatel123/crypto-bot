@@ -25,12 +25,12 @@ def test_canonical_long_planned_loss_identity(tmp_path):
     spec = INTENTS["canonical_long"]
     out = policy.evaluate(build_intent(spec), build_account(ACCOUNTS["healthy_10k"]))
     assert isinstance(out, Approved)
-    assert out.reserved_risk == pytest.approx(25.0)
+    assert out.reserved_risk == pytest.approx(12.5)  # W3-24H 0.125% budget.
     adverse, stop_dist, stressed = _expected(spec)
     assert out.notional_usdt == pytest.approx(out.qty * adverse)
     planned = out.qty * stop_dist + out.qty * adverse * stressed
-    assert planned <= 25.0 * (1 + 1e-9)
-    assert planned == pytest.approx(25.0)
+    assert planned <= 12.5 * (1 + 1e-9)
+    assert planned == pytest.approx(12.5)
     assert out.qty == pytest.approx(out.notional_usdt / adverse)
 
 
@@ -39,13 +39,18 @@ def test_canonical_short_approved(tmp_path):
     policy.reconcile_day(10000.0)
     out = policy.evaluate(build_intent(INTENTS["canonical_short"]), build_account(ACCOUNTS["healthy_10k"]))
     assert isinstance(out, Approved)
-    assert out.reserved_risk == pytest.approx(25.0)
+    assert out.reserved_risk == pytest.approx(12.5)  # W3-24H 0.125% budget.
 
 
 def test_tiny_stop_rejected_over_leverage_cap(tmp_path):
     policy = make_policy(tmp_path)
     policy.reconcile_day(10000.0)
-    out = policy.evaluate(build_intent(INTENTS["tiny_stop"]), build_account(ACCOUNTS["healthy_10k"]))
+    # W3-24H: halved budget needs near-zero stressed costs for the tiny
+    # stop to still breach 3x notional (stressed term dominates sizing).
+    spec = dict(INTENTS["tiny_stop"])
+    spec["forecast_cost"] = {"fee_bps": 0.0, "spread_bps": 0.0,
+                             "slippage_bps": 0.0, "funding_bps": 0.0}
+    out = policy.evaluate(build_intent(spec), build_account(ACCOUNTS["healthy_10k"]))
     assert isinstance(out, Rejected)
     assert out.reason == "leverage:cap-exceeded"
 

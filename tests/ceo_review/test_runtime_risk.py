@@ -117,11 +117,14 @@ def test_forced_exit_signal_lifecycle(tmp_path):
     assert policy.monitor_tick(cell[0], audit_account()).ok is True
     halting = audit_account()
     import dataclasses
-    halting = dataclasses.replace(halting, marked_equity=989.0)
+    # W3-24H: operating-level trip (-0.6% net of costs); stops key on
+    # net_liquidation and the operating latch clears on day roll.
+    halting = dataclasses.replace(halting, marked_equity=994.0,
+                                  net_liquidation=994.0)
     status = policy.monitor_tick(cell[0], halting)
-    assert status.ok is False and status.reasons == ("halt:daily-loss",)
+    assert status.ok is False and status.reasons == ("halt:operating-stop",)
     out = policy.evaluate(audit_intent(cell[0]), audit_account())
-    assert isinstance(out, Rejected) and out.reason == "halt:daily-loss"
+    assert isinstance(out, Rejected) and out.reason == "halt:operating-stop"
     cell[0] += timedelta(hours=7)
     policy.monitor_tick()
     policy.reconcile_day(1000.0)

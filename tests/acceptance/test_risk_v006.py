@@ -90,14 +90,14 @@ def test_market_lot_bounds_apply_where_published(tmp_path):
     from cryptobot.risk import Approved
     filt = InstrumentFilter(min_notional_usdt=5.0, qty_step=0.01,
                             min_qty=0.01, max_qty=1000.0, tick_size=0.1,
-                            market_min_qty=0.01, market_max_qty=0.05)
+                            market_min_qty=0.01, market_max_qty=0.03)
     policy = make_policy(tmp_path, instrument_filters={"BTCUSDT": filt},
                          filters_asof_utc=NOW)
     policy.reconcile_day(10000.0)
     out = policy.evaluate(build_intent(INTENTS["canonical_long"]),
                           build_account(ACCOUNTS["healthy_10k"]))
     assert isinstance(out, Approved)
-    assert out.qty == pytest.approx(0.05)
+    assert out.qty == pytest.approx(0.03)  # W3-24H: cap rebinds under 0.125%.
     strict = InstrumentFilter(min_notional_usdt=5.0, qty_step=0.01,
                               min_qty=0.01, max_qty=1000.0, tick_size=0.1,
                               market_min_qty=1000.0)
@@ -186,7 +186,7 @@ def test_min_qty_skips_and_max_qty_caps(tmp_path):
     out = policy.evaluate(build_intent(INTENTS["canonical_long"]),
                           build_account(ACCOUNTS["healthy_10k"]))
     assert isinstance(out, Rejected) and out.reason == "skip:min-notional"
-    filt2 = InstrumentFilter(min_notional_usdt=5.0, qty_step=0.01, max_qty=0.05)
+    filt2 = InstrumentFilter(min_notional_usdt=5.0, qty_step=0.01, max_qty=0.03)
     policy2 = make_policy(tmp_path / "b", instrument_filters={"BTCUSDT": filt2},
                           filters_asof_utc=NOW)
     (tmp_path / "b").mkdir(exist_ok=True)
@@ -194,7 +194,7 @@ def test_min_qty_skips_and_max_qty_caps(tmp_path):
     out2 = policy2.evaluate(build_intent(INTENTS["canonical_long"]),
                             build_account(ACCOUNTS["healthy_10k"]))
     assert isinstance(out2, Approved)
-    assert out2.qty == pytest.approx(0.05)
+    assert out2.qty == pytest.approx(0.03)  # W3-24H: cap rebinds under 0.125%.
 
 
 def test_max_notional_caps_and_unfittable_rejects(tmp_path):

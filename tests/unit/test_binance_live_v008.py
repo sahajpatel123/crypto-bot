@@ -147,7 +147,7 @@ def test_excessive_clock_skew_blocks(tmp_path, ready):
 
 def test_hedge_mode_blocked(tmp_path, ready):
     bad = copy.deepcopy(ready)
-    bad["account"]["dualSidePosition"] = True
+    bad["account"]["positions"][0]["positionSide"] = "LONG"
     script = _ready_script(bad)
     engine, _ = _live(tmp_path, script)
     with pytest.raises(VenueRejectedError, match="one-way"):
@@ -156,9 +156,9 @@ def test_hedge_mode_blocked(tmp_path, ready):
 
 def test_margin_type_and_leverage_verified(tmp_path, ready):
     bad = copy.deepcopy(ready)
-    bad["account"]["positions"][0]["marginType"] = "isolated"
+    bad["account"]["positions"][0]["isolated"] = True
     engine, _ = _live(tmp_path, _ready_script(bad))
-    with pytest.raises(VenueRejectedError, match="marginType"):
+    with pytest.raises(VenueRejectedError, match="isolated"):
         engine.submit(EngineOrder("BTCUSDT", "BUY", 0.001, "MARKET"))
     bad2 = copy.deepcopy(ready)
     bad2["leverage"]["leverage"] = 5
@@ -171,15 +171,17 @@ def test_margin_type_and_leverage_verified(tmp_path, ready):
 def test_stop_leg_shape_reduce_only_working_type(tmp_path, ready, orders):
     engine, transport = _live(
         tmp_path, _ready_script(ready) + [
-            ("POST", "/fapi/v1/order",
+            ("POST", "/fapi/v1/algoOrder",
              {"symbol": "BTCUSDT", "side": "SELL", "type": "STOP_MARKET",
-              "quantity": "0.002", "stopPrice": "59990.0",
-              "workingType": "CONTRACT_PRICE", "reduceOnly": "true"},
-             ("ok", orders["orderAck"]))])
+              "algoType": "CONDITIONAL", "quantity": "0.002",
+              "stopPrice": "59990.0", "workingType": "CONTRACT_PRICE",
+              "reduceOnly": "true"}, ("ok", orders["algoAck"]))])
     engine.submit(EngineOrder("BTCUSDT", "SELL", 0.0029, "STOP_MARKET",
                               stop_price=59990.03, reduce_only=True,
                               role="stop"))
     _signed_shape(transport.requests[-1])
+    assert "newClientOrderId" not in transport.requests[-1][2]
+    assert "clientAlgoId" in transport.requests[-1][2]
     transport.assert_empty()
 
 
@@ -280,7 +282,7 @@ def test_user_stream_trade_feeds_poll_fill(tmp_path, ready, orders):
     assert len(fills) == 1
     fill = fills[0].payload
     assert (fill.qty, fill.price, fill.fee) == (0.001, 60000.0, 0.03)
-    assert fill.execution_id == "live:777001:0.001000000000"
+    assert fill.execution_id == "binance-usdm/9f3b2fc5de52/BTCUSDT/777001"
     assert transport.requests == []
     transport.assert_empty()
 
@@ -306,7 +308,7 @@ def test_user_stream_dup_trade_after_lookup_single_fill(tmp_path, ready, orders)
     fills = [e for e in engine.poll() if e.kind == "fill"]
     assert len(fills) == 2
     assert {f.payload.execution_id for f in fills} == {
-        "live:999001:0.001000000000", "live:999002:0.001000000000"}
+        "binance-usdm/9f3b2fc5de52/BTCUSDT/999001", "binance-usdm/9f3b2fc5de52/BTCUSDT/999002"}
     transport.assert_empty()
 
 
@@ -325,17 +327,29 @@ def test_user_stream_non_usdt_fee_and_unknown_kind_fail_loud(tmp_path):
 # -- orders / margin / funding / lifecycle -----------------------------------------------
 def test_open_orders_cached_by_ttl(tmp_path, ready, orders):
     clock = [NOW]
-    engine, transport = _live(
-        tmp_path, [("GET", "/fapi/v1/openOrders", None,
-                    ("ok", orders["openOrders"])),
-                   ("GET", "/fapi/v1/openOrders", None,
-                    ("ok", orders["openOrders"]))],
-        now_utc=lambda: clock[0], open_orders_ttl_s=1.0)
+    engine, transport = _live(tmp_path, [], now_utc=lambda: clock[0],
+                              open_orders_ttl_s=1.0)
+    # Journal one own order; the venue also reports a foreign stray.
+    transport.append(*_ready_script(ready),
+                     ("POST", "/fapi/v1/order", {"type": "MARKET"},
+                      ("ok", orders["orderAck"])))
+    own = engine.submit(EngineOrder("BTCUSDT", "BUY", 0.001, "MARKET"))
+    book = copy.deepcopy(orders["openOrders"])
+    book[0]["clientOrderId"] = own
+    book.append({"clientOrderId": "stray-manual", "symbol": "BTCUSDT",
+                 "status": "NEW", "origQty": "1.0", "executedQty": "0.0"})
+    pair = [("GET", "/fapi/v1/openOrders", None, ("ok", book)),
+            ("GET", "/fapi/v1/openAlgoOrders", None, ("ok", []))]
+    transport.append(*pair, *pair)
     first = engine.open_orders()
+    assert [s.client_order_id for s in first] == [own]  # stray filtered.
     assert first[0].state == "open" and first[0].qty == 0.001
     assert engine.open_orders() == first  # cached: no second request.
     clock[0] = datetime.fromtimestamp(T0MS / 1000 + 2, tz=timezone.utc)
     engine.open_orders()
+    ignored = [e for e in _journal_events(tmp_path)
+               if e["event"] == "foreign-orders-ignored"]
+    assert sum(e["count"] for e in ignored) == 2  # one per refresh.
     transport.assert_empty()
 
 
@@ -351,17 +365,19 @@ def test_attach_protection_stop_first_reduce_only(tmp_path, ready, orders):
          ("ok", orders["orderQueryFilled"])),
         ("GET", "/fapi/v1/userTrades", {"orderId": 12345},
          ("ok", orders["userTrades"])),
-        ("POST", "/fapi/v1/order",
+        ("POST", "/fapi/v1/algoOrder",
          {"type": "STOP_MARKET", "quantity": "0.002", "reduceOnly": "true"},
-         ("ok", orders["orderAck"])),
-        ("POST", "/fapi/v1/order",
+         ("ok", orders["algoAck"])),
+        ("POST", "/fapi/v1/algoOrder",
          {"type": "TAKE_PROFIT_MARKET", "quantity": "0.002",
-          "reduceOnly": "true"}, ("ok", orders["orderAck"])))
+          "reduceOnly": "true"}, ("ok", orders["algoAck"])))
     legs = engine.attach_protection(entry, 59990.0, 60010.0)
     assert len(legs) == 2
-    kinds = [r[2].get("type") for r in transport.requests
-             if r[1] == "/fapi/v1/order" and r[0] == "POST"]
-    assert kinds[-2:] == ["STOP_MARKET", "TAKE_PROFIT_MARKET"]  # STOP FIRST.
+    algos = [(r[1], r[2].get("type")) for r in transport.requests
+             if r[0] == "POST" and r[2].get("type") in
+             ("STOP_MARKET", "TAKE_PROFIT_MARKET")]
+    assert algos == [("/fapi/v1/algoOrder", "STOP_MARKET"),
+                     ("/fapi/v1/algoOrder", "TAKE_PROFIT_MARKET")]  # STOP FIRST.
     transport.assert_empty()
 
 
@@ -384,6 +400,9 @@ def test_listen_key_lifecycle_and_close(tmp_path):
     assert engine.open_listen_key() == "k1"
     engine.keepalive_listen_key()
     engine.close()
+    for _, _, params, headers in transport.requests:
+        assert headers.get("X-MBX-APIKEY") == "TESTKEY"
+        assert "signature" not in params  # key header, no signature.
     with pytest.raises(RuntimeError, match="closed"):
         engine.submit(EngineOrder("BTCUSDT", "BUY", 0.001, "MARKET"))
     transport.assert_empty()
@@ -392,8 +411,8 @@ def test_listen_key_lifecycle_and_close(tmp_path):
 def test_exit_only_blocks_entries_not_exits(tmp_path, ready, orders):
     engine, transport = _live(
         tmp_path, _ready_script(ready) + [
-            ("POST", "/fapi/v1/order", {"type": "STOP_MARKET"},
-             ("ok", orders["orderAck"]))])
+            ("POST", "/fapi/v1/algoOrder", {"type": "STOP_MARKET"},
+             ("ok", orders["algoAck"]))])
     engine.set_exit_only(True, "halt:daily-loss")
     with pytest.raises(ValueError, match="exit-only"):
         engine.submit(EngineOrder("BTCUSDT", "BUY", 0.001, "MARKET"))
@@ -417,4 +436,303 @@ def test_recover_looks_up_journaled_open_orders(tmp_path, ready, orders):
     engine.recover(object())
     assert engine._states[cid] == "filled"
     assert len([e for e in engine.poll() if e.kind == "fill"]) == 2
+    transport.assert_empty()
+
+
+# -- W3-24H restart identities ------------------------------------------------------
+def test_cross_symbol_same_trade_id_yields_distinct_fills(tmp_path):
+    from cryptobot.accounting import Ledger
+    engine, _ = _live(tmp_path, [])
+    for sym in ("BTCUSDT", "ETHUSDT"):
+        engine.note_user_event({
+            "e": "ORDER_TRADE_UPDATE", "E": T0MS,
+            "o": {"s": sym, "c": f"c-{sym}", "S": "BUY", "X": "FILLED",
+                  "x": "TRADE", "l": "0.001", "L": "100.0", "n": "0.01",
+                  "N": "USDT", "t": 777, "i": 1}})
+    fills = [e.payload for e in engine.poll() if e.kind == "fill"]
+    assert len(fills) == 2  # ID-777: no silent drop, no key collision.
+    ids = {f.execution_id for f in fills}
+    assert ids == {"binance-usdm/9f3b2fc5de52/BTCUSDT/777",
+                   "binance-usdm/9f3b2fc5de52/ETHUSDT/777"}
+    ledger = Ledger(10000.0)
+    for f in fills:
+        assert ledger.record_fill(f.side, f.qty, f.price, f.fee, f.ts_utc,
+                                  f.execution_id) is True
+    assert len(ledger.to_dict()["journal"]) == 2
+
+
+def test_restart_rebuilds_unknown_roles_and_blocks(tmp_path, ready, orders):
+    engine, transport = _live(
+        tmp_path, _ready_script(ready) + [
+            ("POST", "/fapi/v1/order", {"type": "MARKET"},
+             ("err", 503, None, "Service Unavailable"))])
+    cmd = EngineOrder("BTCUSDT", "BUY", 0.001, "MARKET", reservation_id="r-1")
+    with pytest.raises(UnknownOutcomeError) as exc:
+        engine.submit(cmd)
+    cid = exc.value.client_id
+    # Fresh process, same journal: identities + unknown rebuilt.
+    engine2, transport2 = _live(tmp_path, [])
+    assert engine2.unknown_ids() == (cid,)
+    with pytest.raises(UnknownOutcomeError, match="lookup must resolve"):
+        engine2.submit(cmd)
+    transport2.append(
+        ("GET", "/fapi/v1/order", {"origClientOrderId": cid},
+         ("ok", orders["orderQueryFilled"])),
+        ("GET", "/fapi/v1/userTrades", {"orderId": 12345},
+         ("ok", orders["userTrades"])))
+    assert engine2.lookup(cid) is not None
+    assert engine2.unknown_ids() == ()
+    assert len([e for e in engine2.poll() if e.kind == "fill"]) == 2
+    transport2.assert_empty()
+
+
+def test_recover_is_idempotent_across_restarts(tmp_path, ready, orders):
+    engine, transport = _live(
+        tmp_path, _ready_script(ready) + [
+            ("POST", "/fapi/v1/order", {"type": "MARKET"},
+             ("ok", orders["orderAck"]))])
+    cid = engine.submit(EngineOrder("BTCUSDT", "BUY", 0.002, "MARKET"))
+    script = [
+        ("GET", "/fapi/v1/order", {"origClientOrderId": cid},
+         ("ok", orders["orderQueryFilled"])),
+        ("GET", "/fapi/v1/userTrades", {"orderId": 12345},
+         ("ok", orders["userTrades"]))]
+    transport.append(*script)
+    engine.recover(object())
+    assert len([e for e in engine.poll() if e.kind == "fill"]) == 2
+    # Restart + recover again: terminal state rebuilt from the journal,
+    # so no request is even sent (empty script would raise) and no fills.
+    engine2, transport2 = _live(tmp_path, [])
+    engine2.recover(object())
+    assert [e for e in engine2.poll() if e.kind == "fill"] == []
+    assert transport2.requests == []
+    transport.assert_empty()
+    transport2.assert_empty()
+
+
+def test_restart_dedups_tape_against_stream_booked_trades(tmp_path, ready, orders):
+    engine, transport = _live(
+        tmp_path, _ready_script(ready) + [
+            ("POST", "/fapi/v1/order", {"type": "MARKET"},
+             ("ok", orders["orderAck"]))])
+    cid = engine.submit(EngineOrder("BTCUSDT", "BUY", 0.002, "MARKET"))
+    stream = copy.deepcopy(orders["userStreamTrade"])
+    stream["o"]["c"] = cid
+    stream["o"]["X"] = "PARTIALLY_FILLED"  # non-terminal: recover re-looks-up.
+    engine.note_user_event(stream)
+    assert engine._states  # stream state tracked pre-restart.
+    filled_before = [e for e in engine.poll() if e.kind == "fill"]
+    assert len(filled_before) == 1
+    # Restart: the stream-booked trade id is rebuilt; the tape replay
+    # of the SAME trade id emits nothing new.
+    tape = copy.deepcopy(orders["userTrades"])
+    tape[0]["id"] = 777001
+    tape[1]["id"] = 777001
+    engine2, transport2 = _live(tmp_path, [])
+    transport2.append(
+        ("GET", "/fapi/v1/order", {"origClientOrderId": cid},
+         ("ok", orders["orderQueryFilled"])),
+        ("GET", "/fapi/v1/userTrades", {"orderId": 12345}, ("ok", tape)))
+    engine2.recover(object())
+    assert [e for e in engine2.poll() if e.kind == "fill"] == []
+    transport2.assert_empty()
+
+
+# -- W3-24H exchange contract ---------------------------------------------------------
+def _algo_submit(engine, transport, orders, **kw):
+    kw.setdefault("reservation_id", "r-9")
+    cid = engine.submit(EngineOrder("BTCUSDT", "SELL", 0.002, "STOP_MARKET",
+                                    stop_price=59990.0, reduce_only=True,
+                                    role="stop", **kw))
+    assert cid in engine._algo
+    return cid
+
+
+def test_algo_lookup_working_no_trades_call(tmp_path, ready, orders):
+    engine, transport = _live(
+        tmp_path, _ready_script(ready) + [
+            ("POST", "/fapi/v1/algoOrder", {"type": "STOP_MARKET"},
+             ("ok", orders["algoAck"]))])
+    cid = _algo_submit(engine, transport, orders)
+    transport.append(
+        ("GET", "/fapi/v1/algoOrder", {"origClientAlgoId": cid},
+         ("ok", orders["algoQueryWorking"])))
+    status = engine.lookup(cid)
+    assert status is not None and status.state == "open"
+    assert engine._triggered.get(cid) is None
+    assert [e for e in engine.poll() if e.kind == "fill"] == []
+    transport.assert_empty()
+
+
+def test_algo_lookup_triggered_adopts_triggered_tape(tmp_path, ready, orders):
+    engine, transport = _live(
+        tmp_path, _ready_script(ready) + [
+            ("POST", "/fapi/v1/algoOrder", {"type": "STOP_MARKET"},
+             ("ok", orders["algoAck"]))])
+    cid = _algo_submit(engine, transport, orders)
+    transport.append(
+        ("GET", "/fapi/v1/algoOrder", {"origClientAlgoId": cid},
+         ("ok", orders["algoQueryTriggered"])),
+        ("GET", "/fapi/v1/userTrades", {"orderId": 12345},
+         ("ok", orders["userTrades"])))
+    status = engine.lookup(cid)
+    assert status is not None and status.state == "triggered"
+    assert engine._triggered[cid] == "12345"
+    fills = [e for e in engine.poll() if e.kind == "fill"]
+    assert [f.payload.qty for f in fills] == [0.001, 0.001]
+    transport.assert_empty()
+
+
+def test_algo_update_tracks_triggered_id_without_fills(tmp_path):
+    engine, transport = _live(tmp_path, [])
+    payload = {"E": T0MS, "e": "ALGO_UPDATE",
+               "o": {"s": "BTCUSDT", "c": "a-1", "S": "SELL",
+                     "X": "TRIGGERED", "x": "TRIGGERED", "i": 777001,
+                     "ti": 12345}}
+    engine.note_user_event(payload)
+    assert engine._states["a-1"] == "triggered"
+    assert engine._triggered["a-1"] == "12345"
+    assert [e for e in engine.poll() if e.kind == "fill"] == []
+    transport.assert_empty()
+
+
+def test_stop_reject_is_deterministic_and_retryable(tmp_path, ready, orders):
+    engine, transport = _live(
+        tmp_path, _ready_script(ready) + [
+            ("POST", "/fapi/v1/algoOrder", {"type": "STOP_MARKET"},
+             ("err", 400, -1108, "Bad stop price."))])
+    cmd = EngineOrder("BTCUSDT", "SELL", 0.002, "STOP_MARKET",
+                      stop_price=59990.0, reduce_only=True, role="stop",
+                      reservation_id="r-9")
+    with pytest.raises(VenueRejectedError):
+        engine.submit(cmd)
+    assert engine.unknown_ids() == ()
+    transport.append(("POST", "/fapi/v1/algoOrder", {"type": "STOP_MARKET"},
+                      ("ok", orders["algoAck"])))
+    engine.submit(cmd)
+    transport.assert_empty()
+
+
+def test_stop_unknown_blocks_until_lookup(tmp_path, ready, orders):
+    engine, transport = _live(
+        tmp_path, _ready_script(ready) + [
+            ("POST", "/fapi/v1/algoOrder", {"type": "STOP_MARKET"},
+             ("err", 503, None, "Service Unavailable"))])
+    cmd = EngineOrder("BTCUSDT", "SELL", 0.002, "STOP_MARKET",
+                      stop_price=59990.0, reduce_only=True, role="stop",
+                      reservation_id="r-9")
+    with pytest.raises(UnknownOutcomeError):
+        engine.submit(cmd)
+    with pytest.raises(UnknownOutcomeError, match="lookup must resolve"):
+        engine.submit(cmd)
+    assert engine.unknown_ids() != ()
+
+
+def test_cancel_unknown_preserves_and_blocks(tmp_path, ready, orders):
+    engine, transport = _live(
+        tmp_path, _ready_script(ready) + [
+            ("POST", "/fapi/v1/order", {"type": "MARKET"},
+             ("ok", orders["orderAck"]))])
+    cid = engine.submit(EngineOrder("BTCUSDT", "BUY", 0.001, "MARKET",
+                                    reservation_id="r-3"))
+    transport.append(("DELETE", "/fapi/v1/order", {"origClientOrderId": cid},
+                      ("err", 503, None, "Service Unavailable")))
+    with pytest.raises(UnknownOutcomeError):
+        engine.cancel(cid, "operating-stop")
+    assert engine._states[cid] == "CANCEL_UNKNOWN"
+    cmd = EngineOrder("BTCUSDT", "BUY", 0.001, "MARKET", reservation_id="r-3")
+    with pytest.raises(UnknownOutcomeError, match="lookup must resolve"):
+        engine.submit(cmd)
+    transport.append(
+        ("GET", "/fapi/v1/order", {"origClientOrderId": cid},
+         ("ok", {**orders["orderQueryFilled"], "executedQty": "0.000",
+                 "status": "CANCELED", "cumQuote": "0.0"})))
+    engine.cancel(cid, "retry")  # lookup-first resolves, then cancels.
+    transport.append(("DELETE", "/fapi/v1/order", {"origClientOrderId": cid},
+                      ("ok", {})))
+    # Already cancelled at venue per lookup; second cancel still sends
+    # (idempotent venue-side) — drain it for a clean script.
+    engine._states[cid] = "open"
+    engine.cancel(cid, "retry")
+    transport.assert_empty()
+
+
+def test_cancel_on_unknown_looks_up_first(tmp_path, ready, orders):
+    engine, transport = _live(
+        tmp_path, _ready_script(ready) + [
+            ("POST", "/fapi/v1/order", {"type": "MARKET"},
+             ("err", 0, None, "transport: timed out"))])
+    cmd = EngineOrder("BTCUSDT", "BUY", 0.001, "MARKET", reservation_id="r-4")
+    with pytest.raises(UnknownOutcomeError) as exc:
+        engine.submit(cmd)
+    transport.append(
+        ("GET", "/fapi/v1/order", {"origClientOrderId": exc.value.client_id},
+         ("err", 400, -2013, "Order does not exist.")))
+    engine.cancel(exc.value.client_id, "stale")  # void: no DELETE sent.
+    assert transport.requests[-1][1] == "/fapi/v1/order"  # the lookup, only.
+    transport.assert_empty()
+
+
+def test_cancel_not_found_with_fills_contradicts_loudly(tmp_path, ready, orders):
+    engine, transport = _live(
+        tmp_path, _ready_script(ready) + [
+            ("POST", "/fapi/v1/order", {"type": "MARKET"},
+             ("ok", orders["orderAck"]))])
+    cid = engine.submit(EngineOrder("BTCUSDT", "BUY", 0.002, "MARKET"))
+    transport.append(
+        ("GET", "/fapi/v1/order", {"origClientOrderId": cid},
+         ("ok", orders["orderQueryFilled"])),
+        ("GET", "/fapi/v1/userTrades", {"orderId": 12345},
+         ("ok", orders["userTrades"])))
+    engine.lookup(cid)  # adopts fills.
+    transport.append(("DELETE", "/fapi/v1/order", {"origClientOrderId": cid},
+                      ("err", 400, -2013, "Order does not exist.")))
+    with pytest.raises(ValueError, match="reconcile manually"):
+        engine.cancel(cid, "stale")
+    transport.assert_empty()
+
+
+def test_demo_mode_selects_demo_hosts(tmp_path):
+    from cryptobot.adapters.binance_live import DEMO_FAPI_URL, DEMO_FSTREAM_URL
+    engine, _ = _live(tmp_path, [], demo=True)
+    assert engine._base_url == DEMO_FAPI_URL
+    assert engine.stream_host == DEMO_FSTREAM_URL
+    journaled = [e for e in _journal_events(tmp_path) if e["event"] == "live-enabled"]
+    assert journaled[0]["demo"] is True
+    explicit, _ = _live(tmp_path, [], demo=True,
+                        base_url="https://custom.example")
+    assert explicit._base_url == "https://custom.example"
+
+
+def test_caller_action_contract():
+    from cryptobot.adapters.binance_live import caller_action
+    assert caller_action(UnknownOutcomeError("c", "x")) == "lookup_then_retry"
+    assert caller_action(VenueRejectedError(400, -1, "x")) == "retry_safe"
+    assert caller_action(VenueHttpError(503, None, "x")) == "retry_safe"
+    assert caller_action(ValueError("x")) == "abort"
+    assert caller_action(RuntimeError("x")) == "abort"
+
+
+def test_stream_reconnected_heals_gap_via_lookup(tmp_path, ready, orders):
+    engine, transport = _live(
+        tmp_path, _ready_script(ready) + [
+            ("POST", "/fapi/v1/order", {"type": "MARKET"},
+             ("ok", orders["orderAck"]))])
+    cid = engine.submit(EngineOrder("BTCUSDT", "BUY", 0.002, "MARKET"))
+    transport.append(
+        ("GET", "/fapi/v1/order", {"origClientOrderId": cid},
+         ("ok", orders["orderQueryFilled"])),
+        ("GET", "/fapi/v1/userTrades", {"orderId": 12345},
+         ("ok", orders["userTrades"])))
+    engine.stream_reconnected()
+    assert len([e for e in engine.poll() if e.kind == "fill"]) == 2
+    transport.assert_empty()
+
+
+def test_account_update_snapshot_recorded(tmp_path):
+    engine, transport = _live(tmp_path, [])
+    assert engine.account_snapshot() is None
+    engine.note_user_event({"e": "ACCOUNT_UPDATE", "E": T0MS,
+                            "a": {"B": [{"a": "USDT", "wb": "100"}]}})
+    assert engine.account_snapshot()["E"] == T0MS
     transport.assert_empty()

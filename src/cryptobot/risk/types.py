@@ -80,15 +80,29 @@ class InstrumentFilter:
 @dataclass(frozen=True)
 class RiskConfig:
     contract_version: str = "v0.1.1"
-    max_loss_budget_pct: float = 0.0025
+    # W3-24H versioned risk profile (§4): 0.125% max position risk incl
+    # stressed costs; 0.5% daily operating stop (ACTION); 1% emergency
+    # (persist + reduce + alert + reconciled recovery); 70% floor @1%.
+    # All measured flow-adjusted net of costs vs the reconciled IST day
+    # start. profile_version tags the parameter set for audit.
+    profile_version: str = "24h-1"
+    max_loss_budget_pct: float = 0.00125
     leverage_cap: float = 3.0
     min_notional_usdt: float = 5.0
     # U-003 SIMULATION DEFAULT (unmeasured; see specs/acceptance-u003.md).
     stress_multiplier: float = 1.5
-    daily_loss_halt_pct: float = 0.01
+    operating_stop_pct: float = 0.005
+    emergency_stop_pct: float = 0.01
+    # Deprecated alias for emergency_stop_pct (pre-24h configs/tests pass
+    # daily_loss_halt_pct). Honored only when emergency_stop_pct is left
+    # at default; conflicting values raise. Removed at manager migration.
+    daily_loss_halt_pct: float | None = None
     daily_target_pct: float = 0.02
     profit_arm_pct: float = 0.01
     profit_retain_pct: float = 0.70
+    # W3-24H stale-mark block: None disables; set = snapshots older than
+    # this (or of unknown age) block admission and report unhealthy.
+    max_mark_age_ms: float | None = None
     # U-003 SIMULATION DEFAULT (unmeasured; see specs/acceptance-u003.md).
     max_evidence_age_s: float = 120.0
     max_clock_skew_s: float = 5.0
@@ -102,11 +116,32 @@ class RiskConfig:
     def __post_init__(self) -> None:
         if not self.contract_version:
             raise ValueError("contract_version must be non-empty")
-        for name in ("max_loss_budget_pct", "daily_loss_halt_pct", "profit_arm_pct",
+        if not self.profile_version:
+            raise ValueError("profile_version must be non-empty")
+        if self.daily_loss_halt_pct is not None:
+            import warnings
+            warnings.warn("daily_loss_halt_pct is deprecated; use "
+                          "emergency_stop_pct", DeprecationWarning,
+                          stacklevel=2)
+            alias = _finite(self.daily_loss_halt_pct, "daily_loss_halt_pct")
+            if not 0.0 < alias < 1.0:
+                raise ValueError("daily_loss_halt_pct must lie in (0, 1)")
+            if self.emergency_stop_pct != 0.01:
+                raise ValueError("conflicting emergency_stop_pct and "
+                                 "daily_loss_halt_pct")
+            object.__setattr__(self, "emergency_stop_pct", alias)
+        for name in ("max_loss_budget_pct", "operating_stop_pct",
+                     "emergency_stop_pct", "profit_arm_pct",
                      "profit_retain_pct"):
             value = _finite(getattr(self, name), name)
             if not 0.0 < value < 1.0:
                 raise ValueError(f"{name} must lie in (0, 1)")
+        if not self.operating_stop_pct < self.emergency_stop_pct:
+            raise ValueError("operating_stop_pct must be < emergency_stop_pct")
+        if self.max_mark_age_ms is not None:
+            _finite(self.max_mark_age_ms, "max_mark_age_ms")
+            if self.max_mark_age_ms <= 0:
+                raise ValueError("max_mark_age_ms must be > 0")
         for name in ("leverage_cap", "stress_multiplier", "daily_target_pct",
                      "max_evidence_age_s", "filters_max_age_s"):
             value = _finite(getattr(self, name), name)
@@ -146,6 +181,9 @@ class AccountSnapshot:
     available_margin_usdt: float | None = None
     fee_buffer_usdt: float = 0.0
     inflight_exposure_usdt: float = 0.0
+    # W3-24H mark age (ms) at snapshot time; None = unrecorded. Blocks
+    # when the profile configures max_mark_age_ms (fail closed).
+    mark_age_ms: float | None = None
 
 
 @dataclass(frozen=True)
