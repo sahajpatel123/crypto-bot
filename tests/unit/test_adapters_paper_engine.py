@@ -469,11 +469,29 @@ def test_cancel_unknown_id_fails_closed():
         engine.cancel("pe-000000-deadbeef", "test")
 
 
-def test_feed_rejects_out_of_order_ticks():
+def test_feed_clamps_out_of_order_ticks():
+    # Integration fix: cross-symbol interleave is normal (BTC@5 then ETH@4):
+    # the ETH tick still lands in its own book (re-stamped to engine-now,
+    # ts_event kept) and the clock holds at max (was: hard raise, crashed R2).
+    # Genuinely stale same-instrument data stays superseded by design.
+    from nautilus_trader.model.data import QuoteTick
+    from nautilus_trader.model.objects import Price, Quantity
     engine = _engine()
+    engine.add_instrument("ETHUSDT", price_precision=2, size_precision=3,
+                          tick_size=0.01, step_size=0.001, ts_utc=T0)
     _quote(engine, 5, 60000.00, 60000.50)
-    with pytest.raises(ValueError, match="non-decreasing"):
-        _quote(engine, 4, 60000.00, 60000.50)
+    before = engine._clock.timestamp_ns()
+    eth = QuoteTick(
+        engine.instrument_id("ETHUSDT"),
+        Price(3000.00, 2), Price(3000.50, 2),
+        Quantity(1.0, 3), Quantity(1.0, 3),
+        ts_event=int((T0 + timedelta(seconds=4)).timestamp() * 1e9),
+        ts_init=int((T0 + timedelta(seconds=4)).timestamp() * 1e9))
+    engine.feed(eth)
+    assert engine._clock.timestamp_ns() == before
+    iid = engine.instrument_id("ETHUSDT")
+    assert str(engine._exchange.best_bid_price(iid)) == "3000.00"
+    assert str(engine._exchange.best_ask_price(iid)) == "3000.50"
 
 
 def test_no_binance_live_execution_client():

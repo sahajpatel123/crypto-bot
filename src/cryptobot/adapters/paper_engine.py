@@ -661,14 +661,48 @@ class NautilusPaperEngine:
         return _SEAM_STATE.get(int(order.status), "open")
 
     # -- market-data drive --------------------------------------------------
+    @staticmethod
+    def _restamp(data: Data, ts_init: int) -> Data:
+        """Rebuild a tick/delta batch with receipt-time ts_init (ts_event kept)."""
+        if isinstance(data, QuoteTick):
+            return QuoteTick(data.instrument_id, data.bid_price, data.ask_price,
+                             data.bid_size, data.ask_size,
+                             ts_event=int(data.ts_event), ts_init=ts_init)
+        if isinstance(data, TradeTick):
+            return TradeTick(data.instrument_id, data.price, data.size,
+                             data.aggressor_side, data.trade_id,
+                             ts_event=int(data.ts_event), ts_init=ts_init)
+        if isinstance(data, OrderBookDelta):
+            return OrderBookDelta(data.instrument_id, data.action, data.order,
+                                  data.flags, data.sequence,
+                                  ts_event=int(data.ts_event), ts_init=ts_init)
+        if isinstance(data, OrderBookDeltas):
+            return OrderBookDeltas(
+                data.instrument_id,
+                [OrderBookDelta(d.instrument_id, d.action, d.order, d.flags,
+                                d.sequence, ts_event=int(d.ts_event),
+                                ts_init=ts_init) for d in data.deltas])
+        return data
+
     def feed(self, data: Data) -> None:
-        """Process one market-data object and advance engine time to its ts_init."""
+        """Process one market-data object; engine time never moves backward.
+
+        Live ticks carry receipt-time ts_init, which lags the mark-quote
+        clock by sub-ms and interleaves across symbols — normal live data,
+        not an error. Stale ticks are re-stamped to engine-now (exchange
+        ts_event preserved) so the book still updates and nautilus time
+        stays monotonic. Ordered replay streams pass through untouched.
+        (Integration fix: a hard raise here crashed R2 on 2 symbols.)
+        """
         if self._closed:
             raise RuntimeError("engine is closed")
+        now_ns = self._clock.timestamp_ns()
         ts_init = int(data.ts_init)
-        if ts_init < self._clock.timestamp_ns():
-            raise ValueError("feed must be non-decreasing in ts_init (receipt order)")
-        self._clock.set_time(ts_init)
+        if ts_init > now_ns:
+            self._clock.set_time(ts_init)
+        elif ts_init < now_ns:
+            data = self._restamp(data, now_ns)
+            ts_init = now_ns
         self._drain_pending()
         if isinstance(data, QuoteTick):
             self._exchange.process_quote_tick(data)
@@ -746,6 +780,10 @@ class NautilusPaperEngine:
             "journal, replays unpropagated fills, marks the rest lost-on-restart (never "
             "assumed filled/cancelled/flat)",
             "paper mode instantiates no Binance live execution client (R0, tested)",
+            "receipt-time processing: ticks older than the engine clock "
+            "(mark-quote skew, cross-symbol interleave) are re-stamped to "
+            "engine-now with ts_event preserved; the book updates, time stays "
+            "monotonic; ordered replay passes through untouched",
         ])
 
     def doctor(self) -> str:
