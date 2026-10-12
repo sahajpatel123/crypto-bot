@@ -39,7 +39,9 @@ W3 risk changes need manager/W5 review; W5 metric changes need manager review.
 2. Full-window benchmark needs W1 streaming replay first (~70.6M rows).
 3. Demo credentials: owner dependency, only after endpoint config +
    test script ready (W3). Never in chat.
-4. Oct funding: W2 verifies public history API availability first.
+4. Oct funding: API availability VERIFIED by manager (Oct-1 BTC
+   settlements return fundingTime/Rate/markPrice); W2 owns
+   pagination + provenance + reconcile.
 
 ## Manager baselines
 
