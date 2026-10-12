@@ -270,9 +270,23 @@ def _reliability(run) -> dict:
     restarts = sum(c for e, c in kinds.items()
                    if e in ("resume", "live-resume", "restart", "recovering")
                    or e.startswith("resume"))
+    # V-008 §7: mark provenance shared by risk and reports. Open rows
+    # valued without any mark are counted loudly, never papered over.
+    by_source: dict[str, int] = {}
+    ages = [r.mark_age_ms for r in eq if r.mark_age_ms is not None]
+    open_unmarked = 0
+    for r in eq:
+        by_source[r.mark_source] = by_source.get(r.mark_source, 0) + 1
+        if r.position_qty != 0 and r.mark_source in ("none", "unrecorded"):
+            open_unmarked += 1
     return {
         "equity_gaps": {"count": len(gaps), "total_s": sum(gaps),
                         "max_s": max(gaps) if gaps else 0.0},
+        "mark_provenance": {
+            "by_source": by_source,
+            "max_age_ms": max(ages) if ages else None,
+            "open_rows_without_mark": open_unmarked,
+        },
         "rejections_by_stage_reason": stages,
         "risk_kinds": dict(kinds),
         "risk_transitions": {f"{k}|{a}|{b}": c for (k, a, b), c in transitions.items()},

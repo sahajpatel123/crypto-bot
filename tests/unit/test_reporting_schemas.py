@@ -112,3 +112,33 @@ def test_fills_without_ledger_fills_fails(tmp_path):
     Ledger(10000.0).save(run / "ledger.json")
     with pytest.raises(RunFileError, match="fills present without ledger fills"):
         load_run(run)
+
+
+def test_equity_mark_provenance_defaults_unrecorded():
+    run = load_run(FIX)
+    assert all(r.mark_source == "unrecorded" for r in run.equity)
+    assert all(r.mark_age_ms is None for r in run.equity)
+
+
+def test_equity_mark_provenance_loads(tmp_path):
+    run = _copy(tmp_path)
+    rows = (run / "equity.jsonl").read_text().splitlines()
+    first = json.loads(rows[0])
+    first["mark_source"] = "exchange"
+    first["mark_age_ms"] = 250.0
+    rows[0] = json.dumps(first)
+    (run / "equity.jsonl").write_text("\n".join(rows) + "\n")
+    loaded = load_run(run)
+    assert loaded.equity[0].mark_source == "exchange"
+    assert loaded.equity[0].mark_age_ms == 250.0
+
+
+def test_equity_bad_mark_provenance_fails(tmp_path):
+    run = _copy(tmp_path)
+    rows = (run / "equity.jsonl").read_text().splitlines()
+    bad = json.loads(rows[0])
+    bad["mark_age_ms"] = -5.0
+    rows[0] = json.dumps(bad)
+    (run / "equity.jsonl").write_text("\n".join(rows) + "\n")
+    with pytest.raises(RunFileError, match="mark_age_ms"):
+        load_run(run)

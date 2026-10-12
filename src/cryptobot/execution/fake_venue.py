@@ -19,6 +19,8 @@ from collections import deque
 from dataclasses import dataclass, field
 from typing import Callable
 
+from cryptobot.risk.rounding import floor_to_step
+
 
 class VenueTimeoutError(Exception):
     """Submit timed out; order state on the venue is UNKNOWN (ambiguous)."""
@@ -86,12 +88,22 @@ class _Fault:
 
 
 class FakeVenue:
-    def __init__(self, now_ms: Callable[[], int] | None = None) -> None:
+    def __init__(self, now_ms: Callable[[], int] | None = None, *,
+                 lot_steps: dict[str, float] | None = None) -> None:
         self._now_ms = now_ms or (lambda: 0)
         self._orders: dict[str, _Order] = {}
         self._faults: deque[_Fault] = deque()
         self._last_price: dict[str, float] = {}
         self.fills: list[Fill] = []
+        # V-008 §7: optional per-symbol LOT_SIZE steps. Absent = legacy
+        # raw behavior (fault tests); present = venue floors with the one
+        # shared rule, exactly like the economic path.
+        self._lot_steps = {str(k).upper(): float(v)
+                           for k, v in (lot_steps or {}).items()}
+
+    def lot_step(self, symbol: str) -> float | None:
+        """Configured LOT_SIZE step for ``symbol`` (None = raw legacy)."""
+        return self._lot_steps.get(symbol.upper())
 
     # -- fault programming -------------------------------------------------
     def fail_next_submit(
@@ -119,6 +131,11 @@ class FakeVenue:
     ) -> SubmitResult:
         if qty <= 0:
             raise ValueError("qty must be > 0")
+        step = self.lot_step(symbol)
+        if step is not None:
+            qty = floor_to_step(qty, step)
+            if qty <= 0:
+                raise ValueError(f"qty below LOT_SIZE step {step} for {symbol}")
         existing = self._orders.get(client_id)
         if existing is not None:
             # Idempotent client ID: no duplicate order, report current state.

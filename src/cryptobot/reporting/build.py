@@ -88,10 +88,13 @@ def _write_equity(path: Path, run) -> None:
             "source": r.source, "drawdown_usdt": round(dd, 8),
             "drawdown_pct": round(dd / peak, 8) if peak else 0.0,
             "date_ist": r.ts_utc.astimezone(IST).date().isoformat(),
+            "mark_source": r.mark_source,
+            "mark_age_ms": "" if r.mark_age_ms is None else r.mark_age_ms,
         })
     write_csv(path, ["ts_utc", "marked_equity", "cash", "position_qty",
                      "position_symbol", "open_pnl", "source", "drawdown_usdt",
-                     "drawdown_pct", "date_ist"], rows)
+                     "drawdown_pct", "date_ist", "mark_source",
+                     "mark_age_ms"], rows)
 
 
 def _pct(v) -> str:
@@ -242,6 +245,11 @@ def _tables(m) -> str:
              f"({m.reliability['equity_gaps']['total_s']:,.0f} s)"),
             ("Restarts", str(m.reliability["restarts"])),
             ("Lost events", str(m.reliability["lost_events"])),
+            ("Mark sources",
+             ", ".join(f"{k}={v}"
+                       for k, v in m.reliability["mark_provenance"]["by_source"].items())),
+            ("Open rows without mark",
+             str(m.reliability["mark_provenance"]["open_rows_without_mark"])),
         ]),
         "<h3>Speed / resources</h3>" + _kv([
             ("Status", str(m.speed_resources["status"])),

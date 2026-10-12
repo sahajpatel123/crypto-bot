@@ -114,3 +114,32 @@ def test_declared_splits_reported_per_bucket(tmp_path):
     assert m.splits["buckets"]["in_sample"]["n"] == 0
     assert m.splits["buckets"]["out_of_sample"]["n"] == 1
     assert "no blended" in m.splits["note"]
+
+
+def test_mark_provenance_counts_and_open_unmarked():
+    run, eps = _built()
+    m = compute_metrics(run, eps)
+    prov = m.reliability["mark_provenance"]
+    assert prov["by_source"] == {"unrecorded": 5}
+    assert prov["max_age_ms"] is None
+    n_open = sum(1 for r in run.equity if r.position_qty != 0)
+    assert prov["open_rows_without_mark"] == n_open
+    assert n_open > 0
+
+
+def test_mark_provenance_with_recorded_marks(tmp_path):
+    run_dir = tmp_path / "run"
+    shutil.copytree(FIX, run_dir)
+    eq = (run_dir / "equity.jsonl").read_text().splitlines()
+    marked = []
+    for i, line in enumerate(eq):
+        row = json.loads(line)
+        row["mark_source"] = "exchange"
+        row["mark_age_ms"] = 100.0 * (i + 1)
+        marked.append(json.dumps(row))
+    (run_dir / "equity.jsonl").write_text("\n".join(marked) + "\n")
+    run, eps = _built(run_dir)
+    prov = compute_metrics(run, eps).reliability["mark_provenance"]
+    assert prov["by_source"] == {"exchange": 5}
+    assert prov["max_age_ms"] == 500.0
+    assert prov["open_rows_without_mark"] == 0

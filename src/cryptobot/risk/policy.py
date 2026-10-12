@@ -353,6 +353,15 @@ class RiskPolicy:
     def booked_net(self, reservation_id: str) -> float:
         return self._booked_net(reservation_id)
 
+    def booked_total_qty(self) -> float:
+        """Sum of booked nets across reservations (V-008 one-budget input).
+
+        Single-position scope: at most one nonzero entry. Callers price
+        the excess over ledger-shown exposure, never the raw sum twice.
+        """
+        total = sum(self._booked_net(rid) for rid in self._state.booked)
+        return 0.0 if abs(total) <= BOOKED_ZERO_EPS else total
+
     def required_stop_qty(self, reservation_id: str) -> float | None:
         """Position quantity the protective stop must cover (V-007 B8).
 

@@ -20,6 +20,7 @@ from dataclasses import dataclass
 
 from cryptobot.coordination import Side
 
+from .rounding import floor_to_step
 from .types import RiskConfig
 
 
@@ -103,7 +104,8 @@ def plan_size(
     max_notional = filt.max_notional_usdt if filt is not None else None
 
     def floored(qty: float) -> float:
-        return math.floor(qty / step * (1 + 1e-9)) * step
+        # V-008 §7: the one shared venue-rounding rule (risk leg).
+        return floor_to_step(qty, step)
 
     def within_budget(qty: float) -> bool:
         return qty * stop_dist + qty * adverse * stressed <= budget * (1 + 1e-9)
