@@ -55,6 +55,9 @@ W3 risk changes need manager/W5 review; W5 metric changes need manager review.
   -4120 STOP_ORDER_SWITCH_ALGO; new shape uses algoType=CONDITIONAL,
   returns algoId/algoStatus. Sources: Binance changelog 2025-11-06
   entry (mirrored), freqtrade#12610, community -4120 guides.
+- Demo/test hosts: BOTH demo-fapi.binance.com and
+  testnet.binancefuture.com answer /fapi/v1/time (manager probe).
+  W3 owns the in-config choice + verification.
 
 ## Evidence preserved
 
