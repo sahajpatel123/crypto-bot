@@ -9,19 +9,12 @@ fix's integration. (Manager integration fixup; probes authored by W5.)
 import pytest
 
 KNOWN_FAILURES = (
-    # Finding 1: future-VWAP quotes (labels guard passes unmarked).
-    "test_finding_1_future_vwap.py"
-    "::test_modeled_quote_uses_only_causal_trades",
-    "test_finding_1_future_vwap.py"
-    "::test_future_mutation_does_not_change_earlier_quotes",
+    # Finding 1 fixed by Q-008 (causal-first-trade-v1); entries trimmed.
     # Finding 2: mark close published at open.
     "test_finding_2_mark_close.py::test_close_not_published_at_open",
     "test_finding_2_mark_close.py::test_open_close_availability_preserved",
     "test_finding_2_mark_close.py::test_joined_marks_preserve_availability",
-    # Finding 3: cross-symbol dedup.
-    "test_finding_3_dedup.py::test_cross_symbol_identical_quotes_preserved",
-    "test_finding_3_dedup.py::test_legitimate_repeated_updates_preserved",
-    "test_finding_3_dedup.py::test_conflicting_duplicates_detected",
+    # Finding 3 fixed by Q-008 (venue-aware dedup); entries trimmed.
     # Finding 4: gap-bar quality.
     "test_finding_4_gap_quality.py"
     "::test_gap_bar_not_usable_as_clean_strategy_bar",
