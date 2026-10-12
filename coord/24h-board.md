@@ -48,6 +48,14 @@ W3 risk changes need manager/W5 review; W5 metric changes need manager review.
 - Network-blocked suite @3cadfca: 825 passed in ~39s (blocker verified:
   external refused, loopback allowed). W5's guard must preserve this.
 
+## Review references (manager, for W3 contract review)
+
+- algoOrder migration CONFIRMED: 2025-12-09 cutover; conditional types
+  moved from /fapi/v1/order to /fapi/v1/algoOrder; legacy posts get
+  -4120 STOP_ORDER_SWITCH_ALGO; new shape uses algoType=CONDITIONAL,
+  returns algoId/algoStatus. Sources: Binance changelog 2025-11-06
+  entry (mirrored), freqtrade#12610, community -4120 guides.
+
 ## Evidence preserved
 
 Prior: reports/archive/48h-baseline/, /tmp/bt48h/*comparison.json,
