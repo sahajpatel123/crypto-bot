@@ -17,16 +17,25 @@ Safety rules (tested, no exceptions):
   raise; any further submit for the same reservation is REFUSED until
   ``lookup()`` resolves the unknown (retry must never add exposure
   blindly). Deterministic rejections (other 4xx/5xx) journal REJECTED
-  and allow retry — nothing executed.
+  and allow retry — nothing executed. See ``caller_action`` (W3-24H
+  app/adapter error contract).
 - Independent conditional legs only (STOP_MARKET / TAKE_PROFIT_MARKET,
   reduce-only); no OCO/bracket assumption — Futures has no native
-  spot-style OCO.
+  spot-style OCO. Conditionals ride /fapi/v1/algoOrder with
+  algoType=CONDITIONAL (2025-12-09 cutover); legacy conditional posts
+  get -4120 (never sent). Triggered fills ride the triggered order id.
 - Quantities floor and prices tick-round with the ONE shared rule
   (``risk.rounding``), identical to sim submission.
 - Fees must settle in USDT; any other commission asset fails loudly.
+- Bot-orders-only scope: open_orders/recover see journaled ids only;
+  foreign strays are journaled loudly and ignored.
 - The user-data-stream SOCKET is integration scope (manager/CLI); this
-  module owns listenKey lifecycle + user-event parsing via
-  ``note_user_event`` (transport-agnostic).
+  module owns listenKey lifecycle (API-key header) + user-event parsing
+  via ``note_user_event`` (transport-agnostic) + reconnect healing via
+  ``stream_reconnected``.
+- Demo mode (demo=True) selects demo-fapi/demo-fstream (both probed
+  answering /fapi/v1/time); testnet is the default otherwise. Either
+  way live_enable + credentials stay mandatory.
 """
 from __future__ import annotations
 
@@ -51,15 +60,40 @@ from cryptobot.app.engine import (
 from cryptobot.risk.rounding import floor_to_step, round_to_tick
 
 TESTNET_BASE_URL = "https://testnet.binancefuture.com"
+DEMO_FAPI_URL = "https://demo-fapi.binance.com"  # REST (manager-probed).
+DEMO_FSTREAM_URL = "wss://demo-fstream.binance.com"  # user-stream socket host.
 UNKNOWN_HTTP_STATUSES = (0, 502, 503, 504)  # timeout + gateways: outcome unknown.
+ALGO_ORDER_TYPES = ("STOP_MARKET", "TAKE_PROFIT_MARKET")
 
 __all__ = [
+    "ALGO_ORDER_TYPES",
+    "DEMO_FAPI_URL",
+    "DEMO_FSTREAM_URL",
+    "TESTNET_BASE_URL",
     "BinanceLiveEngine",
     "UrllibTransport",
     "VenueHttpError",
     "VenueRejectedError",
     "UnknownOutcomeError",
+    "caller_action",
 ]
+
+
+# -- app/adapter error contract (W3-24H) -------------------------------------------
+# UnknownOutcomeError  -> lookup_then_retry (an unknown may have executed;
+#                         lookup() must resolve it before new exposure).
+# VenueRejectedError   -> retry_safe (deterministic: nothing executed).
+# VenueHttpError       -> retry_safe (a failed read has no side effects;
+#                         submit-unknowns surface as UnknownOutcomeError).
+# ValueError/RuntimeError -> abort (caller bug or closed engine; retrying
+#                         the identical call fails identically).
+def caller_action(exc: BaseException) -> str:
+    """Map an adapter exception to the caller's required behavior."""
+    if isinstance(exc, UnknownOutcomeError):
+        return "lookup_then_retry"
+    if isinstance(exc, VenueHttpError):
+        return "retry_safe"
+    return "abort"
 
 
 class VenueHttpError(Exception):
@@ -138,6 +172,9 @@ def _local_state(venue_status: str) -> str:
     return {"NEW": "open", "PARTIALLY_FILLED": "partial", "FILLED": "filled",
             "CANCELED": "cancelled", "CANCELLED": "cancelled",
             "REJECTED": "rejected", "EXPIRED": "expired",
+            # Algo-order statuses (2025-12-09 cutover): WORKING rests,
+            # TRIGGERED fired (fills land on the triggered order).
+            "WORKING": "open", "TRIGGERED": "triggered",
             }.get(venue_status, f"unknown:{venue_status}")
 
 
@@ -162,9 +199,10 @@ class BinanceLiveEngine:
         expected_leverage: int,
         run_tag: str = "bl",
         live_enable: bool = False,
-        base_url: str = TESTNET_BASE_URL,
+        demo: bool = False,
+        base_url: str | None = None,
         recv_window_ms: int = 5000,
-        expected_margin_type: str = "CROSS",
+        expected_isolated: bool = False,
         stop_working_type: str = "CONTRACT_PRICE",
         open_orders_ttl_s: float = 1.0,
         transport: LiveTransport | None = None,
@@ -175,19 +213,30 @@ class BinanceLiveEngine:
                              "explicitly (default-off)")
         if not api_key or not api_secret:
             raise ValueError("live trading needs api_key + api_secret")
+        # W3-24H explicit demo mode: demo hosts unless the owner passes an
+        # explicit base_url (testnet default otherwise). Both demo hosts
+        # were probed answering /fapi/v1/time (manager); the in-config
+        # choice lives here.
+        self._demo = bool(demo)
+        self._base_url = (base_url or
+                          (DEMO_FAPI_URL if self._demo else TESTNET_BASE_URL))
         self._key = api_key
         self._secret = api_secret.encode("utf-8")
+        # W3-24H restart identity: venue/account/symbol/trade fill keys.
+        # The account tag is a key fingerprint (safe to journal, not secret).
+        self._venue = "binance-usdm"
+        self._account_tag = hashlib.sha256(api_key.encode("utf-8")).hexdigest()[:12]
         self._journal_path = Path(journal_path)
         self._journal_path.parent.mkdir(parents=True, exist_ok=True)
         with open(self._journal_path, "a", encoding="utf-8"):
             pass  # fail fast when the journal is not writable.
         self._leverage = int(expected_leverage)
-        self._margin_type = expected_margin_type
+        self._isolated = bool(expected_isolated)
         self._run_tag = run_tag
         self._recv_window = int(recv_window_ms)
         self._working_type = stop_working_type
         self._orders_ttl = float(open_orders_ttl_s)
-        self._transport = transport or UrllibTransport(base_url)
+        self._transport = transport or UrllibTransport(self._base_url)
         self._now_utc = now_utc or (lambda: datetime.now(timezone.utc))
         self._now_ms = lambda: int(self._now_utc().timestamp() * 1000)
         self._offset_ms = 0
@@ -200,15 +249,75 @@ class BinanceLiveEngine:
         self._roles: dict[str, str] = {}
         self._reservations: dict[str, str | None] = {}
         self._states: dict[str, str] = {}  # client id -> local state/UNKNOWN.
+        self._algo: set[str] = set()  # client ids on the algoOrder rail.
+        self._triggered: dict[str, str] = {}  # algo cid -> triggered order id.
         self._trades_booked: set[str] = set()  # venue trade ids adopted.
         self._pending: list[EngineEvent] = []
         self._marks: dict[str, float] = {}
         self._mark_ts: dict[str, datetime] = {}
         self._orders_cache: tuple[float, list[EngineOrderStatus]] | None = None
         self._listen_key: str | None = None
-        self._journal("live-enabled", {"base_url": base_url,
+        self._account_snapshot: dict[str, Any] | None = None
+        self._rebuild_from_journal()
+        self._journal("live-enabled", {"base_url": self._base_url,
+                                       "demo": self._demo,
                                        "run_tag": run_tag,
                                        "recv_window_ms": self._recv_window})
+
+    @property
+    def stream_host(self) -> str:
+        """User-stream socket host for the integration (demo-aware)."""
+        if self._demo and self._base_url == DEMO_FAPI_URL:
+            return DEMO_FSTREAM_URL
+        return self._base_url.replace("https://", "wss://").replace(
+            "http://", "ws://") + "/stream"
+
+    def _fill_exec_id(self, symbol: str, trade_id: str) -> str:
+        """Cross-symbol fill key: venue/account/symbol/trade (W3-24H)."""
+        return f"{self._venue}/{self._account_tag}/{symbol}/{trade_id}"
+
+    def _rebuild_from_journal(self) -> None:
+        """Rebuild reservation/role/order IDs + booked fills + UNKNOWNs.
+
+        Runs at construction so a restarted process resumes with the
+        same identities, dedup set, and exposure blocks — no replayed
+        fill, no lost unknown, no forgotten role.
+        """
+        symbols: dict[str, str] = {}
+        for record in self._read_journal():
+            if record.get("event") == "submit-intent" and record.get("client_id"):
+                symbols[str(record["client_id"])] = str(record.get("symbol", ""))
+        for record in self._read_journal():
+            event, cid = record.get("event"), record.get("client_id")
+            if event == "submit-intent" and cid:
+                self._roles[str(cid)] = str(record.get("role", "entry"))
+                res = record.get("reservation_id")
+                self._reservations[str(cid)] = str(res) if res else None
+                if record.get("algo") or record.get("kind") in ALGO_ORDER_TYPES:
+                    self._algo.add(str(cid))
+                self._states.setdefault(str(cid), "open")
+            elif event in ("submitted", "lookup", "user-order-state") and cid:
+                state = record.get("state")
+                if state:
+                    self._states[str(cid)] = str(state)
+            elif event in ("submit-outcome-unknown", "recover-unknown") and cid:
+                self._states[str(cid)] = "UNKNOWN"
+            elif event == "cancel-unknown" and cid:
+                self._states[str(cid)] = "CANCEL_UNKNOWN"
+            elif event == "algo-triggered" and cid:
+                trig = record.get("triggered_id")
+                if trig:
+                    self._triggered[str(cid)] = str(trig)
+            elif event == "lookup-void" and cid:
+                self._states[str(cid)] = "void"
+            elif event in ("cancel-acked",) and cid:
+                self._states[str(cid)] = "cancelled"
+            elif event == "fill-adopted" and cid:
+                tid = str(record.get("trade_id", ""))
+                symbol = (str(record.get("symbol", ""))
+                          or symbols.get(str(cid), ""))
+                if tid and symbol:
+                    self._trades_booked.add(f"{symbol}/{tid}")
 
     # -- journal (persist-before-side-effect) --------------------------------
     def _journal(self, event: str, payload: dict[str, Any]) -> None:
@@ -276,16 +385,18 @@ class BinanceLiveEngine:
                             {"symbol": symbol})
         self._fee_bps[symbol] = float(fees["takerCommissionRate"]) * 10000.0
         account = self._signed("GET", "/fapi/v2/account")
-        if account.get("dualSidePosition") is True:
-            raise VenueRejectedError(0, None, "hedge mode not supported: "
-                                     "one-way position mode required")
+        # W3-24H: documented position fields only (isolated, positionSide).
+        # One-way mode = every position carries positionSide BOTH.
         for pos in account.get("positions", []):
+            if str(pos.get("positionSide", "BOTH")) != "BOTH":
+                raise VenueRejectedError(0, None, "hedge mode not supported: "
+                                         "one-way position mode required")
             if str(pos.get("symbol", "")).upper() != symbol:
                 continue
-            if str(pos.get("marginType", "")).upper() != self._margin_type:
+            if bool(pos.get("isolated", False)) != self._isolated:
                 raise VenueRejectedError(
-                    0, None, f"{symbol} marginType "
-                    f"{pos.get('marginType')} != expected {self._margin_type}")
+                    0, None, f"{symbol} isolated "
+                    f"{pos.get('isolated')} != expected {self._isolated}")
         actual = int(self._signed("POST", "/fapi/v1/leverage",
                                   {"symbol": symbol,
                                    "leverage": self._leverage})["leverage"])
@@ -306,8 +417,11 @@ class BinanceLiveEngine:
     def _unknown_for(self, reservation_id: str | None) -> list[str]:
         if reservation_id is None:
             return []
+        # CANCEL_UNKNOWN blocks too: the order may or may not be live —
+        # exposure is unknown until a lookup resolves it.
         return [cid for cid, res in self._reservations.items()
-                if res == reservation_id and self._states.get(cid) == "UNKNOWN"]
+                if res == reservation_id
+                and self._states.get(cid) in ("UNKNOWN", "CANCEL_UNKNOWN")]
 
     def submit(self, cmd: EngineOrder) -> str:
         """Submit one order; returns the journaled client id.
@@ -321,12 +435,14 @@ class BinanceLiveEngine:
             raise RuntimeError("engine is closed")
         if self._exit_only and cmd.role == "entry":
             raise ValueError("exit-only: entries refused")
-        self._ensure_ready(cmd.instrument.upper())
+        # Refuse-before-network: a predetermined refusal never touches
+        # the venue (also keeps the unknown block working pre-readiness).
         blocked = self._unknown_for(cmd.reservation_id)
         if blocked:
             raise UnknownOutcomeError(
                 blocked[0], "lookup must resolve the unknown outcome "
                             "before new exposure")
+        self._ensure_ready(cmd.instrument.upper())
         return self._submit_order(cmd, price_override=None)
 
     def submit_immediate(self, cmd: EngineOrder) -> str:
@@ -339,12 +455,12 @@ class BinanceLiveEngine:
         """Price-protected marketable IOC entry (LIMIT IOC at the cap)."""
         if self._exit_only and cmd.role == "entry":
             raise ValueError("exit-only: entries refused")
-        self._ensure_ready(cmd.instrument.upper())
         blocked = self._unknown_for(cmd.reservation_id)
         if blocked:
             raise UnknownOutcomeError(
                 blocked[0], "lookup must resolve the unknown outcome "
                             "before new exposure")
+        self._ensure_ready(cmd.instrument.upper())
         return self._submit_order(cmd, price_override=("LIMIT", limit_price))
 
     def _submit_order(self, cmd: EngineOrder,
@@ -369,31 +485,42 @@ class BinanceLiveEngine:
         reduce_only = cmd.reduce_only or cmd.role in ("stop", "target")
         if cmd.role in ("stop", "target") and not reduce_only:
             raise AssertionError("unreachable: exits are always reduce-only")
+        # W3-24H algoOrder cutover (2025-12-09): conditional types ride
+        # /fapi/v1/algoOrder with algoType=CONDITIONAL; legacy posts to
+        # /fapi/v1/order get -4120 STOP_ORDER_SWITCH_ALGO (never sent).
+        is_algo = kind in ALGO_ORDER_TYPES
+        cid = self._new_client_id()
         params: dict[str, Any] = {
             "symbol": symbol, "side": _side_venue(cmd.side), "type": kind,
             "quantity": repr(qty),
-            "newClientOrderId": self._new_client_id(),
         }
+        if is_algo:
+            params["algoType"] = "CONDITIONAL"
+            params["clientAlgoId"] = cid
+        else:
+            params["newClientOrderId"] = cid
         if kind == "LIMIT":
             assert price is not None
             params["price"] = repr(round_to_tick(price, filt["tick"]))
             params["timeInForce"] = "IOC"
-        if kind in ("STOP_MARKET", "TAKE_PROFIT_MARKET"):
+        if is_algo:
             assert cmd.stop_price is not None
             params["stopPrice"] = repr(round_to_tick(cmd.stop_price, filt["tick"]))
             params["workingType"] = self._working_type
         if reduce_only:
             params["reduceOnly"] = "true"
-        cid = params["newClientOrderId"]
         self._journal("submit-intent", {"client_id": cid, "symbol": symbol,
                                         "side": cmd.side, "kind": kind,
                                         "qty": qty, "params": params,
-                                        "role": cmd.role,
+                                        "role": cmd.role, "algo": is_algo,
                                         "reservation_id": cmd.reservation_id})
         self._roles[cid] = cmd.role
         self._reservations[cid] = cmd.reservation_id
+        if is_algo:
+            self._algo.add(cid)
+        path = "/fapi/v1/algoOrder" if is_algo else "/fapi/v1/order"
         try:
-            view = self._signed("POST", "/fapi/v1/order", params)
+            view = self._signed("POST", path, params)
         except VenueHttpError as exc:
             if exc.status in UNKNOWN_HTTP_STATUSES:
                 self._states[cid] = "UNKNOWN"
@@ -401,10 +528,16 @@ class BinanceLiveEngine:
                               {"client_id": cid, "reason": str(exc)})
                 raise UnknownOutcomeError(cid, str(exc)) from None
             raise
-        self._states[cid] = _local_state(str(view.get("status", "NEW")))
-        self._journal("submitted", {"client_id": cid,
-                                    "order_id": view.get("orderId"),
-                                    "state": self._states[cid]})
+        if is_algo:
+            self._states[cid] = _local_state(str(view.get("algoStatus", "WORKING")))
+            self._journal("submitted", {"client_id": cid,
+                                        "algo_id": view.get("algoId"),
+                                        "state": self._states[cid]})
+        else:
+            self._states[cid] = _local_state(str(view.get("status", "NEW")))
+            self._journal("submitted", {"client_id": cid,
+                                        "order_id": view.get("orderId"),
+                                        "state": self._states[cid]})
         self._orders_cache = None
         return cid
 
@@ -412,26 +545,41 @@ class BinanceLiveEngine:
     def lookup(self, client_id: str) -> EngineOrderStatus | None:
         """Resolve one order's venue truth (unknown-outcome lookup).
 
-        Returns None when the venue never saw the id (order voided);
-        otherwise adopts status + cumulative fills and queues delta
+        Algo ids query /fapi/v1/algoOrder (algoStatus + triggered id);
+        vanilla ids query /fapi/v1/order. Returns None when the venue
+        never saw the id (order voided); otherwise adopts status + fills
+        (fills ride the triggered order once an algo fires) and queues
         EngineFill events for poll().
         """
         symbol = self._symbol_of(client_id)
-        try:
-            view = self._signed("GET", "/fapi/v1/order",
-                                {"symbol": symbol,
-                                 "origClientOrderId": client_id})
-        except VenueRejectedError as exc:
-            if exc.code == -2013:  # unknown order: the venue never saw it.
-                self._states[client_id] = "void"
-                self._journal("lookup-void", {"client_id": client_id})
+        is_algo = client_id in self._algo
+        if is_algo:
+            view = self._lookup_algo(client_id, symbol)
+            if view is None:
                 return None
-            raise
-        state = _local_state(str(view.get("status", "")))
+            state = _local_state(str(view.get("algoStatus", "")))
+            trig = view.get("triggeredOrderId")
+            if trig:
+                self._triggered[client_id] = str(trig)
+                self._journal("algo-triggered", {"client_id": client_id,
+                                                 "triggered_id": str(trig)})
+            trades_id = trig if trig else view.get("algoId")
+        else:
+            try:
+                view = self._signed("GET", "/fapi/v1/order",
+                                    {"symbol": symbol,
+                                     "origClientOrderId": client_id})
+            except VenueRejectedError as exc:
+                if exc.code == -2013:  # unknown: the venue never saw it.
+                    self._states[client_id] = "void"
+                    self._journal("lookup-void", {"client_id": client_id})
+                    return None
+                raise
+            state = _local_state(str(view.get("status", "")))
+            trades_id = view.get("orderId")
         self._states[client_id] = state
         exec_qty = float(view.get("executedQty", 0.0) or 0.0)
-        self._adopt_user_trades(client_id, symbol, view.get("orderId"),
-                                exec_qty)
+        self._adopt_user_trades(client_id, symbol, trades_id, exec_qty)
         self._journal("lookup", {"client_id": client_id, "state": state,
                                  "executed_qty": exec_qty})
         self._orders_cache = None
@@ -440,6 +588,18 @@ class BinanceLiveEngine:
             qty=float(view.get("origQty", 0.0) or 0.0), filled_qty=exec_qty,
             reservation_id=self._reservations.get(client_id),
             role=self._roles.get(client_id, "entry"))
+
+    def _lookup_algo(self, client_id: str, symbol: str) -> dict | None:
+        try:
+            return self._signed("GET", "/fapi/v1/algoOrder",
+                                {"symbol": symbol,
+                                 "origClientAlgoId": client_id})
+        except VenueRejectedError as exc:
+            if exc.code == -2013:
+                self._states[client_id] = "void"
+                self._journal("lookup-void", {"client_id": client_id})
+                return None
+            raise
 
     def unknown_ids(self) -> tuple[str, ...]:
         """Journaled UNKNOWN client ids (integration must lookup each)."""
@@ -464,19 +624,23 @@ class BinanceLiveEngine:
             tid = str(trade.get("id", ""))
             qty = float(trade.get("qty", 0.0) or 0.0)
             booked += qty
-            if tid and tid in self._trades_booked:
+            key = f"{symbol}/{tid}"
+            if tid and key in self._trades_booked:
                 continue
             if tid:
-                self._trades_booked.add(tid)
+                self._trades_booked.add(key)
             asset = str(trade.get("commissionAsset", "USDT"))
             if asset != "USDT":
                 raise ValueError(
                     f"non-USDT commission {asset} on trade {tid}: "
                     f"multi-asset fees need explicit support")
             now = self._now_utc()
+            exec_id = (self._fill_exec_id(symbol, tid) if tid
+                       else f"{self._venue}/{self._account_tag}/{symbol}/"
+                            f"notrade:{client_id}:{qty:.12f}")
             self._pending.append(EngineEvent(
                 "fill",
-                EngineFill(execution_id=f"live:{tid or client_id}:{qty:.12f}",
+                EngineFill(execution_id=exec_id,
                            client_order_id=client_id, instrument=symbol,
                            side=self._venue_side_of(client_id),
                            qty=qty, price=float(trade.get("price", 0.0)),
@@ -484,7 +648,8 @@ class BinanceLiveEngine:
                            ts_utc=now, liquidity="taker"),
                 now))
             self._journal("fill-adopted", {"client_id": client_id,
-                                           "trade_id": tid, "qty": qty})
+                                           "symbol": symbol, "trade_id": tid,
+                                           "qty": qty})
         if abs(booked - exec_qty) > 1e-9:
             self._journal("fills-unreconciled",
                           {"client_id": client_id, "executed_qty": exec_qty,
@@ -512,27 +677,59 @@ class BinanceLiveEngine:
 
     # -- cancel / orders / poll ---------------------------------------------------
     def cancel(self, client_order_id: str, reason: str) -> None:
+        """Cancel one order, preserving unknown exposure (W3-24H).
+
+        Cancelling an UNKNOWN order looks up first (never assume the
+        cancel landed). A cancel whose own outcome is unknown journals
+        CANCEL_UNKNOWN and keeps blocking new exposure until lookup.
+        Not-found (-2013) voids only orders with no adopted fills —
+        partial fills plus not-found is contradictory and fails loudly.
+        """
         if self._closed:
             raise RuntimeError("engine is closed")
         symbol = self._symbol_of(client_order_id)
+        if self._states.get(client_order_id) in ("UNKNOWN", "CANCEL_UNKNOWN"):
+            resolved = self.lookup(client_order_id)
+            if resolved is None or resolved.state in ("filled", "cancelled",
+                                                      "void"):
+                return  # lookup settled it: nothing left to cancel.
         self._journal("cancel-request", {"client_id": client_order_id,
                                          "reason": reason})
+        is_algo = client_order_id in self._algo
+        path = "/fapi/v1/algoOrder" if is_algo else "/fapi/v1/order"
+        id_key = "origClientAlgoId" if is_algo else "origClientOrderId"
         try:
-            self._signed("DELETE", "/fapi/v1/order",
-                         {"symbol": symbol,
-                          "origClientOrderId": client_order_id})
+            self._signed("DELETE", path,
+                         {"symbol": symbol, id_key: client_order_id})
         except VenueRejectedError as exc:
-            if exc.code == -2013:  # already gone at the venue: adopt.
+            if exc.code == -2013:
+                if self.filled_qty(client_order_id) > 0:
+                    raise ValueError(
+                        f"venue reports {client_order_id} never existed "
+                        f"but fills were adopted: reconcile manually") from None
                 self._states[client_order_id] = "void"
                 self._journal("cancel-void", {"client_id": client_order_id})
                 return
+            raise
+        except VenueHttpError as exc:
+            if exc.status in UNKNOWN_HTTP_STATUSES:
+                self._states[client_order_id] = "CANCEL_UNKNOWN"
+                self._journal("cancel-unknown", {"client_id": client_order_id,
+                                                 "reason": str(exc)})
+                raise UnknownOutcomeError(client_order_id, str(exc)) from None
             raise
         self._states[client_order_id] = "cancelled"
         self._journal("cancel-acked", {"client_id": client_order_id})
         self._orders_cache = None
 
     def open_orders(self) -> list[EngineOrderStatus]:
-        """Venue open orders, TTL-cached (hot Session path must not REST-spam)."""
+        """Venue open orders (vanilla + algo), TTL-cached, BOT-ORDERS ONLY.
+
+        The hot Session path must not REST-spam, and foreign orders
+        (manual/testnet strays) must never enter protection math: only
+        journaled client ids are returned; ignored strays are journaled
+        loudly by count.
+        """
         if self._closed:
             raise RuntimeError("engine is closed")
         now_s = self._now_utc().timestamp()
@@ -541,15 +738,39 @@ class BinanceLiveEngine:
             if now_s - cached_at < self._orders_ttl:
                 return list(cached)
         views = self._signed("GET", "/fapi/v1/openOrders")
-        out = [EngineOrderStatus(
-            client_order_id=str(v.get("clientOrderId", "")),
-            instrument=str(v.get("symbol", "")),
-            state=_local_state(str(v.get("status", "NEW"))),
-            qty=float(v.get("origQty", 0.0) or 0.0),
-            filled_qty=float(v.get("executedQty", 0.0) or 0.0),
-            reservation_id=self._reservations.get(str(v.get("clientOrderId", ""))),
-            role=self._roles.get(str(v.get("clientOrderId", "")), "entry"))
-            for v in views]
+        algo_views = self._signed("GET", "/fapi/v1/openAlgoOrders")
+        journaled = set(self._reservations)
+        out: list[EngineOrderStatus] = []
+        ignored = 0
+        for v in views:
+            cid = str(v.get("clientOrderId", ""))
+            if cid not in journaled:
+                ignored += 1
+                continue
+            out.append(EngineOrderStatus(
+                client_order_id=cid, instrument=str(v.get("symbol", "")),
+                state=_local_state(str(v.get("status", "NEW"))),
+                qty=float(v.get("origQty", 0.0) or 0.0),
+                filled_qty=float(v.get("executedQty", 0.0) or 0.0),
+                reservation_id=self._reservations.get(cid),
+                role=self._roles.get(cid, "entry")))
+        for v in algo_views:
+            cid = str(v.get("clientAlgoId", v.get("clientOrderId", "")))
+            if cid not in journaled:
+                ignored += 1
+                continue
+            trig = v.get("triggeredOrderId")
+            if trig:
+                self._triggered[cid] = str(trig)
+            out.append(EngineOrderStatus(
+                client_order_id=cid, instrument=str(v.get("symbol", "")),
+                state=_local_state(str(v.get("algoStatus", "WORKING"))),
+                qty=float(v.get("origQty", 0.0) or 0.0),
+                filled_qty=float(v.get("executedQty", 0.0) or 0.0),
+                reservation_id=self._reservations.get(cid),
+                role=self._roles.get(cid, "entry")))
+        if ignored:
+            self._journal("foreign-orders-ignored", {"count": ignored})
         self._orders_cache = (now_s, out)
         return list(out)
 
@@ -581,13 +802,38 @@ class BinanceLiveEngine:
         kind = payload.get("e")
         if kind == "ORDER_TRADE_UPDATE":
             self._note_order_trade(payload.get("o", {}), payload)
+        elif kind == "ALGO_UPDATE":
+            self._note_algo_update(payload.get("o", {}), payload)
         elif kind == "ACCOUNT_UPDATE":
+            self._account_snapshot = payload
             self._journal("account-update", {"event_time": payload.get("E")})
         elif kind == "listenKeyExpired":
             self._listen_key = None
             self._journal("listen-key-expired", {})
         else:
             raise ValueError(f"unknown user-stream event: {kind!r}")
+
+    def _note_algo_update(self, order: dict[str, Any], envelope: dict) -> None:
+        """ALGO_UPDATE: algo status + triggered-id tracking (W3-24H).
+
+        Shape: {"e": "ALGO_UPDATE", "E": ms, "o": {"s", "c" (client
+        algo id), "S", "X" (algoStatus), "x", "i" (algoId),
+        "ti" (triggered order id, 0 until fired)}}. Fills ride the
+        triggered order (TRADE events / userTrades), never this event.
+        """
+        for key in ("s", "c", "S", "X", "x"):
+            if key not in order:
+                raise ValueError(f"ALGO_UPDATE missing {key!r}")
+        cid = str(order["c"])
+        self._states[cid] = _local_state(str(order["X"]))
+        trig = order.get("ti") or order.get("triggeredOrderId")
+        if trig:
+            self._triggered[cid] = str(trig)
+            self._journal("algo-triggered", {"client_id": cid,
+                                             "triggered_id": str(trig)})
+        self._journal("user-order-state",
+                      {"client_id": cid, "state": self._states[cid],
+                       "algo": True})
 
     def _note_order_trade(self, order: dict[str, Any], envelope: dict) -> None:
         for key in ("s", "c", "S", "X", "x"):
@@ -608,29 +854,47 @@ class BinanceLiveEngine:
                 f"non-USDT commission {asset} on {cid}: multi-asset fees "
                 f"need explicit support")
         tid = str(order.get("t", ""))
-        if tid and tid in self._trades_booked:
+        symbol = str(order["s"])
+        key = f"{symbol}/{tid}"
+        if tid and key in self._trades_booked:
             return  # lookup() already adopted this trade.
         if tid:
-            self._trades_booked.add(tid)
+            self._trades_booked.add(key)
         ts = envelope.get("E")
         now = (datetime.fromtimestamp(ts / 1000, tz=timezone.utc)
                if isinstance(ts, (int, float)) else self._now_utc())
+        exec_id = (self._fill_exec_id(symbol, tid) if tid
+                   else f"{self._venue}/{self._account_tag}/{symbol}/"
+                        f"notrade:{cid}:{last_qty:.12f}")
         self._pending.append(EngineEvent(
             "fill",
-            EngineFill(execution_id=f"live:{tid or cid}:{last_qty:.12f}",
-                       client_order_id=cid, instrument=str(order["s"]),
+            EngineFill(execution_id=exec_id,
+                       client_order_id=cid, instrument=symbol,
                        side=str(order["S"]), qty=last_qty,
                        price=float(order.get("L", 0.0) or 0.0),
                        fee=float(order.get("n", 0.0) or 0.0),
                        ts_utc=now, liquidity="taker"),
             now))
-        self._journal("fill-adopted", {"client_id": cid, "trade_id": tid,
-                                       "qty": last_qty, "via": "user-stream"})
+        self._journal("fill-adopted", {"client_id": cid, "symbol": symbol,
+                                       "trade_id": tid, "qty": last_qty,
+                                       "via": "user-stream"})
 
     # -- listenKey lifecycle ----------------------------------------------------------
+    def _keyed(self, method: str, path: str,
+               params: dict[str, Any] | None = None) -> Any:
+        """API-key-authenticated call (listenKey lifecycle needs the key
+        header but no signature)."""
+        try:
+            return self._transport.request(method, path, dict(params or {}),
+                                           {"X-MBX-APIKEY": self._key})
+        except VenueHttpError as exc:
+            if exc.status in UNKNOWN_HTTP_STATUSES:
+                raise
+            raise VenueRejectedError(exc.status, exc.code, exc.msg) from None
+
     def open_listen_key(self) -> str:
         """Create a user-stream listenKey (the socket dials it elsewhere)."""
-        self._listen_key = str(self._public("POST", "/fapi/v1/listenKey")
+        self._listen_key = str(self._keyed("POST", "/fapi/v1/listenKey")
                                ["listenKey"])
         self._journal("listen-key-open", {})
         return self._listen_key
@@ -638,8 +902,29 @@ class BinanceLiveEngine:
     def keepalive_listen_key(self) -> None:
         if self._listen_key is None:
             raise ValueError("no listen key open")
-        self._public("PUT", "/fapi/v1/listenKey")
+        self._keyed("PUT", "/fapi/v1/listenKey")
         self._journal("listen-key-keepalive", {})
+
+    def stream_reconnected(self) -> None:
+        """Heal a user-stream gap: look up every journaled non-terminal
+        order (a dropped socket may have lost TRADE events)."""
+        self._journal("stream-reconnected", {})
+        seen: set[str] = set()
+        for record in self._read_journal():
+            if record.get("event") != "submit-intent":
+                continue
+            cid = str(record.get("client_id", ""))
+            if not cid or cid in seen:
+                continue
+            seen.add(cid)
+            if self._states.get(cid, "open") in (
+                    "filled", "cancelled", "rejected", "expired", "void"):
+                continue
+            self.lookup(cid)
+
+    def account_snapshot(self) -> dict[str, Any] | None:
+        """Latest ACCOUNT_UPDATE payload (None before the first)."""
+        return self._account_snapshot
 
     # -- marks / margin / funding (valuation + reconcile inputs) ------------------------
     def note_mark(self, instrument: str, price: float,
@@ -748,7 +1033,7 @@ class BinanceLiveEngine:
         self._closed = True
         if self._listen_key is not None:
             try:
-                self._transport.request("DELETE", "/fapi/v1/listenKey", {}, {})
+                self._keyed("DELETE", "/fapi/v1/listenKey")
             except VenueHttpError as exc:
                 self._journal("listen-key-close-failed",
                               {"reason": str(exc)})

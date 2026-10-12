@@ -14,6 +14,7 @@ __all__ = [
     "UnknownOutcomeError",
     "VenueHttpError",
     "VenueRejectedError",
+    "caller_action",
 ]
 
 
@@ -23,7 +24,7 @@ def __getattr__(name: str) -> Any:
         return {"ENGINE_VERSION": ENGINE_VERSION,
                 "NautilusPaperEngine": NautilusPaperEngine}[name]
     if name in ("BinanceLiveEngine", "UnknownOutcomeError", "VenueHttpError",
-                "VenueRejectedError"):
+                "VenueRejectedError", "caller_action"):
         from . import binance_live
         return getattr(binance_live, name)
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

@@ -68,8 +68,12 @@ class RiskState:
     current_day: str | None = None
     day_start_equity: float | None = None
     needs_reconciliation: bool = True
-    halt_days: dict[str, str] = field(default_factory=dict)
+    operating_stop_days: dict[str, str] = field(default_factory=dict)
     pause_days: dict[str, str] = field(default_factory=dict)
+    # W3-24H emergency latch: persists across day rolls; cleared only by an
+    # explicit reconciled recovery (never by time).
+    emergency_latched: bool = False
+    emergency_since_utc: str | None = None
     original_equity: float | None = None
     peak_realised: float = 0.0
     profit_floor: float | None = None
@@ -88,8 +92,10 @@ class RiskState:
             "current_day": self.current_day,
             "day_start_equity": self.day_start_equity,
             "needs_reconciliation": self.needs_reconciliation,
-            "halt_days": dict(self.halt_days),
+            "operating_stop_days": dict(self.operating_stop_days),
             "pause_days": dict(self.pause_days),
+            "emergency_latched": self.emergency_latched,
+            "emergency_since_utc": self.emergency_since_utc,
             "original_equity": self.original_equity,
             "peak_realised": self.peak_realised,
             "profit_floor": self.profit_floor,
@@ -116,8 +122,13 @@ class RiskState:
             current_day=raw.get("current_day"),
             day_start_equity=raw.get("day_start_equity"),
             needs_reconciliation=bool(raw.get("needs_reconciliation", True)),
-            halt_days=dict(raw.get("halt_days", {})),
+            # Legacy halt_days map to operating stops (same blocking
+            # behavior, same daily expiry — safe direction).
+            operating_stop_days=dict(raw.get(
+                "operating_stop_days", raw.get("halt_days", {}))),
             pause_days=dict(raw.get("pause_days", {})),
+            emergency_latched=bool(raw.get("emergency_latched", False)),
+            emergency_since_utc=raw.get("emergency_since_utc"),
             original_equity=raw.get("original_equity"),
             peak_realised=float(raw.get("peak_realised", 0.0)),
             profit_floor=raw.get("profit_floor"),

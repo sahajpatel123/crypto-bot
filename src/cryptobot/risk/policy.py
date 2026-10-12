@@ -91,14 +91,12 @@ class RiskPolicy:
             return Rejected("health:day-open-needs-reconciliation")
         day_start = self._state.day_start_equity
 
-        marked_adj = self._adjust_day(account.marked_equity, account.flows_cumulative)
         netliq_adj = self._adjust_day(account.net_liquidation, account.flows_cumulative)
-        if today in self._state.halt_days:
-            return Rejected("halt:daily-loss")
-        if marked_adj <= day_start * (1 - cfg.daily_loss_halt_pct):
-            self._state.halt_days[today] = "daily-loss"
-            save_state(self.state_path, self._state)
-            return Rejected("halt:daily-loss")
+        # W3-24H §4 stops key on flow-adjusted net liquidation (net of
+        # costs) vs the reconciled day start. Emergency dominates.
+        stop, _ = self._check_stops(netliq_adj, day_start, today, now)
+        if stop is not None:
+            return Rejected(stop)
 
         if today in self._state.pause_days:
             return Rejected("pause:daily-target")
@@ -184,8 +182,10 @@ class RiskPolicy:
             return HealthStatus(False, ("health:day-open-needs-reconciliation",),
                                 tuple(latched))
         if account is None:
-            if today in self._state.halt_days:
-                reasons.append("halt:daily-loss")
+            if self._state.emergency_latched:
+                reasons.append("halt:emergency")
+            if today in self._state.operating_stop_days:
+                reasons.append("halt:operating-stop")
             if today in self._state.pause_days:
                 reasons.append("pause:daily-target")
             if self._settle_expired(now):
@@ -193,14 +193,19 @@ class RiskPolicy:
             self._record_tick(now)
             save_state(self.state_path, self._state)
             return HealthStatus(not reasons, tuple(reasons), tuple(latched))
+        mark_block = self._check_mark_age(account)
+        if mark_block is not None:
+            self._record_tick(now)
+            save_state(self.state_path, self._state)
+            return HealthStatus(False, (mark_block,), tuple(latched))
         day_start = self._state.day_start_equity
-        marked_adj = self._adjust_day(account.marked_equity, account.flows_cumulative)
         netliq_adj = self._adjust_day(account.net_liquidation, account.flows_cumulative)
-        if today not in self._state.halt_days and marked_adj <= day_start * (1 - cfg.daily_loss_halt_pct):
-            self._state.halt_days[today] = "daily-loss"
-            latched.append("halt")
-        if today in self._state.halt_days:
-            reasons.append("halt:daily-loss")
+        stop, just_latched = self._check_stops(netliq_adj, day_start, today, now)
+        if just_latched:
+            latched.append("emergency" if stop == "halt:emergency"
+                           else "operating-stop")
+        if stop is not None:
+            reasons.append(stop)
         if today not in self._state.pause_days and netliq_adj >= day_start * (1 + cfg.daily_target_pct):
             self._state.pause_days[today] = "daily-target"
             latched.append("pause")
@@ -403,6 +408,9 @@ class RiskPolicy:
             return Rejected("stale:future-evidence")
         if not self._validate_account(account):
             return Rejected("health:nonfinite-account")
+        mark_block = self._check_mark_age(account)
+        if mark_block is not None:
+            return Rejected(mark_block)
         return None
 
     def _validate_account(self, account: AccountSnapshot) -> bool:
@@ -416,7 +424,97 @@ class RiskPolicy:
         if account.fee_buffer_usdt < 0 or account.inflight_exposure_usdt < 0:
             return False
         margin = account.available_margin_usdt
-        return margin is None or (_finite(margin) and margin >= 0)
+        if margin is not None and not (_finite(margin) and margin >= 0):
+            return False
+        age = account.mark_age_ms
+        return age is None or (_finite(age) and age >= 0)
+
+    def _check_mark_age(self, account: AccountSnapshot) -> str | None:
+        """W3-24H stale-mark block (fail closed when configured)."""
+        limit = self.config.max_mark_age_ms
+        if limit is None:
+            return None
+        if account.mark_age_ms is None:
+            return "health:mark-age-unknown"
+        if account.mark_age_ms > limit:
+            return "health:stale-mark"
+        return None
+
+    def _check_stops(self, netliq_adj: float, day_start: float, today: str,
+                     now: datetime) -> tuple[str | None, bool]:
+        """Latch/check operating + emergency stops. Returns (reason, latched-now).
+
+        Emergency dominates and persists across day rolls; the operating
+        stop is per-day. Both persist immediately (the emergency persist
+        requirement is structural — every latch saves state).
+        """
+        cfg = self.config
+        if self._state.emergency_latched:
+            return "halt:emergency", False
+        if netliq_adj <= day_start * (1 - cfg.emergency_stop_pct):
+            self._state.emergency_latched = True
+            self._state.emergency_since_utc = now.isoformat()
+            save_state(self.state_path, self._state)
+            return "halt:emergency", True
+        if today in self._state.operating_stop_days:
+            return "halt:operating-stop", False
+        if netliq_adj <= day_start * (1 - cfg.operating_stop_pct):
+            self._state.operating_stop_days[today] = "operating-stop"
+            save_state(self.state_path, self._state)
+            return "halt:operating-stop", True
+        return None, False
+
+    def emergency_active(self) -> bool:
+        """True while the emergency latch stands (any day)."""
+        return self._state.emergency_latched
+
+    def operating_stopped(self, today: str | None = None) -> bool:
+        """True while today's operating stop stands."""
+        day = today or accounting_date(self._now_utc()).isoformat()
+        return day in self._state.operating_stop_days
+
+    def pending_stop_actions(
+            self, account: AccountSnapshot | None = None) -> tuple[str, ...]:
+        """Stop ACTION demands for the session to execute (W3-24H §4).
+
+        Entries are already blocked by the matching halt reasons; this is
+        the ACTION side: cancel pending orders and reduce/close exposure
+        while any exposure remains, plus the emergency operator alert.
+        Derived from live exposure every call — the list empties itself
+        as the session flattens (no handshake to desync).
+        """
+        today = accounting_date(self._now_utc()).isoformat()
+        emergency = self._state.emergency_latched
+        operating = today in self._state.operating_stop_days
+        if not (emergency or operating):
+            return ()
+        exposure = (self._state.open_position or self._state.reservations
+                    or self._state.unresolved or self._booked_nonzero_global()
+                    or (account is not None and account.open_position))
+        actions: list[str] = []
+        if emergency:
+            actions.append("alert_operator")
+        if exposure:
+            actions.extend(("cancel_pending_orders", "reduce_exposure"))
+        return tuple(actions)
+
+    def recover_from_emergency(self, account: AccountSnapshot) -> bool:
+        """Clear the emergency latch only on reconciled flat (W3-24H §4).
+
+        True when no latch stands or when the book proves flat (no live
+        reservations, no unresolved, booked zero, no open position on
+        either side). False refuses — time alone never recovers.
+        """
+        if not self._state.emergency_latched:
+            return True
+        if (self._state.reservations or self._state.unresolved
+                or self._booked_nonzero_global()
+                or self._state.open_position or account.open_position):
+            return False
+        self._state.emergency_latched = False
+        self._state.emergency_since_utc = None
+        save_state(self.state_path, self._state)
+        return True
 
     def _roll_day_if_needed(self, now: datetime, today: str) -> bool:
         if self._state.current_day == today:

@@ -131,7 +131,8 @@ def test_funding_arms_floor_and_drawdown_halts(tmp_path):
 
 def test_same_drawdown_without_funding_arms_no_floor(tmp_path):
     sl = _slice(tmp_path, "control")
-    sl.ledger.record_funding(-50.0, NOW, event_id="f1")
+    # W3-24H: -40 stays above the 0.5% operating stop (-50 would trip it).
+    sl.ledger.record_funding(-40.0, NOW, event_id="f1")
     status = sl.policy.check_health(sl.snapshot(100.0, 0.0))
-    assert status.ok  # realised -50 never arms the floor; no halt
+    assert status.ok  # realised -40 never arms the floor; no halt
     assert status.reasons == ()

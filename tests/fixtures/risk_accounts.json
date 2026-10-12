@@ -13,12 +13,12 @@
     "net_liquidation": 10004.0, "net_realised_global": 0.0, "open_position": true
   },
   "halt_trigger": {
-    "_note": "Marked -1.01% vs 10k day start: must engage daily halt.",
+    "_note": "Net -1.02% vs 10k day start: must engage emergency (W3-24H).",
     "reconciled_equity": 9899.0, "marked_equity": 9899.0,
     "net_liquidation": 9898.0, "net_realised_global": -101.0, "open_position": false
   },
   "just_above_halt": {
-    "_note": "Marked -0.5%: must NOT halt.",
+    "_note": "Net -0.51%: trips the 0.5% operating stop (W3-24H).",
     "reconciled_equity": 9950.0, "marked_equity": 9950.0,
     "net_liquidation": 9949.0, "net_realised_global": -50.0, "open_position": false
   },
