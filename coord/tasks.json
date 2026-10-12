@@ -303,8 +303,136 @@
    "owner_session": "cool-amalthea",
    "role": "Worker 3 \u2014 Risk, Verification and Reliability Engineer",
    "state": "assigned"
+  },
+  "Q-005": {
+   "owner_session": "whisper-redshift",
+   "role": "Worker 1 \u2014 Quant Research and Strategy Engineer",
+   "state": "dispatched",
+   "contract_version": "v0.2.0+app_runtime_interfaces.md S1/S2",
+   "dependencies": [
+    "specs/app_runtime_interfaces.md S1/S2",
+    "specs/depth_flow_availability.md (E-007 via manager)"
+   ],
+   "acceptance": [
+    "S1-S4 runtime boundary + typed exits",
+    "causal time, pure evaluate",
+    "S5 recheck + baseline or precise ineligible reason",
+    "frozen S5 params",
+    "suite green"
+   ],
+   "evidence_required": [
+    "repro + counts",
+    "boundary trace",
+    "S5 verdict",
+    "base/branch IDs"
+   ],
+   "allowed_paths": [
+    "src/cryptobot/strategies/",
+    "src/cryptobot/features/",
+    "specs/strategies/",
+    "tests/unit/test_strategies_*",
+    "coord/outbox/Q-005.json"
+   ]
+  },
+  "Q-006": {
+   "owner_session": "whisper-redshift",
+   "role": "Worker 1 \u2014 Quant Research and Strategy Engineer",
+   "state": "dispatched",
+   "contract_version": "v0.2.0+app_runtime_interfaces.md",
+   "dependencies": [
+    "EXP-003/004 manifests",
+    "runtime policy via integration"
+   ],
+   "acceptance": [
+    "EXP-003 60 + EXP-004 40 trials, totals reconciled, NONE",
+    "observed return eval, embargo + holdout",
+    "closed-trade gross/net with costs",
+    "suite green"
+   ],
+   "evidence_required": [
+    "trial totals",
+    "method + holdout record",
+    "return tables",
+    "base/branch IDs"
+   ],
+   "allowed_paths": [
+    "src/cryptobot/research/",
+    "tests/unit/test_research_*",
+    "specs/exp-*",
+    "specs/EXP-*",
+    "coord/outbox/Q-006.json"
+   ]
+  },
+  "E-007": {
+   "owner_session": "cloud-vega",
+   "role": "Worker 2 \u2014 Market Data and Execution Engineer",
+   "state": "dispatched",
+   "contract_version": "v0.2.0+app_runtime_interfaces.md S3",
+   "dependencies": [
+    "specs/app_runtime_interfaces.md S3",
+    "V-006 fee signatures via manager"
+   ],
+   "acceptance": [
+    "nautilus 1.231.0 reproducible runtime; BacktestEngine + live TradingNode/Sandbox proven",
+    "data bridge, no creds",
+    "depth snapshot+diff persistence",
+    "PaperEngine seam per S3",
+    "protection semantics",
+    "e2e fee-bearing example",
+    "depth_flow_availability.md early"
+   ],
+   "evidence_required": [
+    "env fingerprint",
+    "proof commands",
+    "e2e record",
+    "assumptions log",
+    "base/branch IDs"
+   ],
+   "allowed_paths": [
+    "src/cryptobot/adapters/",
+    "src/cryptobot/execution/runtime_*",
+    "src/cryptobot/market_data/",
+    "tests/unit/test_execution_*",
+    "tests/unit/test_market_data_*",
+    "tests/unit/test_adapters_*",
+    "coord/outbox/E-007.json"
+   ]
+  },
+  "V-006": {
+   "owner_session": "cool-amalthea",
+   "role": "Worker 3 \u2014 Risk, Verification and Reliability Engineer",
+   "state": "dispatched",
+   "contract_version": "v0.2.0+app_runtime_interfaces.md S4",
+   "dependencies": [
+    "specs/app_runtime_interfaces.md S4",
+    "integrated main SHA (manager announces)"
+   ],
+   "acceptance": [
+    "V-005 continuation: capture + cap-2h + numeric replay + S5 inventory",
+    "strict metadata enforcement",
+    "margin-aware sizing",
+    "real commission/funding ingestion",
+    "accounting agreement",
+    "timer monitor_tick",
+    "idempotent recovery",
+    "runtime regressions + early fee signatures"
+   ],
+   "evidence_required": [
+    "files/hashes checked",
+    "repro + counts",
+    "verdict table",
+    "base/branch IDs"
+   ],
+   "allowed_paths": [
+    "src/cryptobot/risk/",
+    "src/cryptobot/accounting/",
+    "tests/acceptance/",
+    "tests/ceo_review/test_runtime_*",
+    "specs/acceptance-*",
+    "coord/outbox/V-006.json"
+   ]
   }
  },
- "updated_utc": "2026-10-11T15:10:35Z",
+ "updated_utc": "2026-10-12T04:15:00Z",
  "version": 1
 }
