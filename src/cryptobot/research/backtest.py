@@ -60,6 +60,10 @@ __all__ = [
     "TEST_DAYS",
     "VAL_DAYS",
     "DatasetHandle",
+    "OverlapDedup",
+    "PILOT_SYMBOLS",
+    "assemble_split_capture",
+    "build_partition",
     "compare_runs",
     "curve_signature",
     "day_events_for",
@@ -84,6 +88,8 @@ class DatasetHandle(Protocol):
 
 
 MECHANISM_SPLIT = "mechanism"  # all available days, one run, labeled proof
+DEDUP_WINDOW_MS = 60_000  # overlap dupes sort adjacently; bounds the cache
+DEDUP_CONFLICT_EXAMPLES = 5
 
 
 def day_ids_for(dataset: DatasetHandle) -> tuple:
@@ -172,25 +178,213 @@ def day_events_for(dataset: DatasetHandle, symbol: str,
     return events, {"day": day_id, "calendar": "UTC"}
 
 
+def _entry_symbols(entry: dict) -> list[str]:
+    if entry.get("symbols"):
+        return list(entry["symbols"])
+    if entry.get("symbol"):
+        return [entry["symbol"]]
+    return []
+
+
+def _entry_channels(entry: dict) -> list[str]:
+    if entry.get("channels"):
+        return list(entry["channels"])
+    if entry.get("channel"):
+        return [entry["channel"]]
+    return []
+
+
 def day_has_quotes(dataset: DatasetHandle, symbol: str, day_id) -> bool:
-    """Whether (symbol, day) carries observed bookTicker coverage."""
+    """Manifest-based bookTicker expectation for one symbol-day.
+
+    Day-scoped (Q-008 fix): vision matches day-level entries whose UTC
+    day falls in the IST window; captured matches runs whose channels
+    include bookTicker and whose time range overlaps the day. Assembly
+    records OBSERVED per-day quote evidence separately; a mismatch
+    between expected and observed is data information, not an error.
+    """
     if hasattr(dataset, "days"):
         for d in dataset.coverage()["days"]:
             if d["day"] == day_id:
                 return bool(d.get("quotes_observed", False))
         return False
     manifest = dataset.manifest  # type: ignore[attr-defined]
+    kind = dataset.kind  # type: ignore[attr-defined]
+    if kind == "vision-archive":
+        lo, hi = _ist_window_ms(day_id)
+        want_utc = _utc_range(lo, hi - 1)
+        for entry in manifest.get("source", []):
+            if symbol not in _entry_symbols(entry):
+                continue
+            if entry.get("day") not in want_utc:
+                continue
+            if "bookTicker" in _entry_channels(entry):
+                return True
+        return False
+    import datetime as _dt
+
+    start = _dt.datetime.strptime(day_id, "%Y-%m-%d").replace(
+        tzinfo=_dt.timezone.utc).timestamp() * 1000
+    end = start + 86_400_000
     for entry in manifest.get("source", []):
-        symbols = entry.get("symbols") or ([entry.get("symbol")]
-                                           if entry.get("symbol") else [])
-        if symbol not in symbols:
+        if symbol not in _entry_symbols(entry):
             continue
-        channels = entry.get("channels", [])
-        if not channels and entry.get("channel"):
-            channels = [entry["channel"]]
-        if "bookTicker" in channels:
+        if "bookTicker" not in _entry_channels(entry):
+            continue
+        lo, hi = entry.get("ts_min_ms"), entry.get("ts_max_ms")
+        if lo is None or hi is None:
+            return True  # channels known, range unknown: expect quotes
+        if lo < end and hi >= start:
             return True
     return False
+
+
+PARTITION_VERSION = "bt-partition-v1"
+
+
+def _partition_source_streams(dataset, symbol: str, day_id):
+    """Ordered per-source event iterators for one day×symbol (lazy).
+
+    Vision IST day: one stream per covered UTC day (handle order).
+    Captured UTC day: one stream per manifest file (file order).
+    Synth day: the single generated stream. Heartbeats (None) dropped;
+    gaps survive via timestamps.
+    """
+    if hasattr(dataset, "days"):
+        yield (e for e in dataset.events(symbol, day_id) if e is not None)
+        return
+    kind = dataset.kind
+    if kind == "vision-archive":
+        lo, hi = _ist_window_ms(day_id)
+        for utc_day in sorted(_utc_range(lo, hi - 1)):
+            yield _vision_utc_stream(dataset, symbol, utc_day, lo, hi)
+        return
+    import datetime as _dt
+
+    start = _dt.datetime.strptime(day_id, "%Y-%m-%d").replace(
+        tzinfo=_dt.timezone.utc).timestamp() * 1000
+    end = start + 86_400_000
+    for entry in dataset.manifest.get("source", []):
+        if symbol not in _entry_symbols(entry):
+            continue
+        local = entry.get("local", "")
+        if not local:
+            continue
+        path = Path(local)
+        if not path.is_absolute():
+            path = dataset.toml_path.parent / path
+        if not path.exists():
+            continue
+        yield _captured_file_stream(path, symbol, start, end)
+
+
+def _vision_utc_stream(dataset, symbol: str, utc_day: str, lo: int, hi: int):
+    for e in dataset.events(symbol, utc_day):
+        if e is None:
+            continue
+        ts = int(e["exchange_ts_ms"])
+        if lo <= ts < hi:
+            yield e
+
+
+def _captured_file_stream(path: Path, symbol: str, start: float, end: float):
+    with open(path, encoding="utf-8") as fh:
+        for line in fh:
+            if not line.strip():
+                continue
+            record = json.loads(line)
+            if record.get("symbol") != symbol:
+                continue
+            ts = int(record.get("exchange_ts_ms")
+                     or record.get("local_recv_ms") or 0)
+            if start <= ts < end:
+                yield record
+
+
+def _merge_key(event: dict, stream_idx: int) -> tuple:
+    # Stable ties: (ts, channel-string, stream order). Matches the legacy
+    # global sort for same inputs (stable by construction order).
+    return (int(event["exchange_ts_ms"]), str(event.get("channel", "")),
+            stream_idx)
+
+
+def _heap_merge(streams):
+    """Lazily merge ordered streams (bounded: one head per stream)."""
+    import heapq
+
+    heap: list[tuple] = []
+    for idx, stream in enumerate(streams):
+        try:
+            first = next(stream)
+        except StopIteration:
+            continue
+        heapq.heappush(heap, (_merge_key(first, idx), idx, first, stream))
+    while heap:
+        _, idx, event, stream = heapq.heappop(heap)
+        yield event
+        try:
+            nxt = next(stream)
+        except StopIteration:
+            continue
+        heapq.heappush(heap, (_merge_key(nxt, idx), idx, nxt, stream))
+
+
+def build_partition(dataset: DatasetHandle, symbol: str, day_id,
+                    path, *, force: bool = False) -> dict:
+    """Stream one day×symbol of RAW events into an ordered partition file.
+
+    Checkpointed: rebuild skipped when the sidecar matches (dataset sha +
+    version + symbol + day + file size). Returns partition stats incl.
+    observed channels and sha256. RAW means pre-spread: sensitivity and
+    arm-set runs share partitions and apply spread at assembly.
+    """
+    import hashlib
+
+    path = Path(path)
+    sidecar = path.with_suffix(".json")
+    dataset_sha = dataset.manifest_sha()
+    if not force and sidecar.exists() and path.exists():
+        try:
+            cached = json.loads(sidecar.read_text(encoding="utf-8"))
+        except (ValueError, OSError):
+            cached = {}
+        if (cached.get("partition_version") == PARTITION_VERSION
+                and cached.get("dataset_manifest_sha") == dataset_sha
+                and cached.get("symbol") == symbol
+                and cached.get("day") == day_id
+                and cached.get("n_bytes") == path.stat().st_size):
+            cached["reused"] = True
+            return cached
+    path.parent.mkdir(parents=True, exist_ok=True)
+    digest = hashlib.sha256()
+    channels: dict[str, int] = {}
+    n_events = 0
+    first_ts: int | None = None
+    last_ts: int | None = None
+    streams = list(_partition_source_streams(dataset, symbol, day_id))
+    with open(path, "w", encoding="utf-8") as fh:
+        for event in _heap_merge(streams):
+            line = json.dumps(event, sort_keys=True) + "\n"
+            fh.write(line)
+            digest.update(line.encode("utf-8"))
+            n_events += 1
+            channels[event.get("channel", "?")] = \
+                channels.get(event.get("channel", "?"), 0) + 1
+            ts = int(event["exchange_ts_ms"])
+            first_ts = ts if first_ts is None else min(first_ts, ts)
+            last_ts = ts if last_ts is None else max(last_ts, ts)
+    stats = {
+        "partition_version": PARTITION_VERSION,
+        "dataset_manifest_sha": dataset_sha,
+        "dataset_id": _dataset_id(dataset),
+        "symbol": symbol, "day": day_id,
+        "path": str(path), "n_events": n_events,
+        "n_bytes": path.stat().st_size, "sha256": digest.hexdigest(),
+        "channels": channels, "first_ts_ms": first_ts,
+        "last_ts_ms": last_ts, "reused": False,
+    }
+    sidecar.write_text(json.dumps(stats, indent=2), encoding="utf-8")
+    return stats
 
 
 def filters_for(dataset: DatasetHandle, symbol: str) -> tuple[dict, str]:
@@ -241,16 +435,217 @@ def preflight(dataset: DatasetHandle, symbols: tuple[str, ...],
 
 
 def _dataset_id(dataset: DatasetHandle) -> str:
-    return str(getattr(dataset, "dataset_id", "external"))
+    direct = getattr(dataset, "dataset_id", None)
+    if direct is not None:
+        return str(direct)
+    name = dataset.coverage().get("dataset")  # real handle: manifest name
+    return str(name) if name else "external"
+
+
+def _event_identity(event: dict) -> str:
+    """Venue event identity for dedup ("" when the event carries none).
+
+    Payload venue ids first (agg_id/trade_id/update ids), then the
+    top-level venue_seq many feeds carry outside the payload. Our own
+    seq is NEVER identity: assembly renumbers it, and overlapping
+    captures number the same venue event differently.
+    """
+    payload = event.get("payload", {})
+    for key in ("agg_id", "trade_id", "id", "update_id", "first_update_id",
+                "last_update_id"):
+        if payload.get(key) is not None:
+            return f"{key}={payload[key]}"
+    if payload.get("first_id") is not None:
+        return f"ids={payload.get('first_id')}-{payload.get('last_id')}"
+    venue_seq = event.get("venue_seq")
+    if venue_seq:  # None/0 = "no sequence" on every known feed
+        return f"venue_seq={venue_seq}"
+    return ""
+
+
+class OverlapDedup:
+    """Bounded overlap deduplicator with conflict detection (Q-008).
+
+    Fingerprint = venue(source) + symbol + channel + timestamp + event
+    identity, so different symbols' identical payloads never collapse.
+    Identity = payload venue ids, else top-level venue_seq (never our
+    renumbered seq). Same fingerprint + same body → drop (counted).
+    Same fingerprint + different body WITH identity → conflict
+    (recorded, keep-first). Same fingerprint + different body WITHOUT
+    identity (repeated quote updates in one millisecond) → both kept,
+    no conflict: legitimate repeats are preserved. The cache holds
+    only a trailing time window (overlap duplicates sort adjacently),
+    keeping memory bounded.
+    """
+
+    def __init__(self, window_ms: int = DEDUP_WINDOW_MS) -> None:
+        from collections import deque
+
+        self._window_ms = window_ms
+        self._seen: dict[str, str] = {}
+        self._order: deque[tuple[int, str]] = deque()
+        self.dropped = 0
+        self.conflicts = 0
+        self.examples: list[dict] = []
+
+    def fingerprint(self, event: dict) -> str:
+        return "|".join((str(event.get("source", "")),
+                         str(event.get("symbol", "")),
+                         str(event.get("channel", "")),
+                         str(int(event.get("exchange_ts_ms", 0))),
+                         _event_identity(event)))
+
+    def check(self, event: dict) -> str:
+        """Classify one time-ordered event: keep | drop | conflict-drop."""
+        ts = int(event["exchange_ts_ms"])
+        while self._order and self._order[0][0] < ts - self._window_ms:
+            self._seen.pop(self._order.popleft()[1], None)
+        fp = self.fingerprint(event)
+        body = json.dumps(event.get("payload", {}), sort_keys=True)
+        prev = self._seen.get(fp)
+        if prev is None:
+            self._seen[fp] = body
+            self._order.append((ts, fp))
+            return "keep"
+        if prev == body:
+            self.dropped += 1
+            return "drop"
+        if _event_identity(event):
+            self.conflicts += 1
+            if len(self.examples) < DEDUP_CONFLICT_EXAMPLES:
+                self.examples.append({"fingerprint": fp, "kept": prev,
+                                      "dropped": body})
+            return "conflict-drop"
+        return "keep"
+
+
+def _partition_path(partition_dir: Path, dataset: DatasetHandle,
+                    symbol: str, day_id) -> Path:
+    safe = f"{_dataset_id(dataset)}_{symbol}_{day_id}".replace("/", "_")
+    return partition_dir / f"{safe}.jsonl"
+
+
+def _partition_events(path: Path):
+    with open(path, encoding="utf-8") as fh:
+        for line in fh:
+            if line.strip():
+                yield json.loads(line)
+
+
+def assemble_split_capture(partitions: list[dict], split: str, out_dir,
+                           symbols: tuple[str, ...],
+                           dataset: DatasetHandle,
+                           spread_profile=None,
+                           max_events: int | None = None) -> dict:
+    """Merge checkpointed RAW partitions into one replay capture (Q-008).
+
+    Streaming: per-partition spread is applied with iter_with_spread
+    (single pass, one-window buffer), capture-order is a bounded
+    heap-merge of partitions (one head each), and max_events stops the
+    merge early — a causal prefix without reading the rest. Peaks at
+    O(partitions) held events + one spread window per partition.
+    """
+    from .spread import PROFILE_ID, iter_with_spread, profile_spread_bps
+
+    out = Path(out_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    streams = []
+    day_manifest = []
+    for part in partitions:
+        symbol, day = part["symbol"], part["day"]
+        raw = _partition_events(Path(part["path"]))
+        expected_quotes = day_has_quotes(dataset, symbol, day)
+        applied = None
+        if not expected_quotes and spread_profile is not None:
+            applied = profile_spread_bps(spread_profile, symbol)
+            raw = iter_with_spread(raw, symbol, applied)
+        streams.append(raw)
+        day_manifest.append({
+            "day": day, "symbol": symbol,
+            "quotes_expected": expected_quotes,
+            "quotes_observed_channels": part.get("channels", {}),
+            "spread_profile": PROFILE_ID if applied else None,
+            "spread_bps_assumed": applied,
+            "partition": {k: part[k] for k in
+                          ("path", "sha256", "n_events", "n_bytes",
+                           "reused", "first_ts_ms", "last_ts_ms")
+                          if k in part},
+            "n_emitted": 0,
+        })
+    dedup = OverlapDedup()
+    last_agg: dict[str, int] = {}
+    n_events = 0
+    emitted_per_part = [0] * len(partitions)
+    with open(out / "events.jsonl", "w", encoding="utf-8") as fh:
+        for event in _heap_merge_indexed(streams):
+            merged, part_idx = event
+            if dedup.check(merged) != "keep":
+                continue
+            n_events += 1
+            merged["seq"] = n_events
+            merged["local_mono_ns"] = n_events
+            if merged.get("channel") == "aggTrade":
+                agg = int(merged["payload"]["agg_id"])
+                sym = str(merged.get("symbol", ""))
+                if sym in last_agg and agg <= last_agg[sym]:
+                    raise ValueError(
+                        f"non-monotonic agg_id on {sym} at seq {n_events}")
+                last_agg[sym] = agg
+            fh.write(json.dumps(merged) + "\n")
+            emitted_per_part[part_idx] += 1
+            if max_events is not None and n_events >= max_events:
+                break  # causal prefix: unread tail never touched
+    truncated = max_events is not None and n_events >= max_events
+    for entry, emitted in zip(day_manifest, emitted_per_part):
+        entry["n_emitted"] = emitted
+    manifest = {
+        "prep_version": "streaming-v1",
+        "split": split, "days": sorted({p["day"] for p in partitions}),
+        "dataset_id": _dataset_id(dataset),
+        "dataset_manifest_sha": dataset.manifest_sha(),
+        "symbols": list(symbols),
+        "n_events": n_events,
+        "deduped_repeats": dedup.dropped,
+        "conflicting_duplicates": dedup.conflicts,
+        "conflict_examples": dedup.examples,
+        "truncated_prefix": truncated,
+        "max_events": max_events,
+        "purge": "fresh Session per cell; no cross-split state",
+        "warmup": "causal, on split prefix (config warmup_bars)",
+        "day_manifest": day_manifest,
+    }
+    (out / "day_manifest.json").write_text(json.dumps(manifest, indent=2),
+                                           encoding="utf-8")
+    return manifest
+
+
+def _heap_merge_indexed(streams):
+    """Heap-merge tagging each event with its source stream index."""
+    import heapq
+
+    heap: list[tuple] = []
+    for idx, stream in enumerate(streams):
+        try:
+            first = next(stream)
+        except StopIteration:
+            continue
+        heapq.heappush(heap, (_merge_key(first, idx), idx, first, stream))
+    while heap:
+        _, idx, event, stream = heapq.heappop(heap)
+        yield event, idx
+        try:
+            nxt = next(stream)
+        except StopIteration:
+            continue
+        heapq.heappush(heap, (_merge_key(nxt, idx), idx, nxt, stream))
 
 
 def prepare_split_capture(dataset: DatasetHandle, split: str, out_dir,
                           symbols: tuple[str, ...],
                           spread_profile=None,
-                          max_events: int | None = None) -> dict:
-    """Concatenate split days into one capture dir (gaps preserved)."""
-    from .spread import PROFILE_ID, apply_profile, profile_spread_bps
-
+                          max_events: int | None = None,
+                          partition_dir=None) -> dict:
+    """Build (checkpointed partitions) + assemble (streaming) a capture."""
     day_ids = day_ids_for(dataset)
     if split == MECHANISM_SPLIT:
         days = day_ids
@@ -264,73 +659,14 @@ def prepare_split_capture(dataset: DatasetHandle, split: str, out_dir,
     else:
         raise ValueError(f"unknown split {split!r}")
     preflight(dataset, symbols, days)
-    out = Path(out_dir)
-    out.mkdir(parents=True, exist_ok=True)
-    events: list[dict] = []
-    day_manifest = []
-    for day in days:
-        for symbol in symbols:
-            day_events, day_info = day_events_for(dataset, symbol, day)
-            quotes = day_has_quotes(dataset, symbol, day)
-            applied = None
-            if not quotes and spread_profile is not None:
-                applied = profile_spread_bps(spread_profile, symbol)
-                day_events, _ = apply_profile(day_events, symbol, applied)
-            events.extend(day_events)
-            day_manifest.append({
-                **day_info, "symbol": symbol,
-                "quotes_observed": quotes,
-                "spread_profile": PROFILE_ID if applied else None,
-                "spread_bps_assumed": applied,
-                "n_events": len(day_events),
-            })
-    events.sort(key=lambda e: (int(e["exchange_ts_ms"]), e.get("channel", "")))
-    # Capture-overlap dedup: overlapping runs carry the same venue feed;
-    # collapse byte-identical (channel, ts, payload) repeats, labeled.
-    n_before_dedup = len(events)
-    seen: set[str] = set()
-    deduped: list[dict] = []
-    for e in events:
-        key = (str(e.get("channel")), str(e.get("exchange_ts_ms")),
-               json.dumps(e.get("payload", {}), sort_keys=True))
-        fingerprint = "|".join(key)
-        if fingerprint in seen:
-            continue
-        seen.add(fingerprint)
-        deduped.append(e)
-    events = deduped
-    truncated = False
-    if max_events is not None and len(events) > max_events:
-        events = events[:max_events]  # causal prefix only, labeled below
-        truncated = True
-    last_agg: dict[str, int] = {}
-    for seq, e in enumerate(events, start=1):
-        e["seq"] = seq
-        e["local_mono_ns"] = seq
-        if e.get("channel") == "aggTrade":
-            agg = int(e["payload"]["agg_id"])
-            sym = str(e.get("symbol", ""))
-            if sym in last_agg and agg <= last_agg[sym]:
-                raise ValueError(f"non-monotonic agg_id on {sym} at seq {seq}")
-            last_agg[sym] = agg
-    (out / "events.jsonl").write_text(
-        "\n".join(json.dumps(e) for e in events) + "\n", encoding="utf-8")
-    manifest = {
-        "split": split, "days": list(days),
-        "dataset_id": _dataset_id(dataset),
-        "dataset_manifest_sha": dataset.manifest_sha(),
-        "symbols": list(symbols),
-        "n_events": len(events),
-        "deduped_repeats": n_before_dedup - len(seen),
-        "truncated_prefix": truncated,
-        "max_events": max_events,
-        "purge": "fresh Session per cell; no cross-split state",
-        "warmup": "causal, on split prefix (config warmup_bars)",
-        "day_manifest": day_manifest,
-    }
-    (out / "day_manifest.json").write_text(json.dumps(manifest, indent=2),
-                                           encoding="utf-8")
-    return manifest
+    parts = (Path(partition_dir) if partition_dir is not None
+             else Path(out_dir) / "_partitions")
+    partitions = [build_partition(dataset, symbol, day,
+                                  _partition_path(parts, dataset,
+                                                  symbol, day))
+                  for day in days for symbol in symbols]
+    return assemble_split_capture(partitions, split, out_dir, symbols,
+                                  dataset, spread_profile, max_events)
 
 
 def run_cell(base_config_path, capture_dir, strategies: tuple[str, ...],
@@ -391,9 +727,8 @@ def run_cell(base_config_path, capture_dir, strategies: tuple[str, ...],
     # (E-007 runtime binds the same sink on the live path).
     engine.bind_sink(session.policy)
     capture = Path(capture_dir)
-    input_class = json.loads(
-        (capture / "events.jsonl").read_text(
-            encoding="utf-8").splitlines()[0])["input_class"]
+    with open(capture / "events.jsonl", encoding="utf-8") as _fh:
+        input_class = json.loads(_fh.readline())["input_class"]
     report = session.run_replay(capture, expect_class=input_class)
     report["filter_profile"] = {"label": filter_origin,
                                 "filters": {s: filters.get(s) or
@@ -611,10 +946,16 @@ def _scaled_profile(spread_profile, mult: float):
                                per_symbol_bps=scaled)
 
 
+PILOT_SYMBOLS = ("BTCUSDT", "ETHUSDT")
+
+
 def _default_symbols(dataset) -> list[str]:
+    """BTC+ETH pilot pair (Q-008): manifest-clipped, BTCUSDT fallback."""
     info = dataset.manifest.get("dataset", {})
-    if isinstance(info, dict) and info.get("symbols"):
-        return [info["symbols"][0]]
+    have = (info.get("symbols") or []) if isinstance(info, dict) else []
+    if have:
+        pair = [s for s in PILOT_SYMBOLS if s in have]
+        return pair or [have[0]]
     return ["BTCUSDT"]
 
 

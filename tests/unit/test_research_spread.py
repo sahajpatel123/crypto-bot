@@ -114,4 +114,43 @@ def test_modeled_quotes_sort_into_causal_position():
     merged, _ = apply_profile(day, "BTCUSDT", 1.0)
     ts = [e["exchange_ts_ms"] for e in merged]
     assert ts == sorted(ts)
-    assert merged[0]["channel"] == "bookTicker"  # window0 BBO before trade
+    assert merged[0]["channel"] == "bookTicker"  # BBO-first at trade ts
+
+
+def _modeled(merged):
+    return [e for e in merged
+            if e["payload"].get("quote_source") == PROFILE_ID]
+
+
+def test_quote_centers_on_first_trade_not_vwap():
+    # Review's example shape: 1050ms/100 then 1950ms/200 in one window.
+    # VWAP would center 150 (lookahead); causal rule centers 100 at 1050.
+    day = [_trade(1, T0 + 50, price=100.0), _trade(2, T0 + 950, price=200.0)]
+    merged, manifest = apply_profile(day, "BTCUSDT", 2.0)
+    assert manifest["modeled_windows"] == 1
+    assert manifest["spread_rule"] == "causal-first-trade-v1"
+    (m,) = _modeled(merged)
+    assert m["exchange_ts_ms"] == T0 + 50
+    assert m["local_recv_ms"] == T0 + 50
+    mid = (m["payload"]["bid"] + m["payload"]["ask"]) / 2
+    assert mid == 100.0
+    assert m["payload"]["spread_rule"] == "causal-first-trade-v1"
+
+
+def test_future_data_invariance_of_modeled_quotes():
+    base = [_trade(1, T0 + 50, price=100.0), _trade(2, T0 + 950, price=200.0),
+            _trade(3, T0 + 1200, price=150.0)]
+    variants = [
+        # Later trade repriced / removed / window extended: earlier quote
+        # must not move.
+        [_trade(1, T0 + 50, price=100.0), _trade(2, T0 + 950, price=500.0),
+         _trade(3, T0 + 1200, price=150.0)],
+        [_trade(1, T0 + 50, price=100.0),
+         _trade(3, T0 + 1200, price=150.0)],
+        [_trade(1, T0 + 50, price=100.0), _trade(2, T0 + 950, price=200.0),
+         _trade(4, T0 + 960, price=300.0), _trade(3, T0 + 1200, price=150.0)],
+    ]
+    expected, _ = apply_profile(base, "BTCUSDT", 2.0)
+    for day in variants:
+        got, _ = apply_profile(day, "BTCUSDT", 2.0)
+        assert _modeled(got) == _modeled(expected)
