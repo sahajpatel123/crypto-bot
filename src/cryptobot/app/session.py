@@ -32,7 +32,7 @@ from .engine import EngineEvent, EngineOrder
 from .reference import ReferenceEngine
 from .store import RunStore
 
-__all__ = ["Session", "ReplayClock", "STRATEGY_ARMS"]
+__all__ = ["Session", "ReplayClock", "WallClock", "STRATEGY_ARMS"]
 
 _EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
 
@@ -84,10 +84,17 @@ class _SymbolFeed:
         return len(self.bars) >= warmup
 
 
+class WallClock:
+    """Wall-time clock for live paper sessions."""
+
+    def now(self) -> datetime:
+        return datetime.now(timezone.utc)
+
+
 class Session:
     def __init__(self, config: AppConfig, store: RunStore, workdir: str | Path,
                  run_id: str, *, pid: int | None = None,
-                 clock: Any | None = None) -> None:
+                 clock: Any | None = None, engine: Any | None = None) -> None:
         self.config = config
         self.store = store
         self.workdir = Path(workdir)
@@ -104,10 +111,16 @@ class Session:
             max_forecast_cost_bps=config.max_forecast_cost_bps,
             cooldown_s=config.cooldown_s,
             allow_legacy_exit_rules=config.allow_legacy_exit_rules))
-        self.engine = ReferenceEngine(
-            log_path=self.workdir / "order_manager.jsonl",
-            outcome_sink=self.policy, taker_bps=config.taker_bps,
-            now_utc=self.now_utc, submit_delay_ms=config.submit_delay_ms)
+        if engine is not None:
+            self.engine = engine
+        else:
+            if config.mode == "paper":
+                raise ValueError("paper mode requires an injected Nautilus "
+                                 "engine (reference engine is replay-only)")
+            self.engine = ReferenceEngine(
+                log_path=self.workdir / "order_manager.jsonl",
+                outcome_sink=self.policy, taker_bps=config.taker_bps,
+                now_utc=self.now_utc, submit_delay_ms=config.submit_delay_ms)
         self._feeds: dict[str, _SymbolFeed] = {}
         self._position: dict[str, Any] | None = None
         self._day: str | None = None
@@ -477,7 +490,8 @@ class Session:
         symbol = event.get("symbol")
         if channel not in ("aggTrade", "bookTicker") or not symbol:
             return
-        self.clock.set_ms(int(event["exchange_ts_ms"]))
+        if hasattr(self.clock, "set_ms"):
+            self.clock.set_ms(int(event["exchange_ts_ms"]))  # replay: event time.
         age = int(event.get("local_recv_ms", event["exchange_ts_ms"])) - int(
             event["exchange_ts_ms"])
         if len(self._age_ms) < 20000:
@@ -558,12 +572,65 @@ class Session:
         self.store.checkpoint(self.run_id, "resume",
                               {"last_seq": self._last_seq})
 
+    # -- live paper ------------------------------------------------------------
+    def run_live(self, event_iter: Any, *, duration_s: int,
+                 expect_class: str = "observed-public") -> dict[str, Any]:
+        """Live-feed paper loop over a bridge event iterator (E-007).
+
+        Same _ingest path as replay (strategies/selector/exit/risk), wall
+        clock, wall duration budget. No Binance order submission exists on
+        this path: fills come from the injected paper engine only.
+        """
+        if self.config.mode != "paper":
+            raise ValueError("run_live needs a paper-mode config")
+        self.store.create_run(self.run_id, "paper", self.config.fingerprint,
+                              str(self.workdir), self._pid)
+        self.policy.reconcile_day(self.config.paper_capital_usdt, 0.0)
+        self._day = accounting_date(self.now_utc()).isoformat()
+        self.store.checkpoint(self.run_id, "open",
+                              {"equity": self.config.paper_capital_usdt})
+        adapters, modules = self._strategy_adapters()
+        self._set_state("warming", "paper-start")
+        deadline = time.monotonic() + duration_s
+        last_beat = 0.0
+        end_reason = "duration-elapsed"
+        for event in event_iter:
+            if event.get("input_class", expect_class) != expect_class:
+                continue
+            self._ingest(event, adapters, modules)
+            self._events_seen += 1
+            now_mono = time.monotonic()
+            if now_mono - last_beat >= 30.0:
+                last_beat = now_mono
+                self.store.heartbeat(self.run_id)
+            stop = self._stop_flag or self.store.stop_requested(self.run_id)
+            if stop is not None:
+                end_reason = f"operator-stop:{stop}"
+                if stop == "flatten":
+                    self._flatten("operator-stop-flatten")
+                    self._drain_engine()
+                break
+            if now_mono >= deadline:
+                break
+        if self._position is not None and end_reason == "duration-elapsed":
+            self._flatten("duration-end")
+            self._drain_engine()
+        self._set_state("stopping", end_reason)
+        self._drain_engine()
+        self._persist_local_state()
+        report = self._build_report("live-public-feed", expect_class, mode="paper")
+        (self.workdir / "report.json").write_text(json.dumps(report, indent=2))
+        (self.workdir / "report.md").write_text(self._render_report(report))
+        self._set_state("stopped", "report-written")
+        return report
+
     # -- report ------------------------------------------------------------------
-    def _build_report(self, capture: str, expect_class: str) -> dict[str, Any]:
+    def _build_report(self, capture: str, expect_class: str,
+                      *, mode: str = "replay") -> dict[str, Any]:
         mark = self._reference_mark()
         closing = self.ledger.marked_equity(mark)
         return {
-            "run_id": self.run_id, "mode": "replay", "input_class": expect_class,
+            "run_id": self.run_id, "mode": mode, "input_class": expect_class,
             "capture": capture, "config_fingerprint": self.config.fingerprint,
             "fee_schedule": {"label": self.config.fee_label,
                              "taker_bps": self.config.taker_bps,
@@ -592,7 +659,7 @@ class Session:
         }
 
     def _render_report(self, report: dict[str, Any]) -> str:
-        lines = [f"# Replay report {report['run_id']}", "",
+        lines = [f"# {report['mode'].title()} report {report['run_id']}", "",
                  f"Capture: {report['capture']} ({report['input_class']})",
                  f"Config: {report['config_fingerprint']} | "
                  f"engine: {report['execution_model']} (replay-only)",

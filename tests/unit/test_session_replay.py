@@ -203,6 +203,90 @@ def test_short_uses_venue_sell_side(tmp_path):
         store.close()
 
 
+def test_run_live_with_stub_engine(tmp_path):
+    from cryptobot.app.session import Session, WallClock
+    text = open("configs/paper.toml").read()
+    text = text.replace('mode = "replay"', 'mode = "paper"', 1)
+    text = text.replace('kind = "reference"', 'kind = "nautilus"', 1)
+    text = text.replace('dir = "runs"', f'dir = "{tmp_path / "runs"}"', 1)
+    text = text.replace("warmup_bars =", "warmup_bars = 3 #", 1)
+    cfg_path = tmp_path / "paper.toml"
+    cfg_path.write_text(text)
+    cfg = load_config(cfg_path)
+
+    class StubEngine:
+        model_label = "stub-test"
+        assumptions = ("stub: no fills",)
+
+        def submit(self, cmd):
+            raise AssertionError("no-trade expected")
+        def submit_immediate(self, cmd):
+            raise AssertionError("no-trade expected")
+        def resolve(self, cid):
+            return None
+        def cancel(self, cid, reason):
+            pass
+        def poll(self):
+            return []
+        def attach_protection(self, e, s, t):
+            return []
+        def open_orders(self):
+            return []
+        def filled_qty(self, cid):
+            return 0.0
+        def set_exit_only(self, h, reason=""):
+            pass
+        def note_mark(self, i, p):
+            pass
+        def recover(self, sink):
+            pass
+        def close(self):
+            pass
+
+    now_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
+    base = (now_ms // 1000) * 1000 - 9000
+    events = []
+    for w in range(10):
+        ts = base + w * 1000
+        events.append({"channel": "bookTicker", "symbol": "BTCUSDT",
+                       "input_class": "observed-public",
+                       "exchange_ts_ms": ts + 100, "local_recv_ms": ts + 105,
+                       "payload": {"bid": 99.99, "ask": 100.01}})
+        events.append({"channel": "aggTrade", "symbol": "BTCUSDT",
+                       "input_class": "observed-public",
+                       "exchange_ts_ms": ts + 200, "local_recv_ms": ts + 205,
+                       "payload": {"agg_id": w + 1, "price": 100.0, "qty": 1.0,
+                                   "buyer_is_maker": False}})
+    store = RunStore(tmp_path / "runs" / "cryptobot.db")
+    try:
+        session = Session(cfg, store, tmp_path / "runs" / "live-1", "live-1",
+                          clock=WallClock(), engine=StubEngine())
+        report = session.run_live(iter(events), duration_s=30)
+        assert report["mode"] == "paper"
+        assert report["intents_admitted"] == 0
+        assert report["events_seen"] == 20
+        assert store.get_run("live-1")["state"] == "stopped"
+    finally:
+        store.close()
+
+
+def test_paper_session_requires_injected_engine(tmp_path):
+    import pytest
+    text = open("configs/paper.toml").read()
+    text = text.replace('mode = "replay"', 'mode = "paper"', 1)
+    text = text.replace('kind = "reference"', 'kind = "nautilus"', 1)
+    text = text.replace('dir = "runs"', f'dir = "{tmp_path / "runs"}"', 1)
+    cfg_path = tmp_path / "paper.toml"
+    cfg_path.write_text(text)
+    store = RunStore(tmp_path / "runs" / "cryptobot.db")
+    try:
+        with pytest.raises(ValueError, match="injected Nautilus"):
+            Session(load_config(cfg_path), store, tmp_path / "runs" / "x",
+                    "x")
+    finally:
+        store.close()
+
+
 def test_cli_doctor_run_status_stop(tmp_path):
     from cryptobot.cli import main
     cap = _capture(tmp_path / "cap", windows=6)

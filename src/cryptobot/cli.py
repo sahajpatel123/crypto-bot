@@ -34,6 +34,21 @@ def _new_run_id(prefix: str) -> str:
     return f"{prefix}-{stamp}-{os.getpid()}"
 
 
+def _parse_cli_duration(raw: str | None) -> int | None:
+    if not raw:
+        return None
+    unit = raw[-1]
+    scale = {"s": 1, "m": 60, "h": 3600, "d": 86400}.get(unit)
+    try:
+        magnitude = float(raw[:-1])
+    except ValueError:
+        magnitude = -1
+    if scale is None or magnitude <= 0:
+        print(f"bad --duration {raw!r}; want like '24h'", file=sys.stderr)
+        raise SystemExit(2)
+    return int(magnitude * scale)
+
+
 def cmd_doctor(args: argparse.Namespace) -> int:
     problems: list[str] = []
     info: dict[str, object] = {
@@ -155,17 +170,43 @@ def _run_paper(args: argparse.Namespace) -> int:
               file=sys.stderr)
         return 2
     try:
-        from cryptobot.adapters import paper_engine as _  # noqa: F401  (E-007)
+        from cryptobot.adapters import paper_engine as _paper  # noqa: F401  (E-007)
+        from cryptobot.adapters import bridge as _bridge  # noqa: F401  (E-007)
     except ImportError:
         print("BLOCKED: E-007 Nautilus adapter not integrated "
-              "(cryptobot.adapters.paper_engine missing).", file=sys.stderr)
+              "(cryptobot.adapters.paper_engine/bridge missing).",
+              file=sys.stderr)
         print("Paper mode cannot run on the reference engine by design.",
               file=sys.stderr)
         return 2
-    print("BLOCKED: live paper loop wiring awaits E-007 data bridge "
-          "(event iterator seam defined; adapter not yet filed).",
-          file=sys.stderr)
-    return 2
+    from cryptobot.app.session import WallClock
+    store = RunStore(_store_path(config.storage_dir))
+    run_id = args.run_id or _new_run_id("paper")
+    workdir = Path(config.storage_dir) / run_id
+    clock = WallClock()
+    engine = _paper.NautilusPaperEngine(
+        outcome_sink=None, taker_bps=config.taker_bps,  # sink bound below
+        now_utc=clock.now, submit_delay_ms=config.submit_delay_ms,
+        fill_delay_ms=config.fill_delay_ms)
+    session = Session(config, store, workdir, run_id, pid=os.getpid(),
+                      clock=clock, engine=engine)
+    engine.bind_sink(session.policy)
+    _install_stop_handler(session)
+    duration = _parse_cli_duration(args.duration) or config.duration_s
+    print(f"run: {run_id} workdir={workdir} duration={duration}s")
+    try:
+        events = _bridge.live_events(symbols=list(config.symbols) or None,
+                                     max_symbols=config.max_symbols)
+        report = session.run_live(events, duration_s=duration)
+    finally:
+        store.close()
+        engine.close()
+    print(f"run {run_id} done: equity {report['opening_equity']:.2f} -> "
+          f"{report['closing_equity']:.2f} USDT "
+          f"({report['net_return_pct']:+.3f}%), admitted "
+          f"{report['intents_admitted']}, events {report['events_seen']}")
+    print(f"report: {workdir / 'report.json'}")
+    return 0
 
 
 def cmd_run(args: argparse.Namespace) -> int:
