@@ -143,6 +143,7 @@ class RiskPolicy:
             reserved_risk=plan.reserved_risk,
             created_utc=now.isoformat(),
             expires_utc=intent.entry_expiry_utc.isoformat(),
+            qty=plan.qty,
         )
         save_state(self.state_path, self._state)
         return Approved(
@@ -150,6 +151,7 @@ class RiskPolicy:
             reserved_risk=plan.reserved_risk,
             notional_usdt=plan.notional_usdt,
             qty=plan.qty,
+            required_stop_qty=plan.qty,
         )
 
     # -- intent-free monitoring --------------------------------------------
@@ -350,6 +352,21 @@ class RiskPolicy:
 
     def booked_net(self, reservation_id: str) -> float:
         return self._booked_net(reservation_id)
+
+    def required_stop_qty(self, reservation_id: str) -> float | None:
+        """Position quantity the protective stop must cover (V-007 B8).
+
+        The manager compares the engine-acknowledged stop quantity against
+        this before flipping `protected`. None means unknown (legacy record
+        or unknown id) and must never count as verified.
+        """
+        reservation = self._state.reservations.get(reservation_id)
+        if reservation is not None:
+            return reservation.qty
+        unresolved = self._state.unresolved.get(reservation_id)
+        if unresolved is not None:
+            return unresolved["reservation"].get("qty")
+        return None
 
     # -- internals ---------------------------------------------------------
     def _validate_inputs(self, intent, account: AccountSnapshot, now: datetime) -> Rejected | None:

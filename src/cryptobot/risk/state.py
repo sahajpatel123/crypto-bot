@@ -31,6 +31,7 @@ class Reservation:
     reserved_risk: float
     created_utc: str
     expires_utc: str
+    qty: float | None = None
 
     def to_dict(self) -> dict:
         return {
@@ -41,6 +42,7 @@ class Reservation:
             "reserved_risk": self.reserved_risk,
             "created_utc": self.created_utc,
             "expires_utc": self.expires_utc,
+            "qty": self.qty,
         }
 
     @classmethod
@@ -54,6 +56,7 @@ class Reservation:
             reserved_risk=raw["reserved_risk"],
             created_utc=raw["created_utc"],
             expires_utc=raw["expires_utc"],
+            qty=raw.get("qty"),
         )
 
     def expired(self, now: datetime) -> bool:

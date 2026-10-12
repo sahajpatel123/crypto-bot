@@ -28,8 +28,9 @@ class InstrumentFilter:
     The venue publishes no max-notional filter, so ``max_notional_usdt``
     is an optional OPERATOR cap (caps down when set, never blocks
     completeness). Likewise ``market_min_qty``/``market_max_qty`` apply
-    where the venue publishes MARKET_LOT_SIZE; entries are LIMIT so
-    LOT_SIZE governs them, and at pilot sizes both maxima exceed any
+    where the venue publishes MARKET_LOT_SIZE; the session submits MARKET
+    entries so both LOT_SIZE and MARKET_LOT_SIZE bound the size (the
+    intersection governs), and at pilot sizes both maxima exceed any
     sized quantity by orders of magnitude (see sizing notes).
     """
 
@@ -153,6 +154,11 @@ class Approved:
     reserved_risk: float
     notional_usdt: float
     qty: float
+    # V-007 B8: quantity the protective stop must cover in full. Under the
+    # one-way single-position pilot this equals qty; the manager verifies
+    # the engine-acknowledged stop quantity against it (never falsely
+    # protected). None only for legacy records that predate the field.
+    required_stop_qty: float | None = None
 
 
 @dataclass(frozen=True)
