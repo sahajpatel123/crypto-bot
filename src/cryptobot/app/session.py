@@ -519,7 +519,7 @@ class Session:
             self._last_seq = int(event.get("seq", 0))
             self._events_seen += 1
             if self._events_seen % 500 == 0:
-                self.store.heartbeat(self.run_id)
+                self.store.heartbeat(self.run_id, self._pid)
                 self.store.checkpoint(self.run_id, "cursor",
                                       {"last_seq": self._last_seq})
             if self._crash_after is not None and self._events_seen >= self._crash_after:
@@ -733,7 +733,7 @@ class Session:
             now_mono = time.monotonic()
             if now_mono - last_beat >= 30.0:
                 last_beat = now_mono
-                self.store.heartbeat(self.run_id)
+                self.store.heartbeat(self.run_id, self._pid)
                 self._persist_local_state()
                 # Traffic-independent oversight tick (+ dead-monitor stamp).
                 tick = self.policy.monitor_tick(account=None)

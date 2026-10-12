@@ -90,9 +90,13 @@ class RunStore:
                          (run_id, _now(), row[0], state, reason))
         self._db.commit()
 
-    def heartbeat(self, run_id: str) -> None:
-        self._db.execute("UPDATE runs SET heartbeat_utc=?, updated_utc=?"
-                         " WHERE run_id=?", (_now(), _now(), run_id))
+    def heartbeat(self, run_id: str, pid: int | None = None) -> None:
+        if pid is None:
+            self._db.execute("UPDATE runs SET heartbeat_utc=?, updated_utc=?"
+                             " WHERE run_id=?", (_now(), _now(), run_id))
+        else:
+            self._db.execute("UPDATE runs SET heartbeat_utc=?, updated_utc=?, pid=?"
+                             " WHERE run_id=?", (_now(), _now(), pid, run_id))
         self._db.commit()
 
     def get_run(self, run_id: str) -> dict[str, Any] | None:
