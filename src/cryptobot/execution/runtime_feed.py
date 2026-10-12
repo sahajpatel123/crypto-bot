@@ -1,19 +1,23 @@
-"""Market-data stream pump: file/live events -> engine + views + funding (W2, E-007).
+"""Market-data stream pump: file/live events -> engine + views + funding (W2, E-008).
 
 The pump is the runtime half of the data bridge: every normalized record is
 fed to the paper engine (quotes/trades/book deltas for true taker-cross
 fills), depth/flow views are computed under sync/quality gating (never
-fabricated), and funding cash flows settle when stream time crosses the
-venue's funding time while a position is open.
+fabricated), and engine-owned funding events are split out for the ledger.
+Heartbeats advance engine time so stops/GTD expire in quiet markets.
 
 File mode consumes :func:`cryptobot.market_data.bridge.iter_market_stream`
 items (persisted snapshots + sync boundaries); live mode maintains its own
 books with REST snapshots on the collector's re-buffer-then-install protocol.
+
+Economic-path guard: the pump only drives ``nautilus-paper`` engines — the
+reference/fake venue is replay-harness-only and must never price fills.
 """
 from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Iterable, Iterator
 
 from cryptobot.app.engine import EngineEvent, EngineFunding
@@ -23,12 +27,10 @@ from cryptobot.market_data.discovery import FAPI_BASE_URL, urllib_json_get
 
 __all__ = ["PumpTick", "StreamPump"]
 
-_FUNDING_INTERVAL_MS = 8 * 3600 * 1000
-
 
 @dataclass
 class PumpTick:
-    record: dict[str, Any]
+    record: dict[str, Any] | None  # None on idle-heartbeat ticks.
     engine_events: list[EngineEvent] = field(default_factory=list)
     funding: list[EngineFunding] = field(default_factory=list)
     depth: dict[str, Any] | None = None
@@ -42,20 +44,31 @@ class StreamPump:
         self,
         engine: Any,
         *,
-        position_of: Callable[[str], tuple[float, float]] | None = None,
         rest_get: Callable | None = None,
         snapshot_limit: int = 1000,
     ) -> None:
-        """Engine: S3 paper engine (note_event/poll/latest_mark). position_of:
-        symbol -> (open qty, ref price) for funding settlement (None = flat)."""
+        """Engine: nautilus-paper engine (note_event/poll/advance_to).
+
+        Funding settles inside the engine from markPrice terms against its
+        own cache positions; the pump only splits funding events out for the
+        ledger. Reference/fake engines are refused (economic-path guard).
+        """
+        label = getattr(engine, "model_label", None)
+        if label != "nautilus-paper":
+            raise ValueError(
+                f"StreamPump refuses engine {label!r}: live and replay economic "
+                "paths run nautilus-paper only (reference/fake venues are "
+                "replay-harness-only and must never price fills)")
         self.engine = engine
-        self._position_of = position_of
         self._rest_get = rest_get or urllib_json_get
         self._snapshot_limit = snapshot_limit
         self._books: dict[str, StreamBook] = {}  # live mode only.
         self._snap_due: dict[str, float] = {}  # live mode: symbol -> wall deadline.
-        self._funding: dict[str, dict[str, Any]] = {}  # symbol -> rate/next/last_settled.
         self._flow: dict[str, dict[str, Any]] = {}  # symbol -> window/trades/prev_last_id.
+        self.stats: dict[str, int] = {
+            "records": 0, "heartbeats": 0, "engine_events": 0, "funding": 0,
+            "depth_ok": 0, "depth_missing": 0, "flow_ok": 0, "flow_missing": 0,
+        }
 
     # -- file mode (persisted snapshots + boundaries) ---------------------------
     def pump_stream(self, items: Iterable[StreamItem]) -> Iterator[PumpTick]:
@@ -63,8 +76,25 @@ class StreamPump:
             yield self._handle(item.record, item.books.get(str(item.record.get("symbol", ""))))
 
     # -- live mode (own books, REST snapshots) -----------------------------------
-    def pump_live(self, records: Iterable[dict[str, Any]]) -> Iterator[PumpTick]:
+    def pump_live(self, records: Iterable[dict[str, Any] | None],
+                  *, replay: bool = False) -> Iterator[PumpTick]:
+        """Live records with B3 idle heartbeats (``None``): time advances, no views.
+
+        ``replay=True`` replays dataset streams on the virtual clock: each
+        ``None`` advances exactly one virtual second from the engine clock
+        (dataset contract). Live default advances to wall-now. Replaying
+        with the live default would jump the clock to wall time.
+
+        Replay is strictly offline: REST book snapshots are skipped, so
+        books stay unsynced (honest ``depth:unsynced-no-snapshot``) and no
+        live state can contaminate the replay (manager integration fix).
+        """
         for record in records:
+            if record is None:
+                if not replay:
+                    self._snapshot_due_check()
+                yield self._handle_heartbeat(replay=replay)
+                continue
             symbol = str(record.get("symbol", ""))
             entry = self._books.get(symbol)
             if entry is None:
@@ -87,7 +117,8 @@ class StreamPump:
                     # arriving during the window queue in the unsynced book, so
                     # the snapshot install can drop stale ones and span cleanly.
                     self._snap_due[symbol] = time.monotonic() + 2.5
-            self._snapshot_due_check()
+            if not replay:
+                self._snapshot_due_check()
             yield self._handle(record, entry)
 
     def _snapshot_due_check(self) -> None:
@@ -119,51 +150,41 @@ class StreamPump:
     # -- shared per-record handling -------------------------------------------------
     def _handle(self, record: dict[str, Any], entry: StreamBook | None) -> PumpTick:
         symbol = str(record.get("symbol", ""))
-        channel = record.get("channel")
-        if channel == "markPrice":
-            self._note_funding_terms(symbol, record["payload"])
+        self.stats["records"] += 1
         # Engine feed first (matching advances on this record's data)...
-        if hasattr(self.engine, "note_event"):
-            self.engine.note_event(record)
+        self.engine.note_event(record)
         engine_events = list(self.engine.poll())
-        # ...then views and funding settle against post-record state.
+        # ...then views against post-record state; funding splits out for the ledger.
+        funding = [e.payload for e in engine_events if e.kind == "funding"]
+        engine_events = [e for e in engine_events if e.kind != "funding"]
+        self.stats["engine_events"] += len(engine_events)
+        self.stats["funding"] += len(funding)
         depth, depth_reason = book_features(entry) if entry is not None else (None, "depth:symbol-not-captured")
         flow, flow_reason = self._flow_for(symbol, record)
-        funding = self._settle_funding(symbol, int(record.get("exchange_ts_ms", 0) or 0))
+        self.stats["depth_ok" if depth is not None else "depth_missing"] += 1
+        self.stats["flow_ok" if flow is not None else "flow_missing"] += 1
         return PumpTick(record, engine_events, funding, depth, depth_reason, flow, flow_reason)
 
-    def _note_funding_terms(self, symbol: str, payload: dict[str, Any]) -> None:
-        state = self._funding.setdefault(symbol, {"rate": 0.0, "next_ms": 0,
-                                                  "settled_ms": 0})
+    def _handle_heartbeat(self, record: None = None, *,
+                          replay: bool = False) -> PumpTick:
+        """Heartbeat (B3 ``None``): advance engine time, drain, no views."""
+        self.stats["records"] += 1
+        self.stats["heartbeats"] += 1
+        target = (self.engine.now_utc + timedelta(seconds=1) if replay
+                  else datetime.now(timezone.utc))
         try:
-            state["rate"] = float(payload.get("funding_rate", 0.0) or 0.0)
-            state["next_ms"] = int(payload.get("next_funding_ms", 0) or 0)
-        except (TypeError, ValueError):
-            pass  # malformed terms: keep the last known, never invent.
-
-    def _settle_funding(self, symbol: str, now_ms: int) -> list[EngineFunding]:
-        state = self._funding.get(symbol)
-        if not state or not state["next_ms"] or now_ms < state["next_ms"]:
-            return []
-        if state["settled_ms"] >= state["next_ms"]:
-            return []  # already settled this funding time.
-        state["settled_ms"] = state["next_ms"]
-        if self._position_of is None:
-            return []
-        qty, ref = self._position_of(symbol)
-        rate = state["rate"]
-        if qty == 0.0 or rate == 0.0 or ref <= 0:
-            return []  # flat/zero-rate: no cash flow, nothing to book.
-        amount = -qty * ref * rate  # rate>0: longs pay.
-        if amount == 0.0:
-            return []
-        funding_ms = state["next_ms"]
-        # Project the next funding time; the venue's next markPrice confirms it.
-        state["next_ms"] = funding_ms + _FUNDING_INTERVAL_MS
-        from datetime import datetime, timezone
-        ts_utc = datetime.fromtimestamp(funding_ms / 1000, tz=timezone.utc)
-        return [EngineFunding(event_id=f"funding:{symbol}:{funding_ms}",
-                              instrument=symbol, amount=amount, ts_utc=ts_utc)]
+            self.engine.advance_to(target)
+        except ValueError:
+            pass  # heartbeat behind the engine clock: nothing to advance.
+        engine_events = list(self.engine.poll())
+        funding = [e.payload for e in engine_events if e.kind == "funding"]
+        engine_events = [e for e in engine_events if e.kind != "funding"]
+        self.stats["engine_events"] += len(engine_events)
+        self.stats["funding"] += len(funding)
+        self.stats["depth_missing"] += 1
+        self.stats["flow_missing"] += 1
+        return PumpTick(None, engine_events, funding, None, "depth:heartbeat",
+                        None, "flow:heartbeat")
 
     def _flow_for(self, symbol: str, record: dict[str, Any]) -> tuple[dict | None, str]:
         """Flow view: the just-closed 1 s window when a trade rolls it, else missing."""

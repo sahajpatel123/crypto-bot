@@ -92,8 +92,9 @@ class RuntimeTrader:
         """Submit a taker entry; returns the durable client id.
 
         Intent-level expiry is enforced pre-submit: an entry whose window has
-        passed is refused, never sent. (MARKET/LIMIT-IOC resolve on the next
-        data tick after submit, so no live-expiry race exists for entries.)
+        passed is refused, never sent. Queued submits that outlive their
+        window expire in the engine queue (never submitted late); in-sim
+        MARKET/LIMIT-IOC resolve on the next data tick after submit.
         """
         if self.exit_only:
             raise PermissionError("exit-only mode refuses new entries")

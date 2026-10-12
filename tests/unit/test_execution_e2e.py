@@ -81,12 +81,7 @@ def _run(tmp_path, tag):
     trader = RuntimeTrader(engine, log_path=tmp_path / f"rt-{tag}.jsonl",
                            ledger=ledger, outcome_sink=policy,
                            now_utc=lambda: now[0])
-    position = {"res": None}
-    pump = StreamPump(engine,
-                      position_of=lambda s: (
-                          trader.position_net(position["res"])
-                          if position["res"] and s == "BTCUSDT" else 0.0,
-                          engine.latest_mark(s) or 0.0))
+    pump = StreamPump(engine)  # funding settles inside the engine (E-008).
     events_path, snaps_path = _fixture(tmp_path / tag)
     items = list(iter_market_stream(events_path, snaps_path))
     admitted = False
@@ -118,7 +113,6 @@ def _run(tmp_path, tag):
                 net_liquidation=EQUITY, net_realised_global=0.0,
                 open_position=False))
             assert isinstance(verdict, Approved), verdict
-            position["res"] = verdict.reservation_id
             entry_id = trader.submit_entry(
                 "BTCUSDT", "LONG", verdict.qty,
                 expire_at_utc=intent.entry_expiry_utc,

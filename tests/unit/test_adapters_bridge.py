@@ -137,11 +137,64 @@ def test_reconnect_labels_natural_gap_and_continues():
     def connect(url):
         return market if "/market/" in url else public
 
-    it = live_events(symbols=["BTCUSDT"], connect=connect)
-    events = _take(it, 2)
-    trade = next(e for e in events if e["channel"] == "aggTrade")
+    stats: dict = {}
+    it = live_events(symbols=["BTCUSDT"], connect=connect, stats=stats)
+    events = _take(it, 3)  # a heartbeat flows through the 2 s backoff.
+    beats = [e for e in events if e is None]
+    assert len(beats) == 1  # chunked backoff never blocks the consumer 1 s+.
+    assert stats["reconnects"]["market"] >= 1
+    trade = next(e for e in events if e is not None and e["channel"] == "aggTrade")
     assert trade["gap_kind"] == "natural"
     assert market.recvs >= 2  # reconnected and kept streaming.
+
+
+def test_quiet_stream_yields_none_heartbeat_and_stats():
+    market, public = FakeLiveConn([]), FakeLiveConn([])
+
+    def connect(url):
+        return market if "/market/" in url else public
+
+    stats: dict = {}
+    it = live_events(symbols=["BTCUSDT"], connect=connect, heartbeat_every_s=0.2,
+                     stats=stats)
+    (beat,) = _take(it, 1)
+    assert beat is None  # B3: the idle heartbeat is None, not a record.
+    assert (stats["events"], stats["heartbeats"]) == (0, 1)
+    assert stats["reconnects"] == {"market": 0, "public": 0}
+    assert stats["malformed_frames"] == 0
+    assert stats["symbols"] == ["BTCUSDT"]
+    assert stats["pending_gap"] == {"market": False, "public": False}
+    assert stats["uptime_s"] >= 0.0
+
+
+def test_malformed_frames_counted_in_stats():
+    market = FakeLiveConn([("text", b"not json{"), ("binary", b"xx")])
+    public = FakeLiveConn([])
+
+    def connect(url):
+        return market if "/market/" in url else public
+
+    stats: dict = {}
+    it = live_events(symbols=["BTCUSDT"], connect=connect, heartbeat_every_s=0.2,
+                     stats=stats)
+    (beat,) = _take(it, 1)
+    assert beat is None
+    assert stats["malformed_frames"] == 2
+    assert stats["events"] == 0
+
+
+def test_busy_stream_suppresses_heartbeat():
+    market = FakeLiveConn([_trade(), _trade(agg_id=2)])
+    public = FakeLiveConn([])
+
+    def connect(url):
+        return market if "/market/" in url else public
+
+    it = live_events(symbols=["BTCUSDT"], connect=connect,
+                     heartbeat_every_s=30.0)
+    events = _take(it, 2)
+    assert [e["channel"] for e in events] == ["aggTrade", "aggTrade"]
+    assert [e["seq"] for e in events] == [1, 2]  # heartbeats never consume seq.
 
 
 def test_routes_exhausted_raises_instead_of_trading_blind():

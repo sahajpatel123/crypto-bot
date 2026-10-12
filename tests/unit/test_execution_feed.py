@@ -111,6 +111,8 @@ def test_file_pump_feeds_engine_and_views(tmp_path):
 
 
 def test_funding_settles_once_when_crossed_with_position(tmp_path):
+    # E-008: funding is engine-owned — it settles from markPrice terms against
+    # the engine's own open position; the pump only splits it out.
     events = [
         _mark(1, T0MS, 0.0001, T0MS + 5000),
         _ticker(2, T0MS + 1000, 60000.00, 60000.50),
@@ -120,15 +122,19 @@ def test_funding_settles_once_when_crossed_with_position(tmp_path):
     events_path = tmp_path / "e.jsonl"
     events_path.write_text("\n".join(json.dumps(r) for r in events) + "\n")
     engine = _engine()
-    pump = StreamPump(engine, position_of=lambda s: (0.002, 60001.00))
+    pump = StreamPump(engine)
+    cid = engine.submit(EngineOrder("BTCUSDT", "BUY", 0.002, "MARKET"))
     ticks = list(pump.pump_stream(iter_market_stream(events_path, None)))
     assert ticks[0].funding == [] and ticks[1].funding == []
+    assert [e.payload.client_order_id for e in ticks[1].engine_events
+            if e.kind == "fill"] == [cid]
     assert len(ticks[2].funding) == 1
     funding = ticks[2].funding[0]
     assert funding.instrument == "BTCUSDT"
-    assert funding.amount == pytest.approx(-0.002 * 60001.00 * 0.0001)
+    assert funding.amount == pytest.approx(-0.002 * 60000.00 * 0.0001)
     assert funding.event_id == f"funding:BTCUSDT:{T0MS + 5000}"
     assert ticks[3].funding == []  # settled once; no double-book.
+    assert pump.stats["funding"] == 1
 
 
 def test_funding_skipped_when_flat_or_zero_rate(tmp_path):
@@ -138,13 +144,62 @@ def test_funding_skipped_when_flat_or_zero_rate(tmp_path):
     ]
     events_path = tmp_path / "e.jsonl"
     events_path.write_text("\n".join(json.dumps(r) for r in events) + "\n")
-    engine = _engine()
-    pump = StreamPump(engine, position_of=lambda s: (0.002, 60001.00))
-    ticks = list(pump.pump_stream(iter_market_stream(events_path, None)))
-    assert ticks[1].funding == []  # zero rate: no cash flow.
-    pump_flat = StreamPump(engine)  # no position hook: flat assumed.
-    ticks = list(pump_flat.pump_stream(iter_market_stream(events_path, None)))
+    engine = _engine()  # flat: no position, no cash flow.
+    ticks = list(StreamPump(engine).pump_stream(
+        iter_market_stream(events_path, None)))
     assert ticks[1].funding == []
+    engine2 = _engine()  # open position but zero rate: still nothing.
+    engine2.submit(EngineOrder("BTCUSDT", "BUY", 0.002, "MARKET"))
+    ticks = list(StreamPump(engine2).pump_stream(
+        iter_market_stream(events_path, None)))
+    assert ticks[1].funding == []
+
+
+def test_refuses_reference_and_fake_engines(tmp_path):
+    from cryptobot.app.reference import ReferenceEngine
+
+    class _Fake:
+        model_label = "fake-test"
+
+    with pytest.raises(ValueError, match="refuses engine 'reference-fake-venue'"):
+        StreamPump(ReferenceEngine(log_path=tmp_path / "ref.jsonl",
+                                   outcome_sink=None, taker_bps=5.0))
+    with pytest.raises(ValueError, match="refuses engine 'fake-test'"):
+        StreamPump(_Fake())
+    with pytest.raises(ValueError, match="refuses engine None"):
+        StreamPump(object())
+    StreamPump(_engine())  # nautilus-paper passes the guard.
+
+
+def test_none_heartbeat_advances_clock_and_counts_stats():
+    engine = _engine()
+    pump = StreamPump(engine)
+    before = engine.now_utc
+    ticks = list(pump.pump_live(iter([
+        _ticker(1, T0MS, 60000.00, 60000.50),
+        None,  # B3 idle heartbeat: wall-clock advance, drain, no views.
+    ])))
+    assert ticks[1].record is None
+    assert engine.now_utc > before
+    assert ticks[1].depth is None and ticks[1].depth_reason == "depth:heartbeat"
+    assert ticks[1].flow is None and ticks[1].flow_reason == "flow:heartbeat"
+    assert pump.stats["records"] == 2
+    assert pump.stats["heartbeats"] == 1
+    assert "" not in pump._books  # heartbeats never open a book entry.
+
+
+def test_replay_heartbeat_advances_one_virtual_second():
+    from datetime import timedelta
+    engine = _engine()
+    pump = StreamPump(engine)
+    ticks = list(pump.pump_live(iter([
+        _ticker(1, T0MS, 60000.00, 60000.50),
+        None,
+        None,
+    ]), replay=True))
+    assert engine.now_utc == datetime.fromtimestamp(T0MS / 1000, tz=timezone.utc) + timedelta(seconds=2)
+    assert pump.stats["heartbeats"] == 2
+    assert all(t.record is None for t in ticks[1:])
 
 
 def test_live_pump_syncs_books_via_rest_snapshot():
@@ -183,3 +238,26 @@ def test_live_pump_chain_break_resyncs_with_reason():
     assert ticks[1].depth is None
     assert ticks[1].depth_reason == "depth:resync-in-flight"
     assert len(calls) == 1  # refetch scheduled after the re-buffer window.
+
+
+def test_replay_pump_is_offline_no_rest_no_live_book():
+    """Manager fixup: replay=True never fetches REST snapshots (B5 offline).
+
+    Without this, replay contaminates books with live snapshots and
+    reports depth_ok on depthless archive data.
+    """
+    def rest_get(url, timeout):
+        raise AssertionError(f"replay must not fetch REST: {url}")
+
+    engine = _engine()
+    pump = StreamPump(engine, rest_get=rest_get)
+    records = [
+        _trade(1, T0MS + 100, 101, 60000.00, False),
+        None,
+        _trade(2, T0MS + 1200, 102, 60000.50, True),
+    ]
+    ticks = list(pump.pump_live(iter(records), replay=True))
+    assert ticks[0].depth is None
+    assert ticks[0].depth_reason == "depth:unsynced-no-snapshot"
+    assert ticks[2].depth is None
+    assert pump.stats["depth_ok"] == 0
