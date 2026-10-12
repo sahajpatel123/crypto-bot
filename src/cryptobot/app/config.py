@@ -74,6 +74,7 @@ class AppConfig:
     cooldown_s: int = 300
     min_reward_multiple: float = 1.0
     allow_legacy_exit_rules: bool = True
+    events_enabled: bool = False
     fingerprint: str = ""
     source_path: str = ""
 
@@ -185,6 +186,7 @@ def load_config(path: str | Path) -> AppConfig:
         min_reward_multiple=_positive(
             strategies.get("min_reward_multiple", 1.0), "strategies.min_reward_multiple"),
         allow_legacy_exit_rules=bool(strategies.get("allow_legacy_exit_rules", True)),
+        events_enabled=bool(run.get("events_enabled", False)),
         source_path=str(path),
     )
     canonical = json.dumps({
@@ -196,6 +198,7 @@ def load_config(path: str | Path) -> AppConfig:
         "strategies": list(cfg.strategies_enabled), "arms": cfg.strategies_arms,
         "cooldown_s": cfg.cooldown_s, "min_reward_multiple": cfg.min_reward_multiple,
         "legacy_exits": cfg.allow_legacy_exit_rules,
+        "events_enabled": cfg.events_enabled,
     }, sort_keys=True)
     fingerprint = hashlib.sha256(
         f"{PACKAGE_VERSION}|{canonical}".encode("utf-8")).hexdigest()[:16]

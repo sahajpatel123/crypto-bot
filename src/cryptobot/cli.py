@@ -263,6 +263,27 @@ def cmd_stop(args: argparse.Namespace) -> int:
         store.close()
 
 
+def cmd_backtest(args: argparse.Namespace) -> int:
+    from cryptobot.research.backtest import main as harness_main
+    argv = ["--dataset", args.dataset, "--out", args.out,
+           "--config", args.config]
+    if args.splits:
+        argv += ["--splits", args.splits]
+    if args.armsets:
+        argv += ["--armsets", args.armsets]
+    if args.symbols:
+        argv += ["--symbols", args.symbols]
+    if args.max_events is not None:
+        argv += ["--max-events", str(args.max_events)]
+    if args.sensitivity:
+        argv += ["--sensitivity"]
+    try:
+        return int(harness_main(argv))
+    except (ValueError, FileNotFoundError) as exc:
+        print(f"backtest failed: {exc}", file=sys.stderr)
+        return 1
+
+
 def cmd_report(args: argparse.Namespace) -> int:
     from cryptobot.reporting import build_report
     from cryptobot.reporting.schemas import RunFileError
@@ -318,6 +339,16 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--run-dir", required=True)
     p.add_argument("--out", default=None)
     p.set_defaults(func=cmd_report)
+    p = sub.add_parser("backtest")
+    p.add_argument("--dataset", required=True)
+    p.add_argument("--out", required=True)
+    p.add_argument("--config", default="configs/paper.toml")
+    p.add_argument("--splits", default=None)
+    p.add_argument("--armsets", default=None)
+    p.add_argument("--symbols", default=None)
+    p.add_argument("--max-events", type=int, default=None)
+    p.add_argument("--sensitivity", action="store_true")
+    p.set_defaults(func=cmd_backtest)
     return parser
 
 

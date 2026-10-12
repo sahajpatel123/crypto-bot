@@ -665,6 +665,25 @@ def _intent(now, ref="test:1"):
         evidence_ref=ref, data_quality=DataQuality.CLEAN)
 
 
+def _gate_at(now, offset_s=0):
+    """EventGate with one release `offset_s` from now; no coverage needed."""
+    from cryptobot.events.gate import EventGate, GateConfig
+    from cryptobot.events.store import EventStore
+    from cryptobot.events.timezones import et_tz
+    from cryptobot.events.types import Event
+    sched = now + timedelta(seconds=offset_s)
+    wall = sched.astimezone(et_tz()).replace(tzinfo=None).isoformat()
+    store = EventStore()
+    store.upsert(Event(
+        event_id="T-1", source="cpi", title="t", kind="release",
+        source_url="https://example.invalid/", scheduled_local_iso=wall,
+        tz_name="America/New_York", scheduled_utc=sched,
+        first_seen_utc=now - timedelta(days=1), fetch_utc=now,
+        revision=0, horizon_end_utc=None,
+        expires_utc=sched + timedelta(days=7)))
+    return EventGate(store, GateConfig(required_sources=()))
+
+
 def _reservation(rid="r-1", qty=1.0):
     from cryptobot.risk.state import Reservation
     return Reservation(
@@ -731,6 +750,95 @@ def test_entry_dead_releases_reservation(tmp_path):
             EngineEvent("tick", None, datetime.now(timezone.utc)))
         assert session._position is None
         assert session.policy._state.reservations == {}
+    finally:
+        store.close()
+
+
+def test_event_gate_blocks_admit(tmp_path):
+    """EV-001 seam: a blocked gate rejects before risk evaluation."""
+    session, store = _session(tmp_path, warmup_bars=3)
+    from cryptobot.app.session import Session
+    store.close()
+    store = RunStore(tmp_path / "runs" / "cryptobot.db")
+    session = Session(session.config, store, tmp_path / "runs" / "ev",
+                      "ev", engine=_ScriptedEngine())
+    try:
+        now = datetime(2026, 10, 12, 6, 0, tzinfo=timezone.utc)
+        session.clock.set_ms(int(now.timestamp() * 1000))
+        session.policy.reconcile_day(120.0, 0.0)
+        session.event_gate = _gate_at(session.now_utc(), offset_s=0)
+        session._maybe_admit([Candidate("S1", _intent(now))])
+        assert session._position is None
+        assert session.policy._state.reservations == {}
+        assert any(r.startswith("event:") for r in session._reject_counts), \
+            dict(session._reject_counts)
+    finally:
+        store.close()
+
+
+def test_event_gate_clear_passes_through(tmp_path):
+    """EV-001 seam: a clear gate lets admission reach risk/submit."""
+    session, store = _session(tmp_path, warmup_bars=3)
+    from cryptobot.app.session import Session
+    store.close()
+    store = RunStore(tmp_path / "runs" / "cryptobot.db")
+    session = Session(session.config, store, tmp_path / "runs" / "ev2",
+                      "ev2", engine=_RejectingEngine())
+    try:
+        now = datetime(2026, 10, 12, 6, 0, tzinfo=timezone.utc)
+        session.clock.set_ms(int(now.timestamp() * 1000))
+        session.policy.reconcile_day(120.0, 0.0)
+        session.event_gate = _gate_at(
+            session.now_utc(), offset_s=10_000)
+        session._maybe_admit([Candidate("S1", _intent(now))])
+        # Reached risk + submit (rejected there, proving gate passed).
+        assert ("execution:submit-rejected:ValueError"
+                in session._reject_counts)
+    finally:
+        store.close()
+
+
+def test_event_prepare_flat_cancels_unfilled(tmp_path):
+    """EV-001 sweep: unfilled entries cancel ahead of the window."""
+    session, store, engine = _protection_session(tmp_path)
+    try:
+        session.event_gate = _gate_at(session.now_utc(), offset_s=960)
+        session.policy._state.reservations["r-1"] = _reservation()
+        engine.leg_states = {"e": "open"}
+        session._event_prepare_flat()
+        assert session._position is None
+        assert "e" in engine.cancelled
+        assert session.policy._state.reservations == {}
+        assert "event-prepare-flat" in _checkpoints(store)
+    finally:
+        store.close()
+
+
+def test_event_prepare_flat_keeps_filled(tmp_path):
+    """EV-001 sweep: filled positions keep protection, no cancel."""
+    session, store, engine = _protection_session(tmp_path)
+    try:
+        session.event_gate = _gate_at(session.now_utc(), offset_s=960)
+        engine.leg_states = {"e": "filled"}
+        engine.leg_filled = {"e": 1.0}
+        session._event_prepare_flat()
+        assert session._position is not None
+        assert engine.cancelled == []
+    finally:
+        store.close()
+
+
+def test_events_enabled_builds_gate(tmp_path):
+    """run.events_enabled=True builds a gate from required fixtures."""
+    import dataclasses
+    from cryptobot.app.session import Session
+    session, store = _session(tmp_path, warmup_bars=3)
+    try:
+        cfg = dataclasses.replace(session.config, events_enabled=True)
+        gated = Session(cfg, store, tmp_path / "runs" / "ev3",
+                        "ev3", engine=_ScriptedEngine())
+        assert gated.event_gate is not None
+        assert session.event_gate is None
     finally:
         store.close()
 

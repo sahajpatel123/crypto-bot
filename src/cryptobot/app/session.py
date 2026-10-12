@@ -170,6 +170,9 @@ class Session:
                 now_utc=self.now_utc, submit_delay_ms=config.submit_delay_ms)
         self._feeds: dict[str, _SymbolFeed] = {}
         self._depth_store = DepthStore()
+        self.event_gate: Any | None = None
+        if config.events_enabled:
+            self._build_event_gate()
         self._position: dict[str, Any] | None = None
         self._day: str | None = None
         self._reject_counts: dict[str, int] = {}
@@ -470,6 +473,16 @@ class Session:
         if decision.admitted is None:
             return
         intent = decision.admitted
+        if self.event_gate is not None:
+            gate = self.event_gate.check(self.now_utc())
+            if gate.blocked:
+                self._note_reject(gate.reason, intent.strategy,
+                                  intent.instrument, intent.side.value)
+                self.store.record_intent(
+                    self.run_id, intent.evidence_ref, intent.strategy,
+                    intent.instrument, intent.side.value, "rejected",
+                    gate.reason, self.now_utc().isoformat())
+                return
         verdict = self.policy.evaluate(intent, self._snapshot_account())
         if not isinstance(verdict, Approved):
             self._note_reject(f"risk:{verdict.reason}", intent.strategy,
@@ -900,10 +913,61 @@ class Session:
                 self._maybe_admit(self._evaluate_symbol(symbol, adapters, modules))
         if closed:
             self._sample_equity("bar")
+            self._event_prepare_flat()
         health = self.policy.check_health(self._snapshot_account())
         if not health.ok:
             self.engine.set_exit_only(True, ";".join(health.reasons))
             self._set_state("halted", ";".join(health.reasons))
+
+    def _build_event_gate(self) -> None:
+        """Load required event sources into an entry gate (EV-001 seam).
+
+        Paper/live use: fixtures stamped at load (24h coverage TTL).
+        Historical replays must filter by first_seen_utc (specs/events.md
+        section 7); the harness cutoff lands post-Q-008, so replay runs
+        keep events_enabled=False until then.
+        """
+        from cryptobot.events.gate import EventGate
+        from cryptobot.events.sources import (apply_snapshot,
+                                              required_snapshots)
+        from cryptobot.events.store import EventStore
+        now = self.now_utc()
+        store = EventStore()
+        for snap in required_snapshots(now):
+            apply_snapshot(store, snap)
+        self.event_gate = EventGate(store)
+
+    def _event_prepare_flat(self) -> None:
+        """Pre-window sweep: cancel unfilled entries ahead of event windows.
+
+        Acts when a window opens within 120s. Filled positions keep their
+        protection (stops still guard); only unfilled entry orders are
+        cancelled and their holds released.
+        """
+        if self.event_gate is None or self._position is None:
+            return
+        upcoming = self.event_gate.upcoming(self.now_utc(), 120)
+        if not upcoming:
+            return
+        pos = self._position
+        entry_id = pos.get("entry_id") or pos.get("entry_pre_id")
+        if entry_id is None:
+            return
+        statuses = {s.client_order_id: s
+                    for s in self.engine.open_orders()}
+        entry = statuses.get(entry_id)
+        if entry is not None and entry.filled_qty > 1e-12:
+            return  # filled: protection stays on.
+        try:
+            self.engine.cancel(entry_id, "event-prepare-flat")
+        except (ValueError, KeyError):
+            pass  # already gone; still clear + release below.
+        self.policy.release(pos["reservation_id"])
+        self._position = None
+        self._set_state("ready", "event-prepare-flat")
+        self.store.checkpoint(
+            self.run_id, "event-prepare-flat",
+            {"event_ids": [u.event.event_id for u in upcoming]})
 
     def _roll_day_if_needed(self) -> None:
         today = accounting_date(self.now_utc()).isoformat()
