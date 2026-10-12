@@ -334,7 +334,8 @@ def prepare_split_capture(dataset: DatasetHandle, split: str, out_dir,
 def run_cell(base_config_path, capture_dir, strategies: tuple[str, ...],
              run_dir, run_id: str, symbols: tuple[str, ...],
              instrument_filters: dict[str, dict] | None = None,
-             filter_origin: str = FILTER_LABEL) -> dict:
+             filter_origin: str = FILTER_LABEL,
+             filters_asof_utc=None) -> dict:
     """One (arm-set, split) cell: fresh Session + Nautilus engine, replay."""
     from cryptobot.adapters import NautilusPaperEngine
     from cryptobot.app.config import load_config
@@ -378,6 +379,11 @@ def run_cell(base_config_path, capture_dir, strategies: tuple[str, ...],
                               min_qty=filt.get("min_qty", 0.0),
                               min_notional=filt["min_notional"])
     session = Session(cfg, store, run_path, run_id, engine=engine)
+    # Risk sizes on the same filters the engine enforces (F3: no dust).
+    known = instrument_filters or {}
+    session.arm_replay_filters(
+        {s: (known.get(s) or FROZEN_FILTERS.get(s.upper(), {}))
+         for s in symbols}, filter_origin, asof_utc=filters_asof_utc)
     now_cell["now"] = session.now_utc
     # Fills must reach risk/ledger or positions never exist economically
     # (E-007 runtime binds the same sink on the live path).
@@ -500,6 +506,13 @@ def run_comparison(dataset: DatasetHandle, out_dir, base_config_path,
     resolved = {s: filters_for(dataset, s) for s in symbols}
     instrument_filters = {s: f for s, (f, _) in resolved.items()}
     origins = sorted({origin for _, origin in resolved.values()})
+    filters_asof = None
+    manifest = getattr(dataset, "manifest", None)
+    if isinstance(manifest, dict):
+        created = manifest.get("dataset", {}).get("created_utc")
+        if created:
+            from datetime import datetime
+            filters_asof = datetime.fromisoformat(created)
     comparison: dict[str, Any] = {
         "dataset_id": _dataset_id(dataset),
         "dataset_manifest_sha": dataset.manifest_sha(),
@@ -526,7 +539,7 @@ def run_comparison(dataset: DatasetHandle, out_dir, base_config_path,
             run_dir = out / "runs" / split / armset
             cell = run_cell(base_config_path, cap_dir, ARM_SETS[armset],
                             run_dir, run_id, symbols, instrument_filters,
-                            "+".join(origins))
+                            "+".join(origins), filters_asof)
             report = cell["report"]
             key = f"{armset}|{split}"
             comparison["cells"][key] = {
@@ -556,7 +569,7 @@ def run_comparison(dataset: DatasetHandle, out_dir, base_config_path,
                     cell_s = run_cell(base_config_path, sens_cap,
                                       ARM_SETS[armset], run_dir_s, run_id_s,
                                       symbols, instrument_filters,
-                                      "+".join(origins))
+                                      "+".join(origins), filters_asof)
                     rep_s = cell_s["report"]
                     comparison["sensitivity"][f"{key}@spread{mult}x"] = {
                         "multiplier": mult,

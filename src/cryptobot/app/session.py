@@ -25,6 +25,7 @@ from cryptobot.market_data.bars import (BarAggregator, BarMissing,
                                         to_s1_bar)
 from cryptobot.market_data.replayer import (assert_input_class, load_events,
                                             replay_events)
+from cryptobot.market_data.views import DepthStore, book_flow_for
 from cryptobot.risk.policy import RiskPolicy
 from cryptobot.risk.types import AccountSnapshot, Approved, RiskConfig
 
@@ -36,6 +37,51 @@ from .store import RunStore
 __all__ = ["Session", "ReplayClock", "WallClock", "STRATEGY_ARMS"]
 
 _EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
+
+def _map_b4_views(book: Any, flow: Any, reason: str) -> tuple[Any, Any, list[str]]:
+    """Map E-008 views onto MarketView depth/flow (S5 card B4 contract).
+
+    Present views map field-for-field; absent views stay None with the
+    precise book:/flow: reason verbatim. Stale books and unmeasured tops
+    count as absent. Modeled BBO never enters here (DepthStore ignores
+    bookTicker), so S5 can never mistake an estimate for an observation.
+    """
+    from cryptobot.strategies.runtime import DepthView, FlowView
+    tokens = [t for t in reason.split(";") if t]
+    depth_reason = next(
+        (t for t in tokens if t.startswith(("book:", "depth:"))), "")
+    flow_reason = next((t for t in tokens if t.startswith("flow:")), "")
+    depth = None
+    if book is not None:
+        if book.quality != "clean":
+            depth_reason = "book:stale-book"
+        elif book.imbalance_top1 is None:
+            depth_reason = "book:empty-book"
+        else:
+            bid, ask = book.bids[0], book.asks[0]
+            depth = DepthView(
+                best_bid=bid[0], best_ask=ask[0], bid_qty=bid[1],
+                ask_qty=ask[1], spread_bps=book.spread_bps or 0.0,
+                bid_notional=sum(p * q for p, q in book.bids),
+                ask_notional=sum(p * q for p, q in book.asks),
+                levels=book.levels, imbalance=book.imbalance_top1,
+                ts_utc=datetime.fromtimestamp(book.ts_ms / 1000,
+                                              tz=timezone.utc))
+            depth_reason = ""
+    flow_view = None
+    if flow is not None:
+        flow_view = FlowView(
+            buy_notional=flow.buy_notional,
+            sell_notional=flow.sell_notional, buy_count=flow.buy_count,
+            sell_count=flow.sell_count, vwap=flow.vwap or 0.0,
+            trade_count=flow.buy_count + flow.sell_count,
+            window_start_utc=datetime.fromtimestamp(
+                flow.window_start_ms / 1000, tz=timezone.utc),
+            window_end_utc=datetime.fromtimestamp(
+                flow.window_end_ms / 1000, tz=timezone.utc))
+        flow_reason = ""
+    return depth, flow_view, [r for r in (depth_reason, flow_reason) if r]
+
 
 STRATEGY_ARMS = {
     "S1": ("S1", ("S1", "S1-V", "S1-F")),
@@ -123,6 +169,7 @@ class Session:
                 outcome_sink=self.policy, taker_bps=config.taker_bps,
                 now_utc=self.now_utc, submit_delay_ms=config.submit_delay_ms)
         self._feeds: dict[str, _SymbolFeed] = {}
+        self._depth_store = DepthStore()
         self._position: dict[str, Any] | None = None
         self._day: str | None = None
         self._reject_counts: dict[str, int] = {}
@@ -172,6 +219,44 @@ class Session:
         self.store.checkpoint(self.run_id, "filters-armed",
                               {"symbols": sorted(filters),
                                "asof_utc": asof.isoformat()})
+
+    def arm_replay_filters(self, filters: dict[str, dict[str, Any]],
+                         origin: str, *,
+                         asof_utc: datetime | None = None) -> None:
+        """Arm sizing filters for replay from a manifest/frozen profile.
+
+        Offline equivalent of arm_run_mode: risk sizes on the venue
+        step/min instead of the 1e-8 fallback, so dust is rejected
+        honestly (skip:min-notional) instead of crashing the submit (F3).
+        Shapes accepted per symbol: manifest-frozen
+        {tick_size, step_size, min_qty, min_notional, ...} or the frozen
+        fallback {tick_size, step_size, min_notional, ...}.
+        ``asof_utc`` is the honest filters-known-as-of time (manifest
+        build); it defaults to wall-now when unknown (synth).
+        """
+        from dataclasses import replace
+
+        from cryptobot.risk.types import InstrumentFilter
+        built: dict[str, InstrumentFilter] = {}
+        for symbol, filt in filters.items():
+            declared = float(filt.get("min_notional", 0.0))
+            built[symbol] = InstrumentFilter(
+                # Unknown venue minimum (0.0) keeps the operator default
+                # floor; only a declared venue fact overrides it.
+                min_notional_usdt=declared or self.config.min_notional_usdt,
+                qty_step=float(filt.get("step_size", 1e-8)),
+                min_qty=float(filt.get("min_qty", 0.0)),
+                tick_size=filt.get("tick_size"),
+            )
+        merged = dict(self.policy.config.instrument_filters)
+        merged.update(built)
+        asof = asof_utc or datetime.now(timezone.utc)
+        self.policy.config = replace(
+            self.policy.config, instrument_filters=merged,
+            filters_asof_utc=asof)
+        self.store.checkpoint(self.run_id, "filters-armed",
+                              {"origin": origin, "asof_utc": asof.isoformat(),
+                               "symbols": sorted(built)})
 
     def _ensure_symbol_filters(self, symbol: str) -> bool:
         """Arm filters for a newly seen paper symbol. False when blocked."""
@@ -263,10 +348,20 @@ class Session:
         bars = list(feed.bars)
         t = len(bars) - 1
         out: list[Candidate] = []
+        present = [b for b in bars if b is not None]
+        if present:
+            # Strategies-side bars carry the window start; evidence is
+            # the newest bar's close.
+            evidence_ms = int(present[-1].ts_utc.timestamp() * 1000) + 1000
+        else:
+            evidence_ms = int(self.now_utc().timestamp() * 1000)
+        book, flow, reason = book_flow_for(
+            symbol, evidence_ms, self._depth_store)
+        depth, flow_view, reasons = _map_b4_views(book, flow, reason)
         view = MarketView(
             instrument=symbol, bars=tuple(bars), now_utc=self.now_utc(),
-            depth=None, flow=None, quality=DataQuality.CLEAN,
-            quality_reason="depth:unsynced-no-snapshot;flow:window-incomplete")
+            depth=depth, flow=flow_view, quality=DataQuality.CLEAN,
+            quality_reason=";".join(reasons))
         for name, adapter in adapters.items():
             start = time.perf_counter()
             try:
@@ -402,9 +497,23 @@ class Session:
                 "selection:exit-undecodable", self.now_utc().isoformat())
             return
         side = "BUY" if intent.side.value == "LONG" else "SELL"
-        pre_id = self.engine.submit(EngineOrder(
-            instrument=intent.instrument, side=side, qty=verdict.qty,
-            kind="MARKET", reservation_id=verdict.reservation_id))
+        try:
+            pre_id = self.engine.submit(EngineOrder(
+                instrument=intent.instrument, side=side, qty=verdict.qty,
+                kind="MARKET", reservation_id=verdict.reservation_id))
+        except (ValueError, PermissionError, OverflowError) as exc:
+            # B2/F3: an unsubmittable opportunity (dust below the venue
+            # step, full queue, exit-only race) is rejected, never fatal.
+            # The risk hold is freed (zero booked: actually freed).
+            self.policy.release(verdict.reservation_id)
+            reason = f"execution:submit-rejected:{type(exc).__name__}"
+            self._note_reject(reason, intent.strategy, intent.instrument,
+                              intent.side.value)
+            self.store.record_intent(
+                self.run_id, intent.evidence_ref, intent.strategy,
+                intent.instrument, intent.side.value, "rejected",
+                reason, self.now_utc().isoformat())
+            return
         self._submit_ts[pre_id] = self.now_utc()
         self._position = {"reservation_id": verdict.reservation_id,
                           "instrument": intent.instrument,
@@ -489,6 +598,17 @@ class Session:
             self.store.record_event(
                 self.run_id, payload.client_order_id, event.kind,
                 {"instrument": payload.instrument, "reason": payload.reason},
+                payload.ts_utc.isoformat())
+        elif event.kind == "funding":
+            # Engine-settled funding reaches the ledger (idempotent by
+            # event_id); without this backtests silently book funding 0.
+            self.policy.note_funding(payload.event_id, payload.amount,
+                                     payload.ts_utc.isoformat())
+            self._equity_dirty = True
+            self.store.record_event(
+                self.run_id, payload.event_id, "funding",
+                {"instrument": payload.instrument,
+                 "amount": payload.amount},
                 payload.ts_utc.isoformat())
         self._update_position(event)
 
@@ -719,6 +839,16 @@ class Session:
                 modules: dict[str, Any]) -> None:
         channel = event.get("channel")
         symbol = event.get("symbol")
+        if channel in ("aggTrade", "bookTicker", "depth", "markPrice") and symbol:
+            # Engine + views see every market channel (depth/markPrice used
+            # to be dropped here, which starved funding terms and book/flow
+            # views on the Session path).
+            if hasattr(self.engine, "note_event"):
+                self.engine.note_event(event)
+            try:
+                self._depth_store.apply_record(event)
+            except (KeyError, TypeError, ValueError):
+                pass  # malformed depth/trade: views degrade to absent.
         if channel not in ("aggTrade", "bookTicker") or not symbol:
             return
         if hasattr(self.clock, "set_ms"):
@@ -750,10 +880,6 @@ class Session:
             feed.agg.on_bbo(bid, ask, int(event["exchange_ts_ms"]))
         if feed.mark:
             self.engine.note_mark(symbol, feed.mark)
-        if hasattr(self.engine, "note_event"):
-            # True-cross upgrade: full normalized event to the sim (additive;
-            # reference engine lacks it and keeps mark-quote behavior).
-            self.engine.note_event(event)
         self._drain_engine()
         if self._flatten_pending:
             self._retry_pending_flatten("resume-reconcile-retry")

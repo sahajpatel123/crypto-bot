@@ -649,6 +649,22 @@ def test_replay_run_feeds_reporting_package(tmp_path):
         store.close()
 
 
+def _intent(now, ref="test:1"):
+    return Intent(
+        strategy="S1", version="0.1.0", instrument="BTCUSDT",
+        side=Side.LONG, evidence_ts_utc=now,
+        entry_low=100.0, entry_high=100.5,
+        entry_expiry_utc=now + timedelta(seconds=60),
+        invalidation_price=99.0,
+        exit_rule=encode_exit_rule(ExitPolicy(
+            stop_price=99.0, target_price=102.0,
+            time_exit_utc=now + timedelta(seconds=600),
+            policy_id="test")),
+        holding_limit_s=600,
+        forecast_cost=ForecastCost(5.0, 5.0, 5.0, 1.0),
+        evidence_ref=ref, data_quality=DataQuality.CLEAN)
+
+
 def _reservation(rid="r-1", qty=1.0):
     from cryptobot.risk.state import Reservation
     return Reservation(
@@ -715,5 +731,145 @@ def test_entry_dead_releases_reservation(tmp_path):
             EngineEvent("tick", None, datetime.now(timezone.utc)))
         assert session._position is None
         assert session.policy._state.reservations == {}
+    finally:
+        store.close()
+
+
+class _RejectingEngine(_ScriptedEngine):
+    """Submit raises like the venue would on dust (F3)."""
+
+    def submit(self, cmd):
+        raise ValueError("qty 0.00099865 below LOT_SIZE step 0.001")
+
+
+def test_submit_rejection_releases_and_continues(tmp_path):
+    """F3: an unsubmittable opportunity rejects + frees the hold, no crash."""
+    session, store = _session(tmp_path, warmup_bars=3)
+    from cryptobot.app.session import Session
+    store.close()
+    store = RunStore(tmp_path / "runs" / "cryptobot.db")
+    session = Session(session.config, store, tmp_path / "runs" / "rej",
+                      "rej", engine=_RejectingEngine())
+    try:
+        now = datetime(2026, 10, 12, 6, 0, tzinfo=timezone.utc)
+        session.clock.set_ms(int(now.timestamp() * 1000))
+        session.policy.reconcile_day(120.0, 0.0)
+        session._maybe_admit([Candidate("S1", _intent(now))])
+        assert session._position is None
+        assert session.policy._state.reservations == {}
+        assert ("execution:submit-rejected:ValueError"
+                in session._reject_counts)
+    finally:
+        store.close()
+
+
+def test_replay_filters_arm_step_sizing(tmp_path):
+    """F3: armed replay filters size on the venue step, never dust."""
+    from cryptobot.risk.types import Approved
+    session, store = _session(tmp_path, warmup_bars=3)
+    try:
+        now = datetime(2026, 10, 12, 6, 0, tzinfo=timezone.utc)
+        session.clock.set_ms(int(now.timestamp() * 1000))
+        session.policy.reconcile_day(120.0, 0.0)
+        session.store.create_run("sess-test", "replay", "fp",
+                                 str(session.workdir), None)
+        session.arm_replay_filters(
+            {"BTCUSDT": {"tick_size": 0.01, "step_size": 0.001,
+                         "min_qty": 0.001, "min_notional": 5.0}},
+            "manifest-frozen", asof_utc=now)
+        verdict = session.policy.evaluate(
+            _intent(now), session._snapshot_account())
+        assert isinstance(verdict, Approved)
+        assert verdict.qty >= 0.001
+        assert abs(verdict.qty / 0.001 - round(verdict.qty / 0.001)) < 1e-9
+        rows = store._db.execute(
+            "SELECT payload FROM checkpoints WHERE run_id='sess-test'"
+            " AND kind='filters-armed'").fetchall()
+        assert rows and "manifest-frozen" in rows[0][0]
+    finally:
+        store.close()
+
+
+def test_funding_event_routes_to_ledger(tmp_path):
+    """Funding EngineEvents book to the ledger (idempotent redelivery)."""
+    from cryptobot.app.engine import EngineEvent, EngineFunding
+    session, store, engine = _protection_session(tmp_path)
+    try:
+        session._position["time_exit"] = (
+            datetime.now(timezone.utc) + timedelta(hours=1))
+        now = datetime.now(timezone.utc)
+        evt = EngineEvent(
+            "funding", EngineFunding(
+                event_id="funding:BTCUSDT:123", instrument="BTCUSDT",
+                amount=-1.5, ts_utc=now), now)
+        session._on_engine_event(evt)
+        assert session.ledger.funding_net() == -1.5
+        session._on_engine_event(evt)
+        assert session.ledger.funding_net() == -1.5
+    finally:
+        store.close()
+
+
+def test_map_b4_views_contract(tmp_path):
+    """S5 card B4: stale/absent map to None + verbatim reasons."""
+    from cryptobot.app.session import _map_b4_views
+    from cryptobot.market_data.views import BookView, FlowView2
+    book = BookView(
+        symbol="BTCUSDT", ts_ms=1000, bids=((100.0, 1.0),),
+        asks=((100.1, 1.0),), levels=10, sync_age_ms=99999,
+        last_update_id=5, quality="stale", spread_bps=10.0,
+        imbalance_top1=0.1)
+    depth, flow_v, reasons = _map_b4_views(book, None, "flow:no-trades-yet")
+    assert depth is None and flow_v is None
+    assert reasons == ["book:stale-book", "flow:no-trades-yet"]
+    clean = BookView(
+        symbol="BTCUSDT", ts_ms=2000, bids=((100.0, 2.0),),
+        asks=((100.1, 1.0),), levels=10, sync_age_ms=100,
+        last_update_id=6, quality="clean", spread_bps=10.0,
+        imbalance_top1=1 / 3)
+    flow = FlowView2(
+        symbol="BTCUSDT", window_start_ms=1000, window_end_ms=2000,
+        buy_notional=60.0, sell_notional=40.0, buy_count=6, sell_count=4,
+        total_qty=1.0, vwap=100.0, last_id=9, completeness="complete")
+    depth, flow_v, reasons = _map_b4_views(clean, flow, "")
+    assert depth is not None and depth.imbalance == 1 / 3
+    assert flow_v is not None and flow_v.trade_count == 10
+    assert reasons == []
+
+
+def test_b4_wiring_flow_present_depth_precise(tmp_path):
+    """Session ingests trades into views: flow present, depth precise."""
+    from cryptobot.strategies.runtime import get_adapter
+    session, store = _session(tmp_path, warmup_bars=3)
+    try:
+        now = datetime(2026, 10, 12, 6, 0, tzinfo=timezone.utc)
+        session.policy.reconcile_day(120.0, 0.0)
+        session.store.create_run("sess-test", "replay", "fp",
+                                 str(session.workdir), None)
+        adapters = {"S5": get_adapter("S5")}
+        base = T0 + 60_000  # own windows, clear of other tests' data
+        seq = 0
+        tid = 0
+        for w in range(6):
+            ts = base + w * 1000
+            for k in range(4):
+                tid += 1
+                seq += 1
+                session._ingest(_trade(seq, ts + 100 + k * 100, tid,
+                                       100.0, 0.5),
+                                adapters, {})
+            seq += 1
+            session._ingest(_bbo(seq, ts + 500, 99.99, 100.01),
+                            adapters, {})
+        assert any(r.startswith("strategy:book:never-synced")
+                   for r in session._reject_counts), \
+            dict(session._reject_counts)
+        assert not [r for r in session._reject_counts
+                    if ":flow:" in r or r.endswith(":flow")], \
+            "flow views present: no flow:* rejects expected"
+        from cryptobot.market_data.views import book_flow_for
+        book, flow, _reason = book_flow_for(
+            "BTCUSDT", base + 6000, session._depth_store)
+        assert book is None and flow is not None
     finally:
         store.close()
