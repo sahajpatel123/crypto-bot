@@ -481,8 +481,34 @@
     "tests/acceptance/test_risk_v006.py",
     "coord/outbox/V-006-F1.json"
    ]
+  },
+  "R2": {
+   "owner_session": "young-polaris",
+   "role": "Manager",
+   "state": "complete",
+   "acceptance": [
+    "1h supervised paper",
+    "controlled interruption + recovery",
+    "reconciled flat"
+   ],
+   "evidence_required": [
+    "run report"
+   ],
+   "allowed_paths": []
+  },
+  "R3": {
+   "owner_session": "owner",
+   "role": "Owner launch",
+   "state": "ready-to-launch",
+   "acceptance": [
+    "24h paper per R3_LAUNCH.md"
+   ],
+   "evidence_required": [
+    "run report"
+   ],
+   "allowed_paths": []
   }
  },
- "updated_utc": "2026-10-12T08:20:00Z",
+ "updated_utc": "2026-10-12T08:00:00Z",
  "version": 1
 }
