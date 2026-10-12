@@ -579,7 +579,7 @@
   "V-007": {
    "owner_session": "cool-amalthea",
    "role": "Worker 3 \u2014 Risk and Reporting",
-   "state": "dispatched",
+   "state": "accepted",
    "contract_version": "v0.2.0+backtest_interfaces.md",
    "dependencies": [
     "specs/backtest_interfaces.md",
@@ -606,7 +606,12 @@
     "tests/acceptance/",
     "tests/unit/test_reporting_*",
     "coord/outbox/V-007.json"
-   ]
+   ],
+   "accepted": {
+    "sha": "c770aa7",
+    "suite": "585/585",
+    "note": "repro read-only 585 green, report build byte-identical x2, 7-check agree, corrupt-fill loud"
+   }
   }
  },
  "updated_utc": "2026-10-12T08:30:00Z",
