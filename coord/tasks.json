@@ -622,6 +622,130 @@
     "suite": "585/585",
     "note": "repro read-only 585 green, report build byte-identical x2, 7-check agree, corrupt-fill loud"
    }
+  },
+  "EV-001": {
+   "contract_version": "six-agent-48h",
+   "state": "dispatched",
+   "dependencies": [
+    "01487ac integrated"
+   ],
+   "evidence_required": [
+    "suite",
+    "repro"
+   ],
+   "owner_session": "white-aldebaran",
+   "role": "events",
+   "allowed_paths": [
+    "src/cryptobot/events/",
+    "tests/unit/test_events_*.py",
+    "specs/events.md"
+   ],
+   "acceptance": [
+    "Event store with ID/source/schedule-TZ/first-seen/fetch/revisions/horizon/expiry",
+    "FOMC+CPI fixtures from official calendars, TZ/DST correct, IST display",
+    "Entry-gate API + stale-source-explicit behavior, tested"
+   ]
+  },
+  "OP-001": {
+   "contract_version": "six-agent-48h",
+   "state": "dispatched",
+   "dependencies": [
+    "01487ac integrated"
+   ],
+   "evidence_required": [
+    "suite",
+    "repro"
+   ],
+   "owner_session": "crystal-parallax",
+   "role": "verification",
+   "allowed_paths": [
+    "tests/audit/",
+    "tools/audit/"
+   ],
+   "acceptance": [
+    "5 review findings reproduced as executable probes (fail on 01487ac)",
+    "Measured replay profile (memory/throughput, bottleneck named)",
+    "No src/ edits in this task"
+   ]
+  },
+  "Q-008": {
+   "contract_version": "six-agent-48h",
+   "state": "dispatched",
+   "dependencies": [
+    "01487ac integrated"
+   ],
+   "evidence_required": [
+    "suite",
+    "repro"
+   ],
+   "owner_session": "whisper-redshift",
+   "role": "quant",
+   "allowed_paths": [
+    "src/cryptobot/research/",
+    "src/cryptobot/strategies/",
+    "specs/cards/",
+    "tests/unit/test_research_*",
+    "tests/unit/test_strategies_*"
+   ],
+   "acceptance": [
+    "Causal spread quotes (no future VWAP); future-data invariance proof",
+    "Symbol-scoped dedup + conflicting-duplicate detection",
+    "Streaming orchestration: bounded prep/replay/report, BTC+ETH frozen comparisons"
+   ]
+  },
+  "E-009": {
+   "contract_version": "six-agent-48h",
+   "state": "dispatched",
+   "dependencies": [
+    "01487ac integrated"
+   ],
+   "evidence_required": [
+    "suite",
+    "repro"
+   ],
+   "owner_session": "cloud-vega",
+   "role": "execution",
+   "allowed_paths": [
+    "src/cryptobot/adapters/",
+    "src/cryptobot/execution/",
+    "src/cryptobot/market_data/",
+    "datasets/*.py",
+    "tests/unit/test_adapters_*",
+    "tests/unit/test_execution_*",
+    "tests/unit/test_market_data_*"
+   ],
+   "acceptance": [
+    "WS transport drains app-buffered + TLS-pending messages (coalesced/frag/ping/burst tests)",
+    "Causal marks/funding conversion (availability times preserved), derived data versioned + rebuilt",
+    "Live books synchronized on the normal CLI path; streaming readers (no day tables)"
+   ]
+  },
+  "V-008": {
+   "contract_version": "six-agent-48h",
+   "state": "dispatched",
+   "dependencies": [
+    "01487ac integrated"
+   ],
+   "evidence_required": [
+    "suite",
+    "repro"
+   ],
+   "owner_session": "cool-amalthea",
+   "role": "risk",
+   "allowed_paths": [
+    "src/cryptobot/risk/",
+    "src/cryptobot/accounting/",
+    "src/cryptobot/venues/",
+    "tests/unit/test_risk*",
+    "tests/unit/test_accounting*",
+    "tests/acceptance/test_risk_v008.py",
+    "tests/acceptance/test_venue_*"
+   ],
+   "acceptance": [
+    "Margin/entry/protection invariants incl. available margin + fee buffers + commitments to admission",
+    "Funding reconciliation ledger/engine; mark-age/close-cost semantics shared with reports",
+    "Disabled real-venue adapter contract + recorded tests (no production funds)"
+   ]
   }
  },
  "updated_utc": "2026-10-12T08:30:00Z",
