@@ -37,11 +37,11 @@
   },
   "crystal-parallax": {
    "role": "Worker 5: independent verification and operations",
-   "status": "running",
-   "current_task": "OP-001",
+   "status": "idle",
+   "current_task": null,
    "worktree": "/tmp/cryto-bot-w5-op",
    "branch": "worker5/op-001",
-   "note": "Onboarded 12 Oct 18:36 IST for 48h directive; OP-001 dispatched, ACK pending."
+   "note": "Onboarded 12 Oct 18:36 IST for 48h directive; OP-001 dispatched, ACK pending. OP-001 ACCEPTED + integrated fdacf09 (probes verified, xfail harness live); standing by."
   }
  }
 }

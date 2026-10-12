@@ -653,7 +653,7 @@
   },
   "OP-001": {
    "contract_version": "six-agent-48h",
-   "state": "running",
+   "state": "accepted",
    "dependencies": [
     "01487ac integrated"
    ],
@@ -671,7 +671,12 @@
     "5 review findings reproduced as executable probes (fail on 01487ac)",
     "Measured replay profile (memory/throughput, bottleneck named)",
     "No src/ edits in this task"
-   ]
+   ],
+   "accepted": {
+    "sha": "fdacf09",
+    "suite": "714 passed + 14 xfailed",
+    "note": "14F/1P + 5x exit-1 verified; strict-xfail conftest added; profile preserved"
+   }
   },
   "Q-008": {
    "contract_version": "six-agent-48h",
