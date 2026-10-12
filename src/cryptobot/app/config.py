@@ -43,12 +43,16 @@ class AppConfig:
     paper_capital_usdt: float
     accounting_tz: str
     duration_s: int
-    # risk (mirrors RiskConfig fields 1:1)
+    # risk (mirrors RiskConfig fields 1:1; W3-24H profile 24h-1)
     max_loss_budget_pct: float
     leverage_cap: float
     min_notional_usdt: float
     stress_multiplier: float
-    daily_loss_halt_pct: float
+    operating_stop_pct: float
+    emergency_stop_pct: float
+    profile_version: str
+    max_mark_age_ms: float | None
+    daily_loss_halt_pct: float | None
     daily_target_pct: float
     profit_arm_pct: float
     profit_retain_pct: float
@@ -61,6 +65,8 @@ class AppConfig:
     taker_bps: float
     funding_bps_per_8h: float
     engine_kind: str
+    engine_demo: bool
+    engine_base_url: str | None
     submit_delay_ms: int
     fill_delay_ms: int
     symbols: tuple[str, ...] = ()
@@ -79,12 +85,14 @@ class AppConfig:
     source_path: str = ""
 
     def to_risk_kwargs(self) -> dict:
-        return {
+        out = {
+            "profile_version": self.profile_version,
             "max_loss_budget_pct": self.max_loss_budget_pct,
             "leverage_cap": self.leverage_cap,
             "min_notional_usdt": self.min_notional_usdt,
             "stress_multiplier": self.stress_multiplier,
-            "daily_loss_halt_pct": self.daily_loss_halt_pct,
+            "operating_stop_pct": self.operating_stop_pct,
+            "emergency_stop_pct": self.emergency_stop_pct,
             "daily_target_pct": self.daily_target_pct,
             "profit_arm_pct": self.profit_arm_pct,
             "profit_retain_pct": self.profit_retain_pct,
@@ -92,6 +100,11 @@ class AppConfig:
             "max_clock_skew_s": self.max_clock_skew_s,
             "filters_max_age_s": self.filters_max_age_s,
         }
+        if self.max_mark_age_ms is not None:
+            out["max_mark_age_ms"] = self.max_mark_age_ms
+        if self.daily_loss_halt_pct is not None:
+            out["daily_loss_halt_pct"] = self.daily_loss_halt_pct
+        return out
 
 
 def _parse_duration(raw: object) -> int:
@@ -132,11 +145,15 @@ def load_config(path: str | Path) -> AppConfig:
     if tz != "Asia/Kolkata":
         raise ConfigError(f"run.accounting_tz must be 'Asia/Kolkata', got {tz!r}")
     engine_kind = engine.get("kind")
-    if engine_kind not in ("reference", "nautilus"):
-        raise ConfigError(f"engine.kind must be 'reference' or 'nautilus', got {engine_kind!r}")
-    if mode == "paper" and engine_kind != "nautilus":
-        raise ConfigError("paper mode requires engine.kind = 'nautilus' "
-                          "(reference engine is replay/tests only)")
+    if engine_kind not in ("reference", "nautilus", "live"):
+        raise ConfigError("engine.kind must be 'reference', 'nautilus' or "
+                          f"'live', got {engine_kind!r}")
+    if engine_kind == "live" and not bool(engine.get("demo", False)):
+        raise ConfigError("engine.kind = 'live' requires demo = true "
+                          "(production orders are disabled)")
+    if mode == "paper" and engine_kind not in ("nautilus", "live"):
+        raise ConfigError("paper mode requires engine.kind = 'nautilus' or "
+                          "'live' (reference engine is replay/tests only)")
     arms = strategies.get("arms", "base")
     if arms not in ("base", "all"):
         raise ConfigError(f"strategies.arms must be 'base' or 'all', got {arms!r}")
@@ -158,7 +175,15 @@ def load_config(path: str | Path) -> AppConfig:
         leverage_cap=_positive(risk.get("leverage_cap"), "risk.leverage_cap"),
         min_notional_usdt=_finite(risk.get("min_notional_usdt"), "risk.min_notional_usdt"),
         stress_multiplier=_positive(risk.get("stress_multiplier"), "risk.stress_multiplier"),
-        daily_loss_halt_pct=_unit_interval(risk.get("daily_loss_halt_pct"), "risk.daily_loss_halt_pct"),
+        operating_stop_pct=_unit_interval(
+            risk.get("operating_stop_pct", 0.005), "risk.operating_stop_pct"),
+        emergency_stop_pct=_unit_interval(
+            risk.get("emergency_stop_pct", 0.01), "risk.emergency_stop_pct"),
+        profile_version=str(risk.get("profile_version", "24h-1")),
+        max_mark_age_ms=(_positive(risk.get("max_mark_age_ms"), "risk.max_mark_age_ms")
+                         if risk.get("max_mark_age_ms") is not None else None),
+        daily_loss_halt_pct=(_unit_interval(risk.get("daily_loss_halt_pct"), "risk.daily_loss_halt_pct")
+                             if risk.get("daily_loss_halt_pct") is not None else None),
         daily_target_pct=_positive(risk.get("daily_target_pct"), "risk.daily_target_pct"),
         profit_arm_pct=_unit_interval(risk.get("profit_arm_pct"), "risk.profit_arm_pct"),
         profit_retain_pct=_unit_interval(risk.get("profit_retain_pct"), "risk.profit_retain_pct"),
@@ -171,6 +196,9 @@ def load_config(path: str | Path) -> AppConfig:
         taker_bps=_finite(fees.get("taker_bps"), "fees.taker_bps"),
         funding_bps_per_8h=_finite(fees.get("funding_bps_per_8h"), "fees.funding_bps_per_8h"),
         engine_kind=engine_kind,
+        engine_demo=bool(engine.get("demo", False)),
+        engine_base_url=(str(engine.get("base_url"))
+                         if engine.get("base_url") else None),
         submit_delay_ms=int(_finite(engine.get("submit_delay_ms", 0), "engine.submit_delay_ms")),
         fill_delay_ms=int(_finite(engine.get("fill_delay_ms", 0), "engine.fill_delay_ms")),
         symbols=symbols,

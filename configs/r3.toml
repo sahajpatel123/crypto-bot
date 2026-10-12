@@ -9,11 +9,14 @@ accounting_tz = "Asia/Kolkata"
 duration = "24h"             # paper session wall-clock budget (replay ignores)
 
 [risk]
-max_loss_budget_pct = 0.0025
+max_loss_budget_pct = 0.00125
 leverage_cap = 3.0
 min_notional_usdt = 5.0
 stress_multiplier = 1.5
-daily_loss_halt_pct = 0.01
+operating_stop_pct = 0.005
+emergency_stop_pct = 0.01
+profile_version = "24h-1"
+# max_mark_age_ms unset: stale-mark block opt-in (W3-24H)
 daily_target_pct = 0.02
 profit_arm_pct = 0.01
 profit_retain_pct = 0.70
@@ -31,7 +34,7 @@ taker_bps = 5.0
 funding_bps_per_8h = 1.0
 
 [engine]
-kind = "nautilus"           # reference (replay/tests only) | nautilus (E-007)
+kind = "nautilus"           # reference (replay/tests only) | nautilus (E-007) | live (demo only)
 submit_delay_ms = 50
 fill_delay_ms = 50
 

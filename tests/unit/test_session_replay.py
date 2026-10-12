@@ -1171,6 +1171,38 @@ def test_replay_missing_snapshots_recorded_absent(tmp_path):
         store.close()
 
 
+def test_stop_actions_cancel_reduce_and_alert_once(tmp_path):
+    """Manager P1: latched stop cancels entries, reduces, alerts once."""
+    session, store = _session(tmp_path, warmup_bars=3)
+    try:
+        session._init_run_files()
+        # Latch an emergency stop with exposure present.
+        session.policy._state.emergency_latched = True
+
+        class _Ord:
+            client_order_id = "e-1"
+            role = "entry"
+            state = "open"
+
+        cancelled: list[str] = []
+        session.engine.open_orders = lambda: [_Ord()]
+        session.engine.cancel = lambda cid, why: cancelled.append(cid)
+        flattened: list[str] = []
+        session._flatten = lambda why: flattened.append(why)
+        session.ledger.record_fill(
+            "BUY", 1.0, 100.0, 0.01, session.now_utc(), "t1", "BTCUSDT")
+        session._run_stop_actions()
+        session._run_stop_actions()  # alert must not duplicate.
+        assert cancelled == ["e-1", "e-1"]
+        assert flattened == ["stop-action", "stop-action"]
+        alerts = [json.loads(line) for line in
+                  (session.workdir / "risk.jsonl").read_text().splitlines()
+                  if '"operator-alert"' in line]
+        assert len(alerts) == 1
+    finally:
+        store.close()
+
+
 def test_live_prime_skipped_for_dynamic_symbols(tmp_path):
     """Manager: live priming with undiscovered symbols records skip."""
     session, store = _session(tmp_path, warmup_bars=3)

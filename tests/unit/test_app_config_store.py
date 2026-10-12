@@ -31,7 +31,8 @@ def test_invalid_values_rejected(tmp_path):
     cases = [
         ('mode = "replay"', 'mode = "live"'),
         ("leverage_cap = 3.0", "leverage_cap = 0"),
-        ("daily_loss_halt_pct = 0.01", "daily_loss_halt_pct = 2"),
+        ("operating_stop_pct = 0.005", "operating_stop_pct = 2"),
+        ("emergency_stop_pct = 0.01", "emergency_stop_pct = -1"),
         ('accounting_tz = "Asia/Kolkata"', 'accounting_tz = "UTC"'),
         ('enabled = ["S1", "S2", "S3", "S4", "S5"]', 'enabled = ["S9"]'),
     ]

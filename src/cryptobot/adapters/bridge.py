@@ -71,6 +71,7 @@ def live_events(
     heartbeat_every_s: float = 1.0,
     stats: dict[str, Any] | None = None,
     stale_partial_s: float = _STALE_PARTIAL_S,
+    ws_host: str | None = None,
 ) -> Iterator[dict[str, Any] | None]:
     """Yield normalized public events until the consumer stops iterating.
 
@@ -112,7 +113,16 @@ def live_events(
     last_yield_mono = start_mono
 
     def _open(route: str) -> None:
-        sock = connect(_stream_url(route, chosen))
+        url = _stream_url(route, chosen)
+        if ws_host:
+            # Demo/test routing (P5): sockets dial the adapter's stream
+            # host instead of production fstream.
+            import urllib.parse
+            parts = urllib.parse.urlsplit(url)
+            host = ws_host.split("://", 1)[-1].rstrip("/")
+            url = urllib.parse.urlunsplit(
+                (parts.scheme, host, parts.path, parts.query, parts.fragment))
+        sock = connect(url)
         sock.native_socket.settimeout(_SELECT_TIMEOUT_S)
         conns[route] = sock
 

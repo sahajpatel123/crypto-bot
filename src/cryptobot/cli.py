@@ -184,12 +184,30 @@ def _run_paper(args: argparse.Namespace) -> int:
     run_id = args.run_id or _new_run_id("paper")
     workdir = Path(config.storage_dir) / run_id
     clock = WallClock()
-    engine = _paper.NautilusPaperEngine(
-        outcome_sink=None, taker_bps=config.taker_bps,  # sink bound below
-        now_utc=clock.now, submit_delay_ms=config.submit_delay_ms,
-        fill_delay_ms=config.fill_delay_ms,
-        journal_path=workdir / "paper_engine_journal.jsonl",
-        starting_balance_usdt=config.paper_capital_usdt)
+    if config.engine_kind == "live":
+        # W3-24H P5 demo mode: config already enforces demo = true.
+        # Credentials come ONLY from the environment (never chat/files).
+        from cryptobot.adapters import binance_live as _live
+        api_key = os.environ.get("BINANCE_DEMO_KEY", "")
+        api_secret = os.environ.get("BINANCE_DEMO_SECRET", "")
+        if not api_key or not api_secret:
+            print("demo engine needs BINANCE_DEMO_KEY and "
+                  "BINANCE_DEMO_SECRET in the environment.",
+                  file=sys.stderr)
+            return 2
+        engine = _live.BinanceLiveEngine(
+            api_key=api_key, api_secret=api_secret,
+            journal_path=workdir / "live_engine_journal.jsonl",
+            expected_leverage=int(config.leverage_cap),
+            run_tag=run_id[:8], live_enable=True, demo=True,
+            base_url=config.engine_base_url, now_utc=clock.now)
+    else:
+        engine = _paper.NautilusPaperEngine(
+            outcome_sink=None, taker_bps=config.taker_bps,  # sink bound below
+            now_utc=clock.now, submit_delay_ms=config.submit_delay_ms,
+            fill_delay_ms=config.fill_delay_ms,
+            journal_path=workdir / "paper_engine_journal.jsonl",
+            starting_balance_usdt=config.paper_capital_usdt)
     session = Session(config, store, workdir, run_id, pid=os.getpid(),
                       clock=clock, engine=engine)
     engine.bind_sink(session.policy)
@@ -197,8 +215,11 @@ def _run_paper(args: argparse.Namespace) -> int:
     duration = _parse_cli_duration(args.duration) or config.duration_s
     print(f"run: {run_id} workdir={workdir} duration={duration}s")
     try:
-        events = _bridge.live_events(symbols=list(config.symbols) or None,
-                                     max_symbols=config.max_symbols)
+        stream_host = getattr(engine, "stream_host", None)
+        events = _bridge.live_events(
+            symbols=list(config.symbols) or None,
+            max_symbols=config.max_symbols,
+            ws_host=stream_host() if callable(stream_host) else None)
         report = session.run_live(events, duration_s=duration,
                                   resume=bool(args.resume))
     finally:

@@ -173,6 +173,7 @@ class Session:
         self._depth_store = DepthStore()
         self._saw_exchange_marks = False
         self._resyncs_seen: dict[str, int] = {}
+        self._stop_alerted = False
         self.event_gate: Any | None = None
         if config.events_enabled:
             self._build_event_gate()
@@ -301,6 +302,13 @@ class Session:
         fee_buffer = 0.0
         if available is not None and available > 0:
             fee_buffer = 2 * available * close_bps / 1e4
+        # W3-24H P3: mark age rides the snapshot; the policy fails closed
+        # when max_mark_age_ms is configured (None = unrecorded here).
+        _m, _s, _ts = self._reference_mark_full()
+        mark_age: float | None = None
+        if _ts is not None:
+            mark_age = max(
+                0.0, (self.now_utc() - _ts).total_seconds() * 1000.0)
         return AccountSnapshot(
             reconciled_equity=self.ledger.marked_equity(mark),
             marked_equity=self.ledger.marked_equity(mark),
@@ -310,7 +318,8 @@ class Session:
             flows_cumulative=self.ledger.total_flows(),
             available_margin_usdt=available,
             fee_buffer_usdt=fee_buffer,
-            inflight_exposure_usdt=self._inflight_exposure_usdt(mark))
+            inflight_exposure_usdt=self._inflight_exposure_usdt(mark),
+            mark_age_ms=mark_age)
 
     def _inflight_exposure_usdt(self, mark: float) -> float:
         """One budget across pending/open/unresolved exposure (V-008).
@@ -1089,6 +1098,15 @@ class Session:
                 modules: dict[str, Any]) -> None:
         channel = event.get("channel")
         symbol = event.get("symbol")
+        if event.get("gap_kind"):
+            # Socket gap marker (P4): tell the live adapter its stream
+            # re-converged so UNKNOWNs re-resolve; no-op elsewhere.
+            reconnected = getattr(self.engine, "stream_reconnected", None)
+            if callable(reconnected):
+                try:
+                    reconnected()
+                except Exception:
+                    pass
         if channel in ("aggTrade", "bookTicker", "depth", "markPrice") and symbol:
             # Engine + views see every market channel (depth/markPrice used
             # to be dropped here, which starved funding terms and book/flow
@@ -1175,6 +1193,87 @@ class Session:
         if not health.ok:
             self.engine.set_exit_only(True, ";".join(health.reasons))
             self._set_state("halted", ";".join(health.reasons))
+        self._run_stop_actions()
+
+    def _run_stop_actions(self) -> None:
+        """Execute stop ACTION demands: cancel, reduce, alert, recover.
+
+        W3-24H P1: entries are already blocked by halt reasons; this is
+        the action side. Cancel requests never clear policy bookings
+        (the reservation stands until the venue confirms). The operator
+        alert fires once per latch. Emergency clears only through
+        reconciled flat — time alone never recovers.
+        """
+        snapshot = self._snapshot_account()
+        actions = self.policy.pending_stop_actions(snapshot)
+        if "alert_operator" in actions and not self._stop_alerted:
+            self._stop_alerted = True
+            self._append_run_file("risk.jsonl", {
+                "ts_utc": self.now_utc().isoformat(),
+                "wall_ts_utc": datetime.now(timezone.utc).isoformat(),
+                "kind": "operator-alert",
+                "from_state": "", "to_state": "emergency",
+                "reason": "halt:emergency:exposure-reduction"})
+        if "cancel_pending_orders" in actions:
+            try:
+                orders = self.engine.open_orders()
+            except (ValueError, KeyError, AttributeError):
+                orders = []
+            for status in orders:
+                if getattr(status, "role", "entry") != "entry":
+                    continue
+                state = getattr(status, "state", "open")
+                if state in ("filled", "rejected", "cancelled", "expired"):
+                    continue
+                try:
+                    self.engine.cancel(status.client_order_id, "stop-action")
+                except Exception:
+                    pass  # cancel requested; booking stands till confirmed.
+        if "reduce_exposure" in actions:
+            try:
+                self._flatten("stop-action")
+            except (ValueError, KeyError, RuntimeError):
+                pass  # reduction retried next tick; exposure retained.
+        if self._stop_alerted or self.policy.emergency_active():
+            # A latch stood: probe reconciled recovery only when no
+            # exposure actions remain (cheap bool gate off the hot path).
+            if "cancel_pending_orders" not in actions \
+                    and "reduce_exposure" not in actions:
+                if self.policy.recover_from_emergency(
+                        self._snapshot_account()):
+                    self._stop_alerted = False
+                    self.engine.set_exit_only(False, "emergency-recovered")
+                    self._set_state("ready", "emergency-recovered")
+
+    def _drain_unknown_outcomes(self) -> None:
+        """Resolve unknown order outcomes via lookup (W3-24H P4).
+
+        Live adapter only (capability-guarded): every unknown/cancel-
+        unknown id is re-queried each supervision tick until resolved.
+        Failures map through the adapter error contract: lookup errors
+        stay blocking (never auto-cleared), retry-safe faults retry
+        next tick, aborts surface as operator alerts. No-ops on paper
+        engines without the live surface.
+        """
+        unknown_ids = getattr(self.engine, "unknown_ids", None)
+        lookup = getattr(self.engine, "lookup", None)
+        if not callable(unknown_ids) or not callable(lookup):
+            return
+        try:
+            from cryptobot.adapters import caller_action
+        except ImportError:
+            caller_action = None  # type: ignore[assignment]
+        for cid in unknown_ids():
+            try:
+                lookup(cid)
+            except Exception as exc:
+                action = caller_action(exc) if caller_action else "retry"
+                self._append_run_file("risk.jsonl", {
+                    "ts_utc": self.now_utc().isoformat(),
+                    "wall_ts_utc": datetime.now(timezone.utc).isoformat(),
+                    "kind": "unknown-drain",
+                    "from_state": cid, "to_state": action,
+                    "reason": f"{type(exc).__name__}:still-blocking"})
 
     def _build_event_gate(self) -> None:
         """Load required event sources into an entry gate (EV-001 seam).
@@ -1440,6 +1539,8 @@ class Session:
                 if not tick.ok:
                     self.engine.set_exit_only(True, ";".join(tick.reasons))
                     self._set_state("halted", ";".join(tick.reasons))
+                self._run_stop_actions()
+                self._drain_unknown_outcomes()
                 self._refresh_filters_if_stale()
             stop = self._stop_flag or self.store.stop_requested(self.run_id)
             if stop is not None:
