@@ -469,6 +469,22 @@ def test_cancel_unknown_id_fails_closed():
         engine.cancel("pe-000000-deadbeef", "test")
 
 
+def test_same_tick_submits_drain_fifo():
+    # Integration fix: entry + legs submitted in one tick share a due and
+    # must drain in submission order (was: TypeError comparing EngineOrder).
+    from cryptobot.app.engine import EngineOrder
+    engine = _engine(submit_delay_ms=50)
+    now_ns = engine._clock.timestamp_ns()
+    c1 = engine.submit(EngineOrder("BTCUSDT", "BUY", 0.01, "MARKET"))
+    c2 = engine.submit(EngineOrder("BTCUSDT", "BUY", 0.01, "MARKET"))
+    assert engine.resolve(c1) is None and engine.resolve(c2) is None
+    engine._clock.set_time(now_ns + 60_000_000)
+    engine._drain_pending()
+    assert engine.resolve(c1) == c1 and engine.resolve(c2) == c2
+    ids = list(engine._orders)
+    assert ids.index(c1) < ids.index(c2)
+
+
 def test_feed_clamps_out_of_order_ticks():
     # Integration fix: cross-symbol interleave is normal (BTC@5 then ETH@4):
     # the ETH tick still lands in its own book (re-stamped to engine-now,

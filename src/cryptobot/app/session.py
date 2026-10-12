@@ -133,6 +133,7 @@ class Session:
         self._submit_ts: dict[str, datetime] = {}
         self._events_seen = 0
         self._flatten_pending = False
+        self._warmed = False
         self._last_seq = 0
         self._crash_after: int | None = None
         self._stop_flag: str | None = None
@@ -600,6 +601,9 @@ class Session:
             else:
                 feed.bars.append(to_s1_bar(bar))
             if feed.ready(self.config.warmup_bars):
+                if not self._warmed:
+                    self._warmed = True
+                    self._set_state("ready", "warmup-complete")
                 self._maybe_admit(self._evaluate_symbol(symbol, adapters, modules))
         health = self.policy.check_health(self._snapshot_account())
         if not health.ok:
@@ -642,7 +646,10 @@ class Session:
         self.ledger.save(self.workdir / "ledger.json")
         self.store.checkpoint(self.run_id, "local-state",
                               {"last_seq": self._last_seq,
-                               "position": self._position is not None})
+                               "position": self._position is not None,
+                               "events_seen": self._events_seen,
+                               "intents_admitted": self._admitted,
+                               "reject_counts": dict(self._reject_counts)})
 
     def _resume_state(self) -> None:
         run = self.store.get_run(self.run_id)

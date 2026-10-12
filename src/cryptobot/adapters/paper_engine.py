@@ -440,7 +440,10 @@ class NautilusPaperEngine:
         now_ns = self._clock.timestamp_ns()
         due_now = [item for item in self._submit_queue if item[0] <= now_ns]
         self._submit_queue = [item for item in self._submit_queue if item[0] > now_ns]
-        for _, cmd, client_id in sorted(due_now):
+        # Stable FIFO per due tick: same-tick submits (entry + protection
+        # legs) must never compare EngineOrder (integration fix: TypeError
+        # crashed R2 on its first live protection attach).
+        for _, cmd, client_id in sorted(due_now, key=lambda item: item[0]):
             self._submit_now(cmd, client_id)
             self._pre2real[client_id] = client_id
 
