@@ -27,6 +27,7 @@ from cryptobot.market_data.bridge import load_snapshots
 from cryptobot.market_data.replayer import assert_input_class
 from cryptobot.market_data.views import DepthStore, book_flow_for
 from cryptobot.risk.policy import RiskPolicy
+from cryptobot.risk.rounding import ceil_to_tick, floor_to_tick
 from cryptobot.risk.types import AccountSnapshot, Approved, RiskConfig
 
 from .config import AppConfig
@@ -579,6 +580,9 @@ class Session:
         if decision.admitted is None:
             return
         intent = decision.admitted
+        # Expired opportunities never reach submit: the selector rejects
+        # them first (selection:expired), so anything admitted here is
+        # inside its entry window.
         if self.protection is not None:
             reading, baseline = self._protection_reading(intent.instrument)
             verdict = self.protection.check_entry(
@@ -620,10 +624,27 @@ class Session:
                 "selection:exit-undecodable", self.now_utc().isoformat())
             return
         side = "BUY" if intent.side.value == "LONG" else "SELL"
+        # Directive L76: entries are price-protected marketable IOC, capped
+        # at the intent's entry band (side-aware: LONG pays at most the
+        # band top, SHORT accepts at least the band floor). The IOC cancels
+        # anything the venue cannot fill at-or-better on the next tick —
+        # rejected opportunities expire, partial exposure stays bounded,
+        # and exits still cross with realistic cost/latency. The reference
+        # engine has no protected IOC (non-economic tool): it keeps MARKET.
+        cap = self._entry_cap(intent)
+        order = EngineOrder(
+            instrument=intent.instrument, side=side, qty=verdict.qty,
+            kind="MARKET", reservation_id=verdict.reservation_id,
+            expire_at_utc=intent.entry_expiry_utc)
+        submit_protected = getattr(self.engine, "submit_protected", None)
         try:
-            pre_id = self.engine.submit(EngineOrder(
-                instrument=intent.instrument, side=side, qty=verdict.qty,
-                kind="MARKET", reservation_id=verdict.reservation_id))
+            if submit_protected is None:
+                pre_id = self.engine.submit(order)
+            else:
+                try:
+                    pre_id = submit_protected(order, cap)
+                except NotImplementedError:
+                    pre_id = self.engine.submit(order)
         except (ValueError, PermissionError, OverflowError) as exc:
             # B2/F3: an unsubmittable opportunity (dust below the venue
             # step, full queue, exit-only race) is rejected, never fatal.
@@ -644,12 +665,29 @@ class Session:
                           "entry_pre_id": pre_id, "entry_id": None,
                           "legs": [], "stop": stop, "target": target,
                           "time_exit": time_exit, "legacy_exit": legacy,
-                          "protected": False, "protect_attempts": 0}
+                          "protected": False, "protect_attempts": 0,
+                          "entry_cap": cap}
         self._admitted += 1
         self._set_state("holding", f"admitted:{intent.evidence_ref}")
         self.store.checkpoint(self.run_id, "admit", {
             "reservation_id": verdict.reservation_id, "qty": verdict.qty,
-            "notional": verdict.notional_usdt, "legacy_exit": legacy})
+            "notional": verdict.notional_usdt, "legacy_exit": legacy,
+            "entry_cap": cap,
+            "entry_band": [intent.entry_low, intent.entry_high]})
+
+    def _entry_cap(self, intent: Any) -> float:
+        # Side-aware band cap with side-aware tick rounding: a BUY cap
+        # rounds DOWN (never pay above the band top), a SELL floor rounds
+        # UP (never accept below the band floor). Unknown tick = raw band.
+        raw = (intent.entry_high if intent.side.value == "LONG"
+               else intent.entry_low)
+        filt = self.policy.config.instrument_filters.get(intent.instrument)
+        tick = getattr(filt, "tick_size", None) if filt is not None else None
+        if not tick:
+            return raw
+        if intent.side.value == "LONG":
+            return floor_to_tick(raw, float(tick))
+        return ceil_to_tick(raw, float(tick))
 
     def _note_reject(self, reason: str, strategy: str = "",
                      instrument: str = "", side: str = "") -> None:
@@ -662,9 +700,33 @@ class Session:
             "reason": reason, "strategy": strategy or "unknown",
             "instrument": instrument or "unknown", "side": side or "unknown"})
 
-    def _drain_engine(self) -> None:
-        for event in self.engine.poll():
+    def _drain_engine(self, *, bounded: bool = False) -> int:
+        # Bounded live drain (watchdog review): a fill burst must not
+        # starve the strategy loop; the remainder drains next wake.
+        # Replay keeps the unbounded drain for exact accounting.
+        if bounded and hasattr(self.engine, "pop_events"):
+            events = self.engine.pop_events()
+        else:
+            events = self.engine.poll()
+        for event in events:
             self._on_engine_event(event)
+        return len(events)
+
+    def _advance_engine_clock(self) -> None:
+        # Engine time must track wall time on EVERY live wake, including
+        # idle heartbeats (watchdog review): latency-delayed submissions
+        # only become due when the native clock advances, and without
+        # this a quiet market stalls queued orders indefinitely.
+        advance = getattr(self.engine, "advance_to", None)
+        if advance is None:  # reference engine: wall clock, nothing to do.
+            return
+        try:
+            now = self.now_utc()
+            engine_now = self.engine.now_utc
+            if now > engine_now:
+                advance(now)
+        except ValueError:
+            pass  # backward step: keep engine time, never move it back.
 
     def _append_run_file(self, name: str, record: dict[str, Any]) -> None:
         """Append one JSON record to a per-run result file (B9 reporting).
@@ -1618,6 +1680,12 @@ class Session:
         self._set_state("warming", "paper-start")
         deadline = time.monotonic() + duration_s
         last_beat = 0.0
+        # Watchdog: stream-stall detector. Heartbeats prove the loop is
+        # awake; only real market events prove the venue feed is alive.
+        # 60s of market silence = resync books (P3-style reaction), never
+        # a silent stall. Crypto majors tick every second in practice.
+        last_market_mono = time.monotonic()
+        stall_notified = False
         end_reason = "duration-elapsed"
         for event in event_iter:
             # None = idle heartbeat (B3): iterators never block longer
@@ -1630,12 +1698,28 @@ class Session:
             else:
                 self._ingest(event, adapters, modules)
                 self._events_seen += 1
+                last_market_mono = time.monotonic()
+                stall_notified = False
             # Position management on every wake (B3): time exits and flat
             # inference cannot wait for the next market event.
-            self._drain_engine()
+            self._advance_engine_clock()
+            self._drain_engine(bounded=True)
             if self._position is not None:
                 self._update_position(EngineEvent("tick", None, self.now_utc()))
             now_mono = time.monotonic()
+            if (not stall_notified
+                    and now_mono - last_market_mono > 60.0):
+                stall_notified = True
+                self._append_run_file("risk.jsonl", {
+                    "ts_utc": self.now_utc().isoformat(),
+                    "wall_ts_utc": datetime.now(timezone.utc).isoformat(),
+                    "kind": "stream-stall",
+                    "from_state": "streaming", "to_state": "resync",
+                    "reason": "no market events for 60s; re-priming books"})
+                prime = self._prime_live_books()
+                self.store.checkpoint(self.run_id, "stall-resync", prime)
+                last_market_mono = time.monotonic()
+                stall_notified = False  # re-arm: fire again per 60s window.
             if now_mono - last_beat >= 30.0:
                 last_beat = now_mono
                 self.store.heartbeat(self.run_id, self._pid)
@@ -1661,7 +1745,11 @@ class Session:
             self._flatten("duration-end")
             self._drain_engine()
         self._set_state("stopping", end_reason)
-        self._drain_engine()
+        # Final full drain: live wakes are bounded, so sweep the backlog
+        # (bounded rounds; a pathological flood cannot hang shutdown).
+        for _ in range(25):
+            if self._drain_engine() == 0:
+                break
         self._persist_local_state()
         self._sample_equity("run-end", force=True)
         self._write_run_identity(

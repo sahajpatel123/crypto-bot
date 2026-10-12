@@ -91,30 +91,85 @@ def test_prepare_noquotes_without_profile_records_absence(tmp_path):
     assert all(not d["quotes_expected"] for d in manifest["day_manifest"])
 
 
+def _dense_modeled_quotes(events: list[dict], symbol: str,
+                          spread_bps: float = 1.0,
+                          step_ms: int = 100) -> list[dict]:
+    """Production-density modeled BBO for protected-IOC fill-path cells.
+
+    Protected IOC entries evaluate against the book, and production
+    bookTicker is sub-second while the synth grid is 1/s. On a 3bps/s
+    rip the 1s grid cancels every IOC (the ask runs past the 2bps band
+    before the next quote), so fill-path cells need production-density
+    modeled quotes. Quotes are causal (last trade at/before their ts)
+    and carry the same modeled labels as apply_profile output.
+    """
+    from cryptobot.research.spread import _modeled_quote
+    trades = sorted((e for e in events if e.get("channel") == "aggTrade"),
+                    key=lambda e: int(e["exchange_ts_ms"]))
+    if not trades:
+        return list(events)
+    have_quotes = {int(e["exchange_ts_ms"]) for e in events
+                   if e.get("channel") == "bookTicker"}
+    out = list(events)
+    input_class = trades[0].get("input_class", INPUT_CLASS)
+    start = int(trades[0]["exchange_ts_ms"])
+    end = int(trades[-1]["exchange_ts_ms"])
+    ti = 0
+    px = float(trades[0]["payload"]["price"])
+    for ts in range(start, end + 1, step_ms):
+        while (ti + 1 < len(trades)
+               and int(trades[ti + 1]["exchange_ts_ms"]) <= ts):
+            ti += 1
+            px = float(trades[ti]["payload"]["price"])
+        if ts in have_quotes:
+            continue
+        have_quotes.add(ts)
+        out.append(_modeled_quote(symbol, ts, px, spread_bps,
+                                  input_class, ""))
+    out.sort(key=lambda e: (int(e["exchange_ts_ms"]),
+                            0 if e.get("channel") == "bookTicker" else 1))
+    return out
+
+
 def _tiny_capture(path: Path) -> Path:
     # Day 1 (impulse-long) only: fast Session cell with real fills.
     bench = SynthBenchmark()
     path.mkdir(parents=True, exist_ok=True)
     events = []
-    for seq, e in enumerate(bench.events(SYMBOL, 1), start=1):
+    for e in bench.events(SYMBOL, 1):
+        events.append(e)
+    events = _dense_modeled_quotes(events, SYMBOL)
+    for seq, e in enumerate(events, start=1):
         e["seq"] = seq
         e["local_mono_ns"] = seq
-        events.append(e)
     (path / "events.jsonl").write_text(
         "\n".join(json.dumps(e) for e in events) + "\n")
     return path
 
 
-def test_run_cell_through_session_with_fills(tmp_path):
+def test_run_cell_rip_protection_cancels_unmarketable(tmp_path):
+    # Directive L76: on the day-1 rip the 2bps band is dead on arrival
+    # (3bps/s move vs 1s-bar signal + latency), so the protected IOC
+    # honestly cancels instead of chasing. Fills>0 under MARKET was the
+    # unprotected era; the IOC fill mechanism itself is pinned at engine
+    # level (test_submit_protected_fills_at_or_better) and at Session
+    # level (test_session_protected_entry IOC fill test).
     cap = _tiny_capture(tmp_path / "cap")
     cell = run_cell(CONFIG, cap, ("S1",), tmp_path / "run", "cell-s1",
                     (SYMBOL,))
     report = cell["report"]
     assert report["execution_model"] == "nautilus-paper"
-    assert report["events_seen"] == 1200
+    # 1200 day-1 trades + production-density modeled BBO (deterministic).
+    assert report["events_seen"] == 6592
     assert report["intents_admitted"] >= 1
-    fills = fills_signature(cell["journal"])
-    assert len(fills) >= 2  # entry + protective/time exit legs
+    assert fills_signature(cell["journal"]) == []
+    kinds = [json.loads(line)["event"] for line in open(cell["journal"])
+             if line.strip()]
+    assert "submitted" in kinds  # the IOC reached the venue model...
+    assert "terminal" in kinds  # ...and the unreachable touch canceled it.
+    details = [json.loads(line)["detail"] for line in open(cell["journal"])
+               if line.strip() and json.loads(line)["event"] == "terminal"]
+    assert any(d.get("reason") == "venue-canceled" for d in details)
     assert report["filter_profile"]["label"] == "frozen-assumed"
 
 
@@ -133,28 +188,45 @@ def test_determinism_two_runs_identical(tmp_path):
     a = run_cell(CONFIG, cap, ("S1",), tmp_path / "a", "det-a", (SYMBOL,))
     b = run_cell(CONFIG, cap, ("S1",), tmp_path / "b", "det-b", (SYMBOL,))
     diff = compare_runs(a["report"], a["journal"], b["report"], b["journal"])
-    assert diff["n_fills"] >= 2
+    # Non-vacuous: submits + cancels happen (protected IOC on the rip),
+    # and the full event sequence is identical across runs.
+    kinds_a = [json.loads(line)["event"] for line in open(a["journal"])
+               if line.strip()]
+    kinds_b = [json.loads(line)["event"] for line in open(b["journal"])
+               if line.strip()]
+    assert "submitted" in kinds_a and "terminal" in kinds_a
+    assert kinds_a == kinds_b
     assert diff["fills_equal"] and diff["curve_equal"]
     assert diff["metrics_equal"] and diff["deterministic"]
     assert curve_signature(a["journal"]) == curve_signature(b["journal"])
 
 
 def _noquotes_day_with_profile(mutate_after_s=None):
-    # Day 1 without quotes + causal spread profile. Optional mutation:
-    # reprice all trades at/after the cutoff (future-data invariance).
+    # Day 1 without quotes + causal spread profile. Optional mutation: a
+    # second realistic impulse (+30bps over 10s, mirroring the day-1 ramp
+    # shape so the gap gate passes it) starting at the cutoff. A 1.5x
+    # step used to serve here, but it gap-fails like corrupt data and
+    # the protected path then (correctly) shows no post-cutoff activity.
     from cryptobot.research.spread import SpreadProfile, apply_profile
     from cryptobot.research.synth_benchmark import SynthBenchmark
     bench = SynthBenchmark(dataset_id="synth_noquotes")
     events = []
     for e in bench.events("XRPUSDT", 1):
-        if mutate_after_s is not None and e["exchange_ts_ms"] >= (
-                e["exchange_ts_ms"] // 600000 * 600000 + mutate_after_s * 1000):
-            e = dict(e)
-            e["payload"] = dict(e["payload"], price=e["payload"]["price"] * 1.5)
+        if mutate_after_s is not None:
+            day_start = e["exchange_ts_ms"] // 600000 * 600000
+            cutoff = day_start + mutate_after_s * 1000
+            if e["exchange_ts_ms"] >= cutoff:
+                ramp_s = (e["exchange_ts_ms"] - cutoff) // 1000
+                lift = 0.0030 * min(ramp_s + 1, 10) / 10
+                e = dict(e)
+                e["payload"] = dict(
+                    e["payload"], price=e["payload"]["price"] * (1 + lift))
         events.append(e)
     merged, manifest = apply_profile(events, "XRPUSDT",
                                      SpreadProfile().default_bps)
     assert manifest["modeled_windows"] > 0
+    merged = _dense_modeled_quotes(
+        merged, "XRPUSDT", SpreadProfile().default_bps)
     return merged
 
 
@@ -202,11 +274,30 @@ def test_future_trades_do_not_move_earlier_fills(tmp_path):
     b = run_cell(CONFIG, cap_b, ("S1",), tmp_path / "b", "inv-b", (SYMBOL,))
     pre_a = _journal_prefix(a["journal"], cutoff_ms)
     pre_b = _journal_prefix(b["journal"], cutoff_ms)
-    assert len(pre_a) >= 3  # non-vacuous: submits + fills before cutoff
+    # Non-vacuous: submit + cancel before cutoff (protected IOC on the
+    # rip cancels; causality = identical prefix under future mutation).
+    assert len(pre_a) >= 2
     assert pre_a == pre_b
-    full_a = [json.loads(line)["event"] for line in open(a["journal"])]
-    full_b = [json.loads(line)["event"] for line in open(b["journal"])]
-    assert full_a != full_b  # the jump propagates: sensitivity, not stasis
+    # The second impulse propagates: variant decisions respond to the
+    # mutation (a second S1 signal the base never sees). Both journals
+    # stay [submitted, terminal] — the 300s selector cooldown suppresses
+    # the second submit — so sensitivity is read at the decision level
+    # (recorded intents), not the engine journal.
+    import sqlite3
+    from pathlib import Path as _Path
+
+    def _intent_refs(run_dir):
+        db = sqlite3.connect(_Path(run_dir) / "store.db")
+        try:
+            return [r[0] for r in db.execute(
+                "SELECT DISTINCT intent_id FROM intents")]
+        finally:
+            db.close()
+
+    refs_a = _intent_refs(a["run_dir"])
+    refs_b = _intent_refs(b["run_dir"])
+    assert len(refs_a) >= 1
+    assert set(refs_a) < set(refs_b)  # variant sees a second signal.
 
 
 def test_compare_runs_detects_divergence(tmp_path):

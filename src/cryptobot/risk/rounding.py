@@ -45,3 +45,24 @@ def round_to_tick(price: float, tick: float) -> float:
             or not math.isfinite(price) or price <= 0:
         raise ValueError(f"price must be a finite positive number, got {price!r}")
     return round(round(price / tick) * tick, 12)
+
+
+def floor_to_tick(price: float, tick: float) -> float:
+    """Round ``price`` DOWN to a venue tick (BUY caps never exceed the band)."""
+    _check_tick_args(price, tick)
+    return round(math.floor(price / tick * (1 + 1e-9)) * tick, 12)
+
+
+def ceil_to_tick(price: float, tick: float) -> float:
+    """Round ``price`` UP to a venue tick (SELL floors never dip the band)."""
+    _check_tick_args(price, tick)
+    return round(math.ceil(price / tick * (1 - 1e-9)) * tick, 12)
+
+
+def _check_tick_args(price: float, tick: float) -> None:
+    if isinstance(tick, bool) or not isinstance(tick, (int, float)) \
+            or not math.isfinite(tick) or tick <= 0:
+        raise ValueError(f"tick must be a finite positive number, got {tick!r}")
+    if isinstance(price, bool) or not isinstance(price, (int, float)) \
+            or not math.isfinite(price) or price <= 0:
+        raise ValueError(f"price must be a finite positive number, got {price!r}")

@@ -17,8 +17,10 @@ EVIDENCE_FORMAT = "cryptobot-protection-evidence/1"
 
 class EvidenceLog:
     def __init__(self, path: str | Path, header: dict[str, Any]) -> None:
+        import threading
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
+        self._lock = threading.Lock()
         self._seq = 0
         record = {"format": EVIDENCE_FORMAT, "kind": "header", **header}
         with self.path.open("w", encoding="utf-8") as handle:
@@ -32,12 +34,15 @@ class EvidenceLog:
                payload: dict[str, Any]) -> int:
         if ts_utc.tzinfo is None:
             raise ValueError("ts_utc must be timezone-aware")
-        self._seq += 1
-        record = {"format": EVIDENCE_FORMAT, "seq": self._seq,
-                  "ts_utc": ts_utc.isoformat(), "kind": kind, **payload}
-        with self.path.open("a", encoding="utf-8") as handle:
-            handle.write(json.dumps(record, sort_keys=True) + "\n")
-        return self._seq
+        # The freshness refresher thread and the session loop append
+        # concurrently; serialize seq + file write (watchdog review).
+        with self._lock:
+            self._seq += 1
+            record = {"format": EVIDENCE_FORMAT, "seq": self._seq,
+                      "ts_utc": ts_utc.isoformat(), "kind": kind, **payload}
+            with self.path.open("a", encoding="utf-8") as handle:
+                handle.write(json.dumps(record, sort_keys=True) + "\n")
+            return self._seq
 
 
 def read_evidence(path: str | Path) -> tuple[dict[str, Any],

@@ -961,6 +961,11 @@ class _RejectingEngine(_ScriptedEngine):
     def submit(self, cmd):
         raise ValueError("qty 0.00099865 below LOT_SIZE step 0.001")
 
+    def submit_protected(self, cmd, limit):
+        # Entries route through the protected IOC path (directive L76);
+        # the venue rejects the protected order the same way.
+        raise ValueError("qty 0.00099865 below LOT_SIZE step 0.001")
+
 
 class _MarginEngine(_ScriptedEngine):
     """V-008 surface: margin account, exchange marks, settled totals."""

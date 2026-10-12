@@ -28,10 +28,10 @@ class InstrumentFilter:
     The venue publishes no max-notional filter, so ``max_notional_usdt``
     is an optional OPERATOR cap (caps down when set, never blocks
     completeness). Likewise ``market_min_qty``/``market_max_qty`` apply
-    where the venue publishes MARKET_LOT_SIZE; the session submits MARKET
-    entries so both LOT_SIZE and MARKET_LOT_SIZE bound the size (the
-    intersection governs), and at pilot sizes both maxima exceed any
-    sized quantity by orders of magnitude (see sizing notes).
+    where the venue publishes MARKET_LOT_SIZE; entries are price-protected
+    IOC (LIMIT-kind on the economic path) so LOT_SIZE governs, and at
+    pilot sizes both maxima exceed any sized quantity by orders of
+    magnitude (see sizing notes).
     """
 
     min_notional_usdt: float = 5.0
