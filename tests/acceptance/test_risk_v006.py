@@ -57,6 +57,59 @@ def test_run_mode_rejects_non_bool():
         RiskConfig(run_mode="yes")
 
 
+# -- V-006-F1: satisfiable completeness + MARKET_LOT -----------------------------
+VENUE_ONLY = InstrumentFilter(min_notional_usdt=5.0, qty_step=0.01,
+                              min_qty=0.01, max_qty=1000.0, tick_size=0.1)
+
+
+def test_complete_satisfiable_without_operator_cap(tmp_path):
+    assert VENUE_ONLY.complete() is True
+    assert VENUE_ONLY.max_notional_usdt is None
+    policy = make_policy(tmp_path, run_mode=True,
+                         instrument_filters={"BTCUSDT": VENUE_ONLY},
+                         filters_asof_utc=NOW)
+    policy.reconcile_day(10000.0)
+    from cryptobot.risk import Approved
+    out = policy.evaluate(build_intent(INTENTS["canonical_long"]),
+                          build_account(ACCOUNTS["healthy_10k"]))
+    assert isinstance(out, Approved)
+
+
+def test_operator_cap_ignored_by_completeness_but_caps_size(tmp_path):
+    from cryptobot.risk import Approved
+    assert COMPLETE.complete() is True
+    policy = _run_policy(tmp_path)
+    policy.reconcile_day(10000.0)
+    out = policy.evaluate(build_intent(INTENTS["canonical_long"]),
+                          build_account(ACCOUNTS["healthy_10k"]))
+    assert isinstance(out, Approved)
+    assert out.notional_usdt <= 1e9
+
+
+def test_market_lot_bounds_apply_where_published(tmp_path):
+    from cryptobot.risk import Approved
+    filt = InstrumentFilter(min_notional_usdt=5.0, qty_step=0.01,
+                            min_qty=0.01, max_qty=1000.0, tick_size=0.1,
+                            market_min_qty=0.01, market_max_qty=0.05)
+    policy = make_policy(tmp_path, instrument_filters={"BTCUSDT": filt},
+                         filters_asof_utc=NOW)
+    policy.reconcile_day(10000.0)
+    out = policy.evaluate(build_intent(INTENTS["canonical_long"]),
+                          build_account(ACCOUNTS["healthy_10k"]))
+    assert isinstance(out, Approved)
+    assert out.qty == pytest.approx(0.05)
+    strict = InstrumentFilter(min_notional_usdt=5.0, qty_step=0.01,
+                              min_qty=0.01, max_qty=1000.0, tick_size=0.1,
+                              market_min_qty=1000.0)
+    policy2 = make_policy(tmp_path / "b", instrument_filters={"BTCUSDT": strict},
+                          filters_asof_utc=NOW)
+    (tmp_path / "b").mkdir(exist_ok=True)
+    policy2.reconcile_day(10000.0)
+    out2 = policy2.evaluate(build_intent(INTENTS["canonical_long"]),
+                            build_account(ACCOUNTS["healthy_10k"]))
+    assert isinstance(out2, Rejected) and out2.reason == "skip:min-notional"
+
+
 # -- margin-aware sizing ------------------------------------------------------
 def _with_margin(acct, available, fee=0.0, inflight=0.0):
     return dataclasses.replace(acct, available_margin_usdt=available,

@@ -55,6 +55,7 @@ class AppConfig:
     max_evidence_age_s: float
     max_clock_skew_s: float
     filters_max_age_s: float
+    max_notional_cap_usdt: float
     # fees / engine / data / storage / strategies
     fee_label: str
     taker_bps: float
@@ -162,6 +163,8 @@ def load_config(path: str | Path) -> AppConfig:
         max_evidence_age_s=_positive(risk.get("max_evidence_age_s"), "risk.max_evidence_age_s"),
         max_clock_skew_s=_finite(risk.get("max_clock_skew_s"), "risk.max_clock_skew_s"),
         filters_max_age_s=_positive(risk.get("filters_max_age_s"), "risk.filters_max_age_s"),
+        max_notional_cap_usdt=_positive(
+            risk.get("max_notional_cap_usdt"), "risk.max_notional_cap_usdt"),
         fee_label=str(fees.get("label", "simulation-labeled")),
         taker_bps=_finite(fees.get("taker_bps"), "fees.taker_bps"),
         funding_bps_per_8h=_finite(fees.get("funding_bps_per_8h"), "fees.funding_bps_per_8h"),

@@ -21,10 +21,16 @@ def _finite(value: float, name: str) -> float:
 
 @dataclass(frozen=True)
 class InstrumentFilter:
-    """Per-instrument venue filters (V-004; extended V-006).
+    """Per-instrument venue filters (V-004; extended V-006; fixed V-006-F1).
 
     ``None`` means unconstraining (non-run use). Run mode requires a
-    complete record (see :meth:`complete`).
+    complete record (see :meth:`complete`): only venue-published fields.
+    The venue publishes no max-notional filter, so ``max_notional_usdt``
+    is an optional OPERATOR cap (caps down when set, never blocks
+    completeness). Likewise ``market_min_qty``/``market_max_qty`` apply
+    where the venue publishes MARKET_LOT_SIZE; entries are LIMIT so
+    LOT_SIZE governs them, and at pilot sizes both maxima exceed any
+    sized quantity by orders of magnitude (see sizing notes).
     """
 
     min_notional_usdt: float = 5.0
@@ -33,6 +39,8 @@ class InstrumentFilter:
     min_qty: float = 0.0
     max_qty: float | None = None
     tick_size: float | None = None
+    market_min_qty: float | None = None
+    market_max_qty: float | None = None
 
     def __post_init__(self) -> None:
         _finite(self.min_notional_usdt, "min_notional_usdt")
@@ -44,7 +52,8 @@ class InstrumentFilter:
             raise ValueError("qty_step must be > 0")
         if self.min_qty < 0:
             raise ValueError("min_qty must be >= 0")
-        for name in ("max_notional_usdt", "max_qty", "tick_size"):
+        for name in ("max_notional_usdt", "max_qty", "tick_size",
+                     "market_min_qty", "market_max_qty"):
             value = getattr(self, name)
             if value is not None:
                 _finite(value, name)
@@ -54,14 +63,16 @@ class InstrumentFilter:
             raise ValueError("max_notional_usdt must be >= min_notional_usdt")
         if self.max_qty is not None and self.max_qty < self.min_qty:
             raise ValueError("max_qty must be >= min_qty")
+        if (self.market_min_qty is not None and self.market_max_qty is not None
+                and self.market_max_qty < self.market_min_qty):
+            raise ValueError("market_max_qty must be >= market_min_qty")
 
     def complete(self) -> bool:
-        """True when the record carries every run-mode filter field."""
+        """True when the record carries every venue-published run field."""
         return (
             self.min_qty > 0
             and self.max_qty is not None
             and self.tick_size is not None
-            and self.max_notional_usdt is not None
         )
 
 

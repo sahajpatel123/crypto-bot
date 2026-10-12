@@ -132,6 +132,7 @@ class Session:
         self._dispatch_ms: list[float] = []
         self._submit_ts: dict[str, datetime] = {}
         self._events_seen = 0
+        self._flatten_pending = False
         self._last_seq = 0
         self._crash_after: int | None = None
         self._stop_flag: str | None = None
@@ -140,6 +141,42 @@ class Session:
     # -- lifecycle ---------------------------------------------------------
     def _set_state(self, state: str, reason: str = "") -> None:
         self.store.set_state(self.run_id, state, reason)
+
+    # -- run-mode filter arming (paper only) -----------------------------------
+    def arm_run_mode(self, symbols: list[str], *, http_get: Any = None) -> None:
+        """Fetch live venue filters and arm strict run mode. Fail-closed."""
+        from dataclasses import replace
+
+        from .filters import build_run_filters
+        filters, asof = build_run_filters(
+            symbols,
+            max_notional_cap_usdt=self.config.max_notional_cap_usdt,
+            http_get=http_get)
+        merged = dict(self.policy.config.instrument_filters)
+        merged.update(filters)
+        self.policy.config = replace(
+            self.policy.config, instrument_filters=merged,
+            filters_asof_utc=asof, run_mode=True)
+        self.store.checkpoint(self.run_id, "filters-armed",
+                              {"symbols": sorted(filters),
+                               "asof_utc": asof.isoformat()})
+
+    def _ensure_symbol_filters(self, symbol: str) -> bool:
+        """Arm filters for a newly seen paper symbol. False when blocked."""
+        if self.config.mode != "paper":
+            return True
+        if symbol in self.policy.config.instrument_filters:
+            return True
+        from .filters import FilterError
+        try:
+            self.arm_run_mode([symbol])
+        except (FilterError, ValueError, OSError) as exc:
+            self.engine.set_exit_only(True, f"filters:{exc}")
+            self._set_state("halted", f"filters:unavailable:{symbol}")
+            self.store.checkpoint(self.run_id, "filters-blocked",
+                                  {"symbol": symbol, "reason": str(exc)})
+            return False
+        return True
 
     def _snapshot_account(self) -> AccountSnapshot:
         mark = self._reference_mark()
@@ -401,23 +438,49 @@ class Session:
             self._position = None
             self._set_state("ready", f"entry-dead:{entry.state}")
 
+    def _retry_pending_flatten(self, reason: str) -> None:
+        if not self.ledger.has_position():
+            self._flatten_pending = False
+            return
+        try:
+            self._flatten(reason)
+            self._drain_engine()
+        except Exception as exc:
+            self.store.checkpoint(self.run_id, "flatten-retry",
+                                  {"reason": str(exc)})
+        if not self.ledger.has_position():
+            self._flatten_pending = False
+
+    def _position_symbol(self) -> str | None:
+        """Instrument of the current ledger exposure (last fill's symbol)."""
+        if self._position is not None:
+            return self._position["instrument"]
+        for entry in reversed(self.ledger.to_dict().get("journal", [])):
+            if entry.get("kind") == "fill" and entry.get("symbol"):
+                return entry["symbol"]
+        return None
+
     def _flatten(self, reason: str) -> None:
         pos = self._position
-        if pos is None:
-            return
-        for leg in pos["legs"]:
+        legs = pos["legs"] if pos is not None else []
+        for leg in legs:
             try:
                 self.engine.cancel(leg, reason)
             except Exception:
                 pass
         net = self.ledger.position_qty()
         if abs(net) > 1e-12:
+            symbol = pos["instrument"] if pos is not None else self._position_symbol()
+            if symbol is None:
+                raise ValueError("cannot flatten: exposure without instrument")
             side = "SELL" if net > 0 else "BUY"
             self.engine.submit_immediate(EngineOrder(
-                instrument=pos["instrument"], side=side, qty=abs(net),
+                instrument=symbol, side=side, qty=abs(net),
                 kind="MARKET", reduce_only=True,
-                reservation_id=pos["reservation_id"], role="target"))
-        self.store.checkpoint(self.run_id, "flatten", {"reason": reason, "net": net})
+                reservation_id=pos["reservation_id"] if pos is not None else None,
+                role="target"))
+        self.store.checkpoint(self.run_id, "flatten",
+                              {"reason": reason, "net": net})
 
     # -- replay --------------------------------------------------------------
     def run_replay(self, capture_dir: str | Path, *,
@@ -502,6 +565,8 @@ class Session:
                 return
             if len(self._feeds) >= self.config.max_symbols:
                 return
+            if not self._ensure_symbol_filters(symbol):
+                return
             feed = _SymbolFeed(symbol, self.config.warmup_bars)
             self._feeds[symbol] = feed
         closed: list = []
@@ -522,6 +587,8 @@ class Session:
             # reference engine lacks it and keeps mark-quote behavior).
             self.engine.note_event(event)
         self._drain_engine()
+        if self._flatten_pending:
+            self._retry_pending_flatten("resume-reconcile-retry")
         self._roll_day_if_needed()
         if self._position is not None:
             # Time exits and flat inference run on market traffic too.
@@ -544,9 +611,31 @@ class Session:
         if self._day is not None and today != self._day:
             marked = self.ledger.marked_equity(self._reference_mark())
             self.policy.reconcile_day(marked, self.ledger.total_flows())
+            self.engine.set_exit_only(False, "day-reconciled")
+            self._set_state("ready", "day-reconciled")
             self.store.checkpoint(self.run_id, "day-roll",
                                   {"day": today, "marked": marked})
         self._day = today
+
+    def _refresh_filters_if_stale(self) -> None:
+        """Re-arm paper filters when the record outlives its max age."""
+        if self.config.mode != "paper" or not self.policy.config.run_mode:
+            return
+        asof = self.policy.config.filters_asof_utc
+        if asof is None:
+            return
+        age = (self.now_utc() - asof).total_seconds()
+        if age < self.config.filters_max_age_s:
+            return
+        symbols = sorted(self._feeds)
+        if not symbols:
+            return
+        from .filters import FilterError
+        try:
+            self.arm_run_mode(symbols)
+        except (FilterError, ValueError, OSError) as exc:
+            self.engine.set_exit_only(True, f"filters-refresh:{exc}")
+            self._set_state("halted", "filters:refresh-failed")
 
     # -- persistence / recovery -------------------------------------------------
     def _persist_local_state(self) -> None:
@@ -576,23 +665,54 @@ class Session:
         self.store.checkpoint(self.run_id, "resume",
                               {"last_seq": self._last_seq})
 
+    def _resume_live(self) -> None:
+        """Recover a live paper run: ledger + risk state + engine journal.
+
+        Sim orders never survive restart, so any recovered ledger exposure
+        is flattened immediately (fresh mark) before the loop continues.
+        """
+        run = self.store.get_run(self.run_id)
+        if run is None:
+            raise KeyError(f"unknown run {self.run_id}")
+        ledger_path = self.workdir / "ledger.json"
+        if ledger_path.exists():
+            self.ledger = Ledger.from_dict(
+                json.loads(ledger_path.read_text(encoding="utf-8")))
+            self.policy.bind_ledger(self.ledger)
+        self.engine.recover(self.policy)
+        self._day = accounting_date(self.now_utc()).isoformat()
+        self._set_state("recovering", "live-resume")
+        self.store.checkpoint(self.run_id, "live-resume",
+                              {"position_qty": self.ledger.position_qty()})
+        if self.ledger.has_position():
+            # Flatten the orphaned exposure; retry each cycle until flat
+            # (marks may not exist yet at resume time).
+            self._flatten_pending = True
+            self._retry_pending_flatten("resume-reconcile")
+
     # -- live paper ------------------------------------------------------------
     def run_live(self, event_iter: Any, *, duration_s: int,
-                 expect_class: str = "observed-public") -> dict[str, Any]:
+                 expect_class: str = "observed-public",
+                 resume: bool = False) -> dict[str, Any]:
         """Live-feed paper loop over a bridge event iterator (E-007).
 
         Same _ingest path as replay (strategies/selector/exit/risk), wall
         clock, wall duration budget. No Binance order submission exists on
         this path: fills come from the injected paper engine only.
+        Resume continues wall-now with recovered state (no live cursor);
+        any recovered exposure is flattened before continuing.
         """
         if self.config.mode != "paper":
             raise ValueError("run_live needs a paper-mode config")
-        self.store.create_run(self.run_id, "paper", self.config.fingerprint,
-                              str(self.workdir), self._pid)
-        self.policy.reconcile_day(self.config.paper_capital_usdt, 0.0)
-        self._day = accounting_date(self.now_utc()).isoformat()
-        self.store.checkpoint(self.run_id, "open",
-                              {"equity": self.config.paper_capital_usdt})
+        if resume:
+            self._resume_live()
+        else:
+            self.store.create_run(self.run_id, "paper", self.config.fingerprint,
+                                  str(self.workdir), self._pid)
+            self.policy.reconcile_day(self.config.paper_capital_usdt, 0.0)
+            self._day = accounting_date(self.now_utc()).isoformat()
+            self.store.checkpoint(self.run_id, "open",
+                                  {"equity": self.config.paper_capital_usdt})
         adapters, modules = self._strategy_adapters()
         self._set_state("warming", "paper-start")
         deadline = time.monotonic() + duration_s
@@ -607,6 +727,13 @@ class Session:
             if now_mono - last_beat >= 30.0:
                 last_beat = now_mono
                 self.store.heartbeat(self.run_id)
+                self._persist_local_state()
+                # Traffic-independent oversight tick (+ dead-monitor stamp).
+                tick = self.policy.monitor_tick(account=None)
+                if not tick.ok:
+                    self.engine.set_exit_only(True, ";".join(tick.reasons))
+                    self._set_state("halted", ";".join(tick.reasons))
+                self._refresh_filters_if_stale()
             stop = self._stop_flag or self.store.stop_requested(self.run_id)
             if stop is not None:
                 end_reason = f"operator-stop:{stop}"
@@ -622,7 +749,8 @@ class Session:
         self._set_state("stopping", end_reason)
         self._drain_engine()
         self._persist_local_state()
-        report = self._build_report("live-public-feed", expect_class, mode="paper")
+        report = self._build_report("live-public-feed", expect_class,
+                                    mode="paper")
         (self.workdir / "report.json").write_text(json.dumps(report, indent=2))
         (self.workdir / "report.md").write_text(self._render_report(report))
         self._set_state("stopped", "report-written")

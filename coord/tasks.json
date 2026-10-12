@@ -460,7 +460,7 @@
   "V-006-F1": {
    "owner_session": "cool-amalthea",
    "role": "Worker 3 \u2014 Risk, Verification and Reliability Engineer",
-   "state": "dispatched",
+   "state": "accepted",
    "contract_version": "v0.2.0+app_runtime_interfaces.md S4",
    "dependencies": [
     "V-006 integration on main"
@@ -483,6 +483,6 @@
    ]
   }
  },
- "updated_utc": "2026-10-12T08:00:00Z",
+ "updated_utc": "2026-10-12T08:20:00Z",
  "version": 1
 }

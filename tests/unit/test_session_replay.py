@@ -261,6 +261,21 @@ def test_run_live_with_stub_engine(tmp_path):
     try:
         session = Session(cfg, store, tmp_path / "runs" / "live-1", "live-1",
                           clock=WallClock(), engine=StubEngine())
+        # Pre-arm filters with a stub transport (no network in tests).
+        from dataclasses import replace
+
+        from cryptobot.app.filters import build_run_filters
+        entries = [{"symbol": "BTCUSDT", "status": "TRADING", "filters": [
+            {"filterType": "PRICE_FILTER", "tickSize": "0.10"},
+            {"filterType": "LOT_SIZE", "minQty": "0.001",
+             "maxQty": "1000", "stepSize": "0.001"},
+            {"filterType": "MIN_NOTIONAL", "notional": "50"}]}]
+        filters, asof = build_run_filters(
+            ["BTCUSDT"], max_notional_cap_usdt=cfg.max_notional_cap_usdt,
+            http_get=lambda url, timeout: ({"symbols": entries}, 1.0))
+        session.policy.config = replace(
+            session.policy.config, instrument_filters=filters,
+            filters_asof_utc=asof, run_mode=True)
         report = session.run_live(iter(events), duration_s=30)
         assert report["mode"] == "paper"
         assert report["intents_admitted"] == 0

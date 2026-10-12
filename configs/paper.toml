@@ -20,6 +20,9 @@ profit_retain_pct = 0.70
 max_evidence_age_s = 120.0
 max_clock_skew_s = 5.0
 filters_max_age_s = 3600.0
+# Operator notional cap per position (the venue publishes no max-notional
+# filter; this cap also satisfies filter completeness for run mode).
+max_notional_cap_usdt = 500.0
 
 [fees]
 # Labeled SIMULATION rates. Not the owner's actual account rates.

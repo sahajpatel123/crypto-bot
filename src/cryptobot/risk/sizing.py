@@ -89,6 +89,16 @@ def plan_size(
     step = filt.qty_step if filt is not None else 1e-8
     min_qty = filt.min_qty if filt is not None else 0.0
     max_qty = filt.max_qty if filt is not None else None
+    if filt is not None:
+        # MARKET entries additionally respect MARKET_LOT_SIZE where the
+        # venue publishes it (intersection = tighter bound governs). Where
+        # unpublished, LOT_SIZE suffices: entries are LIMIT, and pilot
+        # quantities sit orders of magnitude below any venue maximum while
+        # the LOT minimum remains the binding floor.
+        if filt.market_min_qty is not None:
+            min_qty = max(min_qty, filt.market_min_qty)
+        if filt.market_max_qty is not None:
+            max_qty = filt.market_max_qty if max_qty is None else min(max_qty, filt.market_max_qty)
     min_notional = filt.min_notional_usdt if filt is not None else config.min_notional_usdt
     max_notional = filt.max_notional_usdt if filt is not None else None
 

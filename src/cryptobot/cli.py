@@ -199,7 +199,8 @@ def _run_paper(args: argparse.Namespace) -> int:
     try:
         events = _bridge.live_events(symbols=list(config.symbols) or None,
                                      max_symbols=config.max_symbols)
-        report = session.run_live(events, duration_s=duration)
+        report = session.run_live(events, duration_s=duration,
+                                  resume=bool(args.resume))
     finally:
         store.close()
         engine.close()
