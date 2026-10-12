@@ -486,6 +486,98 @@ def test_protection_dead_leg_retries(tmp_path):
         store.close()
 
 
+def _paper_cfg(tmp_path, name="paper"):
+    text = open("configs/paper.toml").read()
+    text = text.replace('mode = "replay"', 'mode = "paper"', 1)
+    text = text.replace('kind = "reference"', 'kind = "nautilus"', 1)
+    text = text.replace('dir = "runs"', f'dir = "{tmp_path / "runs"}"', 1)
+    text = text.replace("warmup_bars =", "warmup_bars = 3 #", 1)
+    cfg_path = tmp_path / f"{name}.toml"
+    cfg_path.write_text(text)
+    return load_config(cfg_path)
+
+
+def _stopping_reason(store, run_id):
+    row = store._db.execute(
+        "SELECT reason FROM risk_transitions WHERE run_id=? AND"
+        " to_state='stopping' ORDER BY id DESC LIMIT 1",
+        (run_id,)).fetchone()
+    return row[0] if row else None
+
+
+def test_live_deadline_fires_on_silent_heartbeats(tmp_path):
+    """B3: duration deadline ends the run during pure silence (no arrivals)."""
+    import time
+    from cryptobot.app.session import Session, WallClock
+    cfg = _paper_cfg(tmp_path, "paper-b3a")
+    store = RunStore(tmp_path / "runs" / "cryptobot.db")
+    try:
+        session = Session(cfg, store, tmp_path / "runs" / "silent",
+                          "silent", clock=WallClock(),
+                          engine=_ScriptedEngine())
+        def beats():
+            while True:
+                time.sleep(0.01)
+                yield None
+        t0 = time.monotonic()
+        report = session.run_live(beats(), duration_s=1)
+        elapsed = time.monotonic() - t0
+        assert report["events_seen"] == 0
+        assert store.get_run("silent")["state"] == "stopped"
+        assert _stopping_reason(store, "silent") == "duration-elapsed"
+        assert 0.9 <= elapsed < 5.0  # waited for deadline, not first None
+    finally:
+        store.close()
+
+
+def test_live_stop_flag_breaks_silence(tmp_path):
+    """B3: an operator stop ends the run promptly with no market traffic."""
+    from cryptobot.app.session import Session, WallClock
+    cfg = _paper_cfg(tmp_path, "paper-b3b")
+    store = RunStore(tmp_path / "runs" / "cryptobot.db")
+    try:
+        session = Session(cfg, store, tmp_path / "runs" / "stopq",
+                          "stopq", clock=WallClock(),
+                          engine=_ScriptedEngine())
+        session._stop_flag = "now"
+        report = session.run_live(iter([None, None, None]), duration_s=30)
+        assert report["events_seen"] == 0
+        assert store.get_run("stopq")["state"] == "stopped"
+        assert _stopping_reason(store, "stopq") == "operator-stop:now"
+    finally:
+        store.close()
+
+
+def test_live_time_exit_fires_on_silent_heartbeat(tmp_path):
+    """B3: an expiring holding deadline flattens with zero arrivals."""
+    from cryptobot.app.session import Session, WallClock
+    cfg = _paper_cfg(tmp_path, "paper-b3c")
+    store = RunStore(tmp_path / "runs" / "cryptobot.db")
+    try:
+        engine = _ScriptedEngine()
+        session = Session(cfg, store, tmp_path / "runs" / "t3", "t3",
+                          clock=WallClock(), engine=engine)
+        session.ledger.record_fill(
+            "BUY", 1.0, 100.0, 0.05,
+            datetime.now(timezone.utc), "e1")
+        session._position = {
+            "reservation_id": "r-1", "instrument": "BTCUSDT",
+            "side": "LONG", "entry_pre_id": "p", "entry_id": "e",
+            "legs": [], "stop": 99.0, "target": 102.0,
+            "time_exit": datetime.now(timezone.utc) - timedelta(seconds=1),
+            "legacy_exit": False, "protected": False,
+            "protect_attempts": 0}
+        report = session.run_live(iter([None, None, None]), duration_s=30)
+        assert report["events_seen"] == 0
+        assert engine.submitted_immediate, \
+            "time exit must fire without arrivals"
+        assert engine.submitted_immediate[0].reduce_only is True
+        assert "flatten" in _checkpoints(store, "t3")
+        assert store.get_run("t3")["state"] == "stopped"
+    finally:
+        store.close()
+
+
 def test_cli_doctor_run_status_stop(tmp_path):
     from cryptobot.cli import main
     cap = _capture(tmp_path / "cap", windows=6)

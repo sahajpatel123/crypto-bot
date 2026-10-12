@@ -854,10 +854,21 @@ class Session:
         last_beat = 0.0
         end_reason = "duration-elapsed"
         for event in event_iter:
-            if event.get("input_class", expect_class) != expect_class:
+            # None = idle heartbeat (B3): iterators never block longer
+            # than 1s, so timers/stop/duration below run on every wake,
+            # with or without market traffic.
+            if event is None:
+                pass
+            elif event.get("input_class", expect_class) != expect_class:
                 continue
-            self._ingest(event, adapters, modules)
-            self._events_seen += 1
+            else:
+                self._ingest(event, adapters, modules)
+                self._events_seen += 1
+            # Position management on every wake (B3): time exits and flat
+            # inference cannot wait for the next market event.
+            self._drain_engine()
+            if self._position is not None:
+                self._update_position(EngineEvent("tick", None, self.now_utc()))
             now_mono = time.monotonic()
             if now_mono - last_beat >= 30.0:
                 last_beat = now_mono
