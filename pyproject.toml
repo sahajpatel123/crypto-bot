@@ -5,6 +5,7 @@ description = "Binance USDT-perpetual scalping research and simulation system (r
 requires-python = ">=3.12"
 dependencies = [
     "nautilus-trader==1.231.0",
+    "pyarrow==26.0.0",
 ]
 
 [project.optional-dependencies]

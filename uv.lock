@@ -34,6 +34,7 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "nautilus-trader" },
+    { name = "pyarrow" },
 ]
 
 [package.optional-dependencies]
@@ -44,6 +45,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "nautilus-trader", specifier = "==1.231.0" },
+    { name = "pyarrow", specifier = "==26.0.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
 ]
 provides-extras = ["dev"]

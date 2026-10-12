@@ -10,6 +10,9 @@ venv/
 data/*.jsonl
 data/*.parquet
 data/*.csv
+data/captures/
+data/bench30d/
+datasets/cache/
 !data/README.md
 .DS_Store
 runs/
