@@ -44,6 +44,8 @@ FROZEN_FILTERS = {
     # venue facts; E-008 supplies historical filters for real datasets).
     "BTCUSDT": {"tick_size": 0.01, "step_size": 0.001, "min_notional": 0.0,
                 "price_precision": 2, "size_precision": 3},
+    "ETHUSDT": {"tick_size": 0.01, "step_size": 0.001, "min_notional": 0.0,
+                "price_precision": 2, "size_precision": 3},
     "XRPUSDT": {"tick_size": 0.0001, "step_size": 0.1, "min_notional": 0.0,
                 "price_precision": 4, "size_precision": 1},
 }
@@ -643,7 +645,8 @@ def main(argv: list[str] | None = None) -> int:
         want_profile = args.dataset == "synth_noquotes"
     else:
         from cryptobot.market_data.datasets import open_dataset
-        dataset = open_dataset(f"datasets/{args.dataset}.toml")
+        dataset = open_dataset(
+            f"datasets/{args.dataset.replace('-', '_')}.toml")
         symbols = tuple(s for s in (args.symbols or "").split(",") if s) \
             or tuple(_default_symbols(dataset))
         want_profile = True  # applied per-day only where quotes are absent
