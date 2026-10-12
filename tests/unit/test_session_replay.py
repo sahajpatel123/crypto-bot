@@ -188,8 +188,8 @@ def test_run_files_match_b9_schemas(tmp_path):
                                      "mark_source", "mark_age_ms"}
         risk = [json.loads(line) for line in
                 (session.workdir / "risk.jsonl").read_text().splitlines()]
-        assert risk and set(risk[0]) == {"ts_utc", "kind", "from_state",
-                                         "to_state", "reason"}
+        assert risk and set(risk[0]) == {"ts_utc", "wall_ts_utc", "kind",
+                                         "from_state", "to_state", "reason"}
     finally:
         store.close()
 

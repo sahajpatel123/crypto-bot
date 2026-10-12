@@ -204,7 +204,9 @@ class Session:
             old = ""
         self.store.set_state(self.run_id, state, reason)
         self._append_run_file("risk.jsonl", {
-            "ts_utc": self.now_utc().isoformat(), "kind": "run-state",
+            "ts_utc": self.now_utc().isoformat(),
+            "wall_ts_utc": datetime.now(timezone.utc).isoformat(),
+            "kind": "run-state",
             "from_state": old, "to_state": state, "reason": reason})
 
     # -- run-mode filter arming (paper only) -----------------------------------
@@ -580,7 +582,9 @@ class Session:
             self._note_reject(f"risk:{verdict.reason}", intent.strategy,
                               intent.instrument, intent.side.value)
             self._append_run_file("risk.jsonl", {
-                "ts_utc": self.now_utc().isoformat(), "kind": "risk-decision",
+                "ts_utc": self.now_utc().isoformat(),
+                "wall_ts_utc": datetime.now(timezone.utc).isoformat(),
+                "kind": "risk-decision",
                 "from_state": "", "to_state": "rejected",
                 "reason": verdict.reason})
             self.store.record_intent(
@@ -869,7 +873,7 @@ class Session:
         path = capture_dir / "depth_snapshots.jsonl"
         summary: dict[str, Any] = {"source": "depth_snapshots.jsonl",
                                    "present": path.exists(), "applied": 0,
-                                   "synced": [], "errors": 0}
+                                   "synced": [], "failed": {}, "errors": 0}
         for snap in load_snapshots(path):
             try:
                 outcome = self._depth_store.apply_snapshot_record(snap)
@@ -878,7 +882,9 @@ class Session:
                 continue
             summary["applied"] += 1
             if outcome == "synced":
-                summary["synced"].append(str(snap.get("symbol", "")))
+                symbol = str(snap.get("symbol", ""))
+                if symbol not in summary["synced"]:
+                    summary["synced"].append(symbol)
         return summary
 
     def _prime_live_books(self) -> dict[str, Any]:
@@ -890,6 +896,7 @@ class Session:
         """
         import urllib.request
         summary: dict[str, Any] = {"source": "rest:fapi/v1/depth",
+                                   "applied": 0, "synced": [],
                                    "primed": [], "failed": {}}
         if not self.config.symbols:
             summary["skipped"] = "dynamic-symbols"
@@ -912,6 +919,8 @@ class Session:
                 summary["failed"][symbol] = f"{type(exc).__name__}"
                 continue
             summary["primed"].append(symbol)
+            summary["applied"] += 1
+            summary["synced"].append(symbol)
         return summary
 
     def run_replay(self, capture_dir: str | Path, *,
@@ -992,10 +1001,10 @@ class Session:
             manifest_extra={"manifest_sha": digest.hexdigest(),
                             "input_class": expect_class,
                             "capture": str(capture_dir)})
+        self._set_state("stopped", "run-complete")
         report = self._build_report(str(capture_dir), expect_class)
         (self.workdir / "report.json").write_text(json.dumps(report, indent=2))
         (self.workdir / "report.md").write_text(self._render_report(report))
-        self._set_state("stopped", "report-written")
         return report
 
     def _ingest(self, event: dict[str, Any], adapters: dict[str, Any],
@@ -1366,11 +1375,11 @@ class Session:
             window_start_utc=self._run_start_utc or self.now_utc(),
             window_end_utc=self.now_utc(),
             manifest_extra={"note": "live public feed; no frozen manifest"})
+        self._set_state("stopped", "run-complete")
         report = self._build_report("live-public-feed", expect_class,
                                     mode="paper")
         (self.workdir / "report.json").write_text(json.dumps(report, indent=2))
         (self.workdir / "report.md").write_text(self._render_report(report))
-        self._set_state("stopped", "report-written")
         return report
 
     # -- report ------------------------------------------------------------------
