@@ -511,7 +511,7 @@
   "E-008": {
    "owner_session": "cloud-vega",
    "role": "Worker 2 \u2014 Data and Execution",
-   "state": "dispatched",
+   "state": "accepted",
    "contract_version": "v0.2.0+backtest_interfaces.md",
    "dependencies": [
     "specs/backtest_interfaces.md"
@@ -541,7 +541,12 @@
     "tests/unit/test_market_data_*",
     "tests/unit/test_execution_*",
     "coord/outbox/E-008.json"
-   ]
+   ],
+   "accepted": {
+    "sha": "e1a45b8",
+    "suite": "624/624",
+    "note": "repro 426 branch + 471 overlay, 5 manager probes green, replay fill at trade cross, dataset shas match, M1 exit 0; replay-offline + funding-doc fixups; datasets promoted"
+   }
   },
   "Q-007": {
    "owner_session": "whisper-redshift",
