@@ -37,6 +37,7 @@ def test_csv_shapes(tmp_path):
     assert len(trades) == 1 and float(trades[0]["net"]) == 5.3
     equity = list(csv.DictReader(open(out["equity.csv"])))
     assert {"drawdown_usdt", "drawdown_pct", "date_ist"} <= set(equity[0])
+    assert {"mark_source", "mark_age_ms"} <= set(equity[0])
     assert len(equity) == 5
     daily = list(csv.DictReader(open(out["daily_returns.csv"])))
     assert daily[0]["label"] in ("trade", "no-trade", "no-coverage")

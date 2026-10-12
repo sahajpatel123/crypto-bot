@@ -10,12 +10,20 @@ from typing import Any
 __all__ = [
     "ENGINE_VERSION",
     "NautilusPaperEngine",
+    "BinanceLiveEngine",
+    "UnknownOutcomeError",
+    "VenueHttpError",
+    "VenueRejectedError",
 ]
 
 
 def __getattr__(name: str) -> Any:
-    if name in __all__:
+    if name in ("ENGINE_VERSION", "NautilusPaperEngine"):
         from .paper_engine import ENGINE_VERSION, NautilusPaperEngine
         return {"ENGINE_VERSION": ENGINE_VERSION,
                 "NautilusPaperEngine": NautilusPaperEngine}[name]
+    if name in ("BinanceLiveEngine", "UnknownOutcomeError", "VenueHttpError",
+                "VenueRejectedError"):
+        from . import binance_live
+        return getattr(binance_live, name)
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

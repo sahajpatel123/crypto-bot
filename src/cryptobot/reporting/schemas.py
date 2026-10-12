@@ -58,6 +58,9 @@ class EquityRow:
     position_symbol: str
     open_pnl: float
     source: str
+    # V-008 §7: mark provenance (additive; older runs lack these keys).
+    mark_source: str = "unrecorded"  # exchange | feed | none | unrecorded
+    mark_age_ms: float | None = None
 
 
 @dataclass(frozen=True)
@@ -209,6 +212,14 @@ def load_equity(path: Path) -> tuple[EquityRow, ...]:
     rows = []
     for row in _read_jsonl(path):
         where = f"equity.jsonl:{row.get('ts_utc', '?')}"
+        msrc = row.get("mark_source", "unrecorded")
+        if not isinstance(msrc, str) or not msrc:
+            raise RunFileError(f"{where}: mark_source must be a non-empty string")
+        mage = row.get("mark_age_ms")
+        if mage is not None:
+            mage = _parse_float(mage, "mark_age_ms", where)
+            if mage < 0:
+                raise RunFileError(f"{where}: mark_age_ms must be >= 0")
         rows.append(EquityRow(
             ts_utc=_parse_ts(row.get("ts_utc"), where),
             marked_equity=_parse_float(row.get("marked_equity"), "marked_equity", where),
@@ -218,6 +229,8 @@ def load_equity(path: Path) -> tuple[EquityRow, ...]:
                                        where, allow_empty=True),
             open_pnl=_parse_float(row.get("open_pnl"), "open_pnl", where),
             source=_parse_str(row.get("source"), "source", where),
+            mark_source=msrc,
+            mark_age_ms=mage,
         ))
     return tuple(sorted(rows, key=lambda r: r.ts_utc))
 

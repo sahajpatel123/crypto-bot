@@ -106,6 +106,7 @@ from cryptobot.app.engine import (
     EngineReject,
 )
 from cryptobot.market_data.discovery import FAPI_BASE_URL, urllib_json_get
+from cryptobot.risk.rounding import floor_to_step, round_to_tick
 
 __all__ = ["ENGINE_VERSION", "NautilusPaperEngine"]
 
@@ -238,6 +239,11 @@ class NautilusPaperEngine:
         self._roles: dict[str, str] = {}  # client id -> role.
         self._reservations: dict[str, str | None] = {}  # client id -> reservation.
         self._marks: dict[str, float] = {}
+        # V-008 §7: mark-age semantics — every exchange mark carries its
+        # observation time; settled funding totals back ledger/engine
+        # reconciliation after funding as well as fills.
+        self._mark_ts: dict[str, datetime] = {}
+        self._settled_funding: dict[str, float] = {}
         self._funding_terms: dict[str, dict[str, Any]] = {}  # symbol -> rate/next/settled.
         self._pending: list[EngineEvent] = []
         self._submit_queue: list[tuple[int, EngineOrder, str]] = []  # (due_ns, cmd, id).
@@ -350,10 +356,12 @@ class NautilusPaperEngine:
         return self._instruments[symbol.upper()]
 
     def _quantize_qty(self, symbol: str, qty: float) -> float:
-        """Floor to the LOT_SIZE step (venue behavior); reject dust below minQty."""
+        """Floor to the LOT_SIZE step (venue behavior); reject dust below minQty.
+
+        V-008 §7: the one shared venue-rounding rule (submission leg).
+        """
         step = self._filters[symbol.upper()]["step"]
-        quantized = math.floor(qty / step * (1 + 1e-9)) * step
-        quantized = round(quantized, 12)
+        quantized = floor_to_step(qty, step)
         if quantized <= 0:
             raise ValueError(f"qty {qty} below LOT_SIZE step {step} for {symbol}")
         if quantized < self._filters[symbol.upper()]["min_qty"]:
@@ -361,8 +369,8 @@ class NautilusPaperEngine:
         return quantized
 
     def _round_tick(self, symbol: str, price: float) -> float:
-        tick = self._filters[symbol.upper()]["tick"]
-        return round(round(price / tick) * tick, 12)
+        # V-008 §7: the one shared venue-rounding rule (price leg).
+        return round_to_tick(price, self._filters[symbol.upper()]["tick"])
 
     # -- S3 seam ----------------------------------------------------------
     def _new_client_id(self) -> str:
@@ -556,7 +564,11 @@ class NautilusPaperEngine:
             raise ValueError("protection attaches only to an entry with fills")
         symbol = self._symbols[real]
         exit_side = "SELL" if order.side == OrderSide.BUY else "BUY"
-        protect_qty = min(filled, float(order.quantity))
+        # V-008 §7: protection leg floors with the shared rule BEFORE
+        # submit, so the recorded leg quantity is the executed quantity
+        # (never silently less after venue-side flooring).
+        protect_qty = self._quantize_qty(
+            symbol, min(filled, float(order.quantity)))
         reservation = self._reservations.get(real)
         legs = [self.submit(EngineOrder(
             instrument=symbol, side=exit_side, qty=protect_qty,
@@ -634,7 +646,8 @@ class NautilusPaperEngine:
         self._exit_only = halted
         self._journal("exit-only", {"halted": halted, "reason": reason})
 
-    def note_mark(self, instrument: str, price: float) -> None:
+    def note_mark(self, instrument: str, price: float,
+                ts_utc: datetime | None = None) -> None:
         """Record a valuation-only mark. NEVER executable (B2).
 
         Captured fills cross real bid/ask + liquidity from ``note_event``
@@ -644,10 +657,26 @@ class NautilusPaperEngine:
         """
         if price > 0:
             self._marks[instrument.upper()] = price
+            self._mark_ts[instrument.upper()] = ts_utc or self._now_utc()
 
     def valuation_mark(self, instrument: str) -> float | None:
         """Latest valuation-only mark (accounting/valuation use, never fills)."""
         return self._marks.get(instrument.upper())
+
+    def valuation_mark_ts(self, instrument: str) -> datetime | None:
+        """Observation time of the latest valuation mark (V-008 §7 mark age)."""
+        return self._mark_ts.get(instrument.upper())
+
+    def settled_funding_total(self, symbol: str | None = None) -> float:
+        """Sum of emitted funding cash flows (V-008 §7 reconcile input).
+
+        Covers exactly the EngineFunding events this engine emitted; the
+        session ledger must agree (idempotent event ids, no double count).
+        ``symbol=None`` totals across symbols.
+        """
+        if symbol is None:
+            return sum(self._settled_funding.values())
+        return self._settled_funding.get(symbol.upper(), 0.0)
 
     def latest_mark(self, instrument: str) -> float | None:
         return self.valuation_mark(instrument)
@@ -684,6 +713,11 @@ class NautilusPaperEngine:
             mark = payload.get("mark")
             if mark:
                 self._marks[symbol] = float(mark)
+                exch_ms = event.get("exchange_ts_ms")
+                self._mark_ts[symbol] = (
+                    datetime.fromtimestamp(exch_ms / 1000, tz=timezone.utc)
+                    if isinstance(exch_ms, (int, float)) and exch_ms > 0
+                    else self._now_utc())
             self._note_funding_terms(symbol, payload)
             self._settle_funding(symbol)
             return
@@ -724,6 +758,8 @@ class NautilusPaperEngine:
         if amount == 0.0:
             return
         ts_utc = datetime.fromtimestamp(funding_ms / 1000, tz=timezone.utc)
+        self._settled_funding[symbol] = \
+            self._settled_funding.get(symbol, 0.0) + amount
         self._enqueue(EngineEvent(
             "funding",
             EngineFunding(event_id=f"funding:{symbol}:{funding_ms}",
