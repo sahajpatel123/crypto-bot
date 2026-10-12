@@ -13,7 +13,17 @@ from .discovery import (
 )
 from .events import EVENT_FORMAT, channel_of, parse_message, raw_envelope
 from .recorder import KlineRecorder, RecordingStats, analyze_klines
-from .replayer import ReplayEvent, events_hash, load_events, load_recording, replay, replay_events, replay_hash
+from .replayer import (
+    ReplayEvent,
+    events_hash,
+    iter_events,
+    load_events,
+    load_recording,
+    replay,
+    replay_events,
+    replay_hash,
+    streaming_events_hash,
+)
 from .ws import WsClient, WsClosed, WsHandshakeError
 
 __all__ = [
@@ -43,6 +53,7 @@ __all__ = [
     "eligible_symbols",
     "events_hash",
     "fetch_exchange_info",
+    "iter_events",
     "load_events",
     "load_recording",
     "measure_clock_offset_ms",
@@ -53,5 +64,6 @@ __all__ = [
     "replay_events",
     "replay_hash",
     "select_capture_set",
+    "streaming_events_hash",
     "to_s1_bar",
 ]

@@ -1,9 +1,10 @@
 """Replay a capture through the real event boundary + build the DQ report (Worker 2, E-006).
 
 Modes:
-  replay: load events.jsonl, verify determinism (two independent hashes),
-          rebuild 1s bars from arrival-order replayed trades+BBO, and assert
-          the rebuilt (symbol, window, kind) set equals the captured bars.
+  replay: stream events.jsonl (O(1) memory), verify determinism (two
+          independent streaming hashes), rebuild 1s bars from arrival-order
+          replayed trades+BBO, and assert the rebuilt (symbol, window, kind)
+          set equals the captured bars.
   report: emit the latency/DQ report (JSON + Markdown) from run_stats.json:
           event counts, coverage, disconnects, dup/ooo/gap counts, spread and
           depth summaries, and p50/p95/p99 with n + channel + window +
@@ -25,7 +26,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from cryptobot.market_data.bars import BarAggregator, BarMissing
-from cryptobot.market_data.replayer import assert_input_class, events_hash, load_events, replay_events
+from cryptobot.market_data.replayer import iter_events, streaming_events_hash
 
 
 def _percentile(sorted_samples: list[float], pct: float) -> float | None:
@@ -53,11 +54,11 @@ def _timing_block(name: str, entry: dict, definition: str, window: str) -> dict:
 
 def cmd_replay(args: argparse.Namespace) -> int:
     run_dir = Path(args.run_dir)
-    records = load_events(run_dir / "events.jsonl")
-    for record in records:
-        assert_input_class({"input_class": record["input_class"]}, args.expect_class)
-    first = events_hash(records)
-    second = events_hash(load_events(run_dir / "events.jsonl"))
+    events_path = run_dir / "events.jsonl"
+    # Two independent streaming passes (O(1) memory each); the hash also
+    # enforces arrival order and the expected input class on every record.
+    first, n_events = streaming_events_hash(events_path, expect_class=args.expect_class)
+    second, _ = streaming_events_hash(events_path, expect_class=args.expect_class)
     # Rebuild bars from the replayed stream through the real aggregator.
     aggregators: dict[str, BarAggregator] = {}
     replayed: set[tuple[str, int, str]] = set()
@@ -67,7 +68,7 @@ def cmd_replay(args: argparse.Namespace) -> int:
             kind = "missing" if isinstance(bar, BarMissing) else "bar"
             replayed.add((symbol, bar.window_start_ms, kind))
 
-    for event in replay_events(records):
+    for event in iter_events(events_path):
         symbol = event["symbol"]
         agg = aggregators.setdefault(symbol, BarAggregator(symbol))
         if event["channel"] == "aggTrade":
@@ -83,7 +84,7 @@ def cmd_replay(args: argparse.Namespace) -> int:
     n_missing = sum(1 for b in captured if b.get("type") == "missing")
     agree = replayed == captured_set
     print(json.dumps({"run_dir": str(run_dir), "input_class": args.expect_class,
-                      "events": len(records), "deterministic": first == second,
+                      "events": n_events, "deterministic": first == second,
                       "events_sha256": first, "replayed_windows": len(replayed),
                       "captured_bar_records": n_bar, "captured_missing_records": n_missing,
                       "bar_rebuild_agrees": agree,

@@ -3,16 +3,25 @@
 The slice is a verbatim 400-event prefix of the cap-30min capture
 (data/observed/stream_cap-30min_slice400_events.jsonl), pinned by hash so any
 modification fails loudly. It exercises the replay path on real venue data:
-determinism, arrival-order identity, provenance labels, and attributed bar
-rebuilds. Full-run agreement (1.13M events) is proven by the bulk evidence,
-not here.
+determinism, arrival-order identity, provenance labels, attributed bar
+rebuilds, and streaming/list replay equivalence (the bulk path must hash
+byte-identically to the list path). Full-run agreement (1.13M events) is
+proven by the bulk evidence, not here.
 """
 import json
 from pathlib import Path
 
+import pytest
+
 from cryptobot.market_data.bars import Bar1s, BarAggregator, BarMissing, to_s1_bar
 from cryptobot.market_data.events import CHANNELS
-from cryptobot.market_data.replayer import events_hash, load_events, replay_events
+from cryptobot.market_data.replayer import (
+    events_hash,
+    iter_events,
+    load_events,
+    replay_events,
+    streaming_events_hash,
+)
 
 ROOT = Path(__file__).resolve().parents[2]
 SLICE = ROOT / "data/observed/stream_cap-30min_slice400_events.jsonl"
@@ -67,6 +76,63 @@ def test_slice_rebuilds_attributed_windows():
         assert bar.symbol in ("BTCUSDT", "ETHUSDT")
         assert bar.window_start_ms > 0
         to_s1_bar(bar)  # conversion must never raise on observed rebuilds.
+
+
+def _rebuild_windows(record_iter):
+    """Arrival-order bar rebuild; returns the (symbol, window, kind) set."""
+    aggregators: dict[str, BarAggregator] = {}
+    windows: set[tuple[str, int, str]] = set()
+
+    def _note(symbol, closed):
+        for bar in closed:
+            kind = "missing" if isinstance(bar, BarMissing) else "bar"
+            windows.add((symbol, bar.window_start_ms, kind))
+
+    for event in record_iter:
+        agg = aggregators.setdefault(event["symbol"], BarAggregator(event["symbol"]))
+        if event["channel"] == "aggTrade":
+            _note(event["symbol"], agg.on_trade(event))
+        elif event["channel"] == "bookTicker":
+            payload = event["payload"]
+            agg.on_bbo(payload["bid"], payload["ask"], event["exchange_ts_ms"])
+    for symbol, agg in aggregators.items():
+        _note(symbol, agg.flush())
+    return windows
+
+
+def test_streaming_hash_matches_pinned_list_hash():
+    digest, count = streaming_events_hash(SLICE, expect_class="observed-public")
+    assert (digest, count) == (SLICE_SHA256, 400)
+    again, _ = streaming_events_hash(SLICE, expect_class="observed-public")
+    assert again == digest  # independent second pass.
+
+
+def test_streaming_rebuild_matches_list_rebuild():
+    assert _rebuild_windows(iter_events(SLICE)) == _rebuild_windows(
+        replay_events(load_events(SLICE))
+    )
+
+
+def test_streaming_rejects_unordered_and_mislabeled_files(tmp_path):
+    ordered = tmp_path / "ordered.jsonl"
+    ordered.write_text(
+        '{"seq": 1, "input_class": "observed-public"}\n'
+        '{"seq": 2, "input_class": "observed-public"}\n'
+    )
+    assert streaming_events_hash(ordered, expect_class="observed-public")[1] == 2
+    swapped = tmp_path / "swapped.jsonl"
+    swapped.write_text(
+        '{"seq": 2, "input_class": "observed-public"}\n'
+        '{"seq": 1, "input_class": "observed-public"}\n'
+    )
+    with pytest.raises(ValueError, match="not arrival-ordered"):
+        streaming_events_hash(swapped, expect_class="observed-public")
+    with pytest.raises(ValueError, match="input_class mismatch"):
+        streaming_events_hash(ordered, expect_class="synthetic")
+    broken = tmp_path / "broken.jsonl"
+    broken.write_text('{"seq": 1, "input_class": "observed-public"}\nnot json\n')
+    with pytest.raises(ValueError, match="line 2"):
+        streaming_events_hash(broken, expect_class="observed-public")
 
 
 def test_manifest_and_report_agree_on_the_run():
