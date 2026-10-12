@@ -255,3 +255,72 @@ def test_all_none_returns_insufficient_history():
     d = evaluate_side(v, Side.LONG, S5_BASE, "BTCUSDT")
     assert d.intent is None
     assert d.evaluation.reason == "insufficient-history"
+
+
+def test_s5_runs_on_b4_synchronized_views():
+    # Q-007: real E-008 BookView/FlowView2 mapped per the S5 card B4
+    # contract (the manager's Session wiring implements this mapping).
+    # Synchronized observed views -> S5 evaluates and fires.
+    from cryptobot.market_data.views import BookView, FlowView2
+
+    def to_market_slices(book, flow):
+        if book is None:
+            return None, None, "book:never-synced"
+        if book.quality != "clean" or book.imbalance_top1 is None:
+            return None, None, "book:stale-book"
+        if flow is None:
+            return None, None, "flow:window-incomplete"
+        bid, ask = book.bids[0], book.asks[0]
+        depth = DepthView(
+            best_bid=bid[0], best_ask=ask[0], bid_qty=bid[1],
+            ask_qty=ask[1], spread_bps=book.spread_bps or 0.0,
+            bid_notional=sum(p * q for p, q in book.bids),
+            ask_notional=sum(p * q for p, q in book.asks),
+            levels=book.levels, imbalance=book.imbalance_top1,
+            ts_utc=datetime.fromtimestamp(book.ts_ms / 1000,
+                                          tz=timezone.utc))
+        fl = FlowView(
+            buy_notional=flow.buy_notional,
+            sell_notional=flow.sell_notional, buy_count=flow.buy_count,
+            sell_count=flow.sell_count, vwap=flow.vwap or 0.0,
+            trade_count=flow.buy_count + flow.sell_count,
+            window_start_utc=datetime.fromtimestamp(
+                flow.window_start_ms / 1000, tz=timezone.utc),
+            window_end_utc=datetime.fromtimestamp(
+                flow.window_end_ms / 1000, tz=timezone.utc))
+        return depth, fl, ""
+
+    bars = _bars()
+    ev = bars[-1].ts_utc
+    ev_ms = int(ev.timestamp() * 1000)
+    book = BookView(symbol="BTCUSDT", ts_ms=ev_ms,
+                    bids=((99.99, 5.0),), asks=((100.01, 1.0),),
+                    levels=10, sync_age_ms=100, last_update_id=7,
+                    quality="clean", spread_bps=2.0, imbalance_top1=0.5)
+    flow = FlowView2(symbol="BTCUSDT", window_start_ms=ev_ms - 1000,
+                     window_end_ms=ev_ms, buy_notional=700.0,
+                     sell_notional=300.0, buy_count=70, sell_count=30,
+                     total_qty=10.0, vwap=100.0, last_id=9,
+                     completeness="complete")
+    depth, fl, reason = to_market_slices(book, flow)
+    assert reason == ""
+    assert depth is not None and fl is not None
+    v = MarketView("BTCUSDT", bars, ev, depth, fl, DataQuality.CLEAN)
+    d = evaluate_side(v, Side.LONG, S5_BASE, "BTCUSDT")
+    assert d.intent is not None
+    # Unsynced book -> precise book:* ineligibility, never estimates.
+    depth2, fl2, reason2 = to_market_slices(None, flow)
+    assert (depth2, fl2) == (None, None)
+    assert reason2 == "book:never-synced"
+    v2 = MarketView("BTCUSDT", bars, ev, None, None, DataQuality.DEGRADED,
+                    reason2)
+    d2 = evaluate_side(v2, Side.LONG, S5_BASE, "BTCUSDT")
+    assert d2.intent is None
+    assert d2.evaluation.reason == "book:never-synced"
+    # Stale book degrades to ineligible too.
+    stale = BookView(symbol="BTCUSDT", ts_ms=ev_ms,
+                     bids=((99.99, 5.0),), asks=((100.01, 1.0),),
+                     levels=10, sync_age_ms=99999, last_update_id=7,
+                     quality="stale", spread_bps=2.0, imbalance_top1=0.5)
+    _, _, reason3 = to_market_slices(stale, flow)
+    assert reason3 == "book:stale-book"

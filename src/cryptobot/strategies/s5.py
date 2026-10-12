@@ -65,10 +65,15 @@ class S5Params:
     take_r: float = 1.5
 
 
-def _relay_reason(quality_reason: str, prefix: str, fallback: str) -> str:
-    """First ``;``-separated token starting with ``prefix`` (E-007 relay)."""
+def _relay_reason(quality_reason: str, prefixes: tuple[str, ...],
+                    fallback: str) -> str:
+    """First ``;``-separated token starting with any prefix (view relay).
+
+    Depth accepts both ``depth:`` (E-007 relay) and ``book:`` (E-008
+    ``DepthStore``) vocabularies so ineligibility stays precise end to end.
+    """
     for token in quality_reason.split(";"):
-        if token.startswith(prefix):
+        if token.startswith(prefixes):
             return token
     return fallback
 
@@ -118,12 +123,14 @@ def evaluate_side(
                     DataQuality.HALT, reason, newest_ts)
 
     if view.depth is None:
-        reason = _relay_reason(view.quality_reason, "depth:", "depth:unavailable")
+        reason = _relay_reason(view.quality_reason, ("depth:", "book:"),
+                                "depth:unavailable")
         return _log("no-microstructure", (), "no-fire",
                     ("quality=pass", f"depth={reason}"),
                     DataQuality.DEGRADED, reason, newest_ts)
     if view.flow is None:
-        reason = _relay_reason(view.quality_reason, "flow:", "flow:unavailable")
+        reason = _relay_reason(view.quality_reason, ("flow:",),
+                                "flow:unavailable")
         return _log("no-microstructure", (), "no-fire",
                     ("quality=pass", "depth=pass", f"flow={reason}"),
                     DataQuality.DEGRADED, reason, newest_ts)
