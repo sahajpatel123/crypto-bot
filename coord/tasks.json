@@ -625,7 +625,7 @@
   },
   "EV-001": {
    "contract_version": "six-agent-48h",
-   "state": "running",
+   "state": "accepted",
    "dependencies": [
     "01487ac integrated"
    ],
@@ -644,7 +644,12 @@
     "Event store with ID/source/schedule-TZ/first-seen/fetch/revisions/horizon/expiry",
     "FOMC+CPI fixtures from official calendars, TZ/DST correct, IST display",
     "Entry-gate API + stale-source-explicit behavior, tested"
-   ]
+   ],
+   "accepted": {
+    "sha": "d27e2a1",
+    "suite": "713/713",
+    "note": "repro 49 + 713, FOMC 8/8 vs Fed page, no fixups"
+   }
   },
   "OP-001": {
    "contract_version": "six-agent-48h",

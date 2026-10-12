@@ -29,11 +29,11 @@
   },
   "white-aldebaran": {
    "role": "Worker 4: events and market monitoring",
-   "status": "running",
-   "current_task": "EV-001",
+   "status": "idle",
+   "current_task": null,
    "worktree": "/tmp/cryto-bot-w4-ev",
    "branch": "worker4/ev-001",
-   "note": "Onboarded 12 Oct 18:36 IST for 48h directive; EV-001 dispatched, ACK pending."
+   "note": "Onboarded 12 Oct 18:36 IST for 48h directive; EV-001 dispatched, ACK pending. EV-001 ACCEPTED + integrated d27e2a1 (713/713); standing by."
   },
   "crystal-parallax": {
    "role": "Worker 5: independent verification and operations",
