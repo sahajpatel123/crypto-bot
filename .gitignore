@@ -12,3 +12,5 @@ data/*.parquet
 data/*.csv
 !data/README.md
 .DS_Store
+runs/
+.captures/

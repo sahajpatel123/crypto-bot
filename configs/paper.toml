@@ -1,0 +1,51 @@
+# Bot v0.1 paper-session configuration (manager-owned sample).
+# Ledger currency is USDT. INR display conversions are dated and labeled
+# wherever they appear; nothing here is a live balance.
+
+[run]
+mode = "replay"              # replay | paper (paper requires engine.kind = "nautilus")
+paper_capital_usdt = 120.0   # synthetic paper capital (~Rs.10k pilot scale, labeled)
+accounting_tz = "Asia/Kolkata"
+duration = "24h"             # paper session wall-clock budget (replay ignores)
+
+[risk]
+max_loss_budget_pct = 0.0025
+leverage_cap = 3.0
+min_notional_usdt = 5.0
+stress_multiplier = 1.5
+daily_loss_halt_pct = 0.01
+daily_target_pct = 0.02
+profit_arm_pct = 0.01
+profit_retain_pct = 0.70
+max_evidence_age_s = 120.0
+max_clock_skew_s = 5.0
+filters_max_age_s = 3600.0
+
+[fees]
+# Labeled SIMULATION rates. Not the owner's actual account rates.
+label = "simulation-labeled"
+taker_bps = 5.0
+funding_bps_per_8h = 1.0
+
+[engine]
+kind = "reference"           # reference (replay/tests only) | nautilus (E-007)
+submit_delay_ms = 50
+fill_delay_ms = 50
+
+[data]
+symbols = []                 # empty = dynamic discovery (paper) / capture symbols (replay)
+max_symbols = 8
+warmup_bars = 130
+
+[storage]
+dir = "runs"
+budget_mb = 2048
+
+[strategies]
+enabled = ["S1", "S2", "S3", "S4"]
+arms = "base"                # base | all (all = every preregistered arm incl. variants)
+cooldown_s = 300
+max_forecast_cost_bps = 25.0
+# Pre-Q-005 legacy exit_rule strings fall back to stop+time from Intent fields.
+# Q-005 re-emits S2 grammar; then this flips to false and undecodable blocks.
+allow_legacy_exit_rules = true
