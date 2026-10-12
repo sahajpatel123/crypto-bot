@@ -261,7 +261,7 @@ class Session:
                 intent.instrument, intent.side.value, "rejected",
                 "selection:exit-undecodable", self.now_utc().isoformat())
             return
-        side = "BUY" if intent.side.value == "LONG" else "SHORT"
+        side = "BUY" if intent.side.value == "LONG" else "SELL"
         pre_id = self.engine.submit(EngineOrder(
             instrument=intent.instrument, side=side, qty=verdict.qty,
             kind="MARKET", reservation_id=verdict.reservation_id))

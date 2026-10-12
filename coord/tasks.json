@@ -337,7 +337,7 @@
   "Q-006": {
    "owner_session": "whisper-redshift",
    "role": "Worker 1 \u2014 Quant Research and Strategy Engineer",
-   "state": "dispatched",
+   "state": "accepted",
    "contract_version": "v0.2.0+app_runtime_interfaces.md",
    "dependencies": [
     "EXP-003/004 manifests",
@@ -458,6 +458,6 @@
    ]
   }
  },
- "updated_utc": "2026-10-12T06:00:00Z",
+ "updated_utc": "2026-10-12T06:30:00Z",
  "version": 1
 }

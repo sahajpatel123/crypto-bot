@@ -166,6 +166,43 @@ def test_admit_protect_flatten_cycle(tmp_path):
         store.close()
 
 
+def test_short_uses_venue_sell_side(tmp_path):
+    # Regression: session must submit venue SELL (never "SHORT") for shorts.
+    session, store = _session(tmp_path, warmup_bars=3)
+    try:
+        now = datetime(2026, 10, 12, 6, 0, tzinfo=timezone.utc)
+        session.clock.set_ms(int(now.timestamp() * 1000))
+        session.policy.reconcile_day(120.0, 0.0)
+        session.store.create_run("sess-test", "replay", "fp",
+                                 str(session.workdir), None)
+        session.engine.note_mark("BTCUSDT", 100.2)
+        intent = Intent(
+            strategy="S1", version="0.1.0", instrument="BTCUSDT",
+            side=Side.SHORT, evidence_ts_utc=now,
+            entry_low=99.5, entry_high=100.0,
+            entry_expiry_utc=now + timedelta(seconds=60),
+            invalidation_price=101.0,
+            exit_rule=encode_exit_rule(ExitPolicy(
+                stop_price=101.0, target_price=98.0,
+                time_exit_utc=now + timedelta(seconds=600),
+                policy_id="test")),
+            holding_limit_s=600,
+            forecast_cost=ForecastCost(5.0, 5.0, 5.0, 1.0),
+            evidence_ref="test:short", data_quality=DataQuality.CLEAN)
+        session._maybe_admit([Candidate("S1", intent)])
+        assert session._position is not None
+        session.clock.set_ms(int(now.timestamp() * 1000) + 5000)
+        session._drain_engine()
+        assert session.ledger.position_qty() < 0
+        fills = [json.loads(r[0]) for r in store._db.execute(
+            "SELECT payload FROM execution_events WHERE run_id='sess-test'"
+            " AND kind='fill'").fetchall()]
+        assert fills and all(f["side"] in ("BUY", "SELL") for f in fills)
+        assert fills[0]["side"] == "SELL"
+    finally:
+        store.close()
+
+
 def test_cli_doctor_run_status_stop(tmp_path):
     from cryptobot.cli import main
     cap = _capture(tmp_path / "cap", windows=6)
