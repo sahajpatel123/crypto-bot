@@ -507,8 +507,108 @@
     "run report"
    ],
    "allowed_paths": []
+  },
+  "E-008": {
+   "owner_session": "cloud-vega",
+   "role": "Worker 2 \u2014 Data and Execution",
+   "state": "dispatched",
+   "contract_version": "v0.2.0+backtest_interfaces.md",
+   "dependencies": [
+    "specs/backtest_interfaces.md"
+   ],
+   "acceptance": [
+    "native execution both modes",
+    "valuation-only marks",
+    "virtual clock + strict replay",
+    "1s heartbeat timers",
+    "book/flow views + funding",
+    "margin accessor + protected IOC",
+    "ingestion profiled",
+    "30d dataset frozen"
+   ],
+   "evidence_required": [
+    "repro + counts",
+    "manifest + coverage",
+    "profile",
+    "base/branch IDs"
+   ],
+   "allowed_paths": [
+    "src/cryptobot/adapters/",
+    "src/cryptobot/market_data/",
+    "src/cryptobot/execution/runtime_*",
+    "datasets/manifests/",
+    "tests/unit/test_adapters_*",
+    "tests/unit/test_market_data_*",
+    "tests/unit/test_execution_*",
+    "coord/outbox/E-008.json"
+   ]
+  },
+  "Q-007": {
+   "owner_session": "whisper-redshift",
+   "role": "Worker 1 \u2014 Strategies and Backtesting",
+   "state": "dispatched",
+   "contract_version": "v0.2.0+backtest_interfaces.md",
+   "dependencies": [
+    "specs/backtest_interfaces.md",
+    "E-008 reader/views via manager"
+   ],
+   "acceptance": [
+    "5 strategy cards",
+    "S5 on views",
+    "portfolio runner via Session",
+    "frozen comparisons + splits",
+    "spread assumption profile",
+    "determinism proof"
+   ],
+   "evidence_required": [
+    "repro + counts",
+    "comparison tables",
+    "two-run diff",
+    "base/branch IDs"
+   ],
+   "allowed_paths": [
+    "src/cryptobot/strategies/",
+    "src/cryptobot/features/",
+    "src/cryptobot/research/",
+    "specs/cards/",
+    "tests/unit/test_strategies_*",
+    "tests/unit/test_research_*",
+    "coord/outbox/Q-007.json"
+   ]
+  },
+  "V-007": {
+   "owner_session": "cool-amalthea",
+   "role": "Worker 3 \u2014 Risk and Reporting",
+   "state": "dispatched",
+   "contract_version": "v0.2.0+backtest_interfaces.md",
+   "dependencies": [
+    "specs/backtest_interfaces.md",
+    "manager run-file format B9"
+   ],
+   "acceptance": [
+    "protection/margin/funding invariants",
+    "independent reconciliation",
+    "reporting package + HTML",
+    "charts + splits",
+    "episodes",
+    "daily evidence + reliability"
+   ],
+   "evidence_required": [
+    "repro + counts",
+    "sample report",
+    "reconciliation proof",
+    "base/branch IDs"
+   ],
+   "allowed_paths": [
+    "src/cryptobot/risk/",
+    "src/cryptobot/accounting/",
+    "src/cryptobot/reporting/",
+    "tests/acceptance/",
+    "tests/unit/test_reporting_*",
+    "coord/outbox/V-007.json"
+   ]
   }
  },
- "updated_utc": "2026-10-12T08:00:00Z",
+ "updated_utc": "2026-10-12T08:30:00Z",
  "version": 1
 }
