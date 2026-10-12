@@ -33,7 +33,7 @@ def test_invalid_values_rejected(tmp_path):
         ("leverage_cap = 3.0", "leverage_cap = 0"),
         ("daily_loss_halt_pct = 0.01", "daily_loss_halt_pct = 2"),
         ('accounting_tz = "Asia/Kolkata"', 'accounting_tz = "UTC"'),
-        ('enabled = ["S1", "S2", "S3", "S4"]', 'enabled = ["S9"]'),
+        ('enabled = ["S1", "S2", "S3", "S4", "S5"]', 'enabled = ["S9"]'),
     ]
     for old, new in cases:
         path = tmp_path / "bad.toml"

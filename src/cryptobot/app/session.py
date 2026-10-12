@@ -18,7 +18,6 @@ from typing import Any, Callable
 from cryptobot.accounting.day import accounting_date
 from cryptobot.accounting.ledger import Ledger
 from cryptobot.coordination.exits import decode_exit_rule
-from cryptobot.execution import OrderManager
 from cryptobot.coordination.selector import (Candidate, Selector,
                                              SelectorConfig)
 from cryptobot.market_data.bars import (BarAggregator, BarMissing,
@@ -30,7 +29,7 @@ from cryptobot.risk.types import AccountSnapshot, Approved, RiskConfig
 
 from .config import AppConfig
 from .engine import EngineEvent, EngineOrder
-from .reference import ReferenceEngine, _FeeShim
+from .reference import ReferenceEngine
 from .store import RunStore
 
 __all__ = ["Session", "ReplayClock", "STRATEGY_ARMS"]
@@ -117,6 +116,8 @@ class Session:
         self._eval_ms: list[float] = []
         self._decide_ms: list[float] = []
         self._age_ms: list[float] = []
+        self._dispatch_ms: list[float] = []
+        self._submit_ts: dict[str, datetime] = {}
         self._events_seen = 0
         self._last_seq = 0
         self._crash_after: int | None = None
@@ -149,50 +150,83 @@ class Session:
         return 0.0
 
     # -- strategy evaluation -----------------------------------------------
-    def _strategy_modules(self) -> dict[str, Any]:
+    def _strategy_adapters(self) -> tuple[dict[str, Any], dict[str, Any]]:
+        """Runtime adapters (base arms, incl. S5) + modules (variant arms)."""
         import importlib
+        from cryptobot.strategies.runtime import get_adapter
+        adapters: dict[str, Any] = {}
         modules: dict[str, Any] = {}
         for name in self.config.strategies_enabled:
+            try:
+                adapters[name] = get_adapter(name)
+            except KeyError:
+                continue
             if name == "S5":
-                continue  # unavailable until Q-005 lands s5.py (rechecked then).
+                continue  # S5 has no evaluate_bar variant path.
             try:
                 modules[name] = importlib.import_module(
                     f"cryptobot.strategies.{name.lower()}")
             except ImportError:
                 continue
-        return modules
+        return adapters, modules
 
-    def _evaluate_symbol(self, symbol: str, modules: dict[str, Any]) -> list[Candidate]:
+    def _evaluate_symbol(self, symbol: str, adapters: dict[str, Any],
+                         modules: dict[str, Any]) -> list[Candidate]:
+        from cryptobot.coordination import DataQuality
+        from cryptobot.strategies.runtime import MarketView
         feed = self._feeds[symbol]
         bars = list(feed.bars)
         t = len(bars) - 1
         out: list[Candidate] = []
-        for name, module in modules.items():
-            base, all_arms = STRATEGY_ARMS[name]
-            arms = all_arms if self.config.strategies_arms == "all" else (base,)
-            for arm in arms:
-                start = time.perf_counter()
-                try:
-                    decisions = module.evaluate_bar(bars, t, arm, symbol)
-                except Exception as exc:  # strategy must never kill the loop.
-                    out.append(Candidate(f"{arm}:LONG", None,
-                                         f"strategy:error:{type(exc).__name__}"))
-                    out.append(Candidate(f"{arm}:SHORT", None,
-                                         f"strategy:error:{type(exc).__name__}"))
-                    continue
-                finally:
-                    self._eval_ms.append((time.perf_counter() - start) * 1000)
-                for decision in decisions:
-                    if decision.intent is not None:
-                        out.append(Candidate(decision.intent.strategy,
-                                             decision.intent))
-                    else:
-                        ev = decision.evaluation
+        view = MarketView(
+            instrument=symbol, bars=tuple(bars), now_utc=self.now_utc(),
+            depth=None, flow=None, quality=DataQuality.CLEAN,
+            quality_reason="depth:unsynced-no-snapshot;flow:window-incomplete")
+        for name, adapter in adapters.items():
+            start = time.perf_counter()
+            try:
+                outcome = adapter.evaluate(view)
+            except Exception as exc:  # strategy must never kill the loop.
+                out.append(Candidate(f"{name}:LONG", None,
+                                     f"strategy:error:{type(exc).__name__}"))
+                out.append(Candidate(f"{name}:SHORT", None,
+                                     f"strategy:error:{type(exc).__name__}"))
+                continue
+            finally:
+                self._eval_ms.append((time.perf_counter() - start) * 1000)
+            if outcome.intent is not None:
+                out.append(Candidate(outcome.intent.strategy, outcome.intent))
+            else:
+                out.append(Candidate(adapter.strategy_id, None,
+                                     f"strategy:{outcome.reject_reason}"))
+        if self.config.strategies_arms == "all":
+            for name, module in modules.items():
+                base, all_arms = STRATEGY_ARMS[name]
+                for arm in all_arms:
+                    if arm == base:
+                        continue  # base covered by the adapter above.
+                    start = time.perf_counter()
+                    try:
+                        decisions = module.evaluate_bar(bars, t, arm, symbol)
+                    except Exception as exc:
                         out.append(Candidate(
-                            f"{ev.arm}:{ev.side.value}", None,
-                            f"strategy:no-fire:{ev.reason}"))
-        if "S5" in self.config.strategies_enabled:
-            out.append(Candidate("S5", None, "strategy:unavailable-s5"))
+                            f"{arm}:LONG", None,
+                            f"strategy:error:{type(exc).__name__}"))
+                        out.append(Candidate(
+                            f"{arm}:SHORT", None,
+                            f"strategy:error:{type(exc).__name__}"))
+                        continue
+                    finally:
+                        self._eval_ms.append((time.perf_counter() - start) * 1000)
+                    for decision in decisions:
+                        if decision.intent is not None:
+                            out.append(Candidate(decision.intent.strategy,
+                                                 decision.intent))
+                        else:
+                            ev = decision.evaluation
+                            out.append(Candidate(
+                                f"{ev.arm}:{ev.side.value}", None,
+                                f"strategy:no-fire:{ev.reason}"))
         return out
 
     # -- exit derivation ----------------------------------------------------
@@ -265,6 +299,7 @@ class Session:
         pre_id = self.engine.submit(EngineOrder(
             instrument=intent.instrument, side=side, qty=verdict.qty,
             kind="MARKET", reservation_id=verdict.reservation_id))
+        self._submit_ts[pre_id] = self.now_utc()
         self._position = {"reservation_id": verdict.reservation_id,
                           "instrument": intent.instrument,
                           "side": intent.side.value,
@@ -288,6 +323,17 @@ class Session:
     def _on_engine_event(self, event: EngineEvent) -> None:
         payload = event.payload
         if event.kind == "fill":
+            submitted = self._submit_ts.pop(payload.client_order_id, None)
+            if submitted is None:
+                # Fill arrived before the submit-time id resolved; match
+                # via the engine's own mapping (protocol-only).
+                for key in list(self._submit_ts):
+                    if self.engine.resolve(key) == payload.client_order_id:
+                        submitted = self._submit_ts.pop(key)
+                        break
+            if submitted is not None:
+                self._dispatch_ms.append(
+                    (payload.ts_utc - submitted).total_seconds() * 1000)
             self.store.record_event(
                 self.run_id, payload.execution_id, "fill",
                 {"client_order_id": payload.client_order_id,
@@ -310,11 +356,14 @@ class Session:
             real = self.engine.resolve(pos["entry_pre_id"])
             if real is not None:
                 pos["entry_id"] = real
-        entry = self.engine.manager.orders.get(pos["entry_id"] or "")
+                if pos["entry_pre_id"] in self._submit_ts:
+                    self._submit_ts[real] = self._submit_ts[pos["entry_pre_id"]]
+        statuses = {s.client_order_id: s for s in self.engine.open_orders()}
+        entry = statuses.get(pos["entry_id"] or "")
         if entry is not None and entry.filled_qty > 1e-12 and not pos["protected"]:
             try:
                 legs = self.engine.attach_protection(
-                    entry.client_id, pos["stop"], pos["target"])
+                    entry.client_order_id, pos["stop"], pos["target"])
             except ValueError as exc:
                 self.store.checkpoint(self.run_id, "protection-failed",
                                       {"reason": str(exc)})
@@ -327,17 +376,17 @@ class Session:
             self._flatten("time-exit")
         # Flat inference: filled entry + ledger flat + no live reservation orders.
         if entry is not None and entry.filled_qty > 1e-12:
-            live = [o for o in self.engine.manager.orders.values()
-                    if o.reservation_id == pos["reservation_id"]
-                    and o.state.value not in ("filled", "rejected", "cancelled", "expired")]
+            live = [s for s in statuses.values()
+                    if s.reservation_id == pos["reservation_id"]
+                    and s.state not in ("filled", "rejected", "cancelled", "expired")]
             if not self.ledger.has_position() and not live:
                 self._position = None
                 self._set_state("ready", "position-flat")
         # Entry died with zero fills: reservation released by callbacks; clear.
-        if entry is not None and entry.filled_qty <= 1e-12 and entry.state.value in (
+        if entry is not None and entry.filled_qty <= 1e-12 and entry.state in (
                 "rejected", "cancelled", "expired"):
             self._position = None
-            self._set_state("ready", f"entry-dead:{entry.state.value}")
+            self._set_state("ready", f"entry-dead:{entry.state}")
 
     def _flatten(self, reason: str) -> None:
         pos = self._position
@@ -351,7 +400,7 @@ class Session:
         net = self.ledger.position_qty()
         if abs(net) > 1e-12:
             side = "SELL" if net > 0 else "BUY"
-            self.engine.submit_sync(EngineOrder(
+            self.engine.submit_immediate(EngineOrder(
                 instrument=pos["instrument"], side=side, qty=abs(net),
                 kind="MARKET", reduce_only=True,
                 reservation_id=pos["reservation_id"], role="target"))
@@ -378,7 +427,7 @@ class Session:
         records = load_events(events_path)
         for record in records:
             assert_input_class({"input_class": record["input_class"]}, expect_class)
-        modules = self._strategy_modules()
+        adapters, modules = self._strategy_adapters()
         if not resume:
             # Day baseline at first event time (causal).
             first_ts = min(int(r["exchange_ts_ms"]) for r in records)
@@ -389,7 +438,7 @@ class Session:
         for event in replay_events(records):
             if int(event.get("seq", 0)) <= self._last_seq:
                 continue
-            self._ingest(event, modules)
+            self._ingest(event, adapters, modules)
             self._last_seq = int(event.get("seq", 0))
             self._events_seen += 1
             if self._events_seen % 500 == 0:
@@ -422,7 +471,8 @@ class Session:
         self._set_state("stopped", "report-written")
         return report
 
-    def _ingest(self, event: dict[str, Any], modules: dict[str, Any]) -> None:
+    def _ingest(self, event: dict[str, Any], adapters: dict[str, Any],
+                modules: dict[str, Any]) -> None:
         channel = event.get("channel")
         symbol = event.get("symbol")
         if channel not in ("aggTrade", "bookTicker") or not symbol:
@@ -465,7 +515,7 @@ class Session:
             else:
                 feed.bars.append(to_s1_bar(bar))
             if feed.ready(self.config.warmup_bars):
-                self._maybe_admit(self._evaluate_symbol(symbol, modules))
+                self._maybe_admit(self._evaluate_symbol(symbol, adapters, modules))
         health = self.policy.check_health(self._snapshot_account())
         if not health.ok:
             self.engine.set_exit_only(True, ";".join(health.reasons))
@@ -502,13 +552,8 @@ class Session:
             " ORDER BY id DESC LIMIT 1", (self.run_id,)).fetchone()
         if rows is not None:
             self._last_seq = int(json.loads(rows[0]).get("last_seq", 0))
-        # Recover the order manager from its own journal (durable source).
-        recovered = OrderManager.recover(
-            self.engine.venue, self.workdir / "order_manager.jsonl",
-            now_utc=self.now_utc,
-            outcome_sink=_FeeShim(self.policy, self.config.taker_bps,
-                                  self.engine._fills.append))
-        self.engine.manager = recovered
+        # Recover the engine from its own journal (durable source).
+        self.engine.recover(self.policy)
         self._set_state("recovering", f"resume-from-seq:{self._last_seq}")
         self.store.checkpoint(self.run_id, "resume",
                               {"last_seq": self._last_seq})
@@ -541,7 +586,8 @@ class Session:
             "latency_ms": {
                 "feed_age": _summarize(self._age_ms),
                 "strategy_eval": _summarize(self._eval_ms),
-                "selector_decide": _summarize(self._decide_ms)},
+                "selector_decide": _summarize(self._decide_ms),
+                "submit_to_fill_modeled": _summarize(self._dispatch_ms)},
             "workdir": str(self.workdir),
         }
 

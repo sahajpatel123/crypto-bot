@@ -30,7 +30,8 @@ from .contract import (
     build_evidence_ref,
     build_intent,
 )
-from .s1 import EvalLog
+from ._shared import gap_scan
+from .s1 import MAX_CONSECUTIVE_MISSING_HALT, EvalLog
 from .s1 import S1Decision as S5Decision
 
 if TYPE_CHECKING:  # runtime-only import: s5 never touches runtime at runtime
@@ -84,8 +85,6 @@ def evaluate_side(
     if arm not in ARM_IDS_S5:
         raise ValueError(f"unknown S5 arm {arm!r}; expected one of {ARM_IDS_S5}")
     bars = list(view.bars)
-    t = len(bars) - 1
-    newest_ts = bars[t].ts_utc if t >= 0 else _EPOCH
 
     def _log(
         regime: str,
@@ -102,6 +101,14 @@ def evaluate_side(
             None,
             None,
         )
+
+    # F1: aligned slots; anchor at the last present bar, never strip.
+    t = next((i for i in range(len(bars) - 1, -1, -1)
+              if bars[i] is not None), None)
+    if t is None:
+        return _log("no-microstructure", (), "no-fire", ("history=fail",),
+                    DataQuality.CLEAN, "insufficient-history", _EPOCH)
+    newest_ts = bars[t].ts_utc  # type: ignore[union-attr]
 
     if view.quality is DataQuality.HALT:
         reason = view.quality_reason or "halt"
@@ -147,11 +154,18 @@ def evaluate_side(
         return _log("no-microstructure", (), "no-fire",
                     (*base, "sync=pass", "history=fail"),
                     DataQuality.CLEAN, "insufficient-history", evidence_ts)
+    gap, max_consec, disorder = gap_scan(bars, t - n, t + 1)
+    if gap or disorder:
+        halt = disorder or max_consec > MAX_CONSECUTIVE_MISSING_HALT
+        return _log(
+            "no-microstructure", (), "no-fire",
+            (*base, "sync=pass", "history=pass", "gap=fail"),
+            DataQuality.HALT if halt else DataQuality.DEGRADED,
+            "ts-disorder" if disorder else f"gap-{max_consec}",
+            evidence_ts,
+        )
     window = bars[t - n:t + 1]
-    if any(b.ts_utc > window[i + 1].ts_utc for i, b in enumerate(window[:-1])):
-        return _log("no-microstructure", (), "no-fire",
-                    (*base, "sync=pass", "history=pass", "gap=fail"),
-                    DataQuality.HALT, "ts-disorder", evidence_ts)
+    assert all(b is not None for b in window)  # gap gate above
 
     total = flow.buy_notional + flow.sell_notional
     buy_frac = flow.buy_notional / total if total > 0 else 0.5
@@ -161,6 +175,7 @@ def evaluate_side(
     }
     checks["flowcount"] = "pass" if flow.trade_count >= p.flow_min_trades else "fail"
     bar = bars[t]
+    assert bar is not None  # t anchors at a present bar
     spread_ok = (
         bar.spread_bps <= p.spread_max_bps
         and depth.spread_bps <= p.depth_spread_max_bps

@@ -42,7 +42,7 @@ dir = "runs"
 budget_mb = 2048
 
 [strategies]
-enabled = ["S1", "S2", "S3", "S4"]
+enabled = ["S1", "S2", "S3", "S4", "S5"]
 arms = "base"                # base | all (all = every preregistered arm incl. variants)
 cooldown_s = 300
 max_forecast_cost_bps = 25.0

@@ -182,3 +182,69 @@ def test_evaluate_is_pure_no_io():
     assert (first.intent, first.reject_reason) == \
         (second.intent, second.reject_reason)
     assert set(os.listdir("/tmp")) == before
+
+
+def _gappy_bars():
+    bars = list(_bars(200))
+    bars[150] = None
+    bars[151] = None
+    return tuple(bars)
+
+
+def test_gappy_window_matches_direct_aligned_evaluation():
+    # F1 alignment proof: interior gap inside the S1 window must surface as
+    # a gap verdict (not a shifted evaluation), identical to direct
+    # evaluate_bar on the same aligned slots.
+    from cryptobot.strategies.s1 import evaluate_bar
+    bars = _gappy_bars()
+    v = MarketView("BTCUSDT", bars, bars[-1].ts_utc, None, None,
+                   DataQuality.CLEAN)
+    out = get_adapter("S1").evaluate(v)
+    long_d, short_d = evaluate_bar(list(bars), 199, "S1", "BTCUSDT")
+    assert long_d.intent is None and short_d.intent is None
+    assert long_d.evaluation.reason == "gap-2"
+    assert out.intent is None
+    assert out.reject_reason == "gap:fail|gap:fail"
+
+
+def test_trailing_nones_anchor_at_last_present():
+    # Firing window + trailing Nones: same intent as direct evaluation at
+    # the last present bar (stripping would shift windows and differ).
+    from cryptobot.strategies.s1 import evaluate_bar
+    bars = list(generate_fixture(seed=11, scenario=SCENARIO_LONG).bars)
+    window = tuple(b for b in bars[35:156] if b is not None)
+    assert len(window) == 121
+    gappy = window + (None, None, None)
+    v = MarketView("BTCUSDT", gappy, window[-1].ts_utc, None, None,
+                   DataQuality.CLEAN)
+    out = get_adapter("S1").evaluate(v)
+    long_d, _ = evaluate_bar(list(gappy), 120, "S1", "BTCUSDT")
+    assert out.intent is not None and long_d.intent is not None
+    assert out.intent == long_d.intent
+    assert out.intent.evidence_ts_utc == window[-1].ts_utc
+
+
+def test_all_none_window_rejects_empty():
+    v = MarketView("BTCUSDT", (None,) * 40, T0, None, None,
+                   DataQuality.CLEAN)
+    for adapter in ADAPTERS:
+        out = adapter.evaluate(v)
+        assert out.intent is None
+        assert out.reject_reason == "quality:empty-window"
+
+
+def test_staleness_uses_last_present_bar():
+    bars = list(_bars(200))
+    bars[198] = None
+    bars[199] = None
+    aligned = tuple(bars)
+    last_ts = bars[197].ts_utc
+    stale = MarketView("BTCUSDT", aligned, last_ts - timedelta(seconds=5),
+                       None, None, DataQuality.CLEAN)
+    out = get_adapter("S1").evaluate(stale)
+    assert out.intent is None
+    assert out.reject_reason == "stale:bar-newer-than-now"
+    fresh = MarketView("BTCUSDT", aligned, last_ts, None, None,
+                       DataQuality.CLEAN)
+    out = get_adapter("S1").evaluate(fresh)
+    assert out.reject_reason != "stale:bar-newer-than-now"

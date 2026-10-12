@@ -211,3 +211,47 @@ def test_unknown_arm_raises():
         pass
     else:
         raise AssertionError("expected ValueError for unknown arm")
+
+
+def test_interior_gap_rejects_with_count():
+    bars = list(_bars())
+    bars[30] = None
+    bars[31] = None
+    d = evaluate_side(_view(bars=tuple(bars)), Side.LONG, S5_BASE, "BTCUSDT")
+    assert d.intent is None
+    assert d.evaluation.reason == "gap-2"
+    assert d.evaluation.data_quality == DataQuality.DEGRADED
+
+
+def test_timestamp_disorder_halts():
+    bars = list(_bars())
+    jumped = bars[30]
+    assert jumped is not None
+    bars[30] = Bar(ts_utc=jumped.ts_utc + timedelta(seconds=5),
+                   open=jumped.open, high=jumped.high, low=jumped.low,
+                   close=jumped.close, volume=jumped.volume,
+                   trades=jumped.trades, buy_frac=jumped.buy_frac,
+                   spread_bps=jumped.spread_bps)
+    d = evaluate_side(_view(bars=tuple(bars)), Side.LONG, S5_BASE, "BTCUSDT")
+    assert d.intent is None
+    assert d.evaluation.reason == "ts-disorder"
+    assert d.evaluation.data_quality == DataQuality.HALT
+
+
+def test_trailing_nones_fire_at_last_present():
+    bars = list(_bars())
+    ev = bars[-1].ts_utc
+    gappy = tuple(bars) + (None, None)
+    v = MarketView("BTCUSDT", gappy, ev, _depth(ev), _flow(ev),
+                   DataQuality.CLEAN)
+    d = evaluate_side(v, Side.LONG, S5_BASE, "BTCUSDT")
+    assert d.intent is not None
+    assert d.intent.evidence_ts_utc == ev
+
+
+def test_all_none_returns_insufficient_history():
+    v = MarketView("BTCUSDT", (None,) * 40, T0, None, None,
+                   DataQuality.CLEAN)
+    d = evaluate_side(v, Side.LONG, S5_BASE, "BTCUSDT")
+    assert d.intent is None
+    assert d.evaluation.reason == "insufficient-history"

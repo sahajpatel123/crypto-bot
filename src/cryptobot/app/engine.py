@@ -11,7 +11,8 @@ from datetime import datetime
 from typing import Any, Protocol
 
 __all__ = ["EngineOrder", "EngineFill", "EngineCancel", "EngineReject",
-           "EngineExpire", "EngineFunding", "EngineEvent", "PaperEngine"]
+           "EngineExpire", "EngineFunding", "EngineEvent", "EngineOrderStatus",
+           "PaperEngine"]
 
 
 @dataclass(frozen=True)
@@ -80,13 +81,32 @@ class EngineEvent:
     ts_utc: datetime
 
 
+@dataclass(frozen=True)
+class EngineOrderStatus:
+    client_order_id: str
+    instrument: str
+    state: str             # open | partial | filled | rejected | cancelled | expired
+    qty: float
+    filled_qty: float
+    reservation_id: str | None = None
+    role: str = "entry"    # entry | stop | target
+
+
 class PaperEngine(Protocol):
     """Single order authority for one run. Implementations: reference, nautilus."""
 
     model_label: str
 
     def submit(self, cmd: EngineOrder) -> str:
-        """Submit; returns the durable client_order_id."""
+        """Submit (modeled delays may apply); returns a client id for resolve()."""
+        ...
+
+    def submit_immediate(self, cmd: EngineOrder) -> str:
+        """Submit bypassing modeled delays. Exits/flatten ONLY, never entries."""
+        ...
+
+    def resolve(self, client_id: str) -> str | None:
+        """Map a submit-time id to the durable order id (None while queued)."""
         ...
 
     def cancel(self, client_order_id: str, reason: str) -> None:
@@ -96,8 +116,27 @@ class PaperEngine(Protocol):
         """Non-blocking drain of fills/cancels/rejects/expires/funding."""
         ...
 
+    def attach_protection(self, entry_client_id: str, stop_price: float,
+                          target_price: float | None) -> list[str]:
+        """Independent reduce-only exit legs sized to filled qty. No OCO."""
+        ...
+
+    def open_orders(self) -> list[EngineOrderStatus]:
+        """Point-in-time order snapshot for flat inference (no venue reads)."""
+        ...
+
+    def filled_qty(self, client_order_id: str) -> float:
+        ...
+
+    def set_exit_only(self, halted: bool, reason: str = "") -> None:
+        ...
+
     def note_mark(self, instrument: str, price: float) -> None:
         """Reference-model mark feed (drives fill simulation)."""
+        ...
+
+    def recover(self, outcome_sink: Any) -> None:
+        """Rebuild order state from the engine's durable journal after restart."""
         ...
 
     def close(self) -> None:

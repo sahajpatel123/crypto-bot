@@ -23,7 +23,7 @@ from typing import Any, Callable
 from cryptobot.execution import FakeVenue, OrderManager
 
 from .engine import (EngineCancel, EngineEvent, EngineExpire, EngineFill,
-                     EngineOrder, EngineReject)
+                     EngineOrder, EngineOrderStatus, EngineReject)
 
 __all__ = ["ReferenceEngine", "SIMULATOR_ASSUMPTIONS"]
 
@@ -81,6 +81,8 @@ class ReferenceEngine:
                  now_utc: Callable[[], datetime] | None = None,
                  submit_delay_ms: int = 0) -> None:
         self._now_utc = now_utc or (lambda: datetime.now(timezone.utc))
+        self._log_path = Path(log_path)
+        self._taker_bps = taker_bps
         self.venue = FakeVenue(now_ms=lambda: int(
             self._now_utc().timestamp() * 1000))
         self._fills: deque[dict] = deque()
@@ -150,9 +152,23 @@ class ReferenceEngine:
         self.manager._evaluate_callbacks()
         return order.client_id
 
-    def submit_sync(self, cmd: EngineOrder) -> str:
-        """Submit bypassing the delay queue (time-exits, flatten)."""
+    def submit_immediate(self, cmd: EngineOrder) -> str:
+        """Submit bypassing the delay queue. Exits/flatten ONLY, never entries."""
+        if cmd.role == "entry":
+            raise ValueError("submit_immediate is exits-only; entries use submit()")
         return self._submit_now(cmd)
+
+    def open_orders(self) -> list[EngineOrderStatus]:
+        return [EngineOrderStatus(
+            client_order_id=o.client_id, instrument=o.symbol,
+            state=o.state.value, qty=o.qty, filled_qty=o.filled_qty,
+            reservation_id=o.reservation_id, role=o.role)
+            for o in self.manager.orders.values()]
+
+    def filled_qty(self, client_order_id: str) -> float:
+        real = self.resolve(client_order_id)
+        order = self.manager.orders.get(real or "")
+        return order.filled_qty if order is not None else 0.0
 
     def attach_protection(self, entry_client_id: str, stop_price: float,
                           target_price: float | None) -> list[str]:
@@ -216,6 +232,13 @@ class ReferenceEngine:
         if price > 0:
             self._marks[instrument] = price
             self.venue.set_last_price(instrument, price)
+
+    def recover(self, outcome_sink: Any) -> None:
+        """Rebuild the OrderManager from its journal (durable source)."""
+        self.manager = OrderManager.recover(
+            self.venue, self._log_path, now_utc=self._now_utc,
+            outcome_sink=_FeeShim(outcome_sink, self._taker_bps,
+                                  self._fills.append))
 
     def set_exit_only(self, halted: bool, reason: str = "") -> None:
         self.manager.set_halted(halted, reason)

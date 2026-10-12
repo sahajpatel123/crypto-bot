@@ -307,7 +307,7 @@
   "Q-005": {
    "owner_session": "whisper-redshift",
    "role": "Worker 1 \u2014 Quant Research and Strategy Engineer",
-   "state": "accepted-conditional",
+   "state": "accepted",
    "contract_version": "v0.2.0+app_runtime_interfaces.md S1/S2",
    "dependencies": [
     "specs/app_runtime_interfaces.md S1/S2",
@@ -435,7 +435,7 @@
   "Q-005-F1": {
    "owner_session": "whisper-redshift",
    "role": "Worker 1 \u2014 Quant Research and Strategy Engineer",
-   "state": "dispatched",
+   "state": "accepted",
    "contract_version": "v0.2.0+app_runtime_interfaces.md S1",
    "dependencies": [
     "Q-005 runtime.py on main"
@@ -458,6 +458,6 @@
    ]
   }
  },
- "updated_utc": "2026-10-12T06:30:00Z",
+ "updated_utc": "2026-10-12T07:00:00Z",
  "version": 1
 }

@@ -18,6 +18,10 @@ Conventions owned here:
   contains ``:`` (relayed E-007/sync reasons) keeps its shape verbatim.
 - ``DataQuality.HALT`` rejects at the boundary; ``DEGRADED`` still
   evaluates (strategies are gap-tolerant and the window is caller-bounded).
+- F1 alignment rule: ``bars`` carries positionally-aligned slots (``None`` =
+  missing). Adapters pass the aligned list to the evaluators WITHOUT
+  stripping — stripping compresses time and corrupts lookback windows.
+  Evaluation anchors at the last present bar; trailing ``None``s never crash.
 """
 from __future__ import annotations
 
@@ -85,7 +89,7 @@ class MarketView:
     """Bounded causal market snapshot for one strategy evaluation."""
 
     instrument: str
-    bars: tuple[Bar, ...]  # bounded, causal, oldest->newest; newest closes <= now
+    bars: tuple[Bar | None, ...]  # aligned slots, oldest->newest; None = missing
     now_utc: datetime  # availability/causal time, tz-aware
     depth: DepthView | None  # synchronized book features or None + reason
     flow: FlowView | None  # signed trade aggregates or None + reason
@@ -120,13 +124,24 @@ class RuntimeStrategy(Protocol):
     def evaluate(self, view: MarketView) -> StrategyOutcome: ...
 
 
+def _last_present(bars: tuple[Bar | None, ...]) -> int | None:
+    """Newest present-bar index, or None when no bar is present."""
+    for i in range(len(bars) - 1, -1, -1):
+        if bars[i] is not None:
+            return i
+    return None
+
+
 def _gate_view(view: MarketView) -> str:
     """Boundary pre-gates; returns a reject reason or ``""`` to proceed."""
     if view.quality is DataQuality.HALT:
         return f"quality:{view.quality_reason or 'halt'}"
-    if not view.bars:
+    t = _last_present(view.bars)
+    if t is None:
         return "quality:empty-window"
-    if view.bars[-1].ts_utc > view.now_utc:
+    newest = view.bars[t]
+    assert newest is not None
+    if newest.ts_utc > view.now_utc:
         return "stale:bar-newer-than-now"
     return ""
 
@@ -168,8 +183,11 @@ class _BarsStrategy:
         gate = _gate_view(view)
         if gate:
             return StrategyOutcome(None, gate)
+        # Aligned list passed WITHOUT stripping (F1); anchor at last present.
         bars = list(view.bars)
-        long_d, short_d = self._evaluate_bar(bars, len(bars) - 1, self._arm,
+        t = _last_present(view.bars)
+        assert t is not None  # gated above
+        long_d, short_d = self._evaluate_bar(bars, t, self._arm,
                                              view.instrument)
         return _finish((long_d.evaluation, long_d.intent),
                        (short_d.evaluation, short_d.intent))
