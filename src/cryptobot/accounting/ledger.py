@@ -73,9 +73,45 @@ class Ledger:
         self._seq = 0
 
     # -- recording (idempotent by event identity) --------------------------
+    def note_fill(
+        self, exec_id: str, symbol: str, side: str,
+        qty: float, price: float, fee: float, ts_utc: str,
+    ) -> bool:
+        """Engine-facing fill ingestion (V-006 S4 seam for E-007).
+
+        Validates the v0.2.0 delta contract (non-empty ids/symbol, BUY/SELL,
+        positive finite qty/price, non-negative finite fee, ISO-8601 UTC
+        timestamp) and books idempotently. False when exec_id was already
+        booked. Run-mode zero-fee policy is enforced by the policy sink,
+        not here.
+        """
+        if not exec_id or not isinstance(exec_id, str):
+            raise ValueError("exec_id must be a non-empty string")
+        if not symbol or not isinstance(symbol, str):
+            raise ValueError("symbol must be a non-empty string")
+        try:
+            ts = datetime.fromisoformat(ts_utc)
+        except (TypeError, ValueError):
+            raise ValueError(f"ts_utc must be ISO-8601, got {ts_utc!r}") from None
+        if ts.tzinfo is None or ts.utcoffset() is None or ts.utcoffset().total_seconds() != 0:
+            raise ValueError(f"ts_utc must carry a UTC offset, got {ts_utc!r}")
+        return self.record_fill(side, qty, price, fee, ts, exec_id, symbol=symbol)
+
+    def note_funding(self, event_id: str, amount: float, ts_utc: str) -> bool:
+        """Engine-facing funding ingestion (V-006 S4 seam for E-007)."""
+        if not event_id or not isinstance(event_id, str):
+            raise ValueError("event_id must be a non-empty string")
+        try:
+            ts = datetime.fromisoformat(ts_utc)
+        except (TypeError, ValueError):
+            raise ValueError(f"ts_utc must be ISO-8601, got {ts_utc!r}") from None
+        if ts.tzinfo is None or ts.utcoffset() is None or ts.utcoffset().total_seconds() != 0:
+            raise ValueError(f"ts_utc must carry a UTC offset, got {ts_utc!r}")
+        return self.record_funding(amount, ts, event_id)
+
     def record_fill(
         self, side: str, qty: float, price: float, fee: float, ts: datetime,
-        exec_id: str | None = None,
+        exec_id: str | None = None, symbol: str = "",
     ) -> bool:
         """Book one fill increment. False when exec_id was already booked."""
         qty = _require_finite(qty, "qty")
@@ -99,7 +135,8 @@ class Ledger:
         self._fills.append(_Fill(side, qty, price, fee, ts, exec_id))
         self._journal.append({"kind": "fill", "side": side, "qty": qty,
                               "price": price, "fee": fee,
-                              "ts_utc": ts.isoformat(), "exec_id": exec_id})
+                              "ts_utc": ts.isoformat(), "exec_id": exec_id,
+                              "symbol": symbol})
         self._cash -= fee
         self._paid_costs += fee
         self._realised -= fee
@@ -222,7 +259,8 @@ class Ledger:
             kind = entry["kind"]
             if kind == "fill":
                 ok = ledger.record_fill(entry["side"], entry["qty"], entry["price"],
-                                        entry["fee"], ts, entry["exec_id"])
+                                        entry["fee"], ts, entry["exec_id"],
+                                        symbol=entry.get("symbol", ""))
             elif kind == "funding":
                 ok = ledger.record_funding(entry["amount"], ts, entry["event_id"])
             elif kind == "flow":

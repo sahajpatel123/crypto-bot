@@ -401,7 +401,7 @@
   "V-006": {
    "owner_session": "cool-amalthea",
    "role": "Worker 3 \u2014 Risk, Verification and Reliability Engineer",
-   "state": "dispatched",
+   "state": "accepted",
    "contract_version": "v0.2.0+app_runtime_interfaces.md S4",
    "dependencies": [
     "specs/app_runtime_interfaces.md S4",
@@ -456,8 +456,33 @@
     "tests/unit/test_strategies_s5.py",
     "coord/outbox/Q-005-F1.json"
    ]
+  },
+  "V-006-F1": {
+   "owner_session": "cool-amalthea",
+   "role": "Worker 3 \u2014 Risk, Verification and Reliability Engineer",
+   "state": "dispatched",
+   "contract_version": "v0.2.0+app_runtime_interfaces.md S4",
+   "dependencies": [
+    "V-006 integration on main"
+   ],
+   "acceptance": [
+    "complete() venue-satisfiable; max-notional optional cap",
+    "MARKET_LOT_SIZE handling noted",
+    "suite green"
+   ],
+   "evidence_required": [
+    "exchangeInfo evidence",
+    "repro + counts",
+    "base/branch IDs"
+   ],
+   "allowed_paths": [
+    "src/cryptobot/risk/types.py",
+    "src/cryptobot/risk/sizing.py",
+    "tests/acceptance/test_risk_v006.py",
+    "coord/outbox/V-006-F1.json"
+   ]
   }
  },
- "updated_utc": "2026-10-12T07:30:00Z",
+ "updated_utc": "2026-10-12T08:00:00Z",
  "version": 1
 }

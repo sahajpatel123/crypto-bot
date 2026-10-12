@@ -17,6 +17,7 @@ Examples:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import math
 import sys
@@ -103,40 +104,101 @@ def compare_bar_records(replayed: list[dict], captured: list[dict]) -> dict | No
     return None
 
 
-def cmd_replay(args: argparse.Namespace) -> int:
-    run_dir = Path(args.run_dir)
-    records = load_events(run_dir / "events.jsonl")
-    for record in records:
-        assert_input_class({"input_class": record["input_class"]}, args.expect_class)
-    first = events_hash(records)
-    second = events_hash(load_events(run_dir / "events.jsonl"))
-    # Rebuild bars from the replayed stream through the real aggregator.
+def _scan_stream(path: Path, expect_class: str) -> tuple[str, bool, int]:
+    """One O(1)-RAM pass: sha + seq-order check + count (V-006 finding fix).
+
+    Captures are seq-ordered (verified); the multi-million-event stream is
+    never loaded whole. Only the thousands of rebuilt bar records accumulate.
+    """
+    digest = hashlib.sha256()
+    prev_seq = 0
+    ordered = True
+    count = 0
+    with path.open(encoding="utf-8") as fh:
+        for line in fh:
+            if not line.strip():
+                continue
+            record = json.loads(line)
+            if "input_class" not in record:
+                raise ValueError("event record missing mandatory input_class label")
+            assert_input_class({"input_class": record["input_class"]}, expect_class)
+            seq = int(record.get("seq", 0))
+            if seq < prev_seq:
+                ordered = False
+            prev_seq = seq
+            digest.update(json.dumps(record, sort_keys=True).encode("utf-8"))
+            count += 1
+    return digest.hexdigest(), ordered, count
+
+
+def _rebuild_stream(path: Path, expect_class: str) -> list[dict]:
+    """O(1)-RAM bar rebuild through the real aggregator (seq-ordered input)."""
     aggregators: dict[str, BarAggregator] = {}
     replayed: list[dict] = []
-
-    def _note(symbol: str, closed) -> None:
-        for bar in closed:
-            replayed.append(bar_to_record(bar, symbol, args.expect_class))
-
-    for event in replay_events(records):
-        symbol = event["symbol"]
-        agg = aggregators.setdefault(symbol, BarAggregator(symbol))
-        if event["channel"] == "aggTrade":
-            _note(symbol, agg.on_trade(event))
-        elif event["channel"] == "bookTicker":
-            payload = event["payload"]
-            agg.on_bbo(payload["bid"], payload["ask"], event["exchange_ts_ms"])
+    with path.open(encoding="utf-8") as fh:
+        for line in fh:
+            if not line.strip():
+                continue
+            event = json.loads(line)
+            symbol = event["symbol"]
+            agg = aggregators.setdefault(symbol, BarAggregator(symbol))
+            if event["channel"] == "aggTrade":
+                for bar in agg.on_trade(event):
+                    replayed.append(bar_to_record(bar, symbol, expect_class))
+            elif event["channel"] == "bookTicker":
+                payload = event["payload"]
+                agg.on_bbo(payload["bid"], payload["ask"], event["exchange_ts_ms"])
     for symbol, agg in aggregators.items():
-        _note(symbol, agg.flush())
+        for bar in agg.flush():
+            replayed.append(bar_to_record(bar, symbol, expect_class))
+    return replayed
+
+
+def cmd_replay(args: argparse.Namespace) -> int:
+    run_dir = Path(args.run_dir)
+    events_path = run_dir / "events.jsonl"
+    first, ordered, count = _scan_stream(events_path, args.expect_class)
+    if ordered:
+        replayed = _rebuild_stream(events_path, args.expect_class)
+        stream_mode = "streaming"
+    else:
+        # Unordered fixture: fall back to load + deterministic sort.
+        records = load_events(events_path)
+        for record in records:
+            assert_input_class({"input_class": record["input_class"]},
+                               args.expect_class)
+        first = events_hash(records)
+        count = len(records)
+        aggregators: dict[str, BarAggregator] = {}
+        replayed = []
+        for event in replay_events(records):
+            symbol = event["symbol"]
+            agg = aggregators.setdefault(symbol, BarAggregator(symbol))
+            if event["channel"] == "aggTrade":
+                for bar in agg.on_trade(event):
+                    replayed.append(bar_to_record(bar, symbol, args.expect_class))
+            elif event["channel"] == "bookTicker":
+                payload = event["payload"]
+                agg.on_bbo(payload["bid"], payload["ask"], event["exchange_ts_ms"])
+        for symbol, agg in aggregators.items():
+            for bar in agg.flush():
+                replayed.append(bar_to_record(bar, symbol, args.expect_class))
+        stream_mode = "load-sort-fallback"
+    # Independent re-hash for the determinism check (streaming when ordered).
+    if ordered:
+        second, _, _ = _scan_stream(events_path, args.expect_class)
+    else:
+        second = events_hash(load_events(events_path))
     captured = [json.loads(line) for line in (run_dir / "bars.jsonl").read_text().splitlines() if line.strip()]
     mismatch = compare_bar_records(replayed, captured)
     agree = mismatch is None
     n_bar = sum(1 for b in captured if b.get("type") == "bar")
     n_missing = sum(1 for b in captured if b.get("type") == "missing")
     print(json.dumps({"run_dir": str(run_dir), "input_class": args.expect_class,
-                      "events": len(records), "deterministic": first == second,
+                      "events": count, "deterministic": first == second,
                       "events_sha256": first, "replayed_records": len(replayed),
                       "captured_bar_records": n_bar, "captured_missing_records": n_missing,
+                      "stream_mode": stream_mode,
                       "comparison": "per-symbol ordered full-record (OHLCV, trades, flow, spread, gap flags)",
                       "bar_rebuild_agrees": agree,
                       "first_mismatch": mismatch}, indent=2))

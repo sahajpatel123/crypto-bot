@@ -123,7 +123,12 @@ class RiskPolicy:
         if filters_block is not None:
             return filters_block
         try:
-            plan = plan_size(intent, account.reconciled_equity, cfg)
+            plan = plan_size(
+                intent, account.reconciled_equity, cfg,
+                available_margin_usdt=account.available_margin_usdt,
+                fee_buffer_usdt=account.fee_buffer_usdt,
+                inflight_exposure_usdt=account.inflight_exposure_usdt,
+            )
         except SizeRejected as exc:
             return Rejected(exc.reason)
 
@@ -150,18 +155,42 @@ class RiskPolicy:
     # -- intent-free monitoring --------------------------------------------
     def check_health(self, account: AccountSnapshot) -> HealthStatus:
         """Latch halt/pause/floor/rollover state without requiring an intent."""
-        if not self._validate_account(account):
-            return HealthStatus(False, ("health:nonfinite-account",), ())
-        now = self._now_utc()
+        return self.monitor_tick(self._now_utc(), account)
+
+    def monitor_tick(self, now: datetime | None = None,
+                     account: AccountSnapshot | None = None) -> HealthStatus:
+        """Timer-driven oversight tick; never depends on market traffic.
+
+        With an account snapshot, evaluates and latches halt/pause/floor. With
+        account=None, still rolls the day, settles expiries, and reports
+        latched blocks — a quiet feed, stalled book, or blocked REST call
+        cannot suspend oversight. Records the tick time in persisted state so
+        the runtime can detect a dead monitor loop.
+        """
+        now = now or self._now_utc()
         cfg = self.config
         today = accounting_date(now).isoformat()
         reasons: list[str] = []
         latched: list[str] = []
         if self._roll_day_if_needed(now, today):
             latched.append("day-rolled")
+        if account is not None and not self._validate_account(account):
+            return HealthStatus(False, ("health:nonfinite-account",), ())
         if self._state.needs_reconciliation or self._state.day_start_equity is None:
+            self._record_tick(now)
+            save_state(self.state_path, self._state)
             return HealthStatus(False, ("health:day-open-needs-reconciliation",),
                                 tuple(latched))
+        if account is None:
+            if today in self._state.halt_days:
+                reasons.append("halt:daily-loss")
+            if today in self._state.pause_days:
+                reasons.append("pause:daily-target")
+            if self._settle_expired(now):
+                latched.append("expiry-settled")
+            self._record_tick(now)
+            save_state(self.state_path, self._state)
+            return HealthStatus(not reasons, tuple(reasons), tuple(latched))
         day_start = self._state.day_start_equity
         marked_adj = self._adjust_day(account.marked_equity, account.flows_cumulative)
         netliq_adj = self._adjust_day(account.net_liquidation, account.flows_cumulative)
@@ -182,9 +211,12 @@ class RiskPolicy:
             latched.append("floor")
         if self._settle_expired(now):
             latched.append("expiry-settled")
-        if latched:
-            save_state(self.state_path, self._state)
+        self._record_tick(now)
+        save_state(self.state_path, self._state)
         return HealthStatus(not reasons, tuple(reasons), tuple(latched))
+
+    def _record_tick(self, now: datetime) -> None:
+        self._state.last_tick_utc = now.isoformat()
 
     # -- v0.2.0 outcome sink (risk implements, execution calls) -------------
     def bind_ledger(self, ledger: Ledger) -> None:
@@ -227,6 +259,8 @@ class RiskPolicy:
             raise ValueError(f"price must be finite and > 0, got {price!r}")
         if not _finite(fee) or fee < 0:
             raise ValueError(f"fee must be finite and >= 0, got {fee!r}")
+        if self.config.run_mode and fee <= 0:
+            raise ValueError("fee must be > 0 in run mode (fee=0.0 is fault-test-only)")
         try:
             ts = datetime.fromisoformat(ts_utc)
         except (TypeError, ValueError):
@@ -242,7 +276,29 @@ class RiskPolicy:
         save_state(self.state_path, self._state)
         if self._ledger is not None:
             # Validated above: ledger inputs are implied valid, booking cannot fail.
-            self._ledger.record_fill(venue_side, qty, price, fee, ts, exec_id)
+            self._ledger.note_fill(exec_id, symbol, venue_side, qty, price, fee, ts_utc)
+
+    def note_funding(self, event_id: str, amount: float, ts_utc: str) -> None:
+        """Route one engine funding event to the bound ledger (V-006, S4).
+
+        Fail-closed: raises when no ledger is bound (funding must never
+        vanish silently). In run mode the amount must be nonzero.
+        """
+        if self._ledger is None:
+            raise ValueError("note_funding requires a bound ledger")
+        if not event_id or not isinstance(event_id, str):
+            raise ValueError("event_id must be a non-empty string")
+        if not _finite(amount):
+            raise ValueError(f"amount must be finite, got {amount!r}")
+        if self.config.run_mode and amount == 0:
+            raise ValueError("funding amount must be nonzero in run mode")
+        try:
+            ts = datetime.fromisoformat(ts_utc)
+        except (TypeError, ValueError):
+            raise ValueError(f"ts_utc must be ISO-8601, got {ts_utc!r}") from None
+        if ts.tzinfo is None or ts.utcoffset() is None or ts.utcoffset().total_seconds() != 0:
+            raise ValueError(f"ts_utc must carry a UTC offset, got {ts_utc!r}")
+        self._ledger.record_funding(amount, ts, event_id)
 
     def release(self, reservation_id: str) -> bool:
         """Free a reservation only when its booked exposure reconciles zero.
@@ -326,9 +382,15 @@ class RiskPolicy:
     def _validate_account(self, account: AccountSnapshot) -> bool:
         if not isinstance(account.open_position, bool):
             return False
-        return all(_finite(v) for v in (account.reconciled_equity, account.marked_equity,
+        if not all(_finite(v) for v in (account.reconciled_equity, account.marked_equity,
                                         account.net_liquidation, account.net_realised_global,
-                                        account.flows_cumulative))
+                                        account.flows_cumulative, account.fee_buffer_usdt,
+                                        account.inflight_exposure_usdt)):
+            return False
+        if account.fee_buffer_usdt < 0 or account.inflight_exposure_usdt < 0:
+            return False
+        margin = account.available_margin_usdt
+        return margin is None or (_finite(margin) and margin >= 0)
 
     def _roll_day_if_needed(self, now: datetime, today: str) -> bool:
         if self._state.current_day == today:
@@ -371,9 +433,17 @@ class RiskPolicy:
 
     def _check_filters(self, intent, now: datetime) -> Rejected | None:
         filters = self.config.instrument_filters
-        if not filters:
+        if self.config.run_mode:
+            if not filters:
+                return Rejected("filters:required-in-run-mode")
+            filt = filters.get(intent.instrument)
+            if filt is None:
+                return Rejected("filters:unknown-instrument")
+            if not filt.complete():
+                return Rejected("filters:incomplete")
+        elif not filters:
             return None
-        if intent.instrument not in filters:
+        elif intent.instrument not in filters:
             return Rejected("filters:unknown-instrument")
         asof = self.config.filters_asof_utc
         if asof is None or (now - asof).total_seconds() > self.config.filters_max_age_s:

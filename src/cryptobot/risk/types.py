@@ -21,18 +21,48 @@ def _finite(value: float, name: str) -> float:
 
 @dataclass(frozen=True)
 class InstrumentFilter:
-    """Per-instrument venue filters (V-004, F-CEO-04)."""
+    """Per-instrument venue filters (V-004; extended V-006).
+
+    ``None`` means unconstraining (non-run use). Run mode requires a
+    complete record (see :meth:`complete`).
+    """
 
     min_notional_usdt: float = 5.0
     qty_step: float = 1e-8
+    max_notional_usdt: float | None = None
+    min_qty: float = 0.0
+    max_qty: float | None = None
+    tick_size: float | None = None
 
     def __post_init__(self) -> None:
         _finite(self.min_notional_usdt, "min_notional_usdt")
         _finite(self.qty_step, "qty_step")
+        _finite(self.min_qty, "min_qty")
         if self.min_notional_usdt < 0:
             raise ValueError("min_notional_usdt must be >= 0")
         if self.qty_step <= 0:
             raise ValueError("qty_step must be > 0")
+        if self.min_qty < 0:
+            raise ValueError("min_qty must be >= 0")
+        for name in ("max_notional_usdt", "max_qty", "tick_size"):
+            value = getattr(self, name)
+            if value is not None:
+                _finite(value, name)
+                if value <= 0:
+                    raise ValueError(f"{name} must be > 0")
+        if self.max_notional_usdt is not None and self.max_notional_usdt < self.min_notional_usdt:
+            raise ValueError("max_notional_usdt must be >= min_notional_usdt")
+        if self.max_qty is not None and self.max_qty < self.min_qty:
+            raise ValueError("max_qty must be >= min_qty")
+
+    def complete(self) -> bool:
+        """True when the record carries every run-mode filter field."""
+        return (
+            self.min_qty > 0
+            and self.max_qty is not None
+            and self.tick_size is not None
+            and self.max_notional_usdt is not None
+        )
 
 
 @dataclass(frozen=True)
@@ -53,6 +83,9 @@ class RiskConfig:
     instrument_filters: dict = field(default_factory=dict)
     filters_asof_utc: datetime | None = None
     filters_max_age_s: float = 3600.0
+    # V-006 run mode: strict filter/metadata enforcement for session runtime.
+    # Fault tests run with run_mode=False (filters optional, fee=0 allowed).
+    run_mode: bool = False
 
     def __post_init__(self) -> None:
         if not self.contract_version:
@@ -81,6 +114,8 @@ class RiskConfig:
                 raise ValueError("instrument filter keys must be non-empty symbols")
             if not isinstance(filt, InstrumentFilter):
                 raise ValueError(f"filter for {symbol!r} must be an InstrumentFilter")
+        if not isinstance(self.run_mode, bool):
+            raise ValueError("run_mode must be a bool")
 
 
 @dataclass(frozen=True)
@@ -94,6 +129,11 @@ class AccountSnapshot:
     # post-baseline flows before comparing against day/global references, so
     # deposits can neither trip targets nor replenish profit protection.
     flows_cumulative: float = 0.0
+    # V-006 margin inputs (all USDT). None available_margin skips the margin
+    # gate (leverage cap still applies); the session runtime always supplies it.
+    available_margin_usdt: float | None = None
+    fee_buffer_usdt: float = 0.0
+    inflight_exposure_usdt: float = 0.0
 
 
 @dataclass(frozen=True)

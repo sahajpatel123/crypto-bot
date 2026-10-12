@@ -77,6 +77,7 @@ class RiskState:
     flow_baseline_inception: float | None = None
     open_position: bool = False
     seq: int = 0
+    last_tick_utc: str | None = None
 
     def to_dict(self) -> dict:
         return {
@@ -97,6 +98,7 @@ class RiskState:
             "flow_baseline_inception": self.flow_baseline_inception,
             "open_position": self.open_position,
             "seq": self.seq,
+            "last_tick_utc": self.last_tick_utc,
         }
 
     @classmethod
@@ -126,6 +128,7 @@ class RiskState:
             flow_baseline_inception=raw.get("flow_baseline_inception"),
             open_position=bool(raw.get("open_position", False)),
             seq=int(raw.get("seq", 0)),
+            last_tick_utc=raw.get("last_tick_utc"),
         )
 
 

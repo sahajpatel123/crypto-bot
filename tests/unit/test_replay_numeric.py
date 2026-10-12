@@ -161,6 +161,29 @@ def test_compare_empty_agrees():
     assert _load().compare_bar_records([], []) is None
 
 
+def test_unordered_fixture_uses_sort_fallback(tmp_path):
+    module = _load()
+    run_dir = tmp_path / "run"
+    run_dir.mkdir()
+    events = _events()
+    events = [events[2], events[0], events[1], events[3], events[4], events[5]]
+    (run_dir / "events.jsonl").write_text(
+        "\n".join(json.dumps(e) for e in events) + "\n")
+    (run_dir / "bars.jsonl").write_text(
+        "\n".join(json.dumps(b) for b in _hand_bars()) + "\n")
+    code, out = _run_replay(module, run_dir)
+    assert code == 0
+    assert out["stream_mode"] == "load-sort-fallback"
+    assert out["bar_rebuild_agrees"] is True
+
+
+def test_ordered_fixture_streams(tmp_path):
+    module = _load()
+    code, out = _run_replay(module, _write_run(tmp_path, _hand_bars()))
+    assert code == 0
+    assert out["stream_mode"] == "streaming"
+
+
 def test_report_uses_collector_processing_name(tmp_path):
     module = _load()
     run_dir = tmp_path / "run"

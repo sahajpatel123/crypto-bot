@@ -232,8 +232,10 @@ class RuntimeTrader:
         ts = _dt.fromisoformat(record["ts_utc"])
         note = getattr(self.ledger, "note_fill", None)
         if callable(note):
+            # V-006 seam takes ISO-8601 str (integration fix: was datetime).
             note(record["exec_id"], record["symbol"], record["venue_side"],
-                 record["qty"], record["price"], record["fee"], ts)
+                 record["qty"], record["price"], record["fee"],
+                 record["ts_utc"])
         else:  # pre-V-006 ledger: identical idempotent contract via record_fill.
             self.ledger.record_fill(record["venue_side"], record["qty"], record["price"],
                                     record["fee"], ts, record["exec_id"])
@@ -247,7 +249,8 @@ class RuntimeTrader:
             return False
         note = getattr(self.ledger, "note_funding", None)
         if callable(note):
-            return bool(note(event_id, amount, ts_utc))
+            # V-006 seam takes ISO-8601 str (integration fix: was datetime).
+            return bool(note(event_id, amount, ts_utc.isoformat()))
         return bool(self.ledger.record_funding(amount, ts_utc, event_id))
 
     # -- protection lifecycle --------------------------------------------------

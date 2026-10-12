@@ -7,10 +7,11 @@ that bound, rounded DOWN to the venue step (per-instrument filter when
 configured, else 1e-8), then rechecked against budget, leverage, and minimum
 notional. Rounding never rounds up to meet a minimum.
 
-Under one-way, isolated, <=3x, required margin ``notional/3 <= equity`` is
-the same inequality as the leverage cap, so leverage/margin/exposure collapse
-to one check. True available-margin input awaits a v0.2.0 execution-side
-addendum (proposed, not landed).
+V-006: when the caller supplies available margin, an additional margin gate
+caps notional so ``(inflight + notional) / leverage_cap + fee_buffer <=
+available`` (the leverage cap alone is not a margin substitute). Venue
+max-qty / max-notional bounds cap down (safe direction); min-qty / min-
+notional violations skip (never round up).
 """
 from __future__ import annotations
 
@@ -42,7 +43,15 @@ def _finite(value: float) -> bool:
     return isinstance(value, (int, float)) and math.isfinite(value)
 
 
-def plan_size(intent, reconciled_equity: float, config: RiskConfig) -> SizePlan:
+def plan_size(
+    intent,
+    reconciled_equity: float,
+    config: RiskConfig,
+    *,
+    available_margin_usdt: float | None = None,
+    fee_buffer_usdt: float = 0.0,
+    inflight_exposure_usdt: float = 0.0,
+) -> SizePlan:
     if intent.side == Side.LONG:
         adverse = intent.entry_high
     elif intent.side == Side.SHORT:
@@ -62,6 +71,14 @@ def plan_size(intent, reconciled_equity: float, config: RiskConfig) -> SizePlan:
         raise SizeRejected("health:nonfinite-cost")
     if not _finite(reconciled_equity) or reconciled_equity <= 0:
         raise SizeRejected("health:nonfinite-account")
+    if available_margin_usdt is not None and (
+        not _finite(available_margin_usdt) or available_margin_usdt < 0
+    ):
+        raise SizeRejected("health:nonfinite-account")
+    if not _finite(fee_buffer_usdt) or fee_buffer_usdt < 0:
+        raise SizeRejected("health:nonfinite-account")
+    if not _finite(inflight_exposure_usdt) or inflight_exposure_usdt < 0:
+        raise SizeRejected("health:nonfinite-account")
     stop_dist = abs(adverse - intent.invalidation_price)
     if stop_dist <= 0:
         raise SizeRejected("sizing:undefined-risk")
@@ -70,15 +87,42 @@ def plan_size(intent, reconciled_equity: float, config: RiskConfig) -> SizePlan:
     qty_raw = budget / (stop_dist + adverse * stressed)
     filt = config.instrument_filters.get(intent.instrument)
     step = filt.qty_step if filt is not None else 1e-8
-    qty = math.floor(qty_raw / step * (1 + 1e-9)) * step
-    if qty <= 0:
+    min_qty = filt.min_qty if filt is not None else 0.0
+    max_qty = filt.max_qty if filt is not None else None
+    min_notional = filt.min_notional_usdt if filt is not None else config.min_notional_usdt
+    max_notional = filt.max_notional_usdt if filt is not None else None
+
+    def floored(qty: float) -> float:
+        return math.floor(qty / step * (1 + 1e-9)) * step
+
+    def within_budget(qty: float) -> bool:
+        return qty * stop_dist + qty * adverse * stressed <= budget * (1 + 1e-9)
+
+    qty = floored(qty_raw)
+    if max_qty is not None:
+        qty = floored(min(qty, max_qty))
+    if qty <= 0 or qty < min_qty:
         raise SizeRejected("skip:min-notional")
-    if qty * stop_dist + qty * adverse * stressed > budget * (1 + 1e-9):
+    if not within_budget(qty):
         raise SizeRejected("sizing:budget-exceeded")
     notional = qty * adverse
+    if available_margin_usdt is not None:
+        affordable = (available_margin_usdt - fee_buffer_usdt) * config.leverage_cap
+        affordable -= inflight_exposure_usdt
+        if affordable < min_notional:
+            raise SizeRejected("margin:insufficient")
+        if notional > affordable:
+            qty = floored(affordable / adverse)
+            if qty <= 0 or qty < min_qty or not within_budget(qty):
+                raise SizeRejected("margin:insufficient")
+            notional = qty * adverse
     if notional > config.leverage_cap * reconciled_equity:
         raise SizeRejected("leverage:cap-exceeded")
-    min_notional = filt.min_notional_usdt if filt is not None else config.min_notional_usdt
+    if max_notional is not None and notional > max_notional:
+        qty = floored(max_notional / adverse)
+        if qty <= 0 or qty < min_qty or not within_budget(qty):
+            raise SizeRejected("filters:notional-cap")
+        notional = qty * adverse
     if notional < min_notional:
         raise SizeRejected("skip:min-notional")
     return SizePlan(
