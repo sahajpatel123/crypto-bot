@@ -110,7 +110,7 @@ def test_depth_chain_break_resyncs_via_rest(tmp_path):
     run_dir = Path(collector.config.run_dir)
     run_dir.mkdir(parents=True, exist_ok=True)
     fh = (run_dir / "drain.jsonl").open("w")
-    collector._snapshot_symbol("BTCUSDT", fh, fh, fh)
+    collector._snapshot_symbol("BTCUSDT", fh, fh, fh, fh)
     fh.close()
     book = collector._books["BTCUSDT"]
     assert book.state.synced
@@ -194,7 +194,7 @@ def test_run_writes_manifest_stats_heartbeat_and_cleans_pid(tmp_path):
     assert (run_dir / "heartbeat.json").exists()
     assert not (run_dir / "pid").exists()
     manifest = json.loads((run_dir / "manifest.json").read_text())
-    assert set(manifest["files"]) == {"raw", "events", "bars"}
+    assert set(manifest["files"]) == {"raw", "events", "bars", "depth_snapshots"}
     assert all(len(v["sha256"]) == 64 for v in manifest["files"].values())
 
 
@@ -247,10 +247,10 @@ def test_snapshot_rest_garbage_reschedules_instead_of_crashing(tmp_path):
     run_dir.mkdir(parents=True, exist_ok=True)
     fh = (run_dir / "drain.jsonl").open("w")
     collector._snapshot_due["BTCUSDT"] = 0.0  # due now.
-    collector._snapshot_due_check(fh, fh, fh)  # must not raise.
+    collector._snapshot_due_check(fh, fh, fh, fh)  # must not raise.
     assert "BTCUSDT" in collector._snapshot_due  # rescheduled for retry.
     collector._snapshot_due["BTCUSDT"] = 0.0
-    collector._snapshot_due_check(fh, fh, fh)
+    collector._snapshot_due_check(fh, fh, fh, fh)
     assert collector._books["BTCUSDT"].state.synced
     fh.close()
 
@@ -279,3 +279,43 @@ def test_run_survives_clock_probe_failure(tmp_path):
     collector = Collector(_config(tmp_path), connect=lambda url: FakeConn(), rest_get=rest_get)
     stats = collector.run(duration_s=0.3)
     assert stats.stop_reason == "duration-reached"
+
+
+def test_snapshot_symbol_persists_record_with_sync_boundary(tmp_path):
+    def rest_get(url, timeout):
+        return {"bids": [["100", "1"]], "asks": [["101", "1"]],
+                "lastUpdateId": 50}, 5.0
+
+    collector = Collector(_config(tmp_path), rest_get=rest_get)
+    run_dir = Path(collector.config.run_dir)
+    run_dir.mkdir(parents=True, exist_ok=True)
+    drain = (run_dir / "drain.jsonl").open("w")
+    snaps_path = run_dir / "depth_snapshots.jsonl"
+    with snaps_path.open("w") as snaps_fh:
+        collector._snapshot_symbol("BTCUSDT", drain, drain, drain, snaps_fh)
+    drain.close()
+    records = [json.loads(line) for line in snaps_path.read_text().splitlines()]
+    assert len(records) == 1
+    record = records[0]
+    assert record["format"] == "cryptobot-depth-snapshots/1"
+    assert record["symbol"] == "BTCUSDT" and record["last_update_id"] == 50
+    assert record["bids"] == [["100", "1"]] and record["asks"] == [["101", "1"]]
+    assert record["outcome"] == "synced"  # sync boundary marker for replay.
+    assert record["source"] == "binance-fapi-rest"
+    assert collector._books["BTCUSDT"].state.synced
+
+
+def test_run_writes_depth_snapshots_file_and_manifest(tmp_path):
+    def rest_get(url, timeout):
+        if url.endswith("/fapi/v1/time"):
+            return {"serverTime": 1_000_000}, 1.0
+        return {"bids": [["100", "1"]], "asks": [["101", "1"]],
+                "lastUpdateId": 50}, 1.0
+
+    collector = Collector(_config(tmp_path), connect=lambda url: FakeConn(), rest_get=rest_get)
+    stats = collector.run(duration_s=0.3)
+    assert stats.stop_reason == "duration-reached"
+    run_dir = Path(collector.config.run_dir)
+    assert (run_dir / "depth_snapshots.jsonl").exists()
+    manifest = json.loads((run_dir / "manifest.json").read_text())
+    assert "depth_snapshots" in manifest["files"]

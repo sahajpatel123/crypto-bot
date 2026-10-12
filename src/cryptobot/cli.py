@@ -187,7 +187,9 @@ def _run_paper(args: argparse.Namespace) -> int:
     engine = _paper.NautilusPaperEngine(
         outcome_sink=None, taker_bps=config.taker_bps,  # sink bound below
         now_utc=clock.now, submit_delay_ms=config.submit_delay_ms,
-        fill_delay_ms=config.fill_delay_ms)
+        fill_delay_ms=config.fill_delay_ms,
+        journal_path=workdir / "paper_engine_journal.jsonl",
+        starting_balance_usdt=config.paper_capital_usdt)
     session = Session(config, store, workdir, run_id, pid=os.getpid(),
                       clock=clock, engine=engine)
     engine.bind_sink(session.policy)

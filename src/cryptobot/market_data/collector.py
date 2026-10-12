@@ -27,6 +27,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from .bars import BarAggregator, BarMissing
+from .bridge import snapshot_record
 from .depth import DepthBook
 from .discovery import FAPI_BASE_URL, discover_usdt_perps, fetch_exchange_info, urllib_json_get
 from .events import EVENT_FORMAT, parse_message, raw_envelope
@@ -164,33 +165,44 @@ class Collector:
         self._conns[route] = self._connect(self._stream_url(route))
         self._conns[route].native_socket.settimeout(0.2)
 
-    def _snapshot_symbol(self, symbol: str, raw_fh, events_fh, bars_fh) -> None:
+    def _snapshot_symbol(self, symbol: str, raw_fh, events_fh, bars_fh, snaps_fh) -> None:
         """Fetch a depth snapshot, drain in-flight diffs into the buffer, then install.
 
         The post-REST drain is load-bearing: diffs generated while the snapshot
         request was in flight sit in the kernel queue, and the event spanning
         lastUpdateId + 1 is typically among them. Installing without draining
         strands the book (every subsequent diff looks like a chain break).
+
+        Every fetched snapshot is persisted (E-007) so book-feature replay can
+        rebuild from snapshot + chained diffs; the outcome field marks the
+        sync boundary (synced | resync).
         """
         payload, _ = self._rest_get(
             f"{REST_BASE}/fapi/v1/depth?symbol={symbol}&limit={self.config.depth_snapshot_limit}", 15.0)
+        rest_wall, rest_mono = self._wall_ms(), self._mono_ns()
         deadline = time.monotonic() + 1.5
         while time.monotonic() < deadline:
             if self._pump_once(raw_fh, events_fh, bars_fh) == 0:
                 break
         book = self._books[symbol]
         outcome = book.on_snapshot(payload["bids"], payload["asks"], payload["lastUpdateId"])
+        self._write_json(snaps_fh, snapshot_record(
+            run_id=self.config.run_id, symbol=symbol,
+            last_update_id=payload["lastUpdateId"],
+            bids=payload["bids"], asks=payload["asks"],
+            rest_recv_ms=rest_wall, rest_mono_ns=rest_mono,
+            limit=self.config.depth_snapshot_limit, outcome=outcome))
         if outcome == "resync":
             self.stats.depth_resyncs += 1
             self._snapshot_due[symbol] = time.monotonic() + 2.5  # genuine gap; re-buffer, retry.
 
-    def _snapshot_due_check(self, raw_fh, events_fh, bars_fh) -> None:
+    def _snapshot_due_check(self, raw_fh, events_fh, bars_fh, snaps_fh) -> None:
         now = time.monotonic()
         for symbol in list(self._snapshot_due):
             if now >= self._snapshot_due[symbol]:
                 del self._snapshot_due[symbol]
                 try:
-                    self._snapshot_symbol(symbol, raw_fh, events_fh, bars_fh)
+                    self._snapshot_symbol(symbol, raw_fh, events_fh, bars_fh, snaps_fh)
                 except (OSError, ValueError, KeyError):
                     # REST failed or answered garbage (rate limit, error page):
                     # re-buffer and retry shortly; never kill a capture over it.
@@ -242,8 +254,10 @@ class Collector:
         raw_fh = (self.run_dir / "raw.jsonl").open("w", encoding="utf-8")
         events_fh = (self.run_dir / "events.jsonl").open("w", encoding="utf-8")
         bars_fh = (self.run_dir / "bars.jsonl").open("w", encoding="utf-8")
+        snaps_fh = (self.run_dir / "depth_snapshots.jsonl").open("w", encoding="utf-8")
         files = {"raw": self.run_dir / "raw.jsonl", "events": self.run_dir / "events.jsonl",
-                 "bars": self.run_dir / "bars.jsonl"}
+                 "bars": self.run_dir / "bars.jsonl",
+                 "depth_snapshots": self.run_dir / "depth_snapshots.jsonl"}
         last_heartbeat = 0.0
         last_flush = time.monotonic()
         if duration_s is not None:
@@ -271,7 +285,7 @@ class Collector:
                     self._drop_connection("public", injected=True)
                     self._chaos_done = True
                 self._pump_once(raw_fh, events_fh, bars_fh)
-                self._snapshot_due_check(raw_fh, events_fh, bars_fh)
+                self._snapshot_due_check(raw_fh, events_fh, bars_fh, snaps_fh)
                 now = time.monotonic()
                 if now - last_heartbeat >= self.config.heartbeat_every_s:
                     self._heartbeat()
@@ -280,13 +294,14 @@ class Collector:
                     raw_fh.flush()
                     events_fh.flush()
                     bars_fh.flush()
+                    snaps_fh.flush()
                     last_flush = now
         except KeyboardInterrupt:
             self.stats.stop_reason = "interrupted"
         finally:
             for bar in self._drain_bars():
                 self._write_json(bars_fh, bar)
-            for fh in (raw_fh, events_fh, bars_fh):
+            for fh in (raw_fh, events_fh, bars_fh, snaps_fh):
                 fh.flush()
                 os.fsync(fh.fileno())
                 fh.close()

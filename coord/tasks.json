@@ -366,7 +366,7 @@
   "E-007": {
    "owner_session": "cloud-vega",
    "role": "Worker 2 \u2014 Market Data and Execution Engineer",
-   "state": "dispatched",
+   "state": "accepted",
    "contract_version": "v0.2.0+app_runtime_interfaces.md S3",
    "dependencies": [
     "specs/app_runtime_interfaces.md S3",
@@ -458,6 +458,6 @@
    ]
   }
  },
- "updated_utc": "2026-10-12T07:00:00Z",
+ "updated_utc": "2026-10-12T07:30:00Z",
  "version": 1
 }

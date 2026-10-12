@@ -1,5 +1,16 @@
 """Market-data connectors, discovery, recording, replay and streaming (Worker 2, E-001/E-006)."""
 from .bars import Bar1s, BarAggregator, BarMissing, to_s1_bar
+from .bridge import (
+    SNAPSHOT_FORMAT,
+    StreamBook,
+    StreamItem,
+    book_features,
+    flow_window,
+    iter_market_stream,
+    load_snapshots,
+    snapshot_record,
+    to_nautilus_ticks,
+)
 from .capabilities import CONNECTOR_CANDIDATES, ConnectorCapability, build_matrix, render_markdown
 from .collector import Collector, CollectorConfig, RunStats, measure_clock_offset_ms, select_capture_set
 from .depth import DepthBook, DepthState
@@ -31,11 +42,15 @@ __all__ = [
     "RecordingStats",
     "ReplayEvent",
     "RunStats",
+    "SNAPSHOT_FORMAT",
+    "StreamBook",
+    "StreamItem",
     "SymbolMeta",
     "WsClient",
     "WsClosed",
     "WsHandshakeError",
     "analyze_klines",
+    "book_features",
     "build_matrix",
     "channel_of",
     "discover_usdt_perps",
@@ -43,8 +58,11 @@ __all__ = [
     "eligible_symbols",
     "events_hash",
     "fetch_exchange_info",
+    "flow_window",
+    "iter_market_stream",
     "load_events",
     "load_recording",
+    "load_snapshots",
     "measure_clock_offset_ms",
     "parse_message",
     "raw_envelope",
@@ -53,5 +71,7 @@ __all__ = [
     "replay_events",
     "replay_hash",
     "select_capture_set",
+    "snapshot_record",
+    "to_nautilus_ticks",
     "to_s1_bar",
 ]

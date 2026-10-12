@@ -517,6 +517,10 @@ class Session:
             feed.agg.on_bbo(bid, ask, int(event["exchange_ts_ms"]))
         if feed.mark:
             self.engine.note_mark(symbol, feed.mark)
+        if hasattr(self.engine, "note_event"):
+            # True-cross upgrade: full normalized event to the sim (additive;
+            # reference engine lacks it and keeps mark-quote behavior).
+            self.engine.note_event(event)
         self._drain_engine()
         self._roll_day_if_needed()
         if self._position is not None:

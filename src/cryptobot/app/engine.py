@@ -26,7 +26,8 @@ class EngineOrder:
     reduce_only: bool = False
     reservation_id: str | None = None
     expire_at_utc: datetime | None = None
-    role: str = "entry"    # entry | stop | target
+    role: str = "entry"    # entry | stop | target (flatten/time-exit closes
+                           # reuse role="target"; there is no separate "exit")
 
 
 @dataclass(frozen=True)
