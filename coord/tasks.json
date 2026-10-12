@@ -756,6 +756,21 @@
    "owner_session": "cool-amalthea",
    "role": "risk",
    "state": "accepted"
+  },
+  "W1-24H": {
+   "state": "running"
+  },
+  "W2-24H": {
+   "state": "running"
+  },
+  "W3-24H": {
+   "state": "running"
+  },
+  "W4-24H": {
+   "state": "running"
+  },
+  "W5-24H": {
+   "state": "running"
   }
  },
  "updated_utc": "2026-10-12T08:30:00Z",
