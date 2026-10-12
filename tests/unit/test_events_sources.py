@@ -21,7 +21,8 @@ ET = ZoneInfo("America/New_York")
 
 def test_fomc_fixture_counts_and_ids():
     snap = FomcSource().load(T0)
-    assert snap.status == "fresh"
+    # W4-24H: a local load is cached, never a verified fetch.
+    assert snap.status == "cached"
     assert snap.source == "fomc"
     assert snap.source_url == ("https://www.federalreserve.gov/"
                               "monetarypolicy/fomccalendars.htm")
@@ -54,7 +55,8 @@ def test_fomc_decision_days_match_official_calendar():
 
 def test_cpi_fixture_dates_and_release_time():
     snap = CpiSource().load(T0)
-    assert snap.status == "fresh"
+    # W4-24H: a local load is cached, never a verified fetch.
+    assert snap.status == "cached"
     assert snap.source_url == "https://www.bls.gov/schedule/"
     assert len(snap.events) == 12
     days = [e.scheduled_local_iso[:10] for e in snap.events]
@@ -117,6 +119,8 @@ def test_apply_snapshot_loads_events_and_coverage():
     apply_snapshot(store, FomcSource().load(T0))
     apply_snapshot(store, CpiSource().load(T0))
     assert len(store) == 28
-    assert store.status_at(T0) == {"fomc": "fresh", "cpi": "fresh"}
+    # W4-24H: direct apply of a local read is explicitly unverified.
+    assert store.status_at(T0) == {"fomc": "unverified",
+                                   "cpi": "unverified"}
     assert store.get("CPI-2026-10-14").scheduled_utc == datetime(
         2026, 10, 14, 12, 30, tzinfo=timezone.utc)

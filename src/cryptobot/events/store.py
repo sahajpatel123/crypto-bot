@@ -22,14 +22,16 @@ def coverage_status(coverage: SourceCoverage | None,
                     now_utc: datetime) -> str:
     """Resolve the effective coverage state at ``now_utc``.
 
-    Order matters: an explicit outage or not-implemented marker wins over
-    time-based checks; a stale fetch wins over horizon (refetch first).
+    Order matters: an explicit outage, unverified cache, or
+    not-implemented marker wins over time-based checks; a stale fetch
+    wins over horizon (refetch first).
     """
     if now_utc.tzinfo is None:
         raise ValueError("now_utc must be timezone-aware")
     if coverage is None:
         return "unknown"
-    if coverage.status in ("outage", "not-implemented"):
+    if coverage.status in ("outage", "not-implemented", "unverified",
+                           "cached"):
         return coverage.status
     if now_utc > coverage.expires_utc:
         return "stale"

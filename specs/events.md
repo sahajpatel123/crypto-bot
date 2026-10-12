@@ -148,7 +148,7 @@ schedules are 2026 annual caches: using a December event's time in a
 September replay without a contemporaneous first-seen is leakage. Future
 work: per-replay cutoff filter in the harness.
 
-## 8. Test map
+## 8. Test map (EV-001)
 
 - `test_events_tz.py`: EST/EDT conversion, DST boundaries (Mar 8 / Nov 1
   2026), IST display incl. date rollover, wall/UTC mismatch rejection.
@@ -157,7 +157,104 @@ work: per-replay cutoff filter in the harness.
 - `test_events_sources.py`: fixture counts/IDs/dates/URLs/horizons,
   full DST audit of every fixture instant, outage/stub explicitness.
 - `test_events_gate.py`: pre/in/press/post windows incl. FOMC
-  decision→press continuity, stale-source fail-closed (all five states),
-  upcoming prepare-flat, cancelled skip, no-exit-API pin.
+  decision→press continuity, stale-source fail-closed, upcoming
+  prepare-flat, cancelled skip, no-exit-API pin.
 - `test_events_anomaly.py`: per-signal trip/action, worst-wins,
   hysteresis streak, None neutrality, cooldown, config validation.
+
+## 9. Profiles: protected-operational vs research-only (W4-24H)
+
+`events/profiles.py` classifies the run TOML (fail-closed):
+
+- **protected-operational**: `[run] events_enabled=true` AND `[events]`
+  with `require_verified_freshness=true`, `enable_anomaly=true`,
+  `advisory_only=false`. Reference: `configs/paper-protected.toml`
+  (W4-24H carve-out). Paper/live use with a current calendar.
+- **research-only**: everything else, with an explicit reason
+  (events off, verification not required, anomaly off, advisory set, or
+  replay without the first_seen cutoff). `paper.toml`, `r2.toml`,
+  `r3.toml` are preserved as explicit research-only; the gate may run
+  ADVISORY there (would-block logged, never enforced).
+
+`ReplayCutoff.apply(store, replay_now)` filters to events with
+`first_seen_utc <= replay_now`. Until Session wires the cutoff, replays
+MUST stay research-only (historical calendar availability unknown).
+
+## 10. Real freshness (W4-24H)
+
+Behavior change from EV-001 (directive finding: "calendar freshness
+renewed without fetching"):
+
+- `FixtureAdapter.load()` returns status **cached**; direct
+  `apply_snapshot()` records coverage **unverified**, which fails the
+  gate closed. A local read is never a successful fetch.
+- `FreshnessTracker(state_path, adapters)`:
+  - `local_load(store, now)`: restores caches; coverage resolves to
+    **fresh** only from a persisted `verified_utc` inside `CACHE_TTL`
+    (7 days), else **unverified** (never verified) or **stale**
+    (verification expired). Verified/fetched timestamps survive
+    reload/restart via `event_source_state.json` (atomic writes).
+  - `refresh_once(store, http_get, now)`: HTTP GET of each official
+    calendar (injectable transport; default urllib with UA + 20s
+    timeout). Success = HTTP 200 + page marker + every cached schedule
+    date present → `verified_utc=now`, persisted. Failure (transport,
+    non-200, marker/parse failure, missing cached dates) keeps serving
+    the cache, records outage + consecutive failures, and leaves
+    `verified_utc` untouched. Past `verified_utc + CACHE_TTL` with no
+    successful refresh, the gate blocks.
+  - `start(store, http_get, interval_s)` / `stop()`: background daemon
+    refresh (default 6h cadence) for paper sessions.
+- Schedule diffs vs the page are recorded as drift CANDIDATES
+  (`drift_missing`/`drift_extra` + payload hash) and NEVER auto-applied.
+- Parsers: `parse_fomc_decision_dates` (statement links + month blocks,
+  real-page structure), `parse_cpi_release_dates` (long-form dates;
+  first live fetch must confirm the real BLS layout — mismatch fails
+  closed). Canned pages live in `fixtures/canned/` (Fed: trimmed real
+  content; BLS: labeled synthetic double).
+
+## 11. Protection runtime + evidence (W4-24H)
+
+`ProtectionRuntime(store, gate_cfg, anomaly_cfg, evidence_path,
+advisory_only)` is the anomaly policy's first runtime caller:
+
+- `check_entry(now, reading, baseline)`: fuses gate + anomaly; blocks
+  when the gate blocks OR the anomaly action is reject/cancel/halt.
+  Advisory mode logs `advisory-would-block:<reason>` without enforcing.
+- `observe(now, reading, baseline)`: per-tick anomaly fold (logged,
+  never blocks by itself). `log_refresh(now, results)`: refresh rounds.
+- `evidence.py`: JSONL log (header with profile + schedule fingerprint,
+  then full-input records) + `replay_evidence(path, rebuild)` which
+  re-folds entry-checks/observations through fresh components and
+  reports divergences. `test_events_protection_replay.py` runs the
+  committed scenario: quiet allow → CPI pre/in-window blocks → clear →
+  anomaly halt → cooldown → recovery, all reproduced from evidence.
+
+W4-24H tests: `test_events_profiles.py` (8), `test_events_freshness.py`
+(10), `test_events_runtime.py` (7), `test_events_protection_replay.py`
+(2).
+
+## 12. Manager wiring patch (proposal, method-scoped)
+
+Session already builds `EventGate` in `_build_event_gate` and checks it
+in `_maybe_admit` (landed post-EV-001). To activate W4-24H protection,
+the manager's queue:
+
+1. `_build_event_gate`: replace `EventStore`+`required_snapshots` with
+   `FreshnessTracker(workdir/"event_source_state.json", [FomcSource(),
+   CpiSource()])`, `local_load`, one blocking `refresh_once` (or proceed
+   unverified → entries blocked until the first background refresh
+   succeeds), then `ProtectionRuntime(store, profile.gate,
+   profile.anomaly, workdir/"protection_evidence.jsonl",
+   advisory_only=(profile.posture == "research-only"))`. Start the
+   background refresher for paper mode; stop it on session close.
+2. `_maybe_admit`: replace the `event_gate.check` block with
+   `protection.check_entry(now, reading_from_tick, baseline)` where the
+   reading is built from `DepthStore` spread/depth, recent trade
+   returns, `_dispatch_ms`/queue lag, and engine error counters.
+3. Per-tick: call `protection.observe(now, reading, baseline)` from the
+   ingest path so anomaly state folds even without candidates.
+4. Replay: apply `ReplayCutoff` at the selected replay instant before
+   enforcing, or keep `events_enabled=false` (research-only).
+5. `[events]` TOML keys (see `configs/paper-protected.toml`) need
+   `AppConfig` keys if the manager wants them in the fingerprint;
+   `events/profiles.py` parses them directly until then.

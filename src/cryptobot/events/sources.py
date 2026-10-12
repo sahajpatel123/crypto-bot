@@ -1,13 +1,14 @@
 """Source adapters: cached fixtures + explicit outage behavior (EV-001).
 
 EV-001 ships cached FOMC + CPI schedules as JSON fixtures. Adapters load
-them into the store with fetch/horizon/expiry metadata. Live HTTP refresh
-is out of scope; the snapshot status vocabulary already covers outage and
-stale so a future live adapter plugs in without changing the gate.
+them into the store with fetch/horizon/expiry metadata. Since W4-24H, a
+local load is NEVER a successful fetch: snapshots carry status "cached"
+and only FreshnessTracker.refresh_once() (HTTP verification against the
+official calendar) can resolve coverage to "fresh". See freshness.py.
 
-Coverage TTL is 24h: a cached schedule older than that reads "stale" and
-the gate fails closed until a refetch (fixture reload with a new fetch
-timestamp, or a future live fetch) lands.
+Direct apply_snapshot() of a cached snapshot records coverage
+"unverified", which fails the gate closed. Resolved "fresh" coverage
+carries the persisted verified_utc and expires verified_utc + CACHE_TTL.
 """
 from __future__ import annotations
 
@@ -41,13 +42,19 @@ class SourceSnapshot:
     error: str = ""
 
     def coverage(self, ttl: timedelta = COVERAGE_TTL) -> SourceCoverage:
+        if self.status in ("outage", "not-implemented"):
+            resolved = self.status
+        elif self.status == "fresh":
+            resolved = "fresh"
+        else:
+            # Local reads ("cached" or anything unexpected) never verify.
+            resolved = "unverified"
         return SourceCoverage(
             source=self.source, source_url=self.source_url,
             horizon_end_utc=self.horizon_end_utc,
             fetched_utc=self.fetched_utc,
             expires_utc=self.fetched_utc + ttl,
-            status=self.status if self.status in (
-                "fresh", "outage", "not-implemented") else "fresh",
+            status=resolved,
             last_error=self.error)
 
 
@@ -153,7 +160,7 @@ class FixtureAdapter:
         return SourceSnapshot(
             source=self.source_id, source_url=self.source_url,
             events=tuple(events), horizon_end_utc=horizon,
-            fetched_utc=now_utc, status="fresh")
+            fetched_utc=now_utc, status="cached")
 
 
 class FomcSource(FixtureAdapter):

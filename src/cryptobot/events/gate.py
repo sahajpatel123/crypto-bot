@@ -12,8 +12,8 @@ event restrictions cannot suppress protective exits. Session consults
 decision to rejection reason ``event:<cause>`` (stage "event" in
 rejections.jsonl).
 
-Fail-closed coverage: when any REQUIRED source is unknown, outage, stale,
-or past its horizon, check() blocks with an explicit
+Fail-closed coverage: when any REQUIRED source is unknown, outage,
+stale, unverified, or past its horizon, check() blocks with an explicit
 ``event:stale-source:<source>:<state>`` reason. A source outage or an
 incomplete horizon can never silently mean "no events".
 """

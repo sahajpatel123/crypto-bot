@@ -5,46 +5,66 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
-from cryptobot.events.gate import EventGate, GateConfig
-from cryptobot.events.sources import (
+import cryptobot.events as _evpkg  # noqa: E402
+from cryptobot.events.freshness import (FreshnessTracker,  # noqa: E402
+                                        HttpResponse)
+from cryptobot.events.gate import EventGate, GateConfig  # noqa: E402
+from cryptobot.events.sources import (  # noqa: E402
     CpiSource,
     FomcSource,
     StubAdapter,
     apply_snapshot,
 )
-from cryptobot.events.store import EventStore
+from cryptobot.events.store import EventStore  # noqa: E402
+
+CANNED = Path(_evpkg.__file__).parent / "fixtures" / "canned"
 
 
 def _utc(*args):
     return datetime(*args, tzinfo=timezone.utc)
 
 
-def _live_store(now):
+def _canned(http_url, timeout_s=20):
+    name = ("fomc_page_2026.txt" if "federalreserve" in http_url
+            else "bls_cpi_page_2026.txt")
+    return HttpResponse(status=200,
+                        body=(CANNED / name).read_bytes(), url=http_url)
+
+
+def _live_store(now, tmp_path):
+    """Verified store via the real tracker path (W4-24H).
+
+    Local load alone is unverified; verification runs through
+    refresh_once() with canned official pages (no network).
+    """
     store = EventStore()
-    apply_snapshot(store, FomcSource().load(now))
-    apply_snapshot(store, CpiSource().load(now))
+    tracker = FreshnessTracker(tmp_path / "state.json",
+                               [FomcSource(), CpiSource()])
+    tracker.local_load(store, now)
+    results = tracker.refresh_once(store, _canned, now)
+    assert all(r.ok for r in results.values())
     return store
 
 
-def test_quiet_day_is_clear():
+def test_quiet_day_is_clear(tmp_path):
     now = _utc(2026, 10, 12, 13, 10)
-    decision = EventGate(_live_store(now)).check(now)
+    decision = EventGate(_live_store(now, tmp_path)).check(now)
     assert decision.blocked is False
     assert decision.reason == "event:clear"
 
 
-def test_cpi_pre_window_edges():
+def test_cpi_pre_window_edges(tmp_path):
     now = _utc(2026, 10, 14, 12, 0)
-    gate = EventGate(_live_store(now))
+    gate = EventGate(_live_store(now, tmp_path))
     assert gate.check(_utc(2026, 10, 14, 12, 14, 59)).reason == "event:clear"
     pre = gate.check(_utc(2026, 10, 14, 12, 15))
     assert pre.blocked is True
     assert pre.reason == "event:pre-window:CPI-2026-10-14"
 
 
-def test_cpi_in_window_through_post_buffer():
+def test_cpi_in_window_through_post_buffer(tmp_path):
     now = _utc(2026, 10, 14, 12, 30)
-    gate = EventGate(_live_store(now))
+    gate = EventGate(_live_store(now, tmp_path))
     assert gate.check(_utc(2026, 10, 14, 12, 30)).reason == \
         "event:in-window:CPI-2026-10-14"
     assert gate.check(_utc(2026, 10, 14, 12, 45)).reason == \
@@ -52,9 +72,9 @@ def test_cpi_in_window_through_post_buffer():
     assert gate.check(_utc(2026, 10, 14, 12, 45, 1)).reason == "event:clear"
 
 
-def test_cooldown_extends_post_window():
+def test_cooldown_extends_post_window(tmp_path):
     now = _utc(2026, 10, 14, 12, 30)
-    gate = EventGate(_live_store(now),
+    gate = EventGate(_live_store(now, tmp_path),
                      GateConfig(resume_cooldown_s=600))
     post = gate.check(_utc(2026, 10, 14, 12, 50))
     assert post.blocked is True
@@ -62,11 +82,11 @@ def test_cooldown_extends_post_window():
     assert gate.check(_utc(2026, 10, 14, 12, 55, 1)).reason == "event:clear"
 
 
-def test_fomc_decision_to_press_is_continuous():
+def test_fomc_decision_to_press_is_continuous(tmp_path):
     # Decision 18:00 -> block 17:45-18:15; press 18:30 -> block
     # 18:15-19:45. No gap an entry can slip through.
     now = _utc(2026, 9, 16, 18, 0)
-    gate = EventGate(_live_store(now))
+    gate = EventGate(_live_store(now, tmp_path))
     assert gate.check(_utc(2026, 9, 16, 17, 44, 59)).reason == "event:clear"
     assert gate.check(_utc(2026, 9, 16, 17, 50)).reason == \
         "event:pre-window:FOMC-2026-09-16-decision"
@@ -79,9 +99,9 @@ def test_fomc_decision_to_press_is_continuous():
     assert gate.check(_utc(2026, 9, 16, 19, 45, 1)).reason == "event:clear"
 
 
-def test_window_end_covers_all_hits():
+def test_window_end_covers_all_hits(tmp_path):
     now = _utc(2026, 9, 16, 18, 15)
-    decision = EventGate(_live_store(now)).check(now)
+    decision = EventGate(_live_store(now, tmp_path)).check(now)
     assert decision.blocked is True
     assert decision.window_end_utc == _utc(2026, 9, 16, 19, 45)
     assert set(decision.event_ids) == {"FOMC-2026-09-16-decision",
@@ -106,25 +126,27 @@ def test_outage_blocks_with_explicit_reason():
     assert decision.reason == "event:stale-source:fomc:outage"
 
 
-def test_stale_fetch_blocks_after_ttl():
+def test_stale_fetch_blocks_after_ttl(tmp_path):
+    # W4-24H: verified cache lives 7 days; only past-TTL reads stale.
     loaded = _utc(2026, 10, 12, 13, 10)
-    gate = EventGate(_live_store(loaded))
-    decision = gate.check(loaded + timedelta(hours=25))
+    gate = EventGate(_live_store(loaded, tmp_path))
+    assert gate.check(loaded + timedelta(hours=25)).reason == "event:clear"
+    decision = gate.check(loaded + timedelta(days=8))
     assert decision.blocked is True
     assert decision.reason == "event:stale-source:fomc:stale"
 
 
-def test_elapsed_horizon_blocks():
+def test_elapsed_horizon_blocks(tmp_path):
     loaded = _utc(2026, 12, 11, 12, 0)
-    gate = EventGate(_live_store(loaded))
+    gate = EventGate(_live_store(loaded, tmp_path))
     decision = gate.check(loaded)
     assert decision.blocked is True
     assert "expired-horizon" in decision.reason
 
 
-def test_required_stub_blocks_optional_stub_ignored():
+def test_required_stub_blocks_optional_stub_ignored(tmp_path):
     now = _utc(2026, 10, 12, 13, 10)
-    store = _live_store(now)
+    store = _live_store(now, tmp_path)
     apply_snapshot(store, StubAdapter(
         "employment", "https://www.bls.gov/schedule/").load(now))
     strict = EventGate(store, GateConfig(
@@ -135,9 +157,9 @@ def test_required_stub_blocks_optional_stub_ignored():
     assert relaxed.check(now).reason == "event:clear"
 
 
-def test_upcoming_prepare_flat():
+def test_upcoming_prepare_flat(tmp_path):
     now = _utc(2026, 10, 14, 11, 0)
-    gate = EventGate(_live_store(now))
+    gate = EventGate(_live_store(now, tmp_path))
     upcoming = gate.upcoming(now, 7200)
     assert [(u.event.event_id, u.action) for u in upcoming] == [
         ("CPI-2026-10-14", "prepare-flat")]
@@ -145,18 +167,18 @@ def test_upcoming_prepare_flat():
     assert gate.upcoming(_utc(2026, 10, 1, 12, 0), 3600) == []
 
 
-def test_cancelled_events_never_block():
+def test_cancelled_events_never_block(tmp_path):
     now = _utc(2026, 10, 14, 12, 30)
-    store = _live_store(now)
+    store = _live_store(now, tmp_path)
     event = store.get("CPI-2026-10-14")
     import dataclasses
     store.upsert(dataclasses.replace(event, status="cancelled"))
     assert EventGate(store).check(now).reason == "event:clear"
 
 
-def test_active_lists_in_window_events():
+def test_active_lists_in_window_events(tmp_path):
     now = _utc(2026, 9, 16, 18, 15)
-    actives = EventGate(_live_store(now)).active(now)
+    actives = EventGate(_live_store(now, tmp_path)).active(now)
     assert {e.event_id for e in actives} == {
         "FOMC-2026-09-16-decision", "FOMC-2026-09-16-press"}
 

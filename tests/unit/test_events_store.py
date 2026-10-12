@@ -91,6 +91,9 @@ def test_coverage_states():
     assert coverage_status(_coverage("outage"), T0) == "outage"
     assert coverage_status(_coverage("not-implemented"), T0) == \
         "not-implemented"
+    # W4-24H: cached/unverified caches never read fresh.
+    assert coverage_status(_coverage("cached"), T0) == "cached"
+    assert coverage_status(_coverage("unverified"), T0) == "unverified"
     assert coverage_status(_coverage(), T0) == "fresh"
     assert coverage_status(_coverage(), T0 + timedelta(hours=25)) == "stale"
     past = _coverage(horizon=T0 - timedelta(hours=1))

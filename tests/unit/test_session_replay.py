@@ -767,7 +767,9 @@ def test_event_gate_blocks_admit(tmp_path):
         now = datetime(2026, 10, 12, 6, 0, tzinfo=timezone.utc)
         session.clock.set_ms(int(now.timestamp() * 1000))
         session.policy.reconcile_day(120.0, 0.0)
-        session.event_gate = _gate_at(session.now_utc(), offset_s=0)
+        from cryptobot.events.runtime import ProtectionRuntime
+        gate = _gate_at(session.now_utc(), offset_s=0)
+        session.protection = ProtectionRuntime(gate.store, gate.config)
         session._maybe_admit([Candidate("S1", _intent(now))])
         assert session._position is None
         assert session.policy._state.reservations == {}
@@ -789,8 +791,9 @@ def test_event_gate_clear_passes_through(tmp_path):
         now = datetime(2026, 10, 12, 6, 0, tzinfo=timezone.utc)
         session.clock.set_ms(int(now.timestamp() * 1000))
         session.policy.reconcile_day(120.0, 0.0)
-        session.event_gate = _gate_at(
-            session.now_utc(), offset_s=10_000)
+        from cryptobot.events.runtime import ProtectionRuntime
+        gate = _gate_at(session.now_utc(), offset_s=10_000)
+        session.protection = ProtectionRuntime(gate.store, gate.config)
         session._maybe_admit([Candidate("S1", _intent(now))])
         # Reached risk + submit (rejected there, proving gate passed).
         assert ("execution:submit-rejected:ValueError"
@@ -1199,6 +1202,29 @@ def test_stop_actions_cancel_reduce_and_alert_once(tmp_path):
                   (session.workdir / "risk.jsonl").read_text().splitlines()
                   if '"operator-alert"' in line]
         assert len(alerts) == 1
+    finally:
+        store.close()
+
+
+def test_events_wiring_advisory_replay(tmp_path):
+    """Manager §12: events_enabled replay builds advisory runtime + cutoff."""
+    import dataclasses
+    from cryptobot.app.session import Session
+    cfg = load_config(_config(tmp_path, warmup_bars=3))
+    cfg = dataclasses.replace(cfg, events_enabled=True)
+    store = RunStore(tmp_path / "runs" / "cryptobot.db")
+    session = Session(cfg, store, tmp_path / "runs" / "evw", "evw")
+    try:
+        assert session.protection is not None
+        assert session.protection.advisory_only is True
+        cap = _capture(tmp_path / "cap")
+        report = session.run_replay(cap, expect_class=CLASS)
+        assert report["events_seen"] > 0
+        row = store._db.execute(
+            "SELECT payload FROM checkpoints WHERE run_id=? AND kind=?",
+            ("evw", "event-cutoff")).fetchone()
+        assert row is not None
+        assert (session.workdir / "protection_evidence.jsonl").exists()
     finally:
         store.close()
 

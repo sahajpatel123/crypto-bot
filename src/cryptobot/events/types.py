@@ -11,7 +11,7 @@ EVENT_STATUSES = ("scheduled", "released", "revised", "cancelled")
 EVENT_KINDS = ("decision", "press-conference", "release", "maintenance",
                "delisting")
 COVERAGE_STATUSES = ("fresh", "stale", "expired-horizon", "outage",
-                     "unknown", "not-implemented")
+                     "unknown", "not-implemented", "cached", "unverified")
 
 
 @dataclass(frozen=True)
@@ -170,6 +170,7 @@ class SourceCoverage:
     expires_utc: datetime
     status: str = "fresh"
     last_error: str = ""
+    verified_utc: datetime | None = None
 
     def __post_init__(self) -> None:
         if self.status not in COVERAGE_STATUSES:
@@ -180,6 +181,8 @@ class SourceCoverage:
         if (self.horizon_end_utc is not None
                 and self.horizon_end_utc.tzinfo is None):
             raise ValueError("horizon_end_utc must be timezone-aware")
+        if self.verified_utc is not None and self.verified_utc.tzinfo is None:
+            raise ValueError("verified_utc must be timezone-aware")
 
     def to_dict(self) -> dict:
         return {
@@ -189,6 +192,8 @@ class SourceCoverage:
             "fetched_utc": self.fetched_utc.isoformat(),
             "expires_utc": self.expires_utc.isoformat(),
             "status": self.status, "last_error": self.last_error,
+            "verified_utc": (self.verified_utc.isoformat()
+                             if self.verified_utc else None),
         }
 
     @classmethod
@@ -200,4 +205,6 @@ class SourceCoverage:
             fetched_utc=parse_iso_utc(data["fetched_utc"]),
             expires_utc=parse_iso_utc(data["expires_utc"]),
             status=data.get("status", "fresh"),
-            last_error=data.get("last_error", ""))
+            last_error=data.get("last_error", ""),
+            verified_utc=(parse_iso_utc(data["verified_utc"])
+                          if data.get("verified_utc") else None))

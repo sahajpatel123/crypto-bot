@@ -175,6 +175,9 @@ class Session:
         self._resyncs_seen: dict[str, int] = {}
         self._stop_alerted = False
         self.event_gate: Any | None = None
+        self.protection: Any | None = None
+        self._freshness: Any | None = None
+        self._exchange_errors = 0
         if config.events_enabled:
             self._build_event_gate()
         self._position: dict[str, Any] | None = None
@@ -576,15 +579,17 @@ class Session:
         if decision.admitted is None:
             return
         intent = decision.admitted
-        if self.event_gate is not None:
-            gate = self.event_gate.check(self.now_utc())
-            if gate.blocked:
-                self._note_reject(gate.reason, intent.strategy,
+        if self.protection is not None:
+            reading, baseline = self._protection_reading(intent.instrument)
+            verdict = self.protection.check_entry(
+                self.now_utc(), reading, baseline)
+            if verdict.blocked:
+                self._note_reject(verdict.reason, intent.strategy,
                                   intent.instrument, intent.side.value)
                 self.store.record_intent(
                     self.run_id, intent.evidence_ref, intent.strategy,
                     intent.instrument, intent.side.value, "rejected",
-                    gate.reason, self.now_utc().isoformat())
+                    verdict.reason, self.now_utc().isoformat())
                 return
         verdict = self.policy.evaluate(intent, self._snapshot_account())
         if not isinstance(verdict, Approved):
@@ -1005,6 +1010,17 @@ class Session:
             raise ValueError(f"no events in {events_path}")
         assert_input_class({"input_class": first["input_class"]}, expect_class)
         adapters, modules = self._strategy_adapters()
+        if self.protection is not None:
+            # ReplayCutoff at the first event instant (W4-24H §12):
+            # future-knowledge events must not gate a historical replay.
+            from cryptobot.events.profiles import ReplayCutoff
+            first_dt = datetime.fromtimestamp(
+                int(first["exchange_ts_ms"]) / 1000.0, tz=timezone.utc)
+            filtered, counts = ReplayCutoff.apply(
+                self.protection.store, first_dt)
+            self.protection.store = filtered
+            self.protection.gate.store = filtered
+            self.store.checkpoint(self.run_id, "event-cutoff", counts)
         if not resume:
             # Day baseline at first event time (causal).
             self.clock.set_ms(int(first["exchange_ts_ms"]))
@@ -1092,6 +1108,7 @@ class Session:
         }
         (self.workdir / "report.json").write_text(json.dumps(report, indent=2))
         (self.workdir / "report.md").write_text(self._render_report(report))
+        self._stop_refresh()
         return report
 
     def _ingest(self, event: dict[str, Any], adapters: dict[str, Any],
@@ -1189,6 +1206,14 @@ class Session:
         if closed:
             self._sample_equity("bar")
             self._event_prepare_flat()
+            if self.protection is not None and symbol is not None:
+                # Fold one reading per bar-close (bounded, causal):
+                # anomaly state advances even with no candidates.
+                try:
+                    reading, baseline = self._protection_reading(symbol)
+                    self.protection.observe(self.now_utc(), reading, baseline)
+                except (KeyError, TypeError, ValueError):
+                    pass
         health = self.policy.check_health(self._snapshot_account())
         if not health.ok:
             self.engine.set_exit_only(True, ";".join(health.reasons))
@@ -1245,6 +1270,15 @@ class Session:
                     self.engine.set_exit_only(False, "emergency-recovered")
                     self._set_state("ready", "emergency-recovered")
 
+    def _stop_refresh(self) -> None:
+        """Stop the background official-source refresher, if running."""
+        tracker = self._freshness
+        if tracker is not None:
+            try:
+                tracker.stop()
+            except (RuntimeError, OSError):
+                pass
+
     def _drain_unknown_outcomes(self) -> None:
         """Resolve unknown order outcomes via lookup (W3-24H P4).
 
@@ -1276,22 +1310,94 @@ class Session:
                     "reason": f"{type(exc).__name__}:still-blocking"})
 
     def _build_event_gate(self) -> None:
-        """Load required event sources into an entry gate (EV-001 seam).
+        """Build the calendar/anomaly protection runtime (W4-24H §12).
 
-        Paper/live use: fixtures stamped at load (24h coverage TTL).
-        Historical replays must filter by first_seen_utc (specs/events.md
-        section 7); the harness cutoff lands post-Q-008, so replay runs
-        keep events_enabled=False until then.
+        Protected posture (paper + protected profile): local fixture
+        load (never a fetch), one blocking official-source verify, then
+        a background refresher; entries require verified freshness and
+        pass gate + anomaly. Research posture (replay, or any profile
+        without [events] protection keys): advisory only — would-block
+        is logged, entries flow. Replay additionally applies
+        ReplayCutoff at the first event instant in run_replay.
         """
-        from cryptobot.events.gate import EventGate
-        from cryptobot.events.sources import (apply_snapshot,
-                                              required_snapshots)
+        from cryptobot.events.freshness import (
+            FreshnessTracker, default_http_get)
+        from cryptobot.events.profiles import load_profile
+        from cryptobot.events.runtime import ProtectionRuntime
+        from cryptobot.events.sources import CpiSource, FomcSource
         from cryptobot.events.store import EventStore
         now = self.now_utc()
+        try:
+            profile = load_profile(self.config.source_path)
+        except (ValueError, OSError):
+            profile = None
+        protected = (
+            profile is not None and profile.posture == "protected"
+            and self.config.mode == "paper")
+        tracker = FreshnessTracker(
+            self.workdir / "event_source_state.json",
+            [FomcSource(), CpiSource()])
         store = EventStore()
-        for snap in required_snapshots(now):
-            apply_snapshot(store, snap)
-        self.event_gate = EventGate(store)
+        tracker.local_load(store, now)
+        results = None
+        if protected:
+            # One blocking verify at startup; entries stay blocked
+            # until a refresh succeeds (gate requires fresh sources).
+            results = tracker.refresh_once(store, default_http_get, now)
+        runtime = ProtectionRuntime(
+            store,
+            getattr(profile, "gate", None),
+            getattr(profile, "anomaly", None),
+            self.workdir / "protection_evidence.jsonl",
+            advisory_only=not protected)
+        if results is not None:
+            runtime.log_refresh(now, {
+                k: {"ok": v.ok, "error": v.error} for k, v in results.items()})
+        self.protection = runtime
+        self.event_gate = runtime.gate  # pre-window sweep compat.
+        self._freshness = tracker
+        if protected:
+            interval = float(profile.refresh_interval_s)
+            tracker.start(store, default_http_get, interval_s=interval,
+                          now_utc=self.now_utc,
+                          on_result=lambda res: runtime.log_refresh(
+                              self.now_utc(), {
+                                  k: {"ok": v.ok, "error": v.error}
+                                  for k, v in res.items()}))
+
+    def _protection_reading(self, symbol: str):
+        """Measured anomaly inputs for one symbol (W4-24H §12).
+
+        Unmeasured inputs stay None (policy skips them); only observed
+        quantities feed decisions. Returns (reading, baseline).
+        """
+        from cryptobot.events.anomaly import AnomalyBaseline, AnomalyReading
+        spread = depth_ratio = abs_ret = latency = None
+        try:
+            book, _, _ = book_flow_for(
+                symbol, int(self.now_utc().timestamp() * 1000),
+                self._depth_store)
+            if book is not None:
+                spread = float(book.spread_bps)
+        except (KeyError, TypeError, ValueError):
+            pass
+        feed = self._feeds.get(symbol)
+        bars = list(getattr(feed, "bars", []) or [])
+        if len(bars) >= 2 and getattr(bars[-2], "close", 0) > 0:
+            abs_ret = abs(bars[-1].close / bars[-2].close - 1.0) * 1e4
+        if self._age_ms:
+            latency = float(self._age_ms[-1])
+        unknown = getattr(self.engine, "unknown_ids", None)
+        errors = self._exchange_errors
+        if callable(unknown):
+            try:
+                errors += len(unknown())
+            except Exception:
+                pass
+        return (AnomalyReading(
+            spread_bps=spread, book_depth_ratio=depth_ratio,
+            abs_return_bps=abs_ret, latency_ms=latency,
+            exchange_error_count=errors), AnomalyBaseline())
 
     def _event_prepare_flat(self) -> None:
         """Pre-window sweep: cancel unfilled entries ahead of event windows.
@@ -1568,6 +1674,7 @@ class Session:
                                     mode="paper")
         (self.workdir / "report.json").write_text(json.dumps(report, indent=2))
         (self.workdir / "report.md").write_text(self._render_report(report))
+        self._stop_refresh()
         return report
 
     # -- report ------------------------------------------------------------------
