@@ -263,6 +263,22 @@ def cmd_stop(args: argparse.Namespace) -> int:
         store.close()
 
 
+def cmd_report(args: argparse.Namespace) -> int:
+    from cryptobot.reporting import build_report
+    from cryptobot.reporting.schemas import RunFileError
+    from cryptobot.reporting.metrics import ReconciliationError
+    run_dir = Path(args.run_dir)
+    out_dir = Path(args.out) if args.out else run_dir / "analysis"
+    try:
+        artifacts = build_report(run_dir, out_dir)
+    except (RunFileError, ReconciliationError) as exc:
+        print(f"report failed: {exc}", file=sys.stderr)
+        return 1
+    for name, path in artifacts.items():
+        print(f"{name}: {path}")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="cryptobot",
                                      description="Bot v0.1 paper/replay application")
@@ -298,6 +314,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--flatten", action="store_true")
     p.add_argument("--storage", default="runs")
     p.set_defaults(func=cmd_stop)
+    p = sub.add_parser("report")
+    p.add_argument("--run-dir", required=True)
+    p.add_argument("--out", default=None)
+    p.set_defaults(func=cmd_report)
     return parser
 
 

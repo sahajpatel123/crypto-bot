@@ -373,6 +373,8 @@ class _ScriptedEngine:
     def __init__(self):
         self.attach_script: list = []
         self.leg_states: dict = {}
+        self.leg_qty: dict = {}
+        self.leg_filled: dict = {}
         self.submitted_immediate: list = []
         self.cancelled: list = []
         self.attaches = 0
@@ -398,7 +400,9 @@ class _ScriptedEngine:
         return action
     def open_orders(self):
         from cryptobot.app.engine import EngineOrderStatus
-        return [EngineOrderStatus(cid, "BTCUSDT", st, 1.0, 0.0)
+        return [EngineOrderStatus(cid, "BTCUSDT", st,
+                                  self.leg_qty.get(cid, 1.0),
+                                  self.leg_filled.get(cid, 0.0))
                 for cid, st in self.leg_states.items()]
     def filled_qty(self, cid):
         return 0.0
@@ -592,3 +596,124 @@ def test_cli_doctor_run_status_stop(tmp_path):
     assert main(["stop", "--run-id", "cli-1", "--storage", storage]) == 0
     assert main(["status", "--run-id", "missing",
                  "--storage", storage]) == 1
+
+
+def test_protection_stop_must_cover_risk_approved_qty(tmp_path):
+    """B8 ack loop: a stop covering the net but not the approved qty fails."""
+    from cryptobot.risk.state import Reservation
+    session, store, engine = _protection_session(tmp_path)
+    try:
+        session.policy._state.reservations["r-1"] = Reservation(
+            reservation_id="r-1", intent_ref="i", instrument="BTCUSDT",
+            side="LONG", notional=200.0, reserved_risk=1.0,
+            created_utc="2026-10-12T06:00:00+00:00",
+            expires_utc="2026-10-12T07:00:00+00:00", qty=2.0)
+        engine.attach_script = [["stop-1"], ["stop-2"]]
+        engine.leg_states = {"stop-1": "open"}
+        engine.leg_qty = {"stop-1": 1.0}  # covers net 1.0, not approved 2.0
+        session._ensure_protection(session._position)
+        assert session._position["protected"] is False
+        assert session._position["legs"] == []
+        assert "protection-unverified" in _checkpoints(store)
+        engine.leg_states = {"stop-2": "open"}
+        engine.leg_qty = {"stop-2": 2.0}
+        session._ensure_protection(session._position)
+        assert session._position["protected"] is True
+    finally:
+        store.close()
+
+
+def test_replay_run_feeds_reporting_package(tmp_path):
+    """B6: a replay workdir loads strictly and reconciles via reporting/."""
+    import json as _json
+    from cryptobot.cli import main
+    from cryptobot.reporting import build_report
+    session, store = _session(tmp_path, warmup_bars=3)
+    try:
+        cap = _capture(tmp_path / "cap")
+        session.run_replay(cap, expect_class=CLASS)
+        assert (session.workdir / "config.toml").exists()
+        assert (session.workdir / "dataset_manifest.json").exists()
+        out = tmp_path / "analysis"
+        artifacts = build_report(session.workdir, out)
+        assert sorted(artifacts) == [
+            "daily_returns.csv", "equity.csv", "rejections.csv",
+            "report.html", "summary.json", "trades.csv"]
+        summary = _json.loads((out / "summary.json").read_text())
+        assert summary["reconciliation"]["status"] == "agree"
+        cli_out = tmp_path / "cli-analysis"
+        assert main(["report", "--run-dir", str(session.workdir),
+                     "--out", str(cli_out)]) == 0
+        assert (cli_out / "report.html").exists()
+    finally:
+        store.close()
+
+
+def _reservation(rid="r-1", qty=1.0):
+    from cryptobot.risk.state import Reservation
+    return Reservation(
+        reservation_id=rid, intent_ref="i", instrument="BTCUSDT",
+        side="LONG", notional=100.0, reserved_risk=1.0,
+        created_utc="2026-10-12T06:00:00+00:00",
+        expires_utc="2026-10-12T07:00:00+00:00", qty=qty)
+
+
+def test_flat_inference_releases_risk_hold(tmp_path):
+    """Q-007: flat inference frees the reservation for the next approval."""
+    from cryptobot.app.engine import EngineEvent
+    session, store, engine = _protection_session(tmp_path)
+    try:
+        session.ledger.record_fill(
+            "SELL", 1.0, 101.0, 0.05,
+            datetime.now(timezone.utc), "e2")
+        assert not session.ledger.has_position()
+        session.policy._state.reservations["r-1"] = _reservation()
+        session.policy._state.open_position = True
+        engine.leg_states = {"e": "filled"}
+        engine.leg_filled = {"e": 1.0}
+        session._update_position(
+            EngineEvent("tick", None, datetime.now(timezone.utc)))
+        assert session._position is None
+        assert store.get_run("prot")["state"] == "ready"
+        assert session.policy._state.reservations == {}
+        assert session.policy._state.open_position is False
+        assert session.policy._state.unresolved == {}
+    finally:
+        store.close()
+
+
+def test_flat_inference_lifts_zero_net_unresolved(tmp_path):
+    """Q-007 trap: expired-then-flat reservation must not block forever."""
+    from cryptobot.app.engine import EngineEvent
+    session, store, engine = _protection_session(tmp_path)
+    try:
+        session.ledger.record_fill(
+            "SELL", 1.0, 101.0, 0.05,
+            datetime.now(timezone.utc), "e2")
+        session.policy._state.reservations["r-1"] = _reservation()
+        session.policy._move_to_unresolved(
+            "r-1", datetime.now(timezone.utc))
+        assert session.policy.unresolved_ids() == ("r-1",)
+        engine.leg_states = {"e": "filled"}
+        engine.leg_filled = {"e": 1.0}
+        session._update_position(
+            EngineEvent("tick", None, datetime.now(timezone.utc)))
+        assert session._position is None
+        assert session.policy.unresolved_ids() == ()
+    finally:
+        store.close()
+
+
+def test_entry_dead_releases_reservation(tmp_path):
+    """Q-007: a dead entry frees its reservation (zero booked)."""
+    from cryptobot.app.engine import EngineEvent
+    session, store, engine = _protection_session(tmp_path)
+    try:
+        session.policy._state.reservations["r-1"] = _reservation()
+        engine.leg_states = {"e": "rejected"}
+        session._update_position(
+            EngineEvent("tick", None, datetime.now(timezone.utc)))
+        assert session._position is None
+        assert session.policy._state.reservations == {}
+    finally:
+        store.close()

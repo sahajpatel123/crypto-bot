@@ -7,6 +7,7 @@ Nautilus for paper via E-007).
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import math
 import time
@@ -137,6 +138,7 @@ class Session:
         self._last_seq = 0
         self._last_equity_sample: datetime | None = None
         self._equity_dirty = True
+        self._run_start_utc: datetime | None = None
         self._crash_after: int | None = None
         self._stop_flag: str | None = None
         self._pid = pid
@@ -421,10 +423,12 @@ class Session:
                      instrument: str = "", side: str = "") -> None:
         self._reject_counts[reason] = self._reject_counts.get(reason, 0) + 1
         stage = reason.split(":")[0] if ":" in reason else "unknown"
+        # B9 strict readers need non-empty attribution: unattributed
+        # rejects (warmup/data stages) are labeled "unknown", not blank.
         self._append_run_file("rejections.jsonl", {
             "ts_utc": self.now_utc().isoformat(), "stage": stage,
-            "reason": reason, "strategy": strategy, "instrument": instrument,
-            "side": side})
+            "reason": reason, "strategy": strategy or "unknown",
+            "instrument": instrument or "unknown", "side": side or "unknown"})
 
     def _drain_engine(self) -> None:
         for event in self.engine.poll():
@@ -443,6 +447,14 @@ class Session:
         """
         with (self.workdir / name).open("a", encoding="utf-8") as fh:
             fh.write(json.dumps(record, sort_keys=True) + "\n")
+
+    def _init_run_files(self) -> None:
+        """Create empty run files so strict loaders pass on quiet runs."""
+        for name in ("fills.jsonl", "equity.jsonl", "rejections.jsonl",
+                     "risk.jsonl"):
+            path = self.workdir / name
+            if not path.exists():
+                path.write_text("", encoding="utf-8")
 
     def _on_engine_event(self, event: EngineEvent) -> None:
         payload = event.payload
@@ -504,11 +516,18 @@ class Session:
                     if s.reservation_id == pos["reservation_id"]
                     and s.state not in ("filled", "rejected", "cancelled", "expired")]
             if not self.ledger.has_position() and not live:
+                # Release the risk hold: booked exposure nets zero, so this
+                # frees the reservation (or lifts a zero-net unresolved
+                # leftover). Without it the next approval blocks on
+                # exposure:unresolved forever (Q-007 finding).
+                self.policy.note_flat()
+                self.policy.release(pos["reservation_id"])
                 self._position = None
                 self._set_state("ready", "position-flat")
-        # Entry died with zero fills: reservation released by callbacks; clear.
+        # Entry died with zero fills: free the risk hold, then clear.
         if entry is not None and entry.filled_qty <= 1e-12 and entry.state in (
                 "rejected", "cancelled", "expired"):
+            self.policy.release(pos["reservation_id"])
             self._position = None
             self._set_state("ready", f"entry-dead:{entry.state}")
 
@@ -545,6 +564,11 @@ class Session:
         # Verify against a FRESH snapshot: stop leg live + covering.
         statuses = {s.client_order_id: s for s in self.engine.open_orders()}
         net = abs(self.ledger.position_qty())
+        # B8 ack loop (V-007): the stop must also cover the risk-approved
+        # quantity (partial fills leave the remainder approved-but-unfilled).
+        # Unknown (None) falls back to the ledger net, never to verified.
+        required = self.policy.required_stop_qty(pos["reservation_id"])
+        need = net if required is None else max(net, required)
         stop = statuses.get(pos["legs"][0])
         if stop is None or stop.state not in ("open", "partial"):
             self.store.checkpoint(self.run_id, "protection-unverified",
@@ -552,11 +576,11 @@ class Session:
                                    "state": stop.state if stop else "missing"})
             pos["legs"] = []
             return
-        if stop.qty - stop.filled_qty + 1e-9 < net:
+        if stop.qty - stop.filled_qty + 1e-9 < need:
             self.store.checkpoint(self.run_id, "protection-unverified",
                                   {"leg": pos["legs"][0], "reason": "qty-short",
                                    "open_qty": stop.qty - stop.filled_qty,
-                                   "net": net})
+                                   "net": net, "required_stop_qty": required})
             pos["legs"] = []
             return
         if not pos["protected"]:
@@ -626,6 +650,7 @@ class Session:
             opening = self.ledger.marked_equity(0.0)
             self.store.checkpoint(self.run_id, "open",
                                   {"equity": opening, "capture": str(capture_dir)})
+        self._init_run_files()
         records = load_events(events_path)
         for record in records:
             assert_input_class({"input_class": record["input_class"]}, expect_class)
@@ -667,6 +692,23 @@ class Session:
             self._set_state("stopping", "capture-end")
         self._drain_engine()
         self._persist_local_state()
+        self._sample_equity("run-end", force=True)
+        if records:
+            first_ms = min(int(r["exchange_ts_ms"]) for r in records)
+            last_ms = max(int(r["exchange_ts_ms"]) for r in records)
+            w0 = _EPOCH + timedelta(milliseconds=first_ms)
+            w1 = _EPOCH + timedelta(milliseconds=last_ms)
+        else:
+            w0 = w1 = self.now_utc()
+        digest = hashlib.sha256()
+        with open(events_path, "rb") as fh:
+            for chunk in iter(lambda: fh.read(1 << 20), b""):
+                digest.update(chunk)
+        self._write_run_identity(
+            dataset=capture_dir.name, window_start_utc=w0, window_end_utc=w1,
+            manifest_extra={"manifest_sha": digest.hexdigest(),
+                            "input_class": expect_class,
+                            "capture": str(capture_dir)})
         report = self._build_report(str(capture_dir), expect_class)
         (self.workdir / "report.json").write_text(json.dumps(report, indent=2))
         (self.workdir / "report.md").write_text(self._render_report(report))
@@ -770,6 +812,43 @@ class Session:
             self._set_state("halted", "filters:refresh-failed")
 
     # -- persistence / recovery -------------------------------------------------
+    def _write_run_identity(self, *, dataset: str, window_start_utc: datetime,
+                            window_end_utc: datetime,
+                            manifest_extra: dict[str, Any] | None = None) -> None:
+        """Write run-identity files for the reporting package (B6/B9).
+
+        ``config.toml`` snapshots [run] identity (dataset, window,
+        starting equity, mode, strategy when exactly one is enabled) and
+        ``dataset_manifest.json`` carries the dataset manifest. Identity
+        resolves config-first, manifest-second in
+        ``cryptobot.reporting.load_run``; both files are rewritten at run
+        end so resume runs stay accurate.
+        """
+        def toml_str(value: str) -> str:
+            return '"' + value.replace("\\", "\\\\").replace('"', '\\"') + '"'
+        run_lines = [
+            "[run]",
+            f"dataset = {toml_str(dataset)}",
+            f"window_start_utc = {toml_str(window_start_utc.isoformat())}",
+            f"window_end_utc = {toml_str(window_end_utc.isoformat())}",
+            f"starting_equity = {self.config.paper_capital_usdt!r}",
+            f"mode = {toml_str(self.config.mode)}",
+        ]
+        enabled = list(self.config.strategies_enabled)
+        if len(enabled) == 1:
+            run_lines.append(f"strategy = {toml_str(enabled[0])}")
+        (self.workdir / "config.toml").write_text(
+            "\n".join(run_lines) + "\n", encoding="utf-8")
+        manifest: dict[str, Any] = {
+            "dataset": dataset,
+            "window": (f"{window_start_utc.isoformat()}"
+                       f"..{window_end_utc.isoformat()}"),
+        }
+        if manifest_extra:
+            manifest.update(manifest_extra)
+        (self.workdir / "dataset_manifest.json").write_text(
+            json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8")
+
     def _persist_local_state(self) -> None:
         self.ledger.save(self.workdir / "ledger.json")
         self.store.checkpoint(self.run_id, "local-state",
@@ -816,6 +895,11 @@ class Session:
             self.policy.bind_ledger(self.ledger)
         self.engine.recover(self.policy)
         self._day = accounting_date(self.now_utc()).isoformat()
+        try:
+            self._run_start_utc = datetime.fromisoformat(
+                run["started_utc"]) if run.get("started_utc") else None
+        except ValueError:
+            self._run_start_utc = None
         self._set_state("recovering", "live-resume")
         self.store.checkpoint(self.run_id, "live-resume",
                               {"position_qty": self.ledger.position_qty()})
@@ -846,8 +930,10 @@ class Session:
                                   str(self.workdir), self._pid)
             self.policy.reconcile_day(self.config.paper_capital_usdt, 0.0)
             self._day = accounting_date(self.now_utc()).isoformat()
+            self._run_start_utc = self.now_utc()
             self.store.checkpoint(self.run_id, "open",
                                   {"equity": self.config.paper_capital_usdt})
+        self._init_run_files()
         adapters, modules = self._strategy_adapters()
         self._set_state("warming", "paper-start")
         deadline = time.monotonic() + duration_s
@@ -895,6 +981,12 @@ class Session:
         self._set_state("stopping", end_reason)
         self._drain_engine()
         self._persist_local_state()
+        self._sample_equity("run-end", force=True)
+        self._write_run_identity(
+            dataset="live-public-feed",
+            window_start_utc=self._run_start_utc or self.now_utc(),
+            window_end_utc=self.now_utc(),
+            manifest_extra={"note": "live public feed; no frozen manifest"})
         report = self._build_report("live-public-feed", expect_class,
                                     mode="paper")
         (self.workdir / "report.json").write_text(json.dumps(report, indent=2))
