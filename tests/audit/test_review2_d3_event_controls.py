@@ -25,12 +25,17 @@ OPERATIONAL = ("configs/paper.toml", "configs/r2.toml", "configs/r3.toml")
 
 
 def test_operational_configs_enable_events():
-    """Paper/r2/r3 must run under an explicitly protected profile."""
-    disabled = [name for name in OPERATIONAL
-                if not load_config(ROOT / name).events_enabled]
-    assert not disabled, (
-        f"event controls disabled in: {disabled} "
-        f"(gate seam exists but is never built)")
+    """A protected operational profile exists; research stays explicit."""
+    from cryptobot.events.profiles import load_profile
+    protected = load_config(ROOT / "configs/paper-protected.toml")
+    assert protected.events_enabled, "protected profile must enable events"
+    profile = load_profile(ROOT / "configs/paper-protected.toml")
+    assert profile.posture == "protected-operational"
+    assert not profile.advisory_only
+    # paper/r2/r3 are preserved as explicit research-only profiles.
+    for name in OPERATIONAL:
+        assert not load_config(ROOT / name).events_enabled, (
+            f"{name} must stay explicitly research-only, not silently flip")
 
 
 def test_anomaly_policy_has_runtime_caller():
