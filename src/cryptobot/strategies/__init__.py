@@ -7,6 +7,7 @@ from .contract import (
     ARM_IDS_S2,
     ARM_IDS_S3,
     ARM_IDS_S4,
+    ARM_IDS_S5,
     ARM_VOLUME,
     CONTRACT_VERSION,
     COST_LABEL,
@@ -23,6 +24,8 @@ from .contract import (
     S4_BASE,
     S4_SIMPLE,
     S4_FORECAST_COST,
+    S5_BASE,
+    S5_FORECAST_COST,
     DataQuality,
     DecisionRecord,
     FeatureEvidence,
@@ -44,6 +47,8 @@ from .s1 import (
 from . import s2 as s2_module
 from . import s3 as s3_module
 from . import s4 as s4_module
+from . import s5 as s5_module
+from . import runtime as runtime_module
 
 __all__ = [
     "ARM_BASE",
@@ -53,6 +58,7 @@ __all__ = [
     "ARM_IDS_S2",
     "ARM_IDS_S3",
     "ARM_IDS_S4",
+    "ARM_IDS_S5",
     "ARM_VOLUME",
     "CONTRACT_VERSION",
     "COST_LABEL",
@@ -69,6 +75,8 @@ __all__ = [
     "S4_BASE",
     "S4_SIMPLE",
     "S4_FORECAST_COST",
+    "S5_BASE",
+    "S5_FORECAST_COST",
     "MAX_CONSECUTIVE_MISSING_HALT",
     "Bar",
     "DataQuality",
@@ -87,4 +95,6 @@ __all__ = [
     "s2_module",
     "s3_module",
     "s4_module",
+    "s5_module",
+    "runtime_module",
 ]

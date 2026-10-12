@@ -307,7 +307,7 @@
   "Q-005": {
    "owner_session": "whisper-redshift",
    "role": "Worker 1 \u2014 Quant Research and Strategy Engineer",
-   "state": "dispatched",
+   "state": "accepted-conditional",
    "contract_version": "v0.2.0+app_runtime_interfaces.md S1/S2",
    "dependencies": [
     "specs/app_runtime_interfaces.md S1/S2",
@@ -431,8 +431,33 @@
     "specs/acceptance-*",
     "coord/outbox/V-006.json"
    ]
+  },
+  "Q-005-F1": {
+   "owner_session": "whisper-redshift",
+   "role": "Worker 1 \u2014 Quant Research and Strategy Engineer",
+   "state": "dispatched",
+   "contract_version": "v0.2.0+app_runtime_interfaces.md S1",
+   "dependencies": [
+    "Q-005 runtime.py on main"
+   ],
+   "acceptance": [
+    "MarketView.bars carries aligned None slots (tuple[Bar|None,...]); adapters pass through without compressing time",
+    "gate handles trailing/leading Nones (last non-None staleness; all-None -> quality:empty-window)",
+    "S5 view path same alignment; suite green"
+   ],
+   "evidence_required": [
+    "repro + counts",
+    "base/branch IDs"
+   ],
+   "allowed_paths": [
+    "src/cryptobot/strategies/runtime.py",
+    "src/cryptobot/strategies/s5.py",
+    "tests/unit/test_strategies_runtime.py",
+    "tests/unit/test_strategies_s5.py",
+    "coord/outbox/Q-005-F1.json"
+   ]
   }
  },
- "updated_utc": "2026-10-12T04:15:00Z",
+ "updated_utc": "2026-10-12T06:00:00Z",
  "version": 1
 }

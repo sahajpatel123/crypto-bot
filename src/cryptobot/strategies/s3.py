@@ -13,9 +13,11 @@ from datetime import datetime, timedelta, timezone
 from cryptobot.coordination import (
     DataQuality,
     DecisionRecord,
+    ExitPolicy,
     FeatureEvidence,
     Intent,
     Side,
+    encode_exit_rule,
 )
 from cryptobot.features.breakout import momentum_bps, ref_high, ref_low
 from cryptobot.features.range import edge_touches, vwap_typical
@@ -68,7 +70,6 @@ class S3Params:
     entry_tol_bps: float = 2.0
     entry_expiry_s: int = 15
     holding_limit_s: int = 120
-    exit_rule: str = "S3_EXIT_V1:take_mid=1.0,stop_r=1.0"
 
 
 def evaluate_side(
@@ -235,6 +236,12 @@ def evaluate_side(
         trigger += "+regime"
     elif arm == S3_COST:
         trigger += "+costcover"
+    exit_wire = encode_exit_rule(ExitPolicy(
+        stop_price=inval,
+        target_price=mid,
+        time_exit_utc=evidence_ts + timedelta(seconds=p.holding_limit_s),
+        policy_id=f"{arm}:stop+target+time",
+    ))
     checks["bounds"] = "pass"
     rejects = tuple(f"{k}={checks[k]}" for k in (*order, "bounds"))
 
@@ -259,7 +266,7 @@ def evaluate_side(
         entry_high=entry_high,
         entry_expiry_utc=evidence_ts + timedelta(seconds=p.entry_expiry_s),
         invalidation_price=inval,
-        exit_rule=p.exit_rule,
+        exit_rule=exit_wire,
         holding_limit_s=p.holding_limit_s,
         evidence_ref=record_id,
         data_quality=DataQuality.CLEAN,

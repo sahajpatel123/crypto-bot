@@ -46,6 +46,5 @@ enabled = ["S1", "S2", "S3", "S4"]
 arms = "base"                # base | all (all = every preregistered arm incl. variants)
 cooldown_s = 300
 max_forecast_cost_bps = 25.0
-# Pre-Q-005 legacy exit_rule strings fall back to stop+time from Intent fields.
-# Q-005 re-emits S2 grammar; then this flips to false and undecodable blocks.
-allow_legacy_exit_rules = true
+# Q-005 landed: S1-S5 emit the S2 exit grammar. Strict: undecodable blocks.
+allow_legacy_exit_rules = false

@@ -29,8 +29,10 @@ def test_arm_ids_and_versions():
     assert C.ARM_IDS_S2 == ("S2", "S2-V", "S2-F")
     assert C.ARM_IDS_S3 == ("S3", "S3-R", "S3-C")
     assert C.ARM_IDS_S4 == ("S4", "S4-S")
-    assert C.ARM_IDS == C.ARM_IDS_S1 + C.ARM_IDS_S2 + C.ARM_IDS_S3 + C.ARM_IDS_S4
-    assert len(C.ARM_IDS) == 11
+    assert C.ARM_IDS_S5 == ("S5",)
+    assert C.ARM_IDS == (C.ARM_IDS_S1 + C.ARM_IDS_S2 + C.ARM_IDS_S3 +
+                         C.ARM_IDS_S4 + C.ARM_IDS_S5)
+    assert len(C.ARM_IDS) == 12
     assert C.STRATEGY_VERSION == "0.1.0"
     assert C.CONTRACT_VERSION == "v0.2.0"
 
@@ -49,9 +51,10 @@ def test_s2_cost_preset_matches_s1_values():
     assert C.S2_FORECAST_COST.label == "conservative-simulation"
 
 
-def test_s3_s4_cost_presets_match_s1_values():
+def test_s3_s4_s5_cost_presets_match_s1_values():
     assert C.S3_FORECAST_COST == C.S1_FORECAST_COST
     assert C.S4_FORECAST_COST == C.S1_FORECAST_COST
+    assert C.S5_FORECAST_COST == C.S1_FORECAST_COST
 
 
 def test_evidence_ref_format():
@@ -67,7 +70,7 @@ def _intent_kwargs(**kw):
         strategy="S1", instrument="BTCUSDT", side=Side.LONG,
         evidence_ts_utc=now, entry_low=100.0, entry_high=101.0,
         entry_expiry_utc=now + timedelta(seconds=15),
-        invalidation_price=99.0, exit_rule="S1_EXIT_V1:take_r=1.5,stop_r=1.0",
+        invalidation_price=99.0, exit_rule="v1|stop=99.0|target=101.5|time_exit=2026-01-02T00:02:34+00:00|reduce_only=1|id=S1:stop+target+time",
         holding_limit_s=120, evidence_ref="r", data_quality=DataQuality.CLEAN,
         data_quality_reason="no-gaps-N=120",
     )

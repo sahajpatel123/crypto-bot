@@ -41,7 +41,10 @@ S4_BASE = "S4"
 S4_SIMPLE = "S4-S"
 ARM_IDS_S4 = (S4_BASE, S4_SIMPLE)
 
-ARM_IDS = ARM_IDS_S1 + ARM_IDS_S2 + ARM_IDS_S3 + ARM_IDS_S4
+S5_BASE = "S5"
+ARM_IDS_S5 = (S5_BASE,)
+
+ARM_IDS = ARM_IDS_S1 + ARM_IDS_S2 + ARM_IDS_S3 + ARM_IDS_S4 + ARM_IDS_S5
 
 COST_LABEL = "conservative-simulation"
 
@@ -61,6 +64,9 @@ S3_FORECAST_COST = ForecastCost(
 S4_FORECAST_COST = ForecastCost(
     fee_bps=5.0, spread_bps=5.0, slippage_bps=5.0, funding_bps=1.0
 )
+S5_FORECAST_COST = ForecastCost(
+    fee_bps=5.0, spread_bps=5.0, slippage_bps=5.0, funding_bps=1.0
+)
 
 __all__ = [
     "ARM_BASE",
@@ -70,6 +76,7 @@ __all__ = [
     "ARM_IDS_S2",
     "ARM_IDS_S3",
     "ARM_IDS_S4",
+    "ARM_IDS_S5",
     "ARM_VOLUME",
     "CONTRACT_VERSION",
     "COST_LABEL",
@@ -86,6 +93,8 @@ __all__ = [
     "S4_BASE",
     "S4_SIMPLE",
     "S4_FORECAST_COST",
+    "S5_BASE",
+    "S5_FORECAST_COST",
     "DataQuality",
     "DecisionRecord",
     "FeatureEvidence",

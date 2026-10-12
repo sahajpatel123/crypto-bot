@@ -14,9 +14,11 @@ from datetime import datetime, timedelta, timezone
 from cryptobot.coordination import (
     DataQuality,
     DecisionRecord,
+    ExitPolicy,
     FeatureEvidence,
     Intent,
     Side,
+    encode_exit_rule,
 )
 from cryptobot.features.breakout import momentum_bps
 from cryptobot.features.pullback import (
@@ -69,7 +71,7 @@ class S4Params:
     entry_tol_bps: float = 2.0
     entry_expiry_s: int = 15
     holding_limit_s: int = 120
-    exit_rule: str = "S4_EXIT_V1:take_r=1.5,stop_r=1.0"
+    take_r: float = 1.5
 
 
 def evaluate_side(
@@ -209,6 +211,14 @@ def evaluate_side(
         trigger = f"pierce({p.pierce_lb})+reclaim({p.reclaim_k})+momentum({p.mom_m})"
     if arm == S4_SIMPLE:
         trigger = f"reclaim({p.reclaim_k})+momentum({p.mom_m})"
+    risk = abs(close_t - inval)
+    target = close_t + p.take_r * risk if is_long else close_t - p.take_r * risk
+    exit_wire = encode_exit_rule(ExitPolicy(
+        stop_price=inval,
+        target_price=target,
+        time_exit_utc=evidence_ts + timedelta(seconds=p.holding_limit_s),
+        policy_id=f"{arm}:stop+target+time",
+    ))
     checks["bounds"] = "pass"
     rejects = tuple(f"{k}={checks[k]}" for k in (*order, "bounds"))
 
@@ -233,7 +243,7 @@ def evaluate_side(
         entry_high=entry_high,
         entry_expiry_utc=evidence_ts + timedelta(seconds=p.entry_expiry_s),
         invalidation_price=inval,
-        exit_rule=p.exit_rule,
+        exit_rule=exit_wire,
         holding_limit_s=p.holding_limit_s,
         evidence_ref=record_id,
         data_quality=DataQuality.CLEAN,

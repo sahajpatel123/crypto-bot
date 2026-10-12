@@ -16,9 +16,11 @@ _EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
 from cryptobot.coordination import (
     DataQuality,
     DecisionRecord,
+    ExitPolicy,
     FeatureEvidence,
     Intent,
     Side,
+    encode_exit_rule,
 )
 from cryptobot.features.breakout import (
     flow_mean,
@@ -140,7 +142,7 @@ class S1Params:
     entry_expiry_s: int = 15
     holding_limit_s: int = 120
     inval_m: int = 30
-    exit_rule: str = "S1_EXIT_V1:take_r=1.5,stop_r=1.0"
+    take_r: float = 1.5
 
 
 @dataclass(frozen=True)
@@ -307,6 +309,14 @@ def evaluate_side(
         inval = swing_high(cols["high"], t, p.inval_m)
         regime = "breakout-short"
         trigger = f"close<donchian_low({n})+momentum({p.mom_m})"
+    risk = abs(close_t - inval)
+    target = close_t + p.take_r * risk if is_long else close_t - p.take_r * risk
+    exit_wire = encode_exit_rule(ExitPolicy(
+        stop_price=inval,
+        target_price=target,
+        time_exit_utc=evidence_ts + timedelta(seconds=p.holding_limit_s),
+        policy_id=f"{arm}:stop+target+time",
+    ))
     if arm == ARM_VOLUME:
         trigger += f"+volz({p.vol_v})"
     elif arm == ARM_FLOW:
@@ -335,7 +345,7 @@ def evaluate_side(
         entry_high=entry_high,
         entry_expiry_utc=evidence_ts + timedelta(seconds=p.entry_expiry_s),
         invalidation_price=inval,
-        exit_rule=p.exit_rule,
+        exit_rule=exit_wire,
         holding_limit_s=p.holding_limit_s,
         evidence_ref=record_id,
         data_quality=DataQuality.CLEAN,
