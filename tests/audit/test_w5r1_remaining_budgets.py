@@ -8,8 +8,8 @@ minimum venue size cannot fit. sizing.py plans against (1) only
 (budget = max_loss_budget_pct * equity); no remaining-budget or
 floor-cushion reduction or gate exists anywhere in src or tests.
 
-Fails on af91e34 (missing behavior); passes once W3 implements the
-four-budget rule. Strict-xfail marked while open.
+Failed on af91e34 (missing behavior); fixed by the manager
+four-budget cap (directive section 4); now passing unmarked.
 """
 import json
 import sys

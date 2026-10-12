@@ -12,6 +12,12 @@ caps notional so ``(inflight + notional) / leverage_cap + fee_buffer <=
 available`` (the leverage cap alone is not a margin substitute). Venue
 max-qty / max-notional bounds cap down (safe direction); min-qty / min-
 notional violations skip (never round up).
+
+24H directive section 4 (F-W5R1): the loss budget is the SMALLEST of
+per-position, remaining-daily, floor-cushion and margin budgets. The
+policy computes the remaining/floor cap and passes it as
+``risk_budget_cap_usdt``; margin + instrument minimums stay gates below
+(an unaffordable/smallest-feasible size skips, never rounds up).
 """
 from __future__ import annotations
 
@@ -52,6 +58,7 @@ def plan_size(
     available_margin_usdt: float | None = None,
     fee_buffer_usdt: float = 0.0,
     inflight_exposure_usdt: float = 0.0,
+    risk_budget_cap_usdt: float | None = None,
 ) -> SizePlan:
     if intent.side == Side.LONG:
         adverse = intent.entry_high
@@ -85,6 +92,15 @@ def plan_size(
         raise SizeRejected("sizing:undefined-risk")
     stressed = sum(legs) / 10000 * config.stress_multiplier
     budget = config.max_loss_budget_pct * reconciled_equity
+    if risk_budget_cap_usdt is not None:
+        # F-W5R1: smallest feasible budget across per-position,
+        # remaining-daily and floor-cushion budgets. An exhausted cap
+        # skips (never sizes into a breached budget).
+        if not _finite(risk_budget_cap_usdt):
+            raise SizeRejected("health:nonfinite-account")
+        if risk_budget_cap_usdt <= 0:
+            raise SizeRejected("skip:remaining-budget")
+        budget = min(budget, risk_budget_cap_usdt)
     qty_raw = budget / (stop_dist + adverse * stressed)
     filt = config.instrument_filters.get(intent.instrument)
     step = filt.qty_step if filt is not None else 1e-8

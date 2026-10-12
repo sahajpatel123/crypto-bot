@@ -120,12 +120,27 @@ class RiskPolicy:
         filters_block = self._check_filters(intent, now)
         if filters_block is not None:
             return filters_block
+        # F-W5R1 (directive section 4): reserve against the SMALLEST of
+        # per-position, remaining-daily, floor-cushion and margin budgets.
+        # Stops above already passed, so the daily remainder is positive;
+        # the floor cushion nets the modeled close cost (fee buffer)
+        # before it can be spent. Margin + venue minimums stay gates
+        # inside plan_size (unaffordable size skips, never rounds up).
+        remaining_daily = netliq_adj - day_start * (1 - cfg.operating_stop_pct)
+        cap = remaining_daily
+        if self._state.profit_floor is not None:
+            marked_adj = self._adjust_inception(
+                account.marked_equity, account.flows_cumulative)
+            cushion = (marked_adj - self._state.profit_floor
+                       - (account.fee_buffer_usdt or 0.0))
+            cap = min(cap, cushion)
         try:
             plan = plan_size(
                 intent, account.reconciled_equity, cfg,
                 available_margin_usdt=account.available_margin_usdt,
                 fee_buffer_usdt=account.fee_buffer_usdt,
                 inflight_exposure_usdt=account.inflight_exposure_usdt,
+                risk_budget_cap_usdt=cap,
             )
         except SizeRejected as exc:
             return Rejected(exc.reason)

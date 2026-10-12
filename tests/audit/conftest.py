@@ -12,14 +12,11 @@ import pytest
 # fixed: D1+D2 by W2-24H + manager P1/P2/P3, D3+D4 by W4-24H + manager
 # §12 wiring, D5+D6 by W3-24H. D3/D4 probes were corrected at
 # integration to the Required design (protected profile + tracker
-# layer; see commit). F-W5R1 (four-budget sizing) open below.
-KNOWN_FAILURES = (
-    # F-W5R1: sizing ignores remaining daily/floor budgets.
-    "test_w5r1_remaining_budgets.py"
-    "::test_entry_capped_by_remaining_daily_budget",
-    "test_w5r1_remaining_budgets.py"
-    "::test_entry_capped_by_floor_cushion",
-)
+# layer; see commit). F-W5R1 (four-budget sizing) fixed by the manager
+# four-budget cap (policy computes remaining-daily/floor-cushion cap,
+# sizing takes the min); probes now pass unmarked. List retained
+# (empty) for future findings.
+KNOWN_FAILURES = ()
 
 
 def pytest_collection_modifyitems(items):
