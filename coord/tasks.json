@@ -625,7 +625,7 @@
   },
   "EV-001": {
    "contract_version": "six-agent-48h",
-   "state": "dispatched",
+   "state": "running",
    "dependencies": [
     "01487ac integrated"
    ],
@@ -648,7 +648,7 @@
   },
   "OP-001": {
    "contract_version": "six-agent-48h",
-   "state": "dispatched",
+   "state": "running",
    "dependencies": [
     "01487ac integrated"
    ],
@@ -670,7 +670,7 @@
   },
   "Q-008": {
    "contract_version": "six-agent-48h",
-   "state": "dispatched",
+   "state": "running",
    "dependencies": [
     "01487ac integrated"
    ],
@@ -695,7 +695,7 @@
   },
   "E-009": {
    "contract_version": "six-agent-48h",
-   "state": "dispatched",
+   "state": "running",
    "dependencies": [
     "01487ac integrated"
    ],
@@ -722,7 +722,7 @@
   },
   "V-008": {
    "contract_version": "six-agent-48h",
-   "state": "dispatched",
+   "state": "running",
    "dependencies": [
     "01487ac integrated"
    ],
