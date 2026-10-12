@@ -23,6 +23,7 @@ class DepthState:
     resyncs: int
     applied: int
     dropped_stale: int
+    last_reason: str = ""  # why the book is currently unsynced ("" if synced).
 
 
 class DepthBook:
@@ -38,11 +39,13 @@ class DepthBook:
         self.resyncs = 0
         self.applied = 0
         self.dropped_stale = 0
+        self._resync_reason = ""
 
     @property
     def state(self) -> DepthState:
         return DepthState(self._synced, self._last_update_id, len(self._buffer),
-                          self.resyncs, self.applied, self.dropped_stale)
+                          self.resyncs, self.applied, self.dropped_stale,
+                          self._resync_reason)
 
     def on_diff(self, payload: dict[str, Any]) -> str:
         """Handle one NORMALIZED depth payload (first/last/prev_last_update keys).
@@ -79,6 +82,7 @@ class DepthBook:
                 return self._request_resync("buffer-chain")
             self._apply(payload)
         self._synced = True
+        self._resync_reason = ""
         return "synced"
 
     def _request_resync(self, reason: str) -> str:

@@ -18,7 +18,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from cryptobot.market_data.bridge import flow_window
+from cryptobot.market_data.bridge import flow_window, snapshot_ms
 from cryptobot.market_data.depth import DepthBook
 
 __all__ = ["BookView", "FlowView2", "DepthStore", "book_flow_for"]
@@ -81,15 +81,26 @@ class DepthStore:
         self._flow: dict[str, dict[str, Any]] = {}
 
     # -- ingestion ------------------------------------------------------
-    def apply_snapshot_record(self, snap: dict[str, Any]) -> str:
-        """Install a persisted snapshot record (symbol/bids/asks/ids/recv ms)."""
+    def apply_snapshot_record(self, snap: dict[str, Any],
+                              as_of_ms: int | None = None) -> str:
+        """Install a persisted snapshot record (symbol/bids/asks/ids/recv ms).
+
+        Returns synced|resync, or ``"future"`` when ``as_of_ms`` is given
+        and the snapshot is newer than the replay clock: the record is
+        refused WITHOUT installing (no state change, no ever-synced mark),
+        so a future snapshot can never leak into earlier queries. Applied
+        time uses the snapshot's exchange clock (``snapshot_ms``).
+        """
+        snap_ms = snapshot_ms(snap)
+        if as_of_ms is not None and snap_ms > as_of_ms:
+            return "future"
         symbol = str(snap["symbol"])
         book = self._books.setdefault(symbol, DepthBook(symbol))
         outcome = book.on_snapshot(snap["bids"], snap["asks"],
                                    int(snap["last_update_id"]))
         if outcome == "synced":
             self._ever_synced.add(symbol)
-            self._applied_ms[symbol] = int(snap["rest_recv_ms"])
+            self._applied_ms[symbol] = snap_ms
         return outcome
 
     def apply_diff(self, symbol: str, payload: dict[str, Any],
@@ -123,20 +134,70 @@ class DepthStore:
         self._close_window(symbol, state)
         state["window"], state["trades"] = window, [payload]
 
-    def apply_record(self, record: dict[str, Any]) -> None:
+    def apply_record(self, record: dict[str, Any]) -> str:
         """Dispatch one normalized record (depth/aggTrade; bookTicker ignored).
 
         bookTicker is deliberately NOT fed into the synchronized book: it is
         unsynced top-of-book and must never masquerade as observed depth.
         markPrice carries no book/flow information and is skipped.
+
+        Returns the ingestion outcome so callers can react: depth yields
+        buffered|applied|resync (resync = chain break, caller must
+        re-snapshot), aggTrade yields "trade", anything else "ignored".
         """
         channel = record.get("channel")
         symbol = str(record.get("symbol", ""))
         if channel == "depth":
-            self.apply_diff(symbol, record["payload"],
-                            int(record.get("exchange_ts_ms", 0) or 0))
+            return self.apply_diff(symbol, record["payload"],
+                                   int(record.get("exchange_ts_ms", 0) or 0))
         elif channel == "aggTrade":
             self.apply_trade(symbol, record["payload"])
+            return "trade"
+        return "ignored"
+
+    def resync_symbol(self, symbol: str, reason: str = "chain-break") -> None:
+        """Mark a symbol's book unsynced after a chain break (P3).
+
+        The caller observed ``apply_record``/``apply_diff`` return
+        "resync": the book stops claiming sync, keeps buffering diffs,
+        and reports ``needs_snapshot`` until a fresh snapshot installs.
+        Unknown symbols are ignored (nothing to mark).
+        """
+        book = self._books.get(symbol)
+        if book is not None:
+            book.request_resync(reason)
+
+    def needs_snapshot(self, symbol: str) -> bool:
+        """True when the symbol has no usable book (never seen or unsynced).
+
+        Covers resync-after-break (unsynced with buffered diffs waiting)
+        and new-symbol discovery (no book yet): both need a fresh snapshot
+        before the book is usable.
+        """
+        book = self._books.get(symbol)
+        return book is None or not book.state.synced
+
+    def sync_report(self, symbol: str) -> dict[str, Any]:
+        """Honest per-symbol sync state: ACTUAL outcome, not fetch success.
+
+        ``synced`` reflects the book (installed + chained), ``last_reason``
+        why it is unsynced ("" when synced), ``needs_snapshot`` whether a
+        (re)fetch is required. Reports observe state; they never mutate it.
+        """
+        book = self._books.get(symbol)
+        if book is None:
+            return {"symbol": symbol, "synced": False, "last_update_id": 0,
+                    "buffered": 0, "resyncs": 0, "applied": 0,
+                    "dropped_stale": 0, "last_reason": "never-seen",
+                    "needs_snapshot": True, "applied_ms": None}
+        state = book.state
+        return {"symbol": symbol, "synced": state.synced,
+                "last_update_id": state.last_update_id,
+                "buffered": state.buffered, "resyncs": state.resyncs,
+                "applied": state.applied, "dropped_stale": state.dropped_stale,
+                "last_reason": state.last_reason,
+                "needs_snapshot": not state.synced,
+                "applied_ms": self._applied_ms.get(symbol)}
 
     def _close_window(self, symbol: str, state: dict[str, Any]) -> None:
         closed = state["trades"]
@@ -176,9 +237,15 @@ class DepthStore:
         bid, ask = book.top()
         if bid is None or ask is None:
             return None, "book:empty-book"
+        applied_ms = self._applied_ms.get(symbol, ts_ms)
+        if ts_ms < applied_ms:
+            # The book holds state NEWER than the query (e.g. an eagerly
+            # installed future snapshot): negative age is never published
+            # as clean — the view is absent, not time-travelled.
+            return None, "book:future-data"
         top_bids = tuple((p, book.bids[p]) for p in sorted(book.bids, reverse=True)[:self.levels])
         top_asks = tuple((p, book.asks[p]) for p in sorted(book.asks)[:self.levels])
-        age = ts_ms - self._applied_ms.get(symbol, ts_ms)
+        age = ts_ms - applied_ms
         bid_qty = book.bids.get(bid, 0.0)
         ask_qty = book.asks.get(ask, 0.0)
         denom = bid_qty + ask_qty

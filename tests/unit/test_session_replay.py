@@ -1139,11 +1139,16 @@ def test_replay_primes_depth_books(tmp_path):
         book, _, _ = book_flow_for(
             "BTCUSDT", T0 + 60_000, session._depth_store)
         assert book is not None, "primed book must sync"
-        ckpt = json.loads(store._db.execute(
+        start = json.loads(store._db.execute(
             "SELECT payload FROM checkpoints WHERE run_id=? AND kind=?",
             ("sess-test", "depth-prime")).fetchone()[0])
-        assert ckpt["present"] is True and ckpt["applied"] == 1
-        assert ckpt["synced"] == ["BTCUSDT"]
+        assert start["present"] is True and start["total"] == 1
+        assert start["applied"] == 0  # nothing installed upfront (P1).
+        final = json.loads(store._db.execute(
+            "SELECT payload FROM checkpoints WHERE run_id=? AND kind=?",
+            ("sess-test", "depth-prime-final")).fetchone()[0])
+        assert final["applied"] == 1 and final["unreached"] == 0
+        assert final["synced"] == ["BTCUSDT"]
     finally:
         store.close()
 
@@ -1157,7 +1162,11 @@ def test_replay_missing_snapshots_recorded_absent(tmp_path):
         ckpt = json.loads(store._db.execute(
             "SELECT payload FROM checkpoints WHERE run_id=? AND kind=?",
             ("sess-test", "depth-prime")).fetchone()[0])
-        assert ckpt["present"] is False and ckpt["applied"] == 0
+        assert ckpt["present"] is False and ckpt["total"] == 0
+        final = json.loads(store._db.execute(
+            "SELECT payload FROM checkpoints WHERE run_id=? AND kind=?",
+            ("sess-test", "depth-prime-final")).fetchone()[0])
+        assert final["applied"] == 0 and final["unreached"] == 0
     finally:
         store.close()
 
@@ -1169,5 +1178,84 @@ def test_live_prime_skipped_for_dynamic_symbols(tmp_path):
         assert session.config.symbols == ()
         summary = session._prime_live_books()
         assert summary["skipped"] == "dynamic-symbols"
+    finally:
+        store.close()
+
+
+def test_live_prime_reports_install_outcome(tmp_path, monkeypatch):
+    """Manager P2: a fetched-but-uninstalled snapshot is NOT synced."""
+    import dataclasses
+    import urllib.request
+    session, store = _session(tmp_path, warmup_bars=3)
+    try:
+        session.config = dataclasses.replace(
+            session.config, symbols=("BTCUSDT",))
+
+        class _Resp:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+
+            def read(self):
+                return json.dumps({
+                    "bids": [["99.5", "1.0"]], "asks": [["100.5", "1.0"]],
+                    "lastUpdateId": 7, "T": T0}).encode()
+
+        monkeypatch.setattr(urllib.request, "urlopen",
+                            lambda req, timeout=15.0: _Resp())
+        monkeypatch.setattr(
+            session._depth_store, "apply_snapshot_record",
+            lambda snap: "resync")
+        summary = session._prime_live_books()
+        assert summary["synced"] == []
+        assert summary["failed"]["BTCUSDT"]["outcome"] == "resync"
+        assert "sync" in summary["failed"]["BTCUSDT"]
+    finally:
+        store.close()
+
+
+def test_replay_future_snapshot_never_installs(tmp_path):
+    """Manager P1: a snapshot newer than every event is never installed."""
+    session, store = _session(tmp_path, warmup_bars=3)
+    try:
+        cap = _capture(tmp_path / "cap")
+        early = _snap()
+        late = _snap(last_id=999)
+        late["rest_recv_ms"] = T0 + 10_000_000
+        late["bids"] = [["200.0", "1.0"]]
+        late["asks"] = [["201.0", "1.0"]]
+        (cap / "depth_snapshots.jsonl").write_text(
+            "\n".join(json.dumps(s) for s in (early, late)) + "\n")
+        session.run_replay(cap, expect_class=CLASS)
+        final = json.loads(store._db.execute(
+            "SELECT payload FROM checkpoints WHERE run_id=? AND kind=?",
+            ("sess-test", "depth-prime-final")).fetchone()[0])
+        assert (final["applied"], final["unreached"]) == (1, 1)
+        from cryptobot.market_data.views import book_flow_for
+        book, _, _ = book_flow_for(
+            "BTCUSDT", T0 + 60_000, session._depth_store)
+        assert book is not None and book.bids[0][0] < 150.0
+    finally:
+        store.close()
+
+
+def test_ingest_resync_marks_book_unsynced(tmp_path):
+    """Manager P3: a chain break stops the sync claim + is counted."""
+    session, store = _session(tmp_path, warmup_bars=3)
+    try:
+        session._depth_store.apply_snapshot_record(_snap())
+        assert not session._depth_store.needs_snapshot("BTCUSDT")
+        session._ingest({
+            "channel": "depth", "symbol": "BTCUSDT",
+            "exchange_ts_ms": T0 + 500, "local_recv_ms": T0 + 505,
+            "payload": {"first_update": 50, "last_update": 55,
+                        "prev_last_update": 49,
+                        "bids": [], "asks": []}}, {}, {})
+        assert session._depth_store.needs_snapshot("BTCUSDT")
+        assert session._resyncs_seen == {"BTCUSDT": 1}
+        rep = session._depth_store.sync_report("BTCUSDT")
+        assert rep["synced"] is False and rep["needs_snapshot"] is True
     finally:
         store.close()

@@ -195,7 +195,8 @@ class Collector:
             last_update_id=payload["lastUpdateId"],
             bids=payload["bids"], asks=payload["asks"],
             rest_recv_ms=rest_wall, rest_mono_ns=rest_mono,
-            limit=self.config.depth_snapshot_limit, outcome=outcome))
+            limit=self.config.depth_snapshot_limit, outcome=outcome,
+            exchange_ts_ms=int(payload["T"]) if payload.get("T") else None))
         if outcome == "resync":
             self.stats.depth_resyncs += 1
             self._snapshot_due[symbol] = time.monotonic() + 2.5  # genuine gap; re-buffer, retry.

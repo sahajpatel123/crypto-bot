@@ -137,3 +137,58 @@ def test_views_are_frozen_and_store_is_bounded():
     # Bounded: one open window + one closed aggregate per symbol.
     state = store._flow["BTCUSDT"]
     assert len(state["trades"]) == 1 and state["closed"] is not None
+
+
+def test_future_snapshot_query_is_refused_never_clean():
+    store = DepthStore()
+    assert store.apply_snapshot_record(_snap(recv_ms=T0MS + 9000)) == "synced"
+    book, _, reason = store.book_flow_for("BTCUSDT", T0MS + 1500)
+    assert book is None and "book:future-data" in reason
+    book, _, reason = store.book_flow_for("BTCUSDT", T0MS + 9500)
+    assert book is not None and book.sync_age_ms == 500
+    assert book.quality == "clean" and reason == "flow:no-trades-yet"
+
+
+def test_snapshot_refused_when_newer_than_replay_clock():
+    store = DepthStore()
+    snap = _snap(recv_ms=T0MS + 9000)
+    assert store.apply_snapshot_record(snap, as_of_ms=T0MS + 1500) == "future"
+    assert store.needs_snapshot("BTCUSDT") is True  # zero state installed.
+    _, _, reason = store.book_flow_for("BTCUSDT", T0MS + 1500)
+    assert reason.startswith("book:never-synced")
+    assert store.apply_snapshot_record(snap, as_of_ms=T0MS + 9000) == "synced"
+    assert store.needs_snapshot("BTCUSDT") is False
+
+
+def test_apply_record_reports_resync_and_needs_snapshot():
+    store = DepthStore()
+    store.apply_snapshot_record(_snap())
+    broken = _depth_record(1, T0MS + 100,
+                           _diff(first=200, last=205, prev=150))
+    assert store.apply_record(broken) == "resync"
+    assert store.needs_snapshot("BTCUSDT") is True
+    assert store.needs_snapshot("ETHUSDT") is True  # never seen: discovery.
+    rep = store.sync_report("BTCUSDT")
+    assert rep["synced"] is False and rep["last_reason"] == "chain-break"
+    assert rep["needs_snapshot"] is True and rep["resyncs"] == 1
+    rep_new = store.sync_report("ETHUSDT")
+    assert rep_new["synced"] is False and rep_new["needs_snapshot"] is True
+
+
+def test_failed_install_reports_actual_outcome_not_fetch_success():
+    store = DepthStore()
+    store.apply_diff("BTCUSDT", _diff(first=500, last=505, prev=499),
+                     T0MS - 100)
+    assert store.apply_snapshot_record(_snap()) == "resync"
+    rep = store.sync_report("BTCUSDT")
+    assert rep["synced"] is False and rep["last_reason"] == "snapshot-span"
+    assert rep["needs_snapshot"] is True and rep["applied_ms"] is None
+
+
+def test_snapshot_exchange_clock_preferred_over_receipt_clock():
+    store = DepthStore()
+    snap = _snap(recv_ms=T0MS + 9200)
+    snap["exchange_ts_ms"] = T0MS + 9000  # venue transaction time wins.
+    assert store.apply_snapshot_record(snap) == "synced"
+    book, _, _ = store.book_flow_for("BTCUSDT", T0MS + 9100)
+    assert book is not None and book.sync_age_ms == 100

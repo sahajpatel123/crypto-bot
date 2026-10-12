@@ -184,3 +184,58 @@ class RollingEventHash:
 
     def hexdigest(self) -> str:
         return self._digest.hexdigest()
+
+
+_LEGACY_SNAPSHOT_SKEW_MS = 1000
+
+
+def replay_with_snapshots(
+    records: Iterable[dict[str, Any]],
+    snaps: Iterable[dict[str, Any]],
+    *,
+    order: str = "arrival",
+    assume_ordered: bool = False,
+) -> Iterator[tuple[str, dict[str, Any]]]:
+    """Yield ("event"|"snapshot", payload) in causal replay order.
+
+    Snapshots install when the replay clock (monotonic max of event
+    ``exchange_ts_ms``) reaches them — never all-upfront, so a future
+    snapshot cannot leak into earlier queries. Each snapshot is yielded
+    BEFORE the first event at/after its time. The event subsequence is
+    identical to :func:`replay_events` (parity); only snapshot items are
+    added, at causal positions.
+
+    Snapshots key on the exchange clock (``snapshot_ms``); records with a
+    venue transaction time merge exactly. Legacy records (receipt clock
+    only) get a 1000 ms install tolerance for host skew — installing
+    slightly early is safe because views still refuse queries older than
+    the applied state (``book:future-data``). Snapshots newer than every
+    event are NEVER yielded: no clock reached them, so no install.
+
+    Consumer contract: install yielded snapshots unconditionally (no
+    ``as_of_ms``) — the iterator already enforced clock >= snapshot time
+    at yield. Queries between install and clock catch-up are still safe:
+    views refuse anything older than the applied state (``book:future-data``).
+
+    ``assume_ordered`` skips the :func:`replay_events` sort for callers
+    holding an already-ordered stream (Session streaming replay): the
+    merge stays O(snapshots) memory. Ordering enforcement is then the
+    caller's stream contract (manager integration adaptation).
+    """
+    from .bridge import snapshot_ms
+
+    ordered_snaps = sorted(snaps, key=snapshot_ms)
+    clock: int | None = None
+    idx = 0
+    stream = records if assume_ordered else replay_events(records, order=order)
+    for event in stream:
+        ts = int(event["exchange_ts_ms"])
+        clock = ts if clock is None else max(clock, ts)
+        while idx < len(ordered_snaps):
+            snap = ordered_snaps[idx]
+            tol = 0 if snap.get("exchange_ts_ms") else _LEGACY_SNAPSHOT_SKEW_MS
+            if snapshot_ms(snap) - tol > clock:
+                break
+            idx += 1
+            yield "snapshot", snap
+        yield "event", event

@@ -172,6 +172,7 @@ class Session:
         self._feeds: dict[str, _SymbolFeed] = {}
         self._depth_store = DepthStore()
         self._saw_exchange_marks = False
+        self._resyncs_seen: dict[str, int] = {}
         self.event_gate: Any | None = None
         if config.events_enabled:
             self._build_event_gate()
@@ -862,29 +863,61 @@ class Session:
                               {"reason": reason, "net": net})
 
     # -- replay --------------------------------------------------------------
-    def _prime_replay_books(self, capture_dir: Path) -> dict[str, Any]:
-        """Install persisted depth snapshots so replay books can sync.
+    def _prime_replay_books(
+            self, capture_dir: Path
+    ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+        """Load persisted depth snapshots for CAUSAL replay install (P1).
 
-        E-009 exports the APIs; the priming call is Session-owned. A
-        missing depth_snapshots.jsonl (captures predating E-007) is
-        recorded as absent — books stay unsynced on those replays ever.
+        Snapshots are returned pending (sorted by exchange clock), NOT
+        installed: the replay loop installs each one only when its clock
+        reaches it, so a future snapshot can never leak into earlier
+        queries. A missing depth_snapshots.jsonl (captures predating
+        E-007) yields no pending snaps — books stay unsynced ever.
         """
+        from cryptobot.market_data.bridge import snapshot_ms
         path = capture_dir / "depth_snapshots.jsonl"
-        summary: dict[str, Any] = {"source": "depth_snapshots.jsonl",
-                                   "present": path.exists(), "applied": 0,
-                                   "synced": [], "failed": {}, "errors": 0}
-        for snap in load_snapshots(path):
+        pending = sorted(load_snapshots(path), key=snapshot_ms)
+        summary: dict[str, Any] = {
+            "source": "depth_snapshots.jsonl", "present": path.exists(),
+            "mode": "causal-stream", "total": len(pending),
+            "applied": 0, "synced": [], "failed": {}, "errors": 0,
+            "unreached": 0}
+        return summary, pending
+
+    def _install_due_snapshots(
+            self, pending: list[dict[str, Any]], clock_ms: int,
+            summary: dict[str, Any]) -> None:
+        """Install snapshots the replay clock has reached (P1, in-loop).
+
+        Consumes from the head of the clock-sorted pending list. Each
+        install ALSO passes as_of_ms with the same tolerance bound
+        (defense in depth: a merge bug yielding too early refuses with
+        "future" instead of leaking). Unreached snapshots (newer than
+        every event) are never installed.
+        """
+        from cryptobot.market_data.bridge import snapshot_ms
+        while pending:
+            snap = pending[0]
+            tol = 0 if snap.get("exchange_ts_ms") else 1000
+            if snapshot_ms(snap) - tol > clock_ms:
+                break
+            pending.pop(0)
             try:
-                outcome = self._depth_store.apply_snapshot_record(snap)
+                outcome = self._depth_store.apply_snapshot_record(
+                    snap, as_of_ms=clock_ms + tol)
             except (KeyError, TypeError, ValueError):
                 summary["errors"] += 1
+                continue
+            if outcome == "future":
+                summary["unreached"] += 1
                 continue
             summary["applied"] += 1
             if outcome == "synced":
                 symbol = str(snap.get("symbol", ""))
                 if symbol not in summary["synced"]:
                     summary["synced"].append(symbol)
-        return summary
+            else:
+                summary["failed"][str(snap.get("symbol", "?"))] = outcome
 
     def _prime_live_books(self) -> dict[str, Any]:
         """REST depth snapshot per configured symbol at live start.
@@ -909,17 +942,27 @@ class Session:
                 with urllib.request.urlopen(req, timeout=15.0) as resp:
                     payload = json.loads(resp.read().decode("utf-8"))
                 recv_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
-                self._depth_store.apply_snapshot_record({
+                # P2: report the ACTUAL install outcome, never the fetch.
+                outcome = self._depth_store.apply_snapshot_record({
                     "symbol": symbol, "bids": payload["bids"],
                     "asks": payload["asks"],
                     "last_update_id": int(payload["lastUpdateId"]),
-                    "rest_recv_ms": recv_ms})
+                    "rest_recv_ms": recv_ms,
+                    "exchange_ts_ms": payload.get("T")})
             except Exception as exc:  # noqa: BLE001 - priming never aborts.
-                summary["failed"][symbol] = f"{type(exc).__name__}"
+                summary["failed"][symbol] = {
+                    "stage": "fetch-or-install",
+                    "error": f"{type(exc).__name__}",
+                    "sync": self._depth_store.sync_report(symbol)}
                 continue
             summary["primed"].append(symbol)
             summary["applied"] += 1
-            summary["synced"].append(symbol)
+            if outcome == "synced":
+                summary["synced"].append(symbol)
+            else:
+                summary["failed"][symbol] = {
+                    "stage": "install", "outcome": outcome,
+                    "sync": self._depth_store.sync_report(symbol)}
         return summary
 
     def run_replay(self, capture_dir: str | Path, *,
@@ -945,7 +988,7 @@ class Session:
             self.store.checkpoint(self.run_id, "open",
                                   {"equity": opening, "capture": str(capture_dir)})
         self._init_run_files()
-        prime = self._prime_replay_books(capture_dir)
+        prime, pending_snaps = self._prime_replay_books(capture_dir)
         self.store.checkpoint(self.run_id, "depth-prime", prime)
         events = stream_events(events_path)
         first = next(events, None)
@@ -963,6 +1006,7 @@ class Session:
         first_ms: int | None = None
         last_ms: int | None = None
         skipped_prefix = 0
+        snap_clock: int | None = None
         from itertools import chain as _chain
 
         for event in _chain((first,), events):
@@ -972,6 +1016,12 @@ class Session:
             ts = int(event["exchange_ts_ms"])
             first_ms = ts if first_ms is None else min(first_ms, ts)
             last_ms = ts if last_ms is None else max(last_ms, ts)
+            # Causal snapshot install (P1): the clock advances on EVERY
+            # event including the skipped resume prefix, so resume
+            # installs identically to a fresh run. Snapshots install
+            # BEFORE the first event at/after their time.
+            snap_clock = ts if snap_clock is None else max(snap_clock, ts)
+            self._install_due_snapshots(pending_snaps, snap_clock, prime)
             if int(event.get("seq", 0)) <= self._last_seq:
                 skipped_prefix += 1
                 continue
@@ -1003,6 +1053,8 @@ class Session:
         self._drain_engine()
         self._persist_local_state()
         self._sample_equity("run-end", force=True)
+        prime["unreached"] += len(pending_snaps)
+        self.store.checkpoint(self.run_id, "depth-prime-final", prime)
         if first_ms is not None and last_ms is not None:
             w0 = _EPOCH + timedelta(milliseconds=first_ms)
             w1 = _EPOCH + timedelta(milliseconds=last_ms)
@@ -1026,6 +1078,8 @@ class Session:
             "skipped_prefix": skipped_prefix,
             "first_ms": first_ms,
             "last_ms": last_ms,
+            "snapshots_installed": prime["applied"],
+            "snapshots_unreached": prime["unreached"],
         }
         (self.workdir / "report.json").write_text(json.dumps(report, indent=2))
         (self.workdir / "report.md").write_text(self._render_report(report))
@@ -1046,9 +1100,18 @@ class Session:
                     and event["payload"].get("mark"):
                 self._saw_exchange_marks = True
             try:
-                self._depth_store.apply_record(event)
+                outcome = self._depth_store.apply_record(event)
             except (KeyError, TypeError, ValueError):
                 pass  # malformed depth/trade: views degrade to absent.
+            else:
+                # P3: a chain break stops the sync claim immediately; the
+                # book buffers until a fresh snapshot installs. Live
+                # re-fetch sequencing rides the supervision tick (never a
+                # blocking fetch here); replay records the break honestly.
+                if outcome == "resync":
+                    self._depth_store.resync_symbol(symbol, "chain-break")
+                    self._resyncs_seen[symbol] = (
+                        self._resyncs_seen.get(symbol, 0) + 1)
         if channel not in ("aggTrade", "bookTicker") or not symbol:
             return
         if hasattr(self.clock, "set_ms"):
@@ -1431,6 +1494,7 @@ class Session:
             "symbols": sorted(self._feeds),
             "intents_admitted": self._admitted,
             "reject_counts": dict(sorted(self._reject_counts.items())),
+            "depth_resyncs": dict(sorted(self._resyncs_seen.items())),
             "store_counts": self.store.counts(self.run_id),
             "latency_ms": {
                 "feed_age": _summarize(self._age_ms),

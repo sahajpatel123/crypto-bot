@@ -55,3 +55,15 @@ def test_zero_qty_removes_level_and_spread_math():
     bid_notional, ask_notional = book.depth_totals(levels=10)
     assert (bid_notional, ask_notional) == (99.0, 101.0)
     assert DepthBook("X").spread_bps() is None  # unsynced: no spread invented.
+
+
+def test_state_carries_resync_reason_until_synced():
+    book = DepthBook("BTCUSDT")
+    assert book.state.last_reason == ""
+    book.on_diff(_diff(105, 104, u_first=104))
+    assert book.on_snapshot([["100", "1"]], [["101", "1"]], 100) == "resync"
+    assert book.state.last_reason == "snapshot-span"
+    book.request_resync("chain-break")
+    assert book.state.last_reason == "chain-break"
+    assert book.on_snapshot([["100", "1"]], [["101", "1"]], 100) == "synced"
+    assert book.state.last_reason == ""  # synced: no stale reason.

@@ -25,6 +25,7 @@ __all__ = [
     "book_features",
     "flow_window",
     "load_snapshots",
+    "snapshot_ms",
     "snapshot_record",
     "iter_market_stream",
     "to_nautilus_ticks",
@@ -44,8 +45,15 @@ def snapshot_record(
     rest_mono_ns: int,
     limit: int,
     outcome: str,
+    exchange_ts_ms: int | None = None,
 ) -> dict[str, Any]:
-    """Build one depth-snapshot record (raw REST levels kept verbatim)."""
+    """Build one depth-snapshot record (raw REST levels kept verbatim).
+
+    ``exchange_ts_ms`` is the venue transaction time (REST ``"T"``); when
+    present, causality comparisons use the exchange clock exactly. Legacy
+    records carry None and fall back to ``rest_recv_ms`` (capture-local
+    clock, subject to host skew — see ``snapshot_ms``).
+    """
     return {
         "v": 1,
         "format": SNAPSHOT_FORMAT,
@@ -58,9 +66,19 @@ def snapshot_record(
         "asks": asks,
         "rest_recv_ms": int(rest_recv_ms),
         "rest_mono_ns": int(rest_mono_ns),
+        "exchange_ts_ms": (int(exchange_ts_ms) if exchange_ts_ms else None),
         "limit": int(limit),
         "outcome": outcome,  # synced | resync (sync boundary marker).
     }
+
+
+def snapshot_ms(snap: dict[str, Any]) -> int:
+    """Exchange-clock time of a snapshot record (causality key).
+
+    Prefers the venue transaction time; legacy records without it fall
+    back to capture-local receipt time (documented skew caveat).
+    """
+    return int(snap.get("exchange_ts_ms") or snap.get("rest_recv_ms", 0))
 
 
 def load_snapshots(path: str | Path) -> list[dict[str, Any]]:
@@ -104,8 +122,6 @@ def iter_market_stream(
     record updates its book before yield; a snapshot installs before any
     event with a later receipt time).
     """
-    events = [json.loads(line) for line in Path(events_path).read_text(encoding="utf-8").splitlines()
-              if line.strip()]
     snaps = sorted(load_snapshots(snapshots_path) if snapshots_path else [],
                    key=lambda r: (r.get("rest_recv_ms", 0), r.get("rest_mono_ns", 0)))
     books: dict[str, StreamBook] = {}
@@ -116,8 +132,16 @@ def iter_market_stream(
             entry = books[symbol] = StreamBook(DepthBook(symbol))
         return entry
 
+    def _events() -> Iterator[dict[str, Any]]:
+        # Stream line-by-line (file order == receipt order); identical
+        # sequence to the former full read, bounded memory.
+        with open(events_path, encoding="utf-8") as fh:
+            for line in fh:
+                if line.strip():
+                    yield json.loads(line)
+
     snap_idx = 0
-    for record in events:
+    for record in _events():
         recv = int(record.get("local_recv_ms", 0))
         while snap_idx < len(snaps) and int(snaps[snap_idx].get("rest_recv_ms", 0)) <= recv:
             snap = snaps[snap_idx]
@@ -164,6 +188,8 @@ def book_features(
             return None, "depth:unsynced-no-snapshot"
         return None, "depth:resync-in-flight"
     if now_ms is not None and entry.last_applied_ms is not None:
+        if now_ms < entry.last_applied_ms:
+            return None, "depth:future-data"
         if now_ms - entry.last_applied_ms > stale_after_ms:
             return None, "depth:stale-book"
     bid, ask = entry.book.top()

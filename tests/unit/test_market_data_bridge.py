@@ -9,13 +9,16 @@ import pytest
 
 from cryptobot.market_data.bridge import (
     SNAPSHOT_FORMAT,
+    StreamBook,
     book_features,
     flow_window,
     iter_market_stream,
     load_snapshots,
+    snapshot_ms,
     snapshot_record,
     to_nautilus_ticks,
 )
+from cryptobot.market_data.depth import DepthBook
 
 
 def _depth_event(seq, recv_ms, first, last, prev, bids=(), asks=()):
@@ -223,3 +226,29 @@ def test_to_nautilus_ticks_rejects_unknowns():
     bad["channel"] = "liquidation"
     with pytest.raises(ValueError, match="unmapped channel"):
         to_nautilus_ticks([bad], {"BTCUSDT": (2, 3)})
+
+
+def _snap_record(recv_ms=9000, exchange_ms=None):
+    return snapshot_record(
+        run_id="r", symbol="BTCUSDT", last_update_id=100,
+        bids=[["100.0", "1.0"]], asks=[["101.0", "1.0"]],
+        rest_recv_ms=recv_ms, rest_mono_ns=1, limit=1000, outcome="synced",
+        exchange_ts_ms=exchange_ms)
+
+
+def test_snapshot_ms_prefers_exchange_clock():
+    assert snapshot_ms(_snap_record(9200, 9000)) == 9000
+    assert snapshot_ms(_snap_record(9200, None)) == 9200  # legacy fallback.
+    legacy = _snap_record(9200, None)
+    del legacy["exchange_ts_ms"]  # pre-24H records lack the key entirely.
+    assert snapshot_ms(legacy) == 9200
+
+
+def test_book_features_refuses_future_data():
+    book = DepthBook("BTCUSDT")
+    assert book.on_snapshot([["100.0", "1.0"]], [["101.0", "1.0"]], 100) == "synced"
+    entry = StreamBook(book, last_applied_ms=9000, ever_synced=True)
+    feat, reason = book_features(entry, now_ms=1500)
+    assert feat is None and reason == "depth:future-data"
+    feat, reason = book_features(entry, now_ms=9500)
+    assert feat is not None and reason == "" and feat["bid"] == 100.0
