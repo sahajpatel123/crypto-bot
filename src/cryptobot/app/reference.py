@@ -239,6 +239,16 @@ class ReferenceEngine:
             self._marks[instrument] = price
             self.venue.set_last_price(instrument, price)
 
+    def account_margin(self) -> tuple[float, float] | None:
+        # Fault-test engine: no margin account modelled; the sizing
+        # margin gate skips (leverage cap still applies).
+        return None
+
+    def valuation_mark_ts(self, instrument: str) -> datetime | None:
+        # Fault-test engine: marks are simulation inputs without
+        # observation times; Session falls back to feed marks.
+        return None
+
     def recover(self, outcome_sink: Any) -> None:
         """Rebuild the OrderManager from its journal (durable source)."""
         self.manager = OrderManager.recover(

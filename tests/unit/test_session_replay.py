@@ -184,7 +184,8 @@ def test_run_files_match_b9_schemas(tmp_path):
               (session.workdir / "equity.jsonl").read_text().splitlines()]
         assert eq and set(eq[0]) == {"ts_utc", "marked_equity", "cash",
                                      "position_qty", "position_symbol",
-                                     "open_pnl", "source"}
+                                     "open_pnl", "source",
+                                     "mark_source", "mark_age_ms"}
         risk = [json.loads(line) for line in
                 (session.workdir / "risk.jsonl").read_text().splitlines()]
         assert risk and set(risk[0]) == {"ts_utc", "kind", "from_state",
@@ -843,11 +844,146 @@ def test_events_enabled_builds_gate(tmp_path):
         store.close()
 
 
+def _margin_session(tmp_path, run_id="marg"):
+    from cryptobot.app.session import Session
+    cfg = load_config(_config(tmp_path))
+    store = RunStore(tmp_path / "runs" / "cryptobot.db")
+    engine = _MarginEngine()
+    session = Session(cfg, store, tmp_path / "runs" / run_id, run_id,
+                      engine=engine)
+    return session, store, engine
+
+
+def test_snapshot_carries_margin_inputs(tmp_path):
+    """V-008 NEEDS: available/fee-buffer/inflight reach the snapshot."""
+    session, store, engine = _margin_session(tmp_path)
+    try:
+        engine.margin = (8000.0, 8000.0)
+        snap = session._snapshot_account()
+        assert snap.available_margin_usdt == 8000.0
+        assert snap.fee_buffer_usdt == 2 * 8000.0 * 5.0 / 1e4
+        assert snap.inflight_exposure_usdt == 0.0
+        engine.margin = None
+        assert session._snapshot_account().available_margin_usdt is None
+    finally:
+        store.close()
+
+
+def test_one_budget_pending_ledger_booked(tmp_path):
+    """V-008 NEEDS: one budget = pending + |ledger| + booked excess."""
+    session, store, engine = _margin_session(tmp_path)
+    try:
+        now = datetime.now(timezone.utc)
+        session.ledger.record_fill(
+            "BUY", 1.0, 100.0, 0.05, now, "e1")
+        class _Ord:
+            role = "entry"
+            state = "open"
+            qty = 2.0
+            filled_qty = 0.0
+        engine.open_orders = lambda: [_Ord()]
+        session.policy.note_fill_delta(
+            "r-x", "x1", "BTCUSDT", "BUY", 1.5, 100.0, 0.05,
+            now.isoformat())
+        # pending 2.0 + ledger 1.0 + booked-excess (1.5 + 1.0 - 1.0)
+        assert session._inflight_exposure_usdt(100.0) == (
+            200.0 + 100.0 + 150.0)
+        assert session._inflight_exposure_usdt(0.0) == 0.0
+    finally:
+        store.close()
+
+
+def test_mark_preference_exchange_feed_none(tmp_path):
+    """V-008 NEEDS: exchange > feed > 0.0 with provenance."""
+    session, store, engine = _margin_session(tmp_path)
+    try:
+        session.policy.reconcile_day(120.0, 0.0)
+        session.store.create_run("marg", "replay", "fp",
+                                 str(session.workdir), None)
+        assert session._reference_mark_full() == (0.0, "none", None)
+        base = T0 + 120_000
+        session._ingest(_trade(1, base, 1, 100.0, 0.5), {}, {})
+        mark, source, ts = session._reference_mark_full()
+        assert (mark, source) == (100.0, "feed") and ts is not None
+        now = session.now_utc()
+        engine.marks["BTCUSDT"] = 101.5
+        engine.mark_ts["BTCUSDT"] = now
+        session._ingest(
+            {"channel": "markPrice", "symbol": "BTCUSDT",
+             "exchange_ts_ms": base + 500,
+             "payload": {"mark": 101.5}}, {}, {})
+        mark, source, ts = session._reference_mark_full()
+        assert (mark, source, ts) == (101.5, "exchange", now)
+    finally:
+        store.close()
+
+
+def test_equity_row_carries_mark_provenance(tmp_path):
+    """V-008 NEEDS: equity rows record mark_source + mark_age_ms."""
+    session, store, engine = _margin_session(tmp_path, "marg2")
+    try:
+        session.policy.reconcile_day(120.0, 0.0)
+        session.store.create_run("marg2", "replay", "fp",
+                                 str(session.workdir), None)
+        base = T0 + 180_000
+        session._ingest(_trade(1, base, 1, 100.0, 0.5), {}, {})
+        session._sample_equity("test", force=True)
+        line = (session.workdir / "equity.jsonl").read_text().strip()
+        row = json.loads(line)
+        assert row["mark_source"] == "feed"
+        assert row["mark_age_ms"] >= 0.0
+    finally:
+        store.close()
+
+
+def test_funding_reconcile_agree_and_mismatch(tmp_path):
+    """V-008 NEEDS: agree checkpoints; mismatch halts exit-only loudly."""
+    session, store, engine = _margin_session(tmp_path, "marg3")
+    try:
+        session.store.create_run("marg3", "replay", "fp",
+                                 str(session.workdir), None)
+        session._reconcile_funding()
+        assert "funding-reconciled" in _checkpoints(store, "marg3")
+        engine.settled = 999.0
+        session._reconcile_funding()
+        assert "funding-mismatch" in _checkpoints(store, "marg3")
+        assert store.get_run("marg3")["state"] == "halted"
+    finally:
+        store.close()
+
+
 class _RejectingEngine(_ScriptedEngine):
     """Submit raises like the venue would on dust (F3)."""
 
     def submit(self, cmd):
         raise ValueError("qty 0.00099865 below LOT_SIZE step 0.001")
+
+
+class _MarginEngine(_ScriptedEngine):
+    """V-008 surface: margin account, exchange marks, settled totals."""
+
+    def __init__(self):
+        super().__init__()
+        self.margin = None
+        self.marks = {}
+        self.mark_ts = {}
+        self.settled = 0.0
+        self.noted_events = []
+
+    def account_margin(self):
+        return self.margin
+
+    def valuation_mark(self, instrument):
+        return self.marks.get(instrument)
+
+    def valuation_mark_ts(self, instrument):
+        return self.mark_ts.get(instrument)
+
+    def settled_funding_total(self, symbol=None):
+        return self.settled
+
+    def note_event(self, event):
+        self.noted_events.append(event)
 
 
 def test_submit_rejection_releases_and_continues(tmp_path):

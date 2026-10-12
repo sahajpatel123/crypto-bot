@@ -125,6 +125,7 @@ class _SymbolFeed:
         self.agg = BarAggregator(symbol)
         self.bars: deque = deque(maxlen=warmup + 5)
         self.mark: float | None = None
+        self.mark_ts: datetime | None = None
         self.missing = 0
 
     def ready(self, warmup: int) -> bool:
@@ -170,6 +171,7 @@ class Session:
                 now_utc=self.now_utc, submit_delay_ms=config.submit_delay_ms)
         self._feeds: dict[str, _SymbolFeed] = {}
         self._depth_store = DepthStore()
+        self._saw_exchange_marks = False
         self.event_gate: Any | None = None
         if config.events_enabled:
             self._build_event_gate()
@@ -281,13 +283,61 @@ class Session:
     def _snapshot_account(self) -> AccountSnapshot:
         mark = self._reference_mark()
         close_bps = self.config.taker_bps
+        # V-008 admission inputs: available margin from the engine account
+        # (None skips the margin gate), a round-trip fee buffer in margin
+        # space, and the one-budget in-flight exposure figure.
+        available: float | None = None
+        account_margin = getattr(self.engine, "account_margin", None)
+        if callable(account_margin):
+            try:
+                margins = account_margin()
+            except (ValueError, KeyError, AttributeError):
+                margins = None
+            if margins is not None:
+                available = float(margins[0])
+        fee_buffer = 0.0
+        if available is not None and available > 0:
+            fee_buffer = 2 * available * close_bps / 1e4
         return AccountSnapshot(
             reconciled_equity=self.ledger.marked_equity(mark),
             marked_equity=self.ledger.marked_equity(mark),
             net_liquidation=self.ledger.net_liquidation(mark, close_bps),
             net_realised_global=self.ledger.net_realised(),
             open_position=self.ledger.has_position() or self._position is not None,
-            flows_cumulative=self.ledger.total_flows())
+            flows_cumulative=self.ledger.total_flows(),
+            available_margin_usdt=available,
+            fee_buffer_usdt=fee_buffer,
+            inflight_exposure_usdt=self._inflight_exposure_usdt(mark))
+
+    def _inflight_exposure_usdt(self, mark: float) -> float:
+        """One budget across pending/open/unresolved exposure (V-008).
+
+        Pending entry-role unfilled qty x mark, plus |ledger| x mark, plus
+        the excess of booked-over-ledger x mark (never double-counted).
+        Reduce-only legs excluded; 0 when unpriced.
+        """
+        if mark <= 0:
+            return 0.0
+        pending = 0.0
+        try:
+            statuses = self.engine.open_orders()
+        except (ValueError, KeyError, AttributeError):
+            statuses = []
+        for status in statuses:
+            role = getattr(status, "role", "entry")
+            if role != "entry":
+                continue
+            state = getattr(status, "state", "open")
+            if state in ("filled", "rejected", "cancelled", "expired"):
+                continue
+            qty = getattr(status, "qty", 0.0) or 0.0
+            filled = getattr(status, "filled_qty", 0.0) or 0.0
+            if qty > filled:
+                pending += (qty - filled) * mark
+        ledger_qty = abs(self.ledger.position_qty())
+        booked = abs(self.policy.booked_total_qty())
+        excess = max(0.0, booked - ledger_qty) * mark
+        return pending + ledger_qty * mark + excess
 
     def _sample_equity(self, source: str, *, force: bool = False) -> None:
         """Append an equity curve point (periodic + on fills + on day roll)."""
@@ -297,30 +347,65 @@ class Session:
                     now - self._last_equity_sample).total_seconds() < \
                     self.config.equity_sample_s:
                 return
-        mark = self._reference_mark()
+        mark, mark_source, mark_ts = self._reference_mark_full()
         qty = self.ledger.position_qty()
         basis = self.ledger.entry_basis()
         open_pnl = qty * (mark - basis) if basis is not None and mark > 0 else 0.0
         cash = self.ledger.marked_equity(mark) - qty * mark if mark > 0 else \
             self.ledger.marked_equity(0.0)
+        mark_age_ms: float | None = None
+        if mark_ts is not None:
+            mark_age_ms = max(
+                0.0, (now - mark_ts).total_seconds() * 1000.0)
         self._append_run_file("equity.jsonl", {
             "ts_utc": now.isoformat(),
             "marked_equity": self.ledger.marked_equity(mark),
             "cash": cash, "position_qty": qty,
             "position_symbol": self._position_symbol() or "",
-            "open_pnl": open_pnl, "source": source})
+            "open_pnl": open_pnl, "source": source,
+            "mark_source": mark_source, "mark_age_ms": mark_age_ms})
         self._last_equity_sample = now
         self._equity_dirty = False
 
-    def _reference_mark(self) -> float:
+    def _reference_mark_full(self) -> tuple[float, str, datetime | None]:
+        """Valuation mark with provenance (V-008 mark preference).
+
+        Exchange mark first (engine observation time), feed mark second,
+        0.0/"none" when neither exists. Trade-only replays are unaffected
+        (feed fallback, same values); markPrice replays move valuation to
+        the exchange mark.
+        """
+        symbols: list[str] = []
+        if self._position is not None:
+            symbols.append(self._position["instrument"])
+        symbols.extend(s for s in self._feeds if s not in symbols)
+        # Engine marks count as "exchange" only when markPrice records
+        # actually flowed; otherwise they are our own feed echo.
+        use_exchange = self._saw_exchange_marks and hasattr(
+            self.engine, "note_event")
+        valuation_mark = getattr(self.engine, "valuation_mark", None)
+        valuation_ts = getattr(self.engine, "valuation_mark_ts", None)
+        for symbol in symbols:
+            if use_exchange and callable(valuation_mark):
+                try:
+                    mark = valuation_mark(symbol)
+                except (ValueError, KeyError, AttributeError):
+                    mark = None
+                if mark:
+                    ts = valuation_ts(symbol) if callable(valuation_ts) \
+                        else None
+                    return float(mark), "exchange", ts
         if self._position is not None:
             feed = self._feeds.get(self._position["instrument"])
             if feed is not None and feed.mark:
-                return feed.mark
+                return feed.mark, "feed", feed.mark_ts
         for feed in self._feeds.values():
             if feed.mark:
-                return feed.mark
-        return 0.0
+                return feed.mark, "feed", feed.mark_ts
+        return 0.0, "none", None
+
+    def _reference_mark(self) -> float:
+        return self._reference_mark_full()[0]
 
     # -- strategy evaluation -----------------------------------------------
     def _strategy_adapters(self) -> tuple[dict[str, Any], dict[str, Any]]:
@@ -565,7 +650,7 @@ class Session:
         - rejections.jsonl: {ts_utc, stage, reason, strategy, instrument, side}
         - risk.jsonl: {ts_utc, kind, from_state, to_state, reason}
         - equity.jsonl: {ts_utc, marked_equity, cash, position_qty,
-          position_symbol, open_pnl, source}
+          position_symbol, open_pnl, source, mark_source, mark_age_ms}
         """
         with (self.workdir / name).open("a", encoding="utf-8") as fh:
             fh.write(json.dumps(record, sort_keys=True) + "\n")
@@ -623,6 +708,7 @@ class Session:
                 {"instrument": payload.instrument,
                  "amount": payload.amount},
                 payload.ts_utc.isoformat())
+            self._reconcile_funding()
         self._update_position(event)
 
     def _update_position(self, event: EngineEvent) -> None:
@@ -858,6 +944,10 @@ class Session:
             # views on the Session path).
             if hasattr(self.engine, "note_event"):
                 self.engine.note_event(event)
+            if channel == "markPrice" and isinstance(
+                    event.get("payload"), dict) \
+                    and event["payload"].get("mark"):
+                self._saw_exchange_marks = True
             try:
                 self._depth_store.apply_record(event)
             except (KeyError, TypeError, ValueError):
@@ -884,14 +974,21 @@ class Session:
         if channel == "aggTrade":
             payload = event["payload"]
             feed.mark = float(payload["price"])
+            feed.mark_ts = self.now_utc()
             closed = feed.agg.on_trade(event)
         else:
             payload = event["payload"]
             bid, ask = float(payload["bid"]), float(payload["ask"])
             if bid > 0 and ask >= bid:
                 feed.mark = (bid + ask) / 2
+                feed.mark_ts = self.now_utc()
             feed.agg.on_bbo(bid, ask, int(event["exchange_ts_ms"]))
-        if feed.mark:
+        # Once exchange marks flow, stop echoing the feed mark into the
+        # engine: the engine keeps the exchange mark (with its age) instead
+        # of our echo. Reference-engine runs always echo (its marks are
+        # simulation inputs; it has no event path).
+        if feed.mark and (not self._saw_exchange_marks
+                          or not hasattr(self.engine, "note_event")):
             self.engine.note_mark(symbol, feed.mark)
         self._drain_engine()
         if self._flatten_pending:
@@ -968,6 +1065,32 @@ class Session:
         self.store.checkpoint(
             self.run_id, "event-prepare-flat",
             {"event_ids": [u.event.event_id for u in upcoming]})
+
+    def _reconcile_funding(self) -> None:
+        """Compare engine-settled vs ledger funding totals (V-008 §7).
+
+        Agree -> "funding-reconciled" checkpoint. Mismatch -> loud
+        "funding-mismatch" checkpoint + exit-only halt (entries blocked,
+        never silent). Engines without settled totals skip silently.
+        """
+        settled_total = getattr(self.engine, "settled_funding_total", None)
+        if not callable(settled_total):
+            return
+        try:
+            engine_total = float(settled_total())
+        except (ValueError, KeyError, AttributeError, TypeError):
+            return
+        ledger_total = self.ledger.funding_net()
+        if abs(engine_total - ledger_total) <= 1e-9:
+            self.store.checkpoint(
+                self.run_id, "funding-reconciled",
+                {"engine_total": engine_total, "ledger_total": ledger_total})
+            return
+        self.store.checkpoint(
+            self.run_id, "funding-mismatch",
+            {"engine_total": engine_total, "ledger_total": ledger_total})
+        self.engine.set_exit_only(True, "funding-mismatch")
+        self._set_state("halted", "funding-mismatch")
 
     def _roll_day_if_needed(self) -> None:
         today = accounting_date(self.now_utc()).isoformat()

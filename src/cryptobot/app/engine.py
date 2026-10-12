@@ -146,6 +146,14 @@ class PaperEngine(Protocol):
         """Reference-model mark feed (drives fill simulation)."""
         ...
 
+    def account_margin(self) -> tuple[float, float] | None:
+        """(available_margin, free_margin); None when unmodelled (V-008)."""
+        ...
+
+    def valuation_mark_ts(self, instrument: str) -> datetime | None:
+        """Observation time of the latest valuation mark, if tracked."""
+        ...
+
     def recover(self, outcome_sink: Any) -> None:
         """Rebuild order state from the engine's durable journal after restart."""
         ...
