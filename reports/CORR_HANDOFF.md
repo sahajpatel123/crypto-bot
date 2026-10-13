@@ -1,7 +1,8 @@
 # CORR handoff — correction assignment (final, manager)
 
 Reviewed baseline: tag `review-cdcd10c-baseline` = `cdcd10c`.
-Integrated HEAD: `ed26d75` + evidence/acceptance commits (see SHAs below).
+Integrated HEAD: `1e65267` (final; code-identical to `1294528` plus
+evidence/handoff docs and the origin PR-#1 merge).
 Suite: **1107 passed, 1 skipped, 0 failed**. Production order submission
 stayed disabled throughout. No live orders. No credentials in repo.
 
@@ -21,6 +22,8 @@ stayed disabled throughout. No live orders. No credentials in repo.
 | `ed26d75` | W4 phase B: gated economic scoring code + panels inputs |
 | `56c6c97` `3135656` `2281a7f` | W5 addenda (W1/W3/M1/W2 reviews + e2e, cherry-picked) |
 | `1294528` | Manager: nested-test flake fix (enforcement + identity assertions) |
+| `f9360c2` | Manager: this handoff + phase-B evidence package |
+| `1e65267` | Merge origin/main (PR #1: W5 addenda 1–2; report-only, no code delta) |
 
 ## 2. Runnable bounded commands (all ≤30min jobs, verified)
 
