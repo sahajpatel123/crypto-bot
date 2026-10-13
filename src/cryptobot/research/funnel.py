@@ -24,19 +24,39 @@ from typing import Any
 
 BUCKETS = ("unavailable_data", "missing_sequence", "healthy_no_trade",
            "no_setup", "below_cost", "below_minimum", "stale_expired",
-           "nonmarketable", "ioc_cancelled", "exposure_cooldown")
+           "nonmarketable", "ioc_cancelled", "exposure_cooldown",
+           "startup", "stale_input", "missing_depth", "other_hold")
 
-_UNAVAILABLE_TOKENS = ("gap:fail", "warmup", "book:", "flow:never",
-                       "flow:missing", "quality", "stale-book",
-                       "empty-book", "unsynced")
+_UNAVAILABLE_TOKENS = ("gap:fail", "warmup", "flow:never",
+                       "flow:missing", "quality")
+_DEPTH_TOKENS = ("book:", "stale-book", "empty-book", "unsynced")
+_STALE_INPUT_TOKENS = ("gate:stale", "quote-age", "quote_age", "mark-age",
+                       "mark_age", "stale-quote", "stale-mark")
 _SETUP_TOKENS = ("breakout", "momentum", "pierce", "reclaim", "resume",
                  "pullback", "range", "regime", "trend")
 
 
 def _side_bucket(token: str) -> str:
     low = token.lower()
+    if low.startswith("strategy:"):
+        low = low[len("strategy:"):]
+    if low.startswith("no-fire:"):
+        # Variant-arm evaluation reasons: no-fire:<first-failed-check>.
+        gate = low[len("no-fire:"):]
+        if gate in ("history", "insufficient-history", "gap-1", "gap-2",
+                    "gap") or "gap" in gate:
+            return "unavailable_data"
+        if any(key in gate for key in _DEPTH_TOKENS):
+            return "missing_depth"
+        if "sequence" in gate:
+            return "missing_sequence"
+        # Spread/confirm/position(trade-location)/range/vwap/stall and
+        # all other setup gates: condition evaluated, no setup.
+        return "no_setup"
     if "sequence:fail" in low:
         return "missing_sequence"
+    if any(key in low for key in _DEPTH_TOKENS):
+        return "missing_depth"
     if any(key in low for key in _UNAVAILABLE_TOKENS):
         return "unavailable_data"
     if any(key in low for key in _SETUP_TOKENS):
@@ -51,7 +71,22 @@ def map_reason(stage: str, reason: str) -> str:
             return "below_cost"
         if "cooldown" in reason or "position-busy" in reason:
             return "exposure_cooldown"
+        if "expired" in reason:
+            return "stale_expired"
         return ""
+    if stage in ("gate", "hold"):
+        low = reason.lower()
+        if any(key in low for key in _STALE_INPUT_TOKENS):
+            return "stale_input"
+        if "restart-pending" in low:
+            return "startup"
+        return "other_hold"
+    if stage == "reconcile":
+        if "restart-pending" in reason.lower():
+            return "startup"
+        return "other_hold"
+    if stage in ("event", "anomaly", "config", "protection"):
+        return "other_hold"
     if stage == "risk":
         if "min-notional" in reason or "minimum" in reason:
             return "below_minimum"
@@ -68,7 +103,8 @@ def map_reason(stage: str, reason: str) -> str:
         return ""
     if stage == "strategy":
         sides = [_side_bucket(part) for part in reason.split("|")]
-        for bucket in ("unavailable_data", "missing_sequence", "no_setup"):
+        for bucket in ("unavailable_data", "missing_depth",
+                       "missing_sequence", "no_setup"):
             if bucket in sides:
                 return bucket
         return ""
@@ -130,26 +166,26 @@ def analyze_run(run_dir: str | Path) -> dict[str, Any]:
                for strategy in elig}
 
     journal = _read_journal(run_dir / "engine_journal.jsonl")
-    by_client = _index_submissions(journal)
-    entry_ids = [c for c, role in by_client.items() if role == "entry"]
-    filled = {c for c in entry_ids
-              if any(e["event"] == "fill" and
-                     e.get("detail", {}).get("client_id") == c
-                     for e in journal)}
-    terminal_cancel = {
-        c for c in entry_ids
-        if any(e["event"] == "terminal" and
-               e.get("detail", {}).get("client_id") == c and
-               e.get("detail", {}).get("kind") == "cancel"
-               for e in journal)}
-    unfilled_cancelled = [c for c in entry_ids
-                          if c not in filled and c in terminal_cancel]
-    open_entries = [c for c in entry_ids
-                    if c not in filled and c not in terminal_cancel]
-    exec_ids = sorted({e.get("detail", {}).get("exec_id") for e in journal
-                       if e["event"] == "fill" and
-                       e.get("detail", {}).get("exec_id")})
-    ioc_bucket_n = len(unfilled_cancelled)
+    outcomes = _reservation_outcomes(journal)
+    ioc_bucket_n = outcomes["entries_cancelled_unfilled"]
+
+    # Startup: evaluation seconds strictly before the strategy's first
+    # eligible second (warmup/causal prefix). Never-eligible strategies
+    # report 0 startup: their time is data-denied, not startup.
+    startup: dict[str, int] = {}
+    for strategy, secs in opps.items():
+        first_elig = min(elig.get(strategy, set()), default=None)
+        if first_elig is None:
+            startup[strategy] = 0
+        else:
+            startup[strategy] = sum(1 for s in secs if s < first_elig)
+
+    paths = _intent_stage_paths(real)
+    terminal_counts: Counter = Counter(
+        p["terminal_bucket"] for p in paths.values())
+    cost_pass = sum(1 for p in paths.values()
+                    if p["terminal_bucket"] != "below_cost")
+    usable_seconds = len({s for secs in opps.values() for s in secs})
 
     unique_opps = sum(len(v) for v in opps.values())
     return {
@@ -164,6 +200,7 @@ def analyze_run(run_dir: str | Path) -> dict[str, Any]:
                              for strategy, v in sorted(elig.items())},
         "opportunity_seconds": {strategy: len(v)
                                 for strategy, v in sorted(opps.items())},
+        "startup_seconds": startup,
         "healthy_no_trade_seconds": healthy,
         "intent_rows": len(intents),
         "real_intent_rows": len(real),
@@ -173,11 +210,26 @@ def analyze_run(run_dir: str | Path) -> dict[str, Any]:
         "selected_intents": len(selected),
         "selected_by_strategy": dict(Counter(
             r["strategy"] for r in selected)),
-        "entry_client_ids": len(entry_ids),
-        "entries_filled": len(filled),
+        "intent_terminal_gates": dict(terminal_counts),
+        "intent_stage_paths": paths,
+        "entry_client_ids": outcomes["entry_client_ids"],
+        "entries_filled": outcomes["entries_filled"],
         "entries_cancelled_unfilled": ioc_bucket_n,
-        "entries_open_at_end": len(open_entries),
-        "fill_exec_ids": len(exec_ids),
+        "entries_open_at_end": outcomes["entries_open_at_end"],
+        "fill_exec_ids": outcomes["fill_exec_ids"],
+        "reservations": outcomes["reservations"],
+        "closed_reservations": outcomes["closed_reservations"],
+        "stages": {
+            "usable_data_seconds": usable_seconds,
+            "strategy_eligible_seconds": {
+                s: len(v) for s, v in sorted(elig.items())},
+            "setup_unique_intents": len(unique_intents),
+            "cost_pass_unique_intents": cost_pass,
+            "portfolio_risk_pass_unique": outcomes["reservations"],
+            "submitted_entries": outcomes["entry_client_ids"],
+            "filled_entries": outcomes["entries_filled"],
+            "closed_reservations": outcomes["closed_reservations"],
+        },
         "buckets": {
             "unavailable_data": buckets["unavailable_data"],
             "missing_sequence": buckets["missing_sequence"],
@@ -189,19 +241,29 @@ def analyze_run(run_dir: str | Path) -> dict[str, Any]:
             "nonmarketable": 0,
             "ioc_cancelled": ioc_bucket_n,
             "exposure_cooldown": buckets["exposure_cooldown"],
+            "startup_seconds": sum(startup.values()),
+            "stale_input": buckets["stale_input"],
+            "missing_depth": buckets["missing_depth"],
+            "other_hold": buckets["other_hold"],
         },
         "notes": [
             "strategy buckets count ROWS; see unique_opportunities for the "
             "deduped count and rows_per_opportunity for repetition.",
             "healthy_no_trade counts eligible seconds with no selected "
             "intent (unique seconds, not rows).",
+            "startup counts pre-first-eligible seconds per strategy; "
+            "never-eligible time stays in data buckets, not startup.",
             "ioc_cancelled counts unique entry client_ids submitted but "
             "venue-canceled unfilled (LIMIT->IOC mechanism); the journal "
             "does not separately label price-band cancels, so "
             "nonmarketable is 0 observed with an instrumentation gap.",
-            "stale_expired counts execution-stage expiry rows; 0 observed "
-            "means no expiry rows were emitted, not that expiry is "
-            "impossible.",
+            "stale_expired counts selection:expired + execution expiry "
+            "rows; 0 observed means none were emitted.",
+            "intent_stage_paths preserve each candidate's original "
+            "strategy verdict (admitted) alongside its terminal gate.",
+            "stages.cost_pass counts unique intents not terminally "
+            "below-cost; portfolio_risk_pass counts journal "
+            "reservations (risk Approved).",
         ],
     }
 
@@ -235,6 +297,125 @@ def _index_submissions(journal: list[dict[str, Any]]) -> dict[str, str]:
     return by_client
 
 
+def _reservation_outcomes(journal: list[dict[str, Any]]) -> dict[str, Any]:
+    """Per-reservation fill/close linkage (shared run + banked)."""
+    roles = _index_submissions(journal)
+    res_of: dict[str, str] = {}
+    for event in journal:
+        if event.get("event") == "submitted":
+            detail = event.get("detail", {})
+            if detail.get("client_id"):
+                res_of[detail["client_id"]] = detail.get("reservation_id",
+                                                         "")
+    entry_ids = [c for c, role in roles.items() if role == "entry"]
+    fills_by_res: dict[str, dict[str, bool]] = {}
+    exec_ids: set[str] = set()
+    for event in journal:
+        if event.get("event") != "fill":
+            continue
+        detail = event.get("detail", {})
+        res = detail.get("reservation_id", "")
+        slot = fills_by_res.setdefault(res, {"entry": False, "exit": False})
+        slot["entry" if roles.get(detail.get("client_id")) == "entry"
+             else "exit"] = True
+        if detail.get("exec_id"):
+            exec_ids.add(detail["exec_id"])
+    terminal_cancel = {
+        c for c in entry_ids
+        if any(e["event"] == "terminal" and
+               e.get("detail", {}).get("client_id") == c and
+               e.get("detail", {}).get("kind") == "cancel"
+               for e in journal)}
+    filled = {c for c in entry_ids
+              if any(e["event"] == "fill" and
+                     e.get("detail", {}).get("client_id") == c
+                     for e in journal)}
+    reservations = {r for r in
+                    [res_of.get(c, "") for c in entry_ids] if r}
+    closed = sorted(r for r, slot in fills_by_res.items()
+                    if slot["entry"] and slot["exit"])
+    return {
+        "entry_client_ids": len(entry_ids),
+        "entries_filled": len(filled),
+        "entries_cancelled_unfilled": len(
+            [c for c in entry_ids if c not in filled
+             and c in terminal_cancel]),
+        "entries_open_at_end": len(
+            [c for c in entry_ids if c not in filled
+             and c not in terminal_cancel]),
+        "reservations": len(reservations),
+        "closed_reservations": len(closed),
+        "fill_exec_ids": len(exec_ids),
+    }
+
+
+def _intent_stage_paths(
+        real: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    """Original strategy verdict + terminal gate per unique intent.
+
+    Every real intent row proves the strategy ADMITTED (reaching
+    selection); the terminal row shows the latest downstream gate.
+    """
+    by_id: dict[str, list[dict[str, Any]]] = {}
+    for row in real:
+        by_id.setdefault(row["intent_id"], []).append(row)
+    paths: dict[str, dict[str, Any]] = {}
+    for intent_id, rows in by_id.items():
+        ordered = sorted(rows, key=lambda r: r["ts_utc"])
+        last = ordered[-1]
+        if last["decision"] == "selected":
+            terminal_bucket = "admitted"
+        else:
+            stage = last["reason"].split(":")[0] \
+                if ":" in last["reason"] else "unknown"
+            terminal_bucket = map_reason(stage, last["reason"]) or \
+                "unmapped"
+        paths[intent_id] = {
+            "strategy": ordered[0]["strategy"],
+            "strategy_verdict": "admitted",
+            "terminal": f"{last['decision']}:{last['reason']}",
+            "terminal_bucket": terminal_bucket,
+            "rows": len(ordered),
+        }
+    return paths
+
+
+def analyze_symbol_time(capture_path: str | Path) -> dict[str, Any]:
+    """Usable symbol-time from a capture events.jsonl (W4-CORR).
+
+    A (symbol, second) counts usable when the second carries a trade or
+    quote event for the symbol. Independent of strategy evaluation.
+    """
+    seconds: dict[str, set[str]] = {}
+    n_events = 0
+    with open(capture_path, encoding="utf-8") as handle:
+        for line in handle:
+            line = line.strip()
+            if not line:
+                continue
+            event = json.loads(line)
+            channel = str(event.get("channel", ""))
+            if channel not in ("aggTrade", "bookTicker", "trade",
+                               "quote", "depth"):
+                continue
+            symbol = str(event.get("symbol", "?"))
+            ts_ms = event.get("exchange_ts_ms",
+                              event.get("local_recv_ms", 0))
+            try:
+                sec = datetime.fromtimestamp(
+                    int(ts_ms) / 1000,
+                    tz=datetime.now().astimezone().tzinfo).replace(
+                        microsecond=0).isoformat()
+            except (ValueError, TypeError, OSError):
+                continue
+            seconds.setdefault(symbol, set()).add(sec)
+            n_events += 1
+    per_symbol = {symbol: len(secs) for symbol, secs in sorted(seconds.items())}
+    return {"events_scanned": n_events,
+            "usable_symbol_seconds": per_symbol,
+            "usable_symbol_seconds_total": sum(per_symbol.values())}
+
+
 def analyze_banked(cell: dict[str, Any], journal_path: str | Path,
                    ) -> dict[str, Any]:
     """Funnel from a banked cell.json + engine journal (aggregates)."""
@@ -248,23 +429,7 @@ def analyze_banked(cell: dict[str, Any], journal_path: str | Path,
         else:
             unmapped[reason] += count
     journal = _read_journal(Path(journal_path))
-    reservations = {e.get("detail", {}).get("reservation_id")
-                    for e in journal
-                    if e.get("detail", {}).get("reservation_id")}
-    by_client = _index_submissions(journal)
-    entry_ids = [c for c, role in by_client.items() if role == "entry"]
-    filled = {c for c in entry_ids
-              if any(e["event"] == "fill" and
-                     e.get("detail", {}).get("client_id") == c
-                     for e in journal)}
-    cancelled = {
-        c for c in entry_ids
-        if any(e["event"] == "terminal" and
-               e.get("detail", {}).get("client_id") == c
-               for e in journal)}
-    exec_ids = {e.get("detail", {}).get("exec_id") for e in journal
-                if e["event"] == "fill"}
-    exec_ids.discard(None)
+    outcomes = _reservation_outcomes(journal)
     stream = cell.get("replay_stream", {})
     return {
         "armset": cell.get("armset"), "split": cell.get("split"),
@@ -275,18 +440,21 @@ def analyze_banked(cell: dict[str, Any], journal_path: str | Path,
         "row_buckets": dict(buckets),
         "unmapped_reasons": dict(unmapped),
         "intents_admitted": cell.get("intents_admitted"),
-        "unique_reservations": len(reservations),
-        "entry_client_ids": len(entry_ids),
-        "entries_filled": len(filled),
-        "entries_cancelled_unfilled": len([c for c in entry_ids
-                                           if c not in filled
-                                           and c in cancelled]),
-        "fill_exec_ids": len(exec_ids),
+        "unique_reservations": outcomes["reservations"],
+        "entry_client_ids": outcomes["entry_client_ids"],
+        "entries_filled": outcomes["entries_filled"],
+        "entries_cancelled_unfilled":
+            outcomes["entries_cancelled_unfilled"],
+        "entries_open_at_end": outcomes["entries_open_at_end"],
+        "closed_reservations": outcomes["closed_reservations"],
+        "fill_exec_ids": outcomes["fill_exec_ids"],
         "closing_equity": cell.get("closing_equity"),
         "net_return_pct": cell.get("net_return_pct"),
         "note": "row_buckets are REPEATED ROWS from banked aggregates "
                 "(per-evaluation rows rerun every second); unique-ID "
-                "counts come from the journal only.",
+                "counts come from the journal only. Startup/stale-input "
+                "time splits need per-second rows or capture and are "
+                "not measurable from aggregates.",
     }
 
 
@@ -298,6 +466,9 @@ def main(argv: list[str] | None = None) -> int:
                         help="cell.json path (repeatable)")
     parser.add_argument("--banked-journal", action="append", default=[],
                         help="matching engine_journal.jsonl (repeatable)")
+    parser.add_argument("--capture", action="append", default=[],
+                        help="events.jsonl for usable symbol-time "
+                             "(repeatable, optional)")
     parser.add_argument("--out", required=True)
     args = parser.parse_args(argv)
     if len(args.banked_cell) != len(args.banked_journal):
@@ -309,6 +480,8 @@ def main(argv: list[str] | None = None) -> int:
                            journal)
             for cell, journal in zip(args.banked_cell,
                                      args.banked_journal)],
+        "symbol_time": [analyze_symbol_time(path)
+                        for path in args.capture],
     }
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)

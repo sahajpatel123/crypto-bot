@@ -1,0 +1,62 @@
+# R01-S4: S4 (baseline) — mechanical derivation of
+# configs/round01.toml for exactly one registry config.
+# ROUND-01 executable configuration (Worker 4, CORR-STRAT).
+# Enforces the exact frozen allowlist: 9 ROUND-01 strategy arms
+# (S2-V/S2-F and S5 excluded per trials/round-01.json).
+# Ledger currency is USDT. Nothing here is a live balance.
+# Scoring use is GATED: run only via backtest --require-round with the
+# corrected IOC stack, after the manager says go (phase B).
+
+[run]
+mode = "replay"
+paper_capital_usdt = 120.0
+accounting_tz = "Asia/Kolkata"
+duration = "24h"
+
+[risk]
+max_loss_budget_pct = 0.00125
+leverage_cap = 3.0
+min_notional_usdt = 5.0
+stress_multiplier = 1.5
+operating_stop_pct = 0.005
+emergency_stop_pct = 0.01
+profile_version = "24h-1"
+max_mark_age_ms = 1000
+daily_target_pct = 0.02
+profit_arm_pct = 0.01
+profit_retain_pct = 0.70
+max_evidence_age_s = 120.0
+max_clock_skew_s = 5.0
+filters_max_age_s = 3600.0
+max_notional_cap_usdt = 500.0
+
+[fees]
+label = "simulation-labeled"
+taker_bps = 5.0
+funding_bps_per_8h = 1.0
+
+[engine]
+kind = "reference"
+submit_delay_ms = 50
+fill_delay_ms = 50
+
+[data]
+symbols = []
+max_symbols = 8
+warmup_bars = 130
+
+[storage]
+dir = "runs"
+budget_mb = 2048
+
+[strategies]
+enabled = ["S4"]
+arms = "all"
+# Single-config allowlist for this file's registry config only.
+# The full ROUND-01 allowlist lives in configs/round01.toml;
+# Session evaluates ONLY the arms below.
+# these arms; the mechanical gate (research/allowlist.py) aborts on drift.
+arms_allowlist = ["S4"]
+cooldown_s = 300
+min_reward_multiple = 1.0
+allow_legacy_exit_rules = false

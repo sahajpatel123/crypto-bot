@@ -673,7 +673,10 @@ def run_cell(base_config_path, capture_dir, strategies: tuple[str, ...],
              run_dir, run_id: str, symbols: tuple[str, ...],
              instrument_filters: dict[str, dict] | None = None,
              filter_origin: str = FILTER_LABEL,
-             filters_asof_utc=None) -> dict:
+             filters_asof_utc=None,
+             require_round: str | None = None,
+             require_config: str | None = None,
+             round_params: str | None = None) -> dict:
     """One (arm-set, split) cell: fresh Session + Nautilus engine, replay."""
     from cryptobot.adapters import NautilusPaperEngine
     from cryptobot.app.config import load_config
@@ -691,6 +694,25 @@ def run_cell(base_config_path, capture_dir, strategies: tuple[str, ...],
     cfg = load_config(base_config_path)
     cfg = dataclasses.replace(cfg, strategies_enabled=tuple(strategies),
                               storage_dir=str(run_path))
+    if require_round:
+        from pathlib import Path as _Path
+
+        from .allowlist import AllowlistError as _AllowErr
+        from .allowlist import verify_effective as _verify_cell
+        params = round_params or str(
+            _Path(require_round).with_suffix("")) + ".params.json"
+        report = _verify_cell(
+            list(cfg.strategies_enabled), cfg.strategies_arms,
+            list(cfg.strategies_arms_allowlist)
+            if cfg.strategies_arms_allowlist is not None else None,
+            require_round, params, only_config=require_config,
+            label=f"{run_id}:{base_config_path}")
+        if not report["ok"]:
+            raise _AllowErr(
+                f"cell {run_id} disagrees with {require_round}: "
+                f"extra={report['extra_arms']} "
+                f"missing={report['missing_arms']} "
+                f"param_drift={sorted(report['param_diffs'])}")
     store = RunStore(run_path / "store.db")
     from datetime import datetime, timezone
     _EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
@@ -825,7 +847,10 @@ def run_comparison(dataset: DatasetHandle, out_dir, base_config_path,
                    armsets: tuple[str, ...] = ("S1", "S2", "S3", "S4", "S5",
                                                "COMBINED", "CASH"),
                    spread_profile=None, sensitivity: bool = False,
-                   max_events: int | None = None) -> dict:
+                   max_events: int | None = None,
+                   require_round: str | None = None,
+                   require_config: str | None = None,
+                   round_params: str | None = None) -> dict:
     """Frozen per-strategy + combined + cash comparison across splits."""
     from .spread import PROFILE_ID, sensitivity_spreads
 
@@ -876,7 +901,10 @@ def run_comparison(dataset: DatasetHandle, out_dir, base_config_path,
             run_dir = out / "runs" / split / armset
             cell = run_cell(base_config_path, cap_dir, ARM_SETS[armset],
                             run_dir, run_id, symbols, instrument_filters,
-                            "+".join(origins), filters_asof)
+                            "+".join(origins), filters_asof,
+                            require_round=require_round,
+                            require_config=require_config,
+                            round_params=round_params)
             report = cell["report"]
             key = f"{armset}|{split}"
             comparison["cells"][key] = {
@@ -906,7 +934,10 @@ def run_comparison(dataset: DatasetHandle, out_dir, base_config_path,
                     cell_s = run_cell(base_config_path, sens_cap,
                                       ARM_SETS[armset], run_dir_s, run_id_s,
                                       symbols, instrument_filters,
-                                      "+".join(origins), filters_asof)
+                                      "+".join(origins), filters_asof,
+                                      require_round=require_round,
+                                      require_config=require_config,
+                                      round_params=round_params)
                     rep_s = cell_s["report"]
                     comparison["sensitivity"][f"{key}@spread{mult}x"] = {
                         "multiplier": mult,
@@ -976,7 +1007,28 @@ def main(argv: list[str] | None = None) -> int:
                         help="skip spread profile even on quote-less data")
     parser.add_argument("--max-events", type=int, default=None,
                         help="causal-prefix cap per split capture (labeled)")
+    parser.add_argument("--require-round", default=None, metavar="ROUND_JSON",
+                        help="W4-CORR: enforce frozen round registry "
+                             "(arm allowlist + param fingerprints) against "
+                             "--config before running; aborts on mismatch")
+    parser.add_argument("--round-params", default=None, metavar="PARAMS_JSON",
+                        help="frozen parameter file for --require-round "
+                             "(default: <round>.params.json)")
+    parser.add_argument("--require-config", default=None, metavar="CONFIG_ID",
+                        help="with --require-round: gate against one "
+                             "registry config only (single-arm cells)")
     args = parser.parse_args(argv)
+    if args.require_round:
+        from pathlib import Path as _Path
+
+        from .allowlist import enforce as _enforce_round
+        params = args.round_params or str(
+            _Path(args.require_round).with_suffix("")) + ".params.json"
+        report = _enforce_round(args.config, args.require_round, params,
+                                only_config=args.require_config)
+        print(f"round gate: {args.require_round} ok "
+              f"arms={report['resolved_count']} "
+              f"sha={report['live_fingerprint_sha']}")
     from .spread import SpreadProfile
     from .synth_benchmark import SYMBOL, SynthBenchmark
 
@@ -998,7 +1050,9 @@ def main(argv: list[str] | None = None) -> int:
         splits=tuple(s for s in args.splits.split(",") if s),
         armsets=tuple(a for a in args.armsets.split(",") if a),
         spread_profile=profile, sensitivity=args.sensitivity,
-        max_events=args.max_events)
+        max_events=args.max_events, require_round=args.require_round,
+        require_config=args.require_config,
+        round_params=args.round_params)
     n = len(comparison["cells"])
     print(f"{args.dataset}: {n} cells "
           f"({args.splits} x {args.armsets}) -> {args.out}/comparison.json")

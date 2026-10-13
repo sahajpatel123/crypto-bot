@@ -7,13 +7,13 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
 from cryptobot.research.funnel import (analyze_banked, analyze_run,  # noqa: E402
-                                       map_reason)
+                                       analyze_symbol_time, map_reason)
 
 
 def test_reason_mapping_covers_plan_buckets():
     assert map_reason("strategy", "gap:fail|gap:fail") == "unavailable_data"
     assert map_reason("strategy", "book:never-synced|book:never-synced") == \
-        "unavailable_data"
+        "missing_depth"
     assert map_reason("strategy", "sequence:fail|trend:fail") == \
         "missing_sequence"
     assert map_reason("strategy", "breakout:fail|momentum:fail") == "no_setup"
@@ -25,6 +25,21 @@ def test_reason_mapping_covers_plan_buckets():
     assert map_reason("execution", "queued-past-window") == "stale_expired"
     assert map_reason("execution", "ioc-remainder-cancel") == "ioc_cancelled"
     assert map_reason("execution", "band:nonmarketable") == "nonmarketable"
+    assert map_reason("selection", "expired") == "stale_expired"
+    assert map_reason("gate", "stale-quote") == "stale_input"
+    assert map_reason("gate", "quote-age-unknown") == "stale_input"
+    assert map_reason("reconcile", "restart-pending") == "startup"
+    assert map_reason("reconcile", "unknown-outcomes") == "other_hold"
+    assert map_reason("event", "pre-window:X") == "other_hold"
+    assert map_reason("anomaly", "halt-entries:latency") == "other_hold"
+    assert map_reason("strategy", "strategy:no-fire:gap-2") == \
+        "unavailable_data"
+    assert map_reason("strategy", "no-fire:gap-2") == "unavailable_data"
+    assert map_reason("strategy", "no-fire:insufficient-history") == \
+        "unavailable_data"
+    assert map_reason("strategy", "no-fire:confirm-gate") == "no_setup"
+    assert map_reason("strategy", "no-fire:position-gate") == "no_setup"
+    assert map_reason("strategy", "no-fire:vwap-gate") == "no_setup"
     assert map_reason("strategy", "something:new") == ""
 
 
@@ -92,6 +107,67 @@ def test_run_funnel_dedups_and_counts_ids(tmp_path):
     assert report["buckets"]["unavailable_data"] == 1
     assert report["buckets"]["below_cost"] == 1
     assert report["buckets"]["ioc_cancelled"] == 1
+    # v2: startup, original verdict, stage chain, close linkage.
+    assert report["startup_seconds"] == {"S1": 0}
+    path = report["intent_stage_paths"]["I1"]
+    assert path["strategy_verdict"] == "admitted"
+    assert path["terminal_bucket"] == "admitted"
+    assert report["intent_terminal_gates"] == {"admitted": 1}
+    assert report["closed_reservations"] == 0
+    assert report["stages"]["setup_unique_intents"] == 1
+    assert report["stages"]["submitted_entries"] == 2
+    assert report["stages"]["filled_entries"] == 1
+
+
+def test_blocked_intent_keeps_original_verdict(tmp_path):
+    run = tmp_path / "run"
+    run.mkdir()
+    (run / "rejections.jsonl").write_text(
+        json.dumps({"ts_utc": "2026-08-27T00:00:01+00:00",
+                    "stage": "risk", "reason": "skip:min-notional",
+                    "strategy": "S1", "instrument": "XRPUSDT",
+                    "side": "LONG"}) + "\n", encoding="utf-8")
+    con = sqlite3.connect(run / "store.db")
+    con.execute("create table intents (id integer primary key, run_id text,"
+                "intent_id text,strategy text,instrument text,side text,"
+                "decision text,reason text,ts_utc text)")
+    con.execute("insert into intents values (1,'r','I9','S1','XRPUSDT',"
+                "'LONG','selected','selection:admitted',"
+                "'2026-08-27T00:00:01+00:00')")
+    con.execute("insert into intents values (2,'r','I9','S1','XRPUSDT',"
+                "'LONG','rejected','risk:skip:min-notional',"
+                "'2026-08-27T00:00:02+00:00')")
+    con.commit()
+    con.close()
+    (run / "engine_journal.jsonl").write_text("", encoding="utf-8")
+    report = analyze_run(run)
+    path = report["intent_stage_paths"]["I9"]
+    assert path["strategy_verdict"] == "admitted"
+    assert path["terminal_bucket"] == "below_minimum"
+    assert path["rows"] == 2
+    assert report["stages"]["setup_unique_intents"] == 1
+    assert report["stages"]["cost_pass_unique_intents"] == 1
+
+
+def test_symbol_time_counts_per_symbol_seconds(tmp_path):
+    capture = tmp_path / "events.jsonl"
+    base_ms = 1_757_000_000_000
+    lines = [
+        {"channel": "aggTrade", "symbol": "BTCUSDT",
+         "exchange_ts_ms": base_ms},
+        {"channel": "aggTrade", "symbol": "BTCUSDT",
+         "exchange_ts_ms": base_ms + 500},
+        {"channel": "bookTicker", "symbol": "ETHUSDT",
+         "exchange_ts_ms": base_ms + 1500},
+        {"channel": "noise", "symbol": "BTCUSDT",
+         "exchange_ts_ms": base_ms + 2500},
+    ]
+    capture.write_text("\n".join(json.dumps(e) for e in lines) + "\n",
+                       encoding="utf-8")
+    report = analyze_symbol_time(capture)
+    assert report["events_scanned"] == 3
+    assert report["usable_symbol_seconds"] == {"BTCUSDT": 1, "ETHUSDT": 1}
+    assert report["usable_symbol_seconds_total"] == 2
 
 
 def test_banked_mapping_labels_rows(tmp_path):

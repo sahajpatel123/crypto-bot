@@ -441,13 +441,20 @@ class Session:
         from cryptobot.strategies.runtime import get_adapter
         adapters: dict[str, Any] = {}
         modules: dict[str, Any] = {}
+        allow = self.config.strategies_arms_allowlist
+        allowed = set(allow) if allow is not None else None
         for name in self.config.strategies_enabled:
-            try:
-                adapters[name] = get_adapter(name)
-            except KeyError:
-                continue
+            if allowed is None or name in allowed:
+                try:
+                    adapters[name] = get_adapter(name)
+                except KeyError:
+                    continue
             if name == "S5":
                 continue  # S5 has no evaluate_bar variant path.
+            if allowed is not None and not any(
+                    a in allowed for a in STRATEGY_ARMS[name][1]
+                    if a != name):
+                continue  # no allowlisted variant in this family.
             try:
                 modules[name] = importlib.import_module(
                     f"cryptobot.strategies.{name.lower()}")
@@ -501,11 +508,14 @@ class Session:
                 out.append(Candidate(adapter.strategy_id, None,
                                      f"strategy:{outcome.reject_reason}"))
         if self.config.strategies_arms == "all":
+            allow = self.config.strategies_arms_allowlist
             for name, module in modules.items():
                 base, all_arms = STRATEGY_ARMS[name]
                 for arm in all_arms:
                     if arm == base:
                         continue  # base covered by the adapter above.
+                    if allow is not None and arm not in allow:
+                        continue  # W4-CORR: allowlisted out.
                     start = time.perf_counter()
                     try:
                         decisions = module.evaluate_bar(bars, t, arm, symbol)

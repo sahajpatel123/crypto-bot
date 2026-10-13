@@ -87,6 +87,10 @@ class AppConfig:
     equity_sample_s: int = 60
     strategies_enabled: tuple[str, ...] = ("S1", "S2", "S3", "S4")
     strategies_arms: str = "base"
+    # W4-CORR: exact arm allowlist (e.g. ROUND-01's 9 strategy arms).
+    # None preserves legacy base/all behavior; when set, Session
+    # evaluates only allowlisted arms and fails closed on unknown IDs.
+    strategies_arms_allowlist: tuple[str, ...] | None = None
     cooldown_s: int = 300
     min_reward_multiple: float = 1.0
     allow_legacy_exit_rules: bool = True
@@ -194,6 +198,18 @@ def load_config(path: str | Path) -> AppConfig:
     for name in enabled:
         if name not in ("S1", "S2", "S3", "S4", "S5"):
             raise ConfigError(f"unknown strategy {name!r} in strategies.enabled")
+    allowlist = strategies.get("arms_allowlist")
+    if allowlist is not None:
+        from cryptobot.strategies.contract import ARM_IDS
+        if not isinstance(allowlist, list) or not all(
+                isinstance(a, str) and a for a in allowlist):
+            raise ConfigError("strategies.arms_allowlist must be a "
+                              "non-empty-string list")
+        for arm in allowlist:
+            if arm not in ARM_IDS:
+                raise ConfigError(f"unknown arm {arm!r} in "
+                                  f"strategies.arms_allowlist")
+        allowlist = tuple(allowlist)
     symbols = tuple(data.get("symbols", []))
     for symbol in symbols:
         if not symbol or not isinstance(symbol, str):
@@ -252,6 +268,7 @@ def load_config(path: str | Path) -> AppConfig:
                                       "storage.equity_sample_s")),
         strategies_enabled=enabled,
         strategies_arms=arms,
+        strategies_arms_allowlist=allowlist,
         cooldown_s=int(_finite(strategies.get("cooldown_s", 300), "strategies.cooldown_s")),
         min_reward_multiple=_positive(
             strategies.get("min_reward_multiple", 1.0), "strategies.min_reward_multiple"),
@@ -259,7 +276,7 @@ def load_config(path: str | Path) -> AppConfig:
         events_enabled=bool(run.get("events_enabled", False)),
         source_path=str(path),
     )
-    canonical = json.dumps({
+    canonical_obj: dict = {
         "mode": cfg.mode, "capital": cfg.paper_capital_usdt, "risk": cfg.to_risk_kwargs(),
         "fees": {"label": cfg.fee_label, "taker_bps": cfg.taker_bps,
                  "funding_bps": cfg.funding_bps_per_8h},
@@ -273,7 +290,11 @@ def load_config(path: str | Path) -> AppConfig:
         "cooldown_s": cfg.cooldown_s, "min_reward_multiple": cfg.min_reward_multiple,
         "legacy_exits": cfg.allow_legacy_exit_rules,
         "events_enabled": cfg.events_enabled,
-    }, sort_keys=True)
+    }
+    # Only fingerprinted when set, so legacy configs keep their hashes.
+    if cfg.strategies_arms_allowlist is not None:
+        canonical_obj["arms_allowlist"] = list(cfg.strategies_arms_allowlist)
+    canonical = json.dumps(canonical_obj, sort_keys=True)
     fingerprint = hashlib.sha256(
         f"{PACKAGE_VERSION}|{canonical}".encode("utf-8")).hexdigest()[:16]
     return AppConfig(**{**cfg.__dict__, "fingerprint": fingerprint})
