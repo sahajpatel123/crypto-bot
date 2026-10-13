@@ -13,7 +13,7 @@ S5 ineligible there with reasons). Both implement the B5 reader surface
 ``research/backtest.py`` consumes, so the harness swaps to E-008 without
 code changes.
 
-Move sizes clear the B7 reward-vs-cost gate (round-trip 31 bps): impulses
+Move sizes clear the B7 reward-vs-cost gate (round-trip 26 bps, cost-contract-v1): impulses
 30 bps, pullback resume 25 bps, ranges 80 bps wide (mid ≈ 40 bps away),
 reclaims with 6 bps pierce + 24 bps reversal. Smaller moves would be
 correctly rejected as reward-below-cost and could never exercise the

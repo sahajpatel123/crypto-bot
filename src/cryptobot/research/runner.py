@@ -22,6 +22,7 @@ import sys
 import traceback
 from datetime import datetime, timezone
 
+from cryptobot.costs import COST_S1, roundtrip_bps
 from cryptobot.strategies.contract import (
     ARM_IDS_S1,
     ARM_IDS_S2,
@@ -58,7 +59,7 @@ for _arm in ARM_IDS_S4:
     EVALUATORS[_arm] = evaluate_s4
 
 WARMUP_BARS = 120
-ROUNDTRIP_BPS_PER_SIGNAL = 2 * (5.0 + 5.0) + 5.0 + 1.0  # NET_S1_V1, cost exposure only
+ROUNDTRIP_BPS_PER_SIGNAL = roundtrip_bps(COST_S1)  # cost-contract-v1, cost exposure only
 
 __all__ = [
     "EXPERIMENTS",
