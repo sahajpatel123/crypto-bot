@@ -626,12 +626,18 @@ def test_protection_stop_must_cover_risk_approved_qty(tmp_path):
         engine.leg_qty = {"stop-1": 1.0}  # covers net 1.0, not approved 2.0
         session._ensure_protection(session._position)
         assert session._position["protected"] is False
-        assert session._position["legs"] == []
+        # READY-§5 inv 4: the live short leg is RETAINED (never dropped
+        # unconfirmed), not cleared — replacement retires it next pass.
+        assert session._position["legs"] == ["stop-1"]
         assert "protection-unverified" in _checkpoints(store)
         engine.leg_states = {"stop-2": "open"}
         engine.leg_qty = {"stop-2": 2.0}
         session._ensure_protection(session._position)
         assert session._position["protected"] is True
+        # Replaced id stays tracked with cancel requested (no orphans).
+        assert session._position["legs"] == ["stop-2"]
+        assert session._position["retired"] == ["stop-1"]
+        assert "stop-1" in engine.cancelled
     finally:
         store.close()
 
