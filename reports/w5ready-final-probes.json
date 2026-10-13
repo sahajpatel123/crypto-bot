@@ -1,0 +1,241 @@
+{
+  "reviewed_revision": "0d40ad3b671741baad7b0ced3738b8b1549e5962",
+  "input_class": "synthetic-offline-diagnostic",
+  "earlier_corrections": {
+    "ioc": {
+      "arrival_ask": 101.0,
+      "later_ask": 90.0,
+      "at_200ms": [
+        {
+          "kind": "fill",
+          "time": "2026-10-01T00:00:00.200000+00:00",
+          "price": 101.0
+        }
+      ],
+      "at_10s": [],
+      "defect_observed": false,
+      "after_roundtrip": {
+        "exit_events": [
+          {
+            "kind": "fill",
+            "time": "2026-10-01T00:00:10.999999999+00:00",
+            "price": 89.0
+          }
+        ],
+        "states_returned_by_open_orders": [
+          "filled",
+          "filled"
+        ],
+        "bench_calls_flat": true
+      }
+    },
+    "checkpoint": {
+      "before_restart": {
+        "bar_slots": 135,
+        "warmed": true,
+        "first_ready_elapsed_s": 131
+      },
+      "after_restart": {
+        "feeds": 1,
+        "warmed": true
+      },
+      "checkpoint_fields": [
+        "clock_ms",
+        "cooldowns",
+        "counts",
+        "cursor",
+        "day",
+        "depth_store",
+        "engine",
+        "estimates",
+        "feeds",
+        "identity",
+        "last_mark",
+        "ledger",
+        "protection",
+        "risk_state_json",
+        "run_files",
+        "run_state",
+        "runner_version",
+        "saw_marks",
+        "store_cursors",
+        "warmed"
+      ],
+      "orphan_ledger_qty_0_5_called_flat": false,
+      "changed_config_resume_allowed": false
+    },
+    "nested_budget": {
+      "observed_elapsed_s": 1.198,
+      "rc": 124,
+      "wrapper_report": {
+        "status": "INCOMPLETE_BUDGET",
+        "child_rc": -15,
+        "elapsed_s": 1.138,
+        "budget_s": 1.0,
+        "command": [
+          "/Users/sahajpatel/Code/cryto-bot/.venv/bin/python",
+          "tools/run_budget.py",
+          "--budget-s",
+          "30",
+          "--checkpoint-dir",
+          "/var/folders/3w/wgv95vkx69lf97wwlsh02d700000gn/T/corr-independent-7kx01ig6/prior/inner",
+          "--report-out",
+          "/var/folders/3w/wgv95vkx69lf97wwlsh02d700000gn/T/corr-independent-7kx01ig6/prior/inner.json",
+          "--",
+          "/Users/sahajpatel/Code/cryto-bot/.venv/bin/python",
+          "-c",
+          "import time; time.sleep(8)"
+        ],
+        "note": "deadline reached; partial work is incomplete, never PASS",
+        "enforcement": "verified",
+        "enforcement_detail": "all 1 known descendants dead; subreaper=off",
+        "enum_source": "ps",
+        "subreaper": false,
+        "platform_note": "no child subreaper on this OS: daemonizing children that reparent before any scan are undetectable; Linux enforces fully, this platform is best-effort plus verified reporting"
+      },
+      "note": "Platform-sensitive: reproduce on the deployment OS."
+    }
+  },
+  "existing_restart_tape": {
+    "fills": [
+      {
+        "ts": "2026-10-11T18:26:34.749999999+00:00",
+        "side": "BUY",
+        "qty": 0.332,
+        "price": 100.2,
+        "fee": 0.0166332,
+        "ledger_qty": 0.332,
+        "policy_open_position": true,
+        "reservations": [],
+        "unresolved": []
+      },
+      {
+        "ts": "2026-10-11T18:27:43+00:00",
+        "side": "SELL",
+        "qty": 0.332,
+        "price": 100.0,
+        "fee": 0.0166,
+        "ledger_qty": 0.0,
+        "policy_open_position": true,
+        "reservations": [],
+        "unresolved": []
+      }
+    ],
+    "forgotten_live_legs": [],
+    "expiry_transitions": [],
+    "flatten_calls": [],
+    "returncode": 0,
+    "status": "COMPLETE",
+    "booked": {
+      "equity_open": 120.0,
+      "equity_close": 119.9003668,
+      "valuation": "cash-exact",
+      "valuation_reason": "flat: no mark required",
+      "realised": -0.09963320000000095,
+      "commissions": 0.033233200000000004,
+      "funding": 0.0
+    },
+    "protection_counts": {
+      "protection-verified": 1
+    },
+    "protection_first": [
+      [
+        "protection-verified",
+        {
+          "legs": [
+            "pe-000006-3eb13b90",
+            "pe-000007-392456de"
+          ],
+          "need": 0.332
+        }
+      ]
+    ],
+    "no_later_crossings": false
+  },
+  "same_entry_without_later_price_crossings": {
+    "fills": [
+      {
+        "ts": "2026-10-11T18:26:34.749999999+00:00",
+        "side": "BUY",
+        "qty": 0.332,
+        "price": 100.2,
+        "fee": 0.0166332,
+        "ledger_qty": 0.332,
+        "policy_open_position": true,
+        "reservations": [],
+        "unresolved": []
+      },
+      {
+        "ts": "2026-10-11T18:28:33.009999999+00:00",
+        "side": "SELL",
+        "qty": 0.332,
+        "price": 100.23,
+        "fee": 0.01663818,
+        "ledger_qty": 0.0,
+        "policy_open_position": true,
+        "reservations": [],
+        "unresolved": []
+      }
+    ],
+    "forgotten_live_legs": [],
+    "expiry_transitions": [],
+    "flatten_calls": [
+      {
+        "ts": "2026-10-11T18:28:33+00:00",
+        "reason": "time-exit",
+        "net": 0.332
+      }
+    ],
+    "returncode": 0,
+    "status": "COMPLETE",
+    "booked": {
+      "equity_open": 120.0,
+      "equity_close": 119.97668862,
+      "valuation": "cash-exact",
+      "valuation_reason": "flat: no mark required",
+      "realised": -0.023311379999999625,
+      "commissions": 0.03327138,
+      "funding": 0.0
+    },
+    "protection_counts": {
+      "protection-verified": 1
+    },
+    "protection_first": [
+      [
+        "protection-verified",
+        {
+          "legs": [
+            "pe-000006-3eb13b90",
+            "pe-000007-392456de"
+          ],
+          "need": 0.332
+        }
+      ]
+    ],
+    "no_later_crossings": true
+  },
+  "scoring": {
+    "partial_close": {
+      "remaining_open_qty": 0.005,
+      "reported_closed_trades": 0,
+      "reported_expectancy_n": 0
+    },
+    "funded_ist_day": {
+      "expected_trading_day": "2026-10-12",
+      "expected_net": 0.74,
+      "reported_booked_net": 0.74,
+      "reported_daily_net": {
+        "2026-10-12": 0.74
+      },
+      "reported_trade_net": 0.74
+    },
+    "two_symbols_same_second": {
+      "expected_symbol_seconds": 2,
+      "reported_strategy_eligible_seconds": {
+        "S1": 2
+      },
+      "note": "The code counts clock-seconds, so dividing this numerator by symbol-seconds is invalid."
+    }
+  },
+  "elapsed_s": 7.316
+}
