@@ -64,8 +64,41 @@ Scoring (matches reviewer exactly):
 
 ## 4. Pending
 
-- Final adversarial challenge + PASS/VETO on the integrated SHA.
-- Final `coord/outbox/W5-READY.json`.
+(none — closing filed below.)
+
+## 8. Closing — final adversarial challenge on `e33c95d`: PASS
+
+Challenge worktree at `e33c95d` (W1+W2+W3+W4A+drill prep+acceptance
+gates merged; read-only, removed after). Before/after evidence: base
+`reports/w5ready-base-probes.json` vs after-run below. Every job under
+`run_budget` (all ≤1500s work).
+
+- Independent probes: every finding fixed. Session legs COMPLETE/
+  COMPLETE rc 0, forgotten 0, expiry 0, `{verified:1}` each (was 6
+  legs, 2040/2916 emergency, quiet INCOMPLETE_EXPOSURE). Scoring:
+  partial {closed:0,n:0}, funded 0.74/IST, symsec S1:2. Earlier
+  corrections hold (nested 1.198s verified).
+- Gates: READY acceptance 5/5, restart-equivalence (incl. exposed
+  interrupt parity), 23 lifecycle, 12 deadline battery, budget 5,
+  CORR acceptance 10, drill 9 — 56 targeted + 9 drill, all green,
+  zero strays.
+- Crash test: SIGKILL −9 mid-run (dirty, no flush) → `--resume` →
+  COMPLETE rc 0 with fills/booked/cursor parity (seq 6240).
+- Bad inputs: null/NaN payload → loud reject counter; corrupt capture
+  row counted, no error; missing scoring inputs fail loudly.
+- Exchange boundary: prod flatten raises
+  `config:prod-submission-disabled`; drill kill-on-miss green (creds,
+  host, stale, unknowns, cap, protection, exit, no-trade).
+- Full suite: 1162 passed, 1 skipped, 0 failed in 331s.
+
+No defect found that warrants a veto. All observations across the
+four worker reviews are non-blocking (async-attach churn fail-closed,
+registry-test discrimination, span-class overlap under total silence,
+PID-reuse residual). Linux subreaper runtime proof remains the one
+open item needing a Linux host (W3's dual-root fix addresses the
+reviewer's daemon marker by construction; macOS behavior proven).
+
+Verdict: PASS on `e33c95d`.
 
 ## 7. Addendum — substantive W1 review (APPROVE)
 
