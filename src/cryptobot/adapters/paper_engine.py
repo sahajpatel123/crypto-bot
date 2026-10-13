@@ -255,11 +255,12 @@ class NautilusPaperEngine:
         # IOC no-rest enforcement (30MIN §4): causally-available book per
         # symbol (BBO from quotes, last print fallback for trade-only),
         # data-tick clock, and tracked IOC arrivals for remainder-cancel.
-        self._bbo: dict[str, tuple[float, float]] = {}
-        self._last_print: dict[str, float] = {}
-        self._data_seq = 0
-        self._ioc_open: dict[str, int] = {}  # client id -> arrival data-seq.
-        self._ioc_accepted: dict[str, int] = {}  # client id -> accept data-seq.
+        self._bbo: dict[str, tuple[float, float, float, float]] = {}
+        self._last_print: dict[str, tuple[float, float]] = {}
+        self._op_seq = 0  # processing opportunities (feeds + advances).
+        self._ioc_open: dict[str, int] = {}  # client id -> arrival op.
+        self._ioc_accepted: dict[str, int] = {}  # client id -> accept op.
+        self._ioc_cancel_sent: set[str] = set()
         self._ioc_done: dict[str, None] = {}  # bounded terminal-IOC memory.
         self.stats: dict[str, int] = {  # engine-owned counters (B1/B10).
             "engine_events_total": 0,
@@ -459,7 +460,8 @@ class NautilusPaperEngine:
 
     def _submit_now(self, cmd: EngineOrder, client_id: str,
                     immediate: bool = False,
-                    arrival_ns: int | None = None) -> str:
+                    arrival_ns: int | None = None,
+                    venue_ts_ns: int | None = None) -> str:
         instrument = self._ensure_instrument(cmd.instrument)
         symbol = cmd.instrument.upper()
         qty = self._quantize_qty(symbol, cmd.qty)
@@ -501,8 +503,10 @@ class NautilusPaperEngine:
                 arrived = (self._clock.timestamp_ns() if arrival_ns is None
                            else arrival_ns)
                 ts_utc = unix_nanos_to_dt(arrived).replace(tzinfo=timezone.utc)
-                ref = self._bbo.get(symbol, (self._last_print.get(symbol),
-                                             self._last_print.get(symbol)))
+                _prt = self._last_print.get(symbol)
+                ref = self._bbo.get(symbol, ((_prt[0] if _prt else None),
+                                             (_prt[0] if _prt else None),
+                                             0.0, 0.0))
                 self._journal("submitted", {
                     "client_id": client_id, "instrument": symbol,
                     "side": cmd.side, "qty": qty, "kind": kind,
@@ -525,7 +529,7 @@ class NautilusPaperEngine:
                 time_in_force=TimeInForce.IOC,
                 reduce_only=cmd.reduce_only, client_order_id=coid,
             )
-            self._ioc_open[client_id] = self._data_seq
+            self._ioc_open[client_id] = self._op_seq
         elif kind == "STOP_MARKET":
             assert cmd.stop_price is not None
             order = self._factory.stop_market(
@@ -551,9 +555,21 @@ class NautilusPaperEngine:
         self._symbols[client_id] = symbol
         self._roles[client_id] = cmd.role
         self._reservations[client_id] = cmd.reservation_id
+        # CORR-EXEC: the command enters the venue at its MODELED due time,
+        # not at observation time — a drain at T for a due at T-150ms must
+        # not let post-due information determine the execution. Drains on
+        # bare time advance keep observation-time stamping instead: an
+        # advance carries no market information, so venue-visible arrival
+        # there would fabricate executions from nothing (manager ruling:
+        # bare advance resolves nothing; the next data tick does).
+        if venue_ts_ns is not None:
+            venue_ts = venue_ts_ns
+        else:
+            venue_ts = (self._clock.timestamp_ns() if arrival_ns is None
+                        else arrival_ns)
         self._client.submit_order(SubmitOrder(
             trader_id=self._trader_id, strategy_id=self._strategy_id, order=order,
-            command_id=UUID4(), ts_init=self._clock.timestamp_ns(),
+            command_id=UUID4(), ts_init=venue_ts,
             client_id=ClientId(VENUE.value),
         ))
         submitted: dict[str, Any] = {
@@ -565,7 +581,9 @@ class NautilusPaperEngine:
         self._journal("submitted", submitted)
         return client_id
 
-    def _drain_pending(self) -> None:
+    def _drain_pending(self, venue_now_ns: int | None = None) -> None:
+        # venue_now_ns: observation-time stamp for advance-context drains
+        # (None = modeled-due-time stamp for feed/poll/submit drains).
         now_ns = self._clock.timestamp_ns()
         due_now = [item for item in self._submit_queue if item[0] <= now_ns]
         self._submit_queue = [item for item in self._submit_queue if item[0] > now_ns]
@@ -583,7 +601,8 @@ class NautilusPaperEngine:
                     "expire", EngineExpire(client_id, cmd.instrument.upper(),
                                            "queued-past-window", ts_utc), ts_utc))
                 continue
-            self._submit_now(cmd, client_id, arrival_ns=due_ns)
+            self._submit_now(cmd, client_id, arrival_ns=due_ns,
+                               venue_ts_ns=venue_now_ns)
             self._pre2real[client_id] = client_id
 
     def resolve(self, client_id: str) -> str | None:
@@ -955,6 +974,14 @@ class NautilusPaperEngine:
             self.stats["restamped_ticks"] += 1
             ts_init = now_ns
         self._drain_pending()
+        # CORR-EXEC: flush venue messages due STRICTLY before this tick
+        # against the pre-tick (due-time-or-older) book, so a later tick
+        # cannot price an earlier-due execution; cancels due before the
+        # tick win instead of racing it. Same-timestamp ties keep tick
+        # semantics (installed book), and with no reference ever seen the
+        # first tick installs before anything resolves (wait model).
+        if (self._bbo or self._last_print) and ts_init > 0:
+            self._exchange.process(ts_init - 1)
         if isinstance(data, QuoteTick):
             self._track_bbo(data)
             self._exchange.process_quote_tick(data)
@@ -972,7 +999,7 @@ class NautilusPaperEngine:
         else:
             raise TypeError(f"unsupported feed data: {type(data).__name__}")
         self._exchange.process(ts_init)
-        self._data_seq += 1
+        self._op_seq += 1
         self._sweep_ioc_remainders()
         for symbol in list(self._funding_terms):
             self._settle_funding(symbol)
@@ -982,48 +1009,69 @@ class NautilusPaperEngine:
             symbol = tick.instrument_id.symbol.value
         except AttributeError:
             symbol = str(tick.instrument_id).split(".")[0]
-        self._bbo[symbol.upper()] = (float(tick.bid_price), float(tick.ask_price))
+        self._bbo[symbol.upper()] = (float(tick.bid_price), float(tick.ask_price),
+                                     float(tick.bid_size), float(tick.ask_size))
 
     def _track_print(self, tick: TradeTick) -> None:
         try:
             symbol = tick.instrument_id.symbol.value
         except AttributeError:
             symbol = str(tick.instrument_id).split(".")[0]
-        self._last_print[symbol.upper()] = float(tick.price)
+        self._last_print[symbol.upper()] = (float(tick.price),
+                                            float(tick.size))
 
     def _ioc_marketable(self, symbol: str, side: OrderSide, cap: float) -> bool:
-        """Whether a cap crosses the causally-available book (BBO, else print)."""
+        """Whether a cap crosses EXECUTABLE liquidity (touch + size > 0).
+
+        BBO when quoted, else the last print for trade-only flow. A touch
+        with zero size (or no reference at all) is not executable: the IOC
+        cancels at arrival rather than inventing a fill.
+        """
         ref = self._bbo.get(symbol)
         if side == OrderSide.BUY:
-            touch = ref[1] if ref else self._last_print.get(symbol)
-            return touch is not None and cap >= touch
-        touch = ref[0] if ref else self._last_print.get(symbol)
-        return touch is not None and cap <= touch
+            if ref:
+                return ref[3] > 0 and cap >= ref[1]
+            prt = self._last_print.get(symbol)
+            return prt is not None and prt[1] > 0 and cap >= prt[0]
+        if ref:
+            return ref[2] > 0 and cap <= ref[0]
+        prt = self._last_print.get(symbol)
+        return prt is not None and prt[1] > 0 and cap <= prt[0]
 
     def _sweep_ioc_remainders(self) -> None:
-        """Cancel IOC remainders past their accept tick (no-rest enforcement).
+        """Cancel live IOC remainders at the end of their accept opportunity.
 
-        Nautilus never cancels IOC remainders itself: without this sweep an
-        IOC rests until some future tick touches it (revival). An IOC accepted
-        on tick N may match ticks N and N+1, then its remainder is canceled;
-        fills executing before the cancel lands stand (genuine race), and the
-        cancel reports through the normal seam (cancel-rejected becomes a
-        reject event when the fill won). Bound: ≤2 matching ticks + latency.
+        Every accept is followed by matching inside the same processing
+        opportunity (pre-flush/data/post-flush within one feed, or one
+        advance), so an IOC still live at the opportunity's end has had
+        its one matching opportunity: the remainder cancels here and the
+        cancel is due before the next opportunity's matching (pre-flush
+        ordering). A fill executing before a sub-latency cancel lands
+        stands as a genuine race. No tick-count bound is asserted: the
+        rule is opportunity-counted (CORR-EXEC supersedes accept+1-tick).
+        In practice nautilus enforces IOC natively at the matching tick
+        (remainder canceled by the venue, tracked here via the terminal),
+        so this send is a backstop for a tracked IOC the venue left live;
+        the retire path is the live one.
         """
         for client_id in list(self._ioc_open):
             accepted = self._ioc_accepted.get(client_id)
-            if accepted is None or accepted >= self._data_seq:
-                continue  # not yet accepted, or still on its accept tick.
+            if accepted is None or accepted > self._op_seq:
+                continue  # not yet accepted.
             order = self._orders.get(client_id)
             if order is None or self._status_of(order) not in ("open", "partial"):
                 self._ioc_retire(client_id)
                 continue
+            if client_id in self._ioc_cancel_sent:
+                continue  # cancel already in flight; await the terminal.
             self.cancel(client_id, "ioc-remainder")
+            self._ioc_cancel_sent.add(client_id)
             self.stats["ioc_remainder_canceled"] += 1
 
     def _ioc_retire(self, client_id: str) -> None:
         self._ioc_open.pop(client_id, None)
         self._ioc_accepted.pop(client_id, None)
+        self._ioc_cancel_sent.discard(client_id)
         self._ioc_done[client_id] = None
         while len(self._ioc_done) > 4096:
             self._ioc_done.pop(next(iter(self._ioc_done)))
@@ -1042,8 +1090,14 @@ class NautilusPaperEngine:
         if ts_ns < self._clock.timestamp_ns():
             raise ValueError("advance_to must be non-decreasing")
         self._clock.set_time(ts_ns)
-        self._drain_pending()
+        # Observation-time stamp (baseline behavior): a bare advance
+        # carries no market information, so commands drained here resolve
+        # at the next data tick, not from nothing (manager ruling); only
+        # already-venue-due messages process below, exactly as before.
+        self._drain_pending(venue_now_ns=ts_ns)
         self._exchange.process(ts_ns)
+        self._op_seq += 1
+        self._sweep_ioc_remainders()
         for symbol in list(self._funding_terms):
             self._settle_funding(symbol)
 
@@ -1063,16 +1117,31 @@ class NautilusPaperEngine:
             f"fees: taker={self.taker_bps:.1f}bps maker={self.maker_bps:.1f}bps off-instrument "
             f"(MakerTakerFeeModel; run-mode fees never zero; maker unused under taker-only)",
             "liquidity=taker-only: MARKET/STOP_MARKET/TAKE_PROFIT_MARKET cross the book; "
-            "canonical LIMIT maps to nautilus LIMIT IOC under no-rest enforcement "
-            "(30MIN §4, supersedes F-W1B1 relabel): nonmarketable IOCs cancel AT "
-            "command arrival against the tracked book (BBO, else last print) and "
-            "never submit; submitted IOCs match at most their accept tick + one "
-            "tick, then the remainder cancels (fills racing the cancel stand; "
-            "bound: <=2 ticks + cancel latency); a maker flag on a tracked-IOC "
-            "fill is definitionally the sub-tick artifact and books as taker "
-            "(journaled ioc-artifact); any other non-taker fill fails closed.",
+            "canonical LIMIT maps to nautilus LIMIT IOC under chronological "
+            "execution (CORR-EXEC): feed/poll-drained commands enter the venue "
+            "at modeled due time; messages due strictly before a tick flush "
+            "against the pre-tick book, so a later tick cannot price an "
+            "earlier-due execution and cancels due before a tick win it. "
+            "Same-tick ties use the installed book; with no reference ever "
+            "seen the first tick installs before anything resolves (wait "
+            "model). Advance-drained commands keep observation-time stamping "
+            "(bare advance resolves nothing new — manager ruling). "
+            "Nonmarketable IOCs (cap not crossing executable touch+size, BBO "
+            "else last print, none when unquoted) cancel AT arrival and never "
+            "submit. A submitted IOC is evaluated at the first opportunity "
+            "after accept; any live remainder cancels at that opportunity's "
+            "end (opportunity-counted — no tick-count bound; the venue "
+            "usually enforces natively, the adapter sweep retires tracking). "
+            "A same-timestamp submit/cancel tie breaks at the venue and a "
+            "fill executing before a sub-latency cancel lands stands as a "
+            "genuine race. A maker flag on a tracked-IOC fill is the sub-tick "
+            "artifact and books as taker (journaled ioc-artifact); any other "
+            "non-taker fill fails closed. SPARSE-DATA MODEL (declared): no "
+            "data and no advance means no evaluation (the order rests open, "
+            "reported open, never filled); gaps never invent ticks.",
             "markets are GTC (never IOC-cancelled for thin prints): with quotes they "
-            "resolve on the next tick; on trade-only replay prints seed L1 size, the "
+            "resolve at the next tick against the pre-tick book when already due; "
+            "on trade-only replay prints seed L1 size, the "
             "print size fills at-print and swept excess walks one tick adverse "
             "(nautilus empty-book model); queued submits that outlive expire_at_utc "
             "expire unsubmitted (queued-past-window)",
@@ -1157,7 +1226,7 @@ class NautilusPaperEngine:
         if isinstance(event, OrderAccepted) and order is not None:
             coid = event.client_order_id.value
             if coid in self._ioc_open and coid not in self._ioc_accepted:
-                self._ioc_accepted[coid] = self._data_seq
+                self._ioc_accepted[coid] = self._op_seq
         if isinstance(event, OrderFilled):
             self._file_fill(event)
         mapped = self._translate(event)
