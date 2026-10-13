@@ -37,4 +37,11 @@ Then: economic scoring on the corrected stack.
   runner + procedure integrated (154102b, 890de6b) with safe paths
   manager-verified (no-creds full -> 0+4 BLOCKEDs; non-demo refused).
   W5 review: W4 batch PASS; W1/W2/W3 pending. IOC owner confirmed =
-  whisper-redshift. Review note to W5: Phase-3 cids unasserted.
+  whisper-redshift. Review note to W5: Phase-3 cids unasserted (fixed 66e8877).
+- W1-30MIN filed COMPLETE + integrated (f11e899 + fdad744): arrival gate
+  + remainder sweep, relabel superseded, 12 new tests. Manager repairs:
+  attach_protection/order_status honor arrival-cancelled IOCs (ValueError
+  refuse / CANCELED). Suite: 981 passed, 1 skipped, 9 xfailed.
+  Price-band red GREEN/unmarked. 3 IOC reds await W5 probe updates
+  (stale ioc_maker_relabeled key x2; marketable needs an arrival tick).
+  Follow-up: Session._flatten off submit_immediate (manager-owned).
