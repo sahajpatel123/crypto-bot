@@ -195,7 +195,9 @@ def test_non_marketable_limit_cancels_without_resting():
     assert ("cancel", cid) in kinds
     assert not [k for k, _ in kinds if k == "fill"]
     states = {s.client_order_id: s.state for s in engine.open_orders()}
-    assert states[cid] == "cancelled"  # IOC: never rests, never maker-fills.
+    # Arrival gate (30MIN §4, supersedes rest-then-cancel): the IOC never
+    # reaches nautilus, so it never appears as an open order at all.
+    assert cid not in states
 
 
 def test_open_orders_snapshot_shape():
@@ -408,23 +410,25 @@ def _maker_filled_event(engine, client_id, price=60000.00):
         ts_event=int(T0.timestamp() * 1e9), ts_init=int(T0.timestamp() * 1e9))
 
 
-def test_ioc_maker_fill_relabeled_taker(tmp_path):
-    # F-W1B1: a real IOC can never earn a maker fill, so nautilus's
-    # MAKER flag on an IOC trade-print match is relabeled taker and
-    # journaled instead of crashing the cell. Live proof: 10-min
-    # 09-13 window replay fills at 08:39:44.476 with relabel=1 (pre-fix
-    # raises RuntimeError non-taker identically to the dev crash).
+def test_ioc_maker_fill_artifact_corrected_taker(tmp_path):
+    # 30MIN §4 SUPERSEDES F-W1B1 relabel: no-rest enforcement (arrival
+    # gate + remainder sweep) means a tracked IOC never rests, so a
+    # MAKER flag on its fill is definitionally the sub-tick simulator
+    # artifact and books as taker. Marketable cap here (SELL 59999.50
+    # <= bid 60000.00) so the IOC submits and tracks.
     engine = _engine()
     engine.journal_path = tmp_path / "journal.jsonl"
     _quote(engine, 0, 60000.00, 60001.00)
     cid = engine.submit_protected(
-        EngineOrder("BTCUSDT", "SELL", 0.001, "MARKET"), 60000.50)
+        EngineOrder("BTCUSDT", "SELL", 0.001, "MARKET"), 59999.50)
+    assert cid in engine._ioc_open
     event = engine._translate(_maker_filled_event(engine, cid))
     assert event is not None and event.kind == "fill"
     assert event.payload.liquidity == "taker"
     assert event.payload.client_order_id == cid
-    assert engine.stats["ioc_maker_relabeled"] == 1
-    assert "relabel" in (tmp_path / "journal.jsonl").read_text()
+    assert engine.stats["ioc_artifact_corrected"] == 1
+    assert "ioc-artifact" in (tmp_path / "journal.jsonl").read_text()
+    assert "ioc_maker_relabeled" not in engine.stats
 
 
 def test_non_ioc_maker_fill_still_fails_closed():

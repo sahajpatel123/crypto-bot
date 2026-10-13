@@ -165,11 +165,14 @@ def test_run_cell_rip_protection_cancels_unmarketable(tmp_path):
     assert fills_signature(cell["journal"]) == []
     kinds = [json.loads(line)["event"] for line in open(cell["journal"])
              if line.strip()]
-    assert "submitted" in kinds  # the IOC reached the venue model...
+    assert "submitted" in kinds  # arrival journaled (at_arrival trace)...
     assert "terminal" in kinds  # ...and the unreachable touch canceled it.
     details = [json.loads(line)["detail"] for line in open(cell["journal"])
                if line.strip() and json.loads(line)["event"] == "terminal"]
-    assert any(d.get("reason") == "venue-canceled" for d in details)
+    # 30MIN §4: the IOC cancels AT arrival against the tracked book and
+    # never reaches the venue model (supersedes venue-canceled resting).
+    assert any(d.get("reason") == "nonmarketable-at-arrival"
+               for d in details)
     assert report["filter_profile"]["label"] == "frozen-assumed"
 
 
