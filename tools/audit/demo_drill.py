@@ -1,17 +1,28 @@
 #!/usr/bin/env python3
-"""Bounded credentialed demo drill runner (Worker 5, 30min §9).
+"""Bounded credentialed demo drill runner (Worker 5, 30min §9; READY §7 prep).
 
 Subcommands: preflight | drill | stream-gap | reconcile | resume-adopt | full
+
+Declared drill plan (READY §7; owner confirms before any credentialed run):
+- Holder: owner-held demo credentials in the owner's environment only;
+  orders must be visible to the owner on the demo account afterwards.
+- Window: single session, entries only before start+20min, closure by
+  minute 25; run under tools/run_budget.py --budget-s 1500.
+- Clock: UTC evidence log; venue clock skew must be <5s at preflight.
+- Symbol: one symbol (default BTCUSDT), demo hosts only.
+- Exposure caps: single tiny IOC (min-notional * 1.2), notional capped
+  at MAX_NOTIONAL_USDT; one position at a time; reduce-only exit to flat.
+- Protection: stop leg must be VERIFIED live (venue lookup) while any
+  fill is open; missed protection kills the drill immediately.
 
 Safety contract:
 - DEMO HOSTS ONLY: base_url must be https://demo-fapi.binance.com (or the
   engine demo default). Anything else is refused (exit 2), never run.
 - Credentials come ONLY from BINANCE_DEMO_KEY / BINANCE_DEMO_SECRET.
   Missing credentials => BLOCKED (exit 2), never FAIL.
-- Tiny bounded sizes (min-notional * 1.2 at live mark, single symbol).
-- Budget aware: honors CRYPTOBOT_DEADLINE_MONO; no new entries after
-  start+20min (entry cutoff); INCOMPLETE (exit 124) if closure cannot
-  finish by minute 25. Run under tools/run_budget.py --budget-s 1500.
+- KILL criteria (FAIL + immediate abort, no further phases): stale or
+  unknown quote data; unknown order outcomes at a gate; missed (non-live)
+  protection; reduce-only exit mismatch; exposure cap breach.
 - Verdicts: PASS / FAIL / BLOCKED per phase; exit 1 iff any FAIL.
 
 Usage:
@@ -33,6 +44,8 @@ sys.path.insert(0, str(ROOT / "src"))
 DEMO_FAPI = "https://demo-fapi.binance.com"
 ENTRY_CUTOFF_S = 20 * 60
 CLOSE_BY_S = 25 * 60
+MAX_NOTIONAL_USDT = 25.0
+QUOTE_MAX_AGE_S = 10.0
 
 EXIT_BLOCKED = 2
 EXIT_INCOMPLETE = 124
@@ -96,12 +109,40 @@ class Drill:
             base_url=self.base_url, transport=transport,
             now_utc=_utcnow)
 
-    def live_mark(self):
+    def live_quote(self):
+        """(mid, event_ms|None) from the public bookTicker (unsigned)."""
         url = (f"{self.base_url or DEMO_FAPI}/fapi/v1/ticker/bookTicker"
                f"?symbol={self.symbol}")
         with urllib.request.urlopen(url, timeout=10) as resp:
             data = json.loads(resp.read().decode("utf-8"))
-        return (float(data["bidPrice"]) + float(data["askPrice"])) / 2.0
+        mid = (float(data["bidPrice"]) + float(data["askPrice"])) / 2.0
+        event_ms = data.get("time")
+        try:
+            event_ms = int(event_ms) if event_ms is not None else None
+        except (TypeError, ValueError):
+            event_ms = None
+        return mid, event_ms
+
+    def live_mark(self):
+        return self.live_quote()[0]
+
+    def quote_fresh(self):
+        """Stale-data gate: (ok, detail). Unknown event time fails closed."""
+        try:
+            _, event_ms = self.live_quote()
+        except Exception as exc:
+            return False, f"quote fetch failed: {exc!r}"
+        if event_ms is None:
+            return False, "quote event time unknown (fail closed)"
+        age_s = time.time() - event_ms / 1000.0
+        if age_s < 0 or age_s > QUOTE_MAX_AGE_S:
+            return False, f"quote age {age_s:.1f}s exceeds {QUOTE_MAX_AGE_S}s"
+        return True, f"quote age {age_s:.1f}s"
+
+    def kill(self, phase, detail):
+        """KILL criterion hit: FAIL + immediate abort (returns exit 1)."""
+        self.log(phase, "FAIL", f"KILL: {detail}")
+        return 1
 
     def entry_allowed(self):
         return (time.monotonic() - self.start_mono) < ENTRY_CUTOFF_S
@@ -130,6 +171,10 @@ def cmd_preflight(drill):
                   "PASS", f"taker={engine.fee_bps(drill.symbol)}bps")
         mark = drill.live_mark()
         drill.log("preflight/mark", "PASS", f"{drill.symbol} mark {mark}")
+        fresh, detail = drill.quote_fresh()
+        if not fresh:
+            return drill.kill("preflight/quote-fresh", detail)
+        drill.log("preflight/quote-fresh", "PASS", detail)
         return 0
     except Exception as exc:
         drill.log("preflight", "FAIL", repr(exc))
@@ -137,12 +182,16 @@ def cmd_preflight(drill):
 
 
 def _tiny_qty(drill, engine):
+    """(qty, mark) or None when the exposure cap is breached (kill)."""
     mark = drill.live_mark()
     filt = engine._filters[drill.symbol]
     step = float(filt.get("step", 0.001))
     min_notional = float(filt.get("min_notional", 5.0))
     qty = max(step, min_notional * 1.2 / mark)
-    return round(qty - (qty % step) + step, 8), mark
+    qty = round(qty - (qty % step) + step, 8)
+    if qty * mark > MAX_NOTIONAL_USDT:
+        return None
+    return qty, mark
 
 
 def cmd_drill(drill):
@@ -153,12 +202,25 @@ def cmd_drill(drill):
     from cryptobot.adapters.binance_live import UnknownOutcomeError
     from cryptobot.app.engine import EngineOrder
     fails = 0
+    # Stale-data gate runs before any engine/venue contact: no orders,
+    # no signed calls, and no wasted setup on dead data.
+    fresh, detail = drill.quote_fresh()
+    if not fresh:
+        return drill.kill("drill/quote-fresh", detail)
+    drill.log("drill/quote-fresh", "PASS", detail)
     engine = drill.engine()
     engine._ensure_ready(drill.symbol)
     if not drill.entry_allowed():
         drill.log("drill/entry-cutoff", "BLOCKED", "past minute 20")
         return EXIT_BLOCKED
-    qty, mark = _tiny_qty(drill, engine)
+    sized = _tiny_qty(drill, engine)
+    if sized is None:
+        return drill.kill("drill/exposure-cap",
+                          f"tiny qty exceeds {MAX_NOTIONAL_USDT} USDT cap")
+    qty, mark = sized
+    if engine.unknown_ids():
+        return drill.kill("drill/pre-entry-reconcile",
+                          f"unknown outcomes {sorted(engine.unknown_ids())}")
     # Phase 1: tiny IOC entry, observe cancel-or-fill honestly.
     cid = engine.submit(EngineOrder(
         drill.symbol, "BUY", qty, "LIMIT", price=round(mark * 0.99, 2),
@@ -178,22 +240,37 @@ def cmd_drill(drill):
             drill.symbol, "SELL", filled, "STOP_MARKET",
             stop_price=round(mark * 0.95, 2), reduce_only=True,
             reservation_id="demo-entry-1", role="stop"))
-        drill.log("drill/protection", "PASS", f"stop leg {stop}")
+        stop_status = engine.lookup(stop)
+        stop_state = getattr(stop_status, "state", "?") \
+            if stop_status else "unknown"
+        if stop_state not in ("open", "partial"):
+            return drill.kill(
+                "drill/protection",
+                f"stop {stop} not live (state={stop_state}); aborting, "
+                f"position open — owner must review/close manually")
+        drill.log("drill/protection", "PASS",
+                  f"stop leg {stop} verified live ({stop_state})")
         out = engine.submit(EngineOrder(
             drill.symbol, "SELL", filled, "MARKET", reduce_only=True,
             reservation_id="demo-entry-1", role="target"))
         time.sleep(2.0)
         out_filled = engine.filled_qty(out)
-        drill.log("drill/reduce-only-exit",
-                  "PASS" if out_filled == filled else "FAIL",
-                  f"closed {out_filled}/{filled}")
         if out_filled != filled:
-            fails += 1
+            return drill.kill(
+                "drill/reduce-only-exit",
+                f"closed {out_filled}/{filled}; aborting, residual "
+                f"exposure — owner must review/close manually")
+        drill.log("drill/reduce-only-exit", "PASS",
+                  f"closed {out_filled}/{filled}")
         try:
             engine.cancel(stop, "demo:position-closed")
         except Exception as exc:
             drill.log("drill/protection-cancel", "FAIL", repr(exc))
             fails += 1
+        if engine.unknown_ids():
+            return drill.kill("drill/post-exit-reconcile",
+                              f"unknown outcomes "
+                              f"{sorted(engine.unknown_ids())}")
     else:
         drill.log("drill/protection-exit", "BLOCKED",
                   "no fill to protect (honest no-trade)")
