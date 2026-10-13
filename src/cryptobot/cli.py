@@ -7,6 +7,8 @@ Commands:
   cryptobot replay --capture DIR --config C [...]
   cryptobot status --run-id ID
   cryptobot stop --run-id ID [--flatten]
+  cryptobot readiness --config C   (read-only venue checks; never submits)
+  cryptobot run --mode prod --config C   (verifies guards, refuses: disabled)
 """
 from __future__ import annotations
 
@@ -236,7 +238,173 @@ def _run_paper(args: argparse.Namespace) -> int:
 def cmd_run(args: argparse.Namespace) -> int:
     if args.mode == "replay":
         return _run_replay(args)
+    if args.mode == "prod":
+        return _run_prod(args)
     return _run_paper(args)
+
+
+def _readiness_unsigned(config, config_path: str,
+                        ) -> list[tuple[str, str, str]]:
+    """Credential-free checks: files and host pinning only."""
+    from cryptobot.adapters.binance_live import (DEMO_FAPI_URL, PROD_FAPI_URL)
+    rows: list[tuple[str, str, str]] = []
+    rows.append(("config-loads", "PASS", f"mode={config.mode}"))
+    if config.engine_kind != "live":
+        rows.append(("live-engine", "FAIL",
+                     f"kind={config.engine_kind}; readiness needs a "
+                     f"live-engine config (demo.toml or prod.toml)"))
+        return rows
+    rows.append(("live-engine", "PASS",
+                 f"kind=live demo={config.engine_demo}"))
+    host = (config.engine_base_url or "").rstrip("/")
+    if config.engine_demo:
+        ok = host == DEMO_FAPI_URL
+        rows.append(("host-pinned-demo", "PASS" if ok else "FAIL",
+                     f"base_url={host or 'default'}"))
+    elif config.mode == "prod":
+        ok = host == PROD_FAPI_URL
+        rows.append(("host-pinned-prod", "PASS" if ok else "FAIL",
+                     f"base_url={host or 'MISSING'} (must be exactly "
+                     f"{PROD_FAPI_URL})"))
+    else:
+        rows.append(("host-pinned", "FAIL",
+                     f"live engine outside demo/prod (host={host})"))
+    try:
+        raw_lines = Path(config_path).read_text().splitlines()
+    except OSError as exc:
+        rows.append(("no-inline-secrets", "FAIL", str(exc)))
+        return rows
+    import re
+    secret_re = re.compile(
+        r"(?i)^\s*(api_key|api_secret|secret|password|token)\s*=")
+    hits = [f"line {n}" for n, line in enumerate(raw_lines, 1)
+            if secret_re.search(line.split("#", 1)[0])]
+    rows.append(("no-inline-secrets",
+                 "PASS" if not hits else "FAIL",
+                 "clean" if not hits else "; ".join(hits)))
+    rows.append(("submission-default-off",
+                 "PASS" if not config.allow_live_submission else "FAIL",
+                 "observe-only" if not config.allow_live_submission
+                 else "allow_live_submission=true"))
+    return rows
+
+
+def _readiness_signed(config, key_env: str, secret_env: str,
+                      ) -> list[tuple[str, str, str]]:
+    """Signed read-only venue checks. GET requests only, never submits."""
+    from cryptobot.adapters import binance_live as _live
+    key = os.environ.get(key_env, "")
+    secret = os.environ.get(secret_env, "")
+    if not key or not secret:
+        return [(f"signed-checks({key_env}/{secret_env})", "BLOCKED",
+                 "credentials absent from environment (declared blocker; "
+                 "unsigned checks above still stand)")]
+    rows: list[tuple[str, str, str]] = [
+        ("creds-from-env", "PASS",
+         f"{key_env}=set {secret_env}=set (values never shown)")]
+    journal = Path(config.storage_dir) / "readiness_journal.jsonl"
+    try:
+        engine = _live.BinanceLiveEngine(
+            api_key=key, api_secret=secret,
+            journal_path=journal,
+            expected_leverage=int(config.leverage_cap),
+            run_tag="readiness", live_enable=True,
+            demo=config.engine_demo, base_url=config.engine_base_url)
+    except (ValueError, OSError) as exc:
+        return rows + [("venue-connect", "FAIL", str(exc))]
+    try:
+        try:
+            status = engine.venue_status(list(config.symbols or []))
+        except _live.VenueHttpError as exc:
+            return rows + [("venue-connect", "FAIL",
+                             f"{type(exc).__name__}: {exc.msg}")]
+        rows.append(("venue-connect", "PASS",
+                     f"host={status['base_url']} "
+                     f"account={status['account_tag']}"))
+        skew_ms = abs(status["clock_skew_ms"])
+        rows.append(("clock-skew", "PASS" if skew_ms <= 5000 else "FAIL",
+                     f"{skew_ms:.0f}ms"))
+        rows.append(("permissions", "PASS" if status["can_trade"] else "FAIL",
+                     f"can_trade={status['can_trade']} "
+                     f"fee_tier={status['fee_tier']}"))
+        rows.append(("position-mode",
+                     "PASS" if status["position_mode"] == "one-way"
+                     else "FAIL", status["position_mode"]))
+        for symbol, fee in sorted(status["fees_bps"].items()):
+            rows.append((f"fees-{symbol}", "PASS",
+                         f"taker={fee['taker_bps']:.2f}bps "
+                         f"maker={fee['maker_bps']:.2f}bps"))
+        for symbol in sorted(status["filters"]):
+            rows.append((f"filters-{symbol}", "PASS",
+                         status["filters"][symbol]["status"]))
+        rows.append(("open-positions", "PASS",
+                     f"{len(status['positions'])} open"))
+        rows.append(("open-orders", "PASS",
+                     f"{len(status['open_orders'])} open"))
+        rows.append(("balances", "PASS",
+                     f"wallet={status['total_wallet_usdt']:.2f} "
+                     f"available={status['available_usdt']:.2f} USDT"))
+    finally:
+        engine.close()
+    return rows
+
+
+def cmd_readiness(args: argparse.Namespace) -> int:
+    """Read-only account/venue readiness (never submits orders)."""
+    try:
+        config = load_config(args.config)
+    except ConfigError as exc:
+        print(f"config error: {exc}", file=sys.stderr)
+        return 2
+    rows = _readiness_unsigned(config, args.config)
+    if config.engine_kind == "live":
+        if config.engine_demo:
+            key_env, secret_env = "BINANCE_DEMO_KEY", "BINANCE_DEMO_SECRET"
+        else:
+            key_env, secret_env = "CRYPTOBOT_API_KEY", "CRYPTOBOT_API_SECRET"
+        rows += _readiness_signed(config, key_env, secret_env)
+    print(f"readiness {args.config}:")
+    for name, state, detail in rows:
+        print(f"  [{state}] {name}: {detail}")
+    states = {state for _, state, _ in rows}
+    if "FAIL" in states:
+        return 2
+    if "BLOCKED" in states:
+        print("signed venue checks BLOCKED on credentials in the "
+              "owner's environment (unsigned checks stand).")
+        return 3
+    print("readiness: READY (read-only checks passed; no orders submitted)")
+    return 0
+
+
+def _run_prod(args: argparse.Namespace) -> int:
+    """Production route: verifies guards, then refuses (disabled).
+
+    The route, host pinning, and default-off guards are implemented and
+    exercised here; actual order submission stays disabled during this
+    assignment. Enabling submission later requires an explicit code +
+    owner-authorization step — never a config flip alone.
+    """
+    try:
+        config = load_config(args.config)
+    except ConfigError as exc:
+        print(f"config error: {exc}", file=sys.stderr)
+        return 2
+    if config.mode != "prod":
+        print(f"config mode is {config.mode!r}; use run --mode {config.mode}",
+              file=sys.stderr)
+        return 2
+    rows = _readiness_unsigned(config, args.config)
+    print(f"prod guards for {args.config}:")
+    for name, state, detail in rows:
+        print(f"  [{state}] {name}: {detail}")
+    if any(state == "FAIL" for _, state, _ in rows):
+        print("prod: REFUSED (guard failures above)", file=sys.stderr)
+        return 2
+    print("prod: REFUSED — production order submission is disabled for "
+          "this assignment (route + guards verified, enablement is a "
+          "future explicit step).", file=sys.stderr)
+    return 2
 
 
 def cmd_status(args: argparse.Namespace) -> int:
@@ -330,7 +498,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--capture", default=None)
     p.set_defaults(func=cmd_doctor)
     p = sub.add_parser("run")
-    p.add_argument("--mode", required=True, choices=("replay", "paper"))
+    p.add_argument("--mode", required=True,
+                   choices=("replay", "paper", "prod"))
     p.add_argument("--config", required=True)
     p.add_argument("--capture", default=None)
     p.add_argument("--duration", default=None)
@@ -356,6 +525,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--flatten", action="store_true")
     p.add_argument("--storage", default="runs")
     p.set_defaults(func=cmd_stop)
+    p = sub.add_parser("readiness")
+    p.add_argument("--config", required=True)
+    p.set_defaults(func=cmd_readiness)
     p = sub.add_parser("report")
     p.add_argument("--run-dir", required=True)
     p.add_argument("--out", default=None)

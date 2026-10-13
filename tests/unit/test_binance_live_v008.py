@@ -736,3 +736,46 @@ def test_account_update_snapshot_recorded(tmp_path):
                             "a": {"B": [{"a": "USDT", "wb": "100"}]}})
     assert engine.account_snapshot()["E"] == T0MS
     transport.assert_empty()
+
+
+# -- CORR exchange boundary: host separation + read-only status ---------------
+def test_demo_refuses_production_host(tmp_path):
+    from cryptobot.adapters.binance_live import PROD_FAPI_URL
+    with pytest.raises(ValueError, match="forbids the production host"):
+        BinanceLiveEngine(
+            api_key="TESTKEY", api_secret="TESTSECRET",
+            journal_path=tmp_path / "j", expected_leverage=3,
+            run_tag="bl", live_enable=True, demo=True,
+            base_url=PROD_FAPI_URL)
+
+
+def test_prod_host_never_default(tmp_path):
+    from cryptobot.adapters.binance_live import TESTNET_BASE_URL
+    engine, _ = _live(tmp_path, [])
+    assert engine._base_url == TESTNET_BASE_URL
+    engine.close()
+
+
+def test_venue_status_get_only(tmp_path, ready):
+    engine, transport = _live(tmp_path, [
+        ("GET", "/fapi/v1/time", None, ("ok", ready["time"])),
+        ("GET", "/fapi/v2/account", None, ("ok", ready["account"])),
+        ("GET", "/fapi/v1/positionSide/dual", None,
+         ("ok", {"dualSidePosition": False})),
+        ("GET", "/fapi/v1/exchangeInfo", None,
+         ("ok", ready["exchangeInfo"])),
+        ("GET", "/fapi/v1/commissionRate", {"symbol": "BTCUSDT"},
+         ("ok", ready["commissionRate"])),
+        ("GET", "/fapi/v1/openOrders", None, ("ok", [])),
+    ])
+    try:
+        status = engine.venue_status(["BTCUSDT"])
+    finally:
+        engine.close()
+    assert all(method == "GET" for method, _, _, _ in transport.requests)
+    assert status["position_mode"] == "one-way"
+    assert status["fees_bps"]["BTCUSDT"]["taker_bps"] == pytest.approx(5.0)
+    assert "BTCUSDT" in status["filters"]
+    assert status["open_orders"] == []
+    assert status["clock_skew_ms"] == 0
+    transport.assert_empty()

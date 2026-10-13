@@ -1,4 +1,4 @@
-"""Prod preflight gate (W3-30MIN §9).
+"""Prod preflight gate (W3-30MIN §9) — CONFIGURATION-ONLY.
 
 Validates a run config before any live/prod run: structural load
 (secret keys, demo hosts, prod engine kind are rejected by load_config),
@@ -6,8 +6,13 @@ Validates a run config before any live/prod run: structural load
 contract — allow_live_submission=true requires explicit
 --confirm-live-submission AND credentials present ONLY via environment.
 
-Exit 0: GO. Exit 2: NO-GO with reasons (also printed as JSON with
---json). Never prints credential values.
+This tool checks FILES, not the venue account. It never signs a request
+and never reads balances, positions, fees, or permissions. A passing
+result is CONFIG-READY (configuration only), NOT account readiness and
+NOT a production GO. Use `cryptobot readiness` for signed venue checks.
+
+Exit 0: CONFIG-READY. Exit 2: CONFIG-NOT-READY with reasons (also
+printed as JSON with --json). Never prints credential values.
 """
 from __future__ import annotations
 
@@ -111,8 +116,9 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(report, indent=2, sort_keys=True))
     else:
         print(f"preflight {report['config']}: "
-              f"{'GO' if report['ok'] else 'NO-GO'} "
-              f"(mode={report['mode']} submission={report['submission']})")
+              f"{'CONFIG-READY' if report['ok'] else 'CONFIG-NOT-READY'} "
+              f"(mode={report['mode']} submission={report['submission']}; "
+              f"configuration only, not account readiness)")
         for item in report["checks"]:
             print(f"  [{'PASS' if item['ok'] else 'FAIL'}] {item['name']}: "
                   f"{item['detail']}")

@@ -62,6 +62,7 @@ from cryptobot.risk.rounding import floor_to_step, round_to_tick
 TESTNET_BASE_URL = "https://testnet.binancefuture.com"
 DEMO_FAPI_URL = "https://demo-fapi.binance.com"  # REST (manager-probed).
 DEMO_FSTREAM_URL = "wss://demo-fstream.binance.com"  # user-stream socket host.
+PROD_FAPI_URL = "https://fapi.binance.com"  # real-money host: explicit only.
 UNKNOWN_HTTP_STATUSES = (0, 502, 503, 504)  # timeout + gateways: outcome unknown.
 ALGO_ORDER_TYPES = ("STOP_MARKET", "TAKE_PROFIT_MARKET")
 
@@ -69,6 +70,7 @@ __all__ = [
     "ALGO_ORDER_TYPES",
     "DEMO_FAPI_URL",
     "DEMO_FSTREAM_URL",
+    "PROD_FAPI_URL",
     "TESTNET_BASE_URL",
     "BinanceLiveEngine",
     "UrllibTransport",
@@ -235,6 +237,11 @@ class BinanceLiveEngine:
         self._demo = bool(demo)
         self._base_url = (base_url or
                           (DEMO_FAPI_URL if self._demo else TESTNET_BASE_URL))
+        # Exact host separation: demo traffic can never target the
+        # real-money host, and the real-money host is never a default.
+        if self._demo and self._base_url.rstrip("/") == PROD_FAPI_URL:
+            raise ValueError("demo=True forbids the production host "
+                             f"{PROD_FAPI_URL}")
         self._key = api_key
         self._secret = api_secret.encode("utf-8")
         # W3-24H restart identity: venue/account/symbol/trade fill keys.
@@ -972,6 +979,73 @@ class BinanceLiveEngine:
                             {"symbol": symbol.upper(),
                              "incomeType": "FUNDING_FEE", "limit": 1000})
         return sum(float(r.get("income", 0.0) or 0.0) for r in rows)
+
+    def venue_status(self, symbols: list[str]) -> dict[str, Any]:
+        """Read-only account/venue snapshot for `cryptobot readiness`.
+
+        Uses GET requests only: server time, account (balances, margin,
+        positions), commission rates, position mode, exchange filters,
+        and open orders. Never submits, cancels, or sets leverage/margin.
+        Raises VenueHttpError/VenueRejectedError on transport failure.
+        """
+        server_ms = int(self._public("GET", "/fapi/v1/time")["serverTime"])
+        account = self._signed("GET", "/fapi/v2/account")
+        dual = self._signed("GET", "/fapi/v1/positionSide/dual")
+        info = self._public("GET", "/fapi/v1/exchangeInfo")
+        wanted = {s.upper() for s in symbols}
+        filters: dict[str, dict[str, Any]] = {}
+        for entry in info.get("symbols", []):
+            name = str(entry.get("symbol", "")).upper()
+            if wanted and name not in wanted:
+                continue
+            kept = {}
+            for filt in entry.get("filters", []):
+                ftype = filt.get("filterType")
+                if ftype in ("PRICE_FILTER", "LOT_SIZE", "MIN_NOTIONAL",
+                             "MARKET_LOT_SIZE", "MAX_NUM_ORDERS"):
+                    kept[ftype] = {k: v for k, v in filt.items()
+                                   if k != "filterType"}
+            filters[name] = {"status": entry.get("status"),
+                             "filters": kept}
+        fees = {}
+        for symbol in sorted(wanted):
+            row = self._signed("GET", "/fapi/v1/commissionRate",
+                               {"symbol": symbol})
+            fees[symbol] = {
+                "maker_bps": float(row["makerCommissionRate"]) * 10000.0,
+                "taker_bps": float(row["takerCommissionRate"]) * 10000.0,
+            }
+        open_orders = self._signed("GET", "/fapi/v1/openOrders")
+        positions = [p for p in account.get("positions", [])
+                     if float(p.get("positionAmt", 0.0) or 0.0) != 0.0]
+        assets = [a for a in account.get("assets", [])
+                  if float(a.get("walletBalance", 0.0) or 0.0) != 0.0]
+        return {
+            "base_url": self._base_url,
+            "demo": self._demo,
+            "account_tag": self._account_tag,
+            "server_time_ms": server_ms,
+            "clock_skew_ms": server_ms - self._now_ms(),
+            "can_trade": bool(account.get("canTrade", False)),
+            "can_withdraw": bool(account.get("canWithdraw", False)),
+            "can_deposit": bool(account.get("canDeposit", False)),
+            "fee_tier": account.get("feeTier", 0),
+            "total_wallet_usdt": float(
+                account.get("totalWalletBalance", 0.0) or 0.0),
+            "available_usdt": float(
+                account.get("availableBalance", 0.0) or 0.0),
+            "total_margin_usdt": float(
+                account.get("totalMarginBalance", 0.0) or 0.0),
+            "total_initial_margin_usdt": float(
+                account.get("totalInitialMargin", 0.0) or 0.0),
+            "assets": assets,
+            "positions": positions,
+            "position_mode": ("hedge" if dual.get("dualSidePosition")
+                              else "one-way"),
+            "fees_bps": fees,
+            "filters": filters,
+            "open_orders": open_orders,
+        }
 
     # -- protection / lifecycle -----------------------------------------------------------
     def attach_protection(self, entry_client_id: str, stop_price: float,

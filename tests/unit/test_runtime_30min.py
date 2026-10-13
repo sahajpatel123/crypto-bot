@@ -437,7 +437,8 @@ def _preflight(*args, env=None):
 def test_preflight_prod_observe_only_go():
     proc = _preflight("--config", "configs/prod.toml")
     assert proc.returncode == 0, proc.stdout + proc.stderr
-    assert "GO" in proc.stdout
+    assert "CONFIG-READY" in proc.stdout
+    assert "configuration only, not account readiness" in proc.stdout
 
 
 def test_preflight_submission_needs_confirm_and_keys(tmp_path):
