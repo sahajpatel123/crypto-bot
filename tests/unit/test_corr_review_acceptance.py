@@ -107,18 +107,26 @@ def test_marketable_ioc_sell_mirror():
 
 
 def test_marketable_ioc_partial_remainder_cannot_revive():
+    # Thin arrival book (ask 0.0005 < qty 0.002): the venue matches a
+    # PARTIAL at the due-time opportunity and the remainder cancels
+    # there. Exact matched qty is venue behavior (pinned Nautilus
+    # lot/quote-size rule — asserted as a range, not pinned); the
+    # causal properties (arrival price, same-opportunity terminal,
+    # frozen qty, nothing later) are exact.
     engine = _engine(submit_delay_ms=50, fill_delay_ms=50)
     try:
         _quote(engine, T0, 99.0, 101.0, ask_size=0.0005)
         cid = engine.submit(EngineOrder(
-            instrument=SYM, side="BUY", qty=0.001, kind="LIMIT",
+            instrument=SYM, side="BUY", qty=0.002, kind="LIMIT",
             price=101.50, role="entry"))
         engine.advance_to(T0 + timedelta(milliseconds=200))
         early = _drain(engine)
         fills = [e for e in early if e.kind == "fill"]
         assert len(fills) == 1, [e.kind for e in early]
-        assert fills[0].payload.qty == pytest.approx(0.0005)
+        assert 0.0 < fills[0].payload.qty < 0.002
         assert fills[0].payload.price == pytest.approx(101.0)
+        part = engine.filled_qty(cid)
+        assert part == pytest.approx(fills[0].payload.qty)
         cancels = [e for e in early if e.kind == "cancel"]
         assert len(cancels) == 1  # remainder canceled at the opportunity.
         assert cancels[0].payload.client_order_id == cid
@@ -126,6 +134,7 @@ def test_marketable_ioc_partial_remainder_cannot_revive():
         late = _drain(engine)
         assert [e for e in late
                 if getattr(e.payload, "client_order_id", None) == cid] == []
+        assert engine.filled_qty(cid) == pytest.approx(part)  # frozen.
     finally:
         engine.close()
 
