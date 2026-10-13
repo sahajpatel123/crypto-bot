@@ -1,0 +1,34 @@
+{
+  "armset": "CASH",
+  "split": "validation",
+  "days": [
+    "2026-09-27",
+    "2026-09-28",
+    "2026-09-29",
+    "2026-09-30",
+    "2026-10-01",
+    "2026-10-02",
+    "2026-10-03"
+  ],
+  "closing_equity": 120.0,
+  "net_return_pct": 0.0,
+  "paid_costs": 0.0,
+  "funding_net": 0.0,
+  "realised": 0.0,
+  "intents_admitted": 0,
+  "events_seen": 16337623,
+  "reject_counts": {},
+  "replay_stream": {
+    "mode": "streaming-v1",
+    "events_hashed": 16337623,
+    "events_hash": "54a66272c41e9df40960d005ad4f85bcd529ab7a1dc782d282943223dd239d6a",
+    "skipped_prefix": 0,
+    "first_ms": 1790447400051,
+    "last_ms": 1791052199999,
+    "snapshots_installed": 0,
+    "snapshots_unreached": 0
+  },
+  "wall_s": 5299.4,
+  "ev_per_s": 3082.9,
+  "run_dir": "/tmp/w1bench/matrix/CASH_validation/run"
+}

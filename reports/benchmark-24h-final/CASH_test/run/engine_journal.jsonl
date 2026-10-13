@@ -1,0 +1,7 @@
+{"ts_utc": "2026-10-04T18:30:00.025000+00:00", "event": "exit-only", "detail": {"halted": false, "reason": "day-reconciled"}}
+{"ts_utc": "2026-10-05T18:30:00.049000+00:00", "event": "exit-only", "detail": {"halted": false, "reason": "day-reconciled"}}
+{"ts_utc": "2026-10-06T18:30:00.059000+00:00", "event": "exit-only", "detail": {"halted": false, "reason": "day-reconciled"}}
+{"ts_utc": "2026-10-07T18:30:00.136000+00:00", "event": "exit-only", "detail": {"halted": false, "reason": "day-reconciled"}}
+{"ts_utc": "2026-10-08T18:30:00.058000+00:00", "event": "exit-only", "detail": {"halted": false, "reason": "day-reconciled"}}
+{"ts_utc": "2026-10-09T18:30:00.273000+00:00", "event": "exit-only", "detail": {"halted": false, "reason": "day-reconciled"}}
+{"ts_utc": "2026-10-10T18:30:00.451000+00:00", "event": "exit-only", "detail": {"halted": false, "reason": "day-reconciled"}}
