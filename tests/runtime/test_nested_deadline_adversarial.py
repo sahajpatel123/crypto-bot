@@ -16,6 +16,7 @@ import pytest
 
 WRAPPER = [sys.executable, "tools/run_budget.py"]
 TOKEN = "w5corr-deadline-battery"
+DRAIN_ALLOW = 5.0  # relay drain bound + generous scheduling slack.
 
 
 def _run(budget_s, grace_s, child_cmd, ckpt_dir, report, cwd):
@@ -96,6 +97,8 @@ def test_handoff_nested_case_repeated(tmp_path):
         assert wall < 5, f"iteration {i}: caller blocked {wall:.2f}s"
         rep = json.loads((tmp_path / f"outer-{i}.json").read_text())
         assert rep["status"] == "INCOMPLETE_BUDGET"
+        assert rep.get("enforcement") == "verified", (
+            f"iteration {i}: healthy nested kill must verify: {rep}")
         assert wall - rep["elapsed_s"] < 2.0, (
             f"iteration {i}: report elapsed={rep['elapsed_s']} understates "
             f"observed wall={wall:.2f}")
@@ -119,81 +122,87 @@ def test_sigterm_ignorer_gets_sigkill(tmp_path, stray_reaper):
     assert wall < 2.0 + 1.0 + 5, f"escalation too slow: {wall:.2f}s"
     time.sleep(3)
     assert not marker.exists(), "SIGTERM-ignoring child survived SIGKILL"
+    rep = json.loads((tmp_path / "rep.json").read_text())
+    assert rep.get("enforcement") == "verified", rep
+
+
+def _daemon_child(marker: Path, pidfile: Path, sleep_s: float) -> list[str]:
+    # Wrapper-direct child: fork a middle process, then sleep (to be killed).
+    # Middle: setsid, fork the daemon, exit. Daemon: reparented to init.
+    script = (
+        "import os, sys, time\n"
+        f"MARK = {str(marker)!r}\n"
+        f"PIDF = {str(pidfile)!r}\n"
+        f"# {TOKEN}\n"
+        "mid = os.fork()\n"
+        "if mid > 0:\n"
+        "    time.sleep(60)\n"
+        "    sys.exit(0)\n"
+        "os.setsid()\n"
+        "d = os.fork()\n"
+        "if d > 0:\n"
+        "    os._exit(0)\n"
+        "open(PIDF, 'w').write(str(os.getpid()))\n"
+        f"time.sleep({sleep_s})\n"
+        "open(MARK, 'w').write('daemon-survived')\n"
+    )
+    return [sys.executable, "-c", script]
 
 
 def test_daemon_reparent_escape(tmp_path, stray_reaper):
     """A grandchild reparented to init BEFORE the deadline must still stop.
 
     Double-fork + setsid detaches the daemon from the victim process group
-    and from any ppid walk rooted at the wrapper's child. If it survives,
-    the wrapper cannot enforce its deadline on daemonizing children.
+    and from any ppid walk rooted at the wrapper's child. Where the OS
+    provides a child subreaper (Linux) the daemon must die. Where it does
+    not (macOS), the wrapper must say so honestly in the report and the
+    caller must still return promptly (relay containment).
     """
     root = _repo_root()
     marker = tmp_path / "daemon-done.txt"
     pidfile = stray_reaper(tmp_path / "daemon.pid")
-    # Wrapper-direct child: fork a middle process, then sleep (to be killed).
-    # Middle: setsid, fork the daemon, exit. Daemon: reparented, sleeps 6s.
-    child = (
-        "import os, sys, time\n"
-        f"MARK = {str(marker)!r}\n"
-        f"PIDF = {str(pidfile)!r}\n"
-        f"# {TOKEN}\n"
-        "mid = os.fork()\n"
-        "if mid > 0:\n"
-        "    time.sleep(60)\n"
-        "    sys.exit(0)\n"
-        "os.setsid()\n"
-        "d = os.fork()\n"
-        "if d > 0:\n"
-        "    os._exit(0)\n"
-        "open(PIDF, 'w').write(str(os.getpid()))\n"
-        "time.sleep(6)\n"
-        "open(MARK, 'w').write('daemon-survived')\n"
-    )
-    proc, wall = _run(2.0, 1.0, [sys.executable, "-c", child],
+    proc, wall = _run(2.0, 1.0,
+                      _daemon_child(marker, pidfile, 10.0),
                       tmp_path / "ckpt", tmp_path / "rep.json", root)
     assert proc.returncode == 124, proc.stderr
-    time.sleep(max(0.0, 7.0 - wall))
-    assert not marker.exists(), (
-        "ESCAPE: daemonized grandchild (reparented pre-deadline) survived; "
-        "ppid-walk + killpg cannot enforce the deadline on it")
+    rep = json.loads((tmp_path / "rep.json").read_text())
+    if rep.get("subreaper"):
+        time.sleep(max(0.0, 10.5 - wall))
+        assert not marker.exists(), (
+            "ESCAPE on a subreaper platform: daemonized grandchild "
+            "survived; orphan reparenting is not contained")
+    else:
+        # Honest degradation: no silent claim of enforcement, no hang.
+        # Success ~4.3s (2 budget + TERM + 2s bounded drain); a caller
+        # pipe hold would block the full 10s daemon lifetime.
+        assert "subreaper" in (rep.get("platform_note") or ""), (
+            f"missing no-subreaper honesty note: {rep}")
+        assert wall < 6.5, f"caller blocked {wall:.2f}s despite relay"
+        assert rep.get("enforcement") in ("verified", "UNVERIFIED"), rep
 
 
 def test_inherited_pipe_blocks_caller_on_escape(tmp_path, stray_reaper):
-    """If a descendant escapes holding stdout, the capturing caller blocks.
+    """REGRESSION: the child tree must never inherit the caller's pipes.
 
-    The wrapper may exit and report ~2s while the caller (capture_output)
-    returns only when the last pipe holder dies. Required: no escape, so
-    caller wall must match the report.
+    The wrapper-owned relay carries child output; an escaped or lingering
+    descendant therefore cannot hold the capturing caller's pipe open.
+    Required on every platform: caller wall matches the report even when
+    a daemon outlives the wrapper (the daemon itself is contained only
+    where the OS offers a subreaper; see test_daemon_reparent_escape).
     """
     root = _repo_root()
     marker = tmp_path / "pipedaemon-done.txt"
     pidfile = stray_reaper(tmp_path / "pipedaemon.pid")
-    child = (
-        "import os, sys, time\n"
-        f"MARK = {str(marker)!r}\n"
-        f"PIDF = {str(pidfile)!r}\n"
-        f"# {TOKEN}\n"
-        "mid = os.fork()\n"
-        "if mid > 0:\n"
-        "    time.sleep(60)\n"
-        "    sys.exit(0)\n"
-        "os.setsid()\n"
-        "d = os.fork()\n"
-        "if d > 0:\n"
-        "    os._exit(0)\n"
-        "open(PIDF, 'w').write(str(os.getpid()))\n"
-        "time.sleep(8)\n"
-        "open(MARK, 'w').write('pipe-survived')\n"
-    )
-    proc, wall = _run(2.0, 1.0, [sys.executable, "-c", child],
+    proc, wall = _run(2.0, 1.0,
+                      _daemon_child(marker, pidfile, 8.0),
                       tmp_path / "ckpt", tmp_path / "rep.json", root)
+    assert proc.returncode == 124, proc.stderr
     rep = json.loads((tmp_path / "rep.json").read_text())
-    time.sleep(max(0.0, 8.5 - wall))
-    assert not marker.exists(), "pipe-holding daemon survived"
     assert wall - rep["elapsed_s"] < 2.0, (
         f"caller wall={wall:.2f}s vs report elapsed={rep['elapsed_s']}s: "
-        f"wrapper exit/report does not prove descendants stopped")
+        f"a descendant is holding the caller's pipe open past wrapper exit")
+    # Success is ~2s budget + fast TERM + 2s bounded drain; failure is ~8s.
+    assert wall < 6.5, f"caller blocked {wall:.2f}s"
 
 
 def test_rapid_fork_during_grace(tmp_path, stray_reaper):
@@ -220,6 +229,8 @@ def test_rapid_fork_during_grace(tmp_path, stray_reaper):
     proc, wall = _run(2.0, 1.0, [sys.executable, "-c", child],
                       tmp_path / "ckpt", tmp_path / "rep.json", root)
     assert proc.returncode == 124, proc.stderr
+    rep = json.loads((tmp_path / "rep.json").read_text())
+    assert rep.get("enforcement") == "verified", rep
     time.sleep(2)
     survivors = []
     for pf in piddir.iterdir():
@@ -245,11 +256,11 @@ def test_rapid_fork_during_grace(tmp_path, stray_reaper):
 def test_enumeration_failure_must_not_fail_open(tmp_path):
     """If descendant enumeration fails, the wrapper must not claim enforcement.
 
-    With `ps` unavailable, _descendants() returns the empty set and the kill
-    degrades to group-kill-only; but every wrapper child starts in its OWN
-    session, so grandchildren always escape that path. Required: either the
-    descendants still stop, or the report says enforcement is UNVERIFIED.
-    Silent INCOMPLETE with escaped descendants is a fail-open.
+    With `ps` unavailable for the whole run, no kill set can be built and
+    grandchildren escape (each wrapper child starts in its OWN session, so
+    group-kill-only cannot reach them). Required: the report carries
+    enforcement=UNVERIFIED naming enumeration failure, rc stays 124, and
+    the caller still returns promptly (relay containment, not a pipe hang).
     """
     import os as _os
     root = _repo_root()
@@ -271,12 +282,113 @@ def test_enumeration_failure_must_not_fail_open(tmp_path):
     proc = subprocess.run(cmd, capture_output=True, text=True, cwd=root,
                           timeout=60, env=env)
     wall = time.monotonic() - t0
+    assert proc.returncode == 124, proc.stderr
+    rep = json.loads((tmp_path / "rep.json").read_text())
+    assert rep["status"] == "INCOMPLETE_BUDGET"
+    assert rep.get("enforcement") == "UNVERIFIED", (
+        f"fail-open: enumeration broken yet report claims "
+        f"{rep.get('enforcement')}: {rep}")
+    assert "enumeration" in (rep.get("enforcement_detail") or ""), rep
+    assert wall < 6.5, f"caller blocked {wall:.2f}s despite relay"
+
+
+def test_registry_kills_when_ps_dies_midrun(tmp_path):
+    """REGRESSION: a birth registry built during life covers kill-time failure.
+
+    A flaky `ps` works for the first scans (registry learns the sleeper)
+    then fails through the kill phase. Required: the registry kill set
+    still stops the tree (marker absent), the caller returns on time, and
+    the report is honest (UNVERIFIED: enumeration failed during the kill).
+    """
+    import os as _os
+    root = _repo_root()
+    marker = tmp_path / "flakyps-done.txt"
+    fakedir = tmp_path / "fakebin"
+    fakedir.mkdir()
+    cnt = tmp_path / "pscount.txt"
+    cnt.write_text("0")
+    (fakedir / "ps").write_text(
+        "#!/bin/sh\n"
+        f'n=$(cat "{cnt}" 2>/dev/null || echo 0); n=$((n+1)); echo "$n" > "{cnt}"\n'
+        'if [ "$n" -gt "$W5PSFAIL_AFTER" ]; then exit 1; fi\n'
+        'exec /bin/ps "$@"\n')
+    (fakedir / "ps").chmod(0o755)
+    cmd = WRAPPER + ["--budget-s", "3", "--checkpoint-dir",
+                     str(tmp_path / "ckpt"), "--report-out",
+                     str(tmp_path / "rep.json"), "--term-grace-s", "1",
+                     "--", sys.executable, "-c",
+                     f"import time; time.sleep(8); "  # {TOKEN}
+                     f"open({str(marker)!r}, 'w').write('survived')"]
+    env = dict(_os.environ)
+    env["PATH"] = str(fakedir) + os.pathsep + env.get("PATH", "")
+    env["W5PSFAIL_AFTER"] = "6"
+    t0 = time.monotonic()
+    proc = subprocess.run(cmd, capture_output=True, text=True, cwd=root,
+                          timeout=60, env=env)
+    wall = time.monotonic() - t0
+    assert proc.returncode == 124, proc.stderr
     rep = json.loads((tmp_path / "rep.json").read_text())
     time.sleep(max(0.0, 8.5 - wall))
     assert not marker.exists(), (
-        f"FAIL-OPEN: with enumeration broken, 8s grandchild survived "
-        f"(caller wall={wall:.2f}s, report elapsed={rep['elapsed_s']}s); "
-        f"nested sessions escape group-kill-only enforcement")
+        "registry kill failed: 8s sleeper survived although `ps` worked "
+        "during life")
+    assert wall < 3.0 + 1.0 + DRAIN_ALLOW, f"caller blocked {wall:.2f}s"
+    assert rep.get("enforcement") == "UNVERIFIED", (
+        f"kill-phase enumeration failed yet report claims "
+        f"{rep.get('enforcement')}: {rep}")
+
+
+def test_child_output_relayed_verbatim(tmp_path):
+    """Child stdout/stderr bytes must pass the relay unaltered."""
+    root = _repo_root()
+    payload_out = "OUT-LINE-1\nOUT-LINE-2-no-newline"
+    payload_err = "ERR-LINE-1\n"
+    cmd = WRAPPER + ["--budget-s", "30", "--checkpoint-dir",
+                     str(tmp_path / "ckpt"), "--report-out",
+                     str(tmp_path / "rep.json"), "--",
+                     sys.executable, "-c",
+                     "import sys; "
+                     f"sys.stdout.write({payload_out!r}); "
+                     f"sys.stderr.write({payload_err!r}); "
+                     "sys.stdout.buffer.write(bytes([0, 255, 1])); "
+                     "sys.stdout.flush(); sys.stderr.flush()"]
+    proc = subprocess.run(cmd, capture_output=True, cwd=root, timeout=60)
+    assert proc.returncode == 0, proc.stderr[-500:]
+    assert payload_out.encode() in proc.stdout, proc.stdout[-300:]
+    assert b"\x00\xff\x01" in proc.stdout, proc.stdout[-300:]
+    assert payload_err.encode() in proc.stderr, proc.stderr[-500:]
+
+
+def test_success_path_lingering_grandchild_does_not_hang_caller(
+        tmp_path, stray_reaper):
+    """A grandchild outliving a successful child must not hang the caller.
+
+    Required: rc 0 / CHILD_EXIT with a prompt caller return (bounded
+    drain), even while the relay-holding grandchild is still alive.
+    """
+    root = _repo_root()
+    pidfile = stray_reaper(tmp_path / "linger.pid")
+    script = (
+        "import subprocess, sys, time\n"
+        f"# {TOKEN}\n"
+        "p = subprocess.Popen([sys.executable, '-c',\n"
+        f"    \"import os, time; open({str(pidfile)!r}, 'w').write(str(os.getpid())); "
+        f"time.sleep(6)  # {TOKEN}\"])\n"
+        "time.sleep(0.5)\n"  # let the grandchild start and inherit the relay.
+    )
+    cmd = WRAPPER + ["--budget-s", "30", "--checkpoint-dir",
+                     str(tmp_path / "ckpt"), "--report-out",
+                     str(tmp_path / "rep.json"), "--",
+                     sys.executable, "-c", script]
+    t0 = time.monotonic()
+    proc = subprocess.run(cmd, capture_output=True, text=True, cwd=root,
+                          timeout=60)
+    wall = time.monotonic() - t0
+    assert proc.returncode == 0, proc.stderr[-500:]
+    rep = json.loads((tmp_path / "rep.json").read_text())
+    assert rep["status"] == "CHILD_EXIT"
+    assert wall < 0.5 + DRAIN_ALLOW, (
+        f"caller blocked {wall:.2f}s on a lingering grandchild")
 
 
 def test_shutdown_race_exit_at_deadline(tmp_path):
@@ -297,5 +409,6 @@ def test_shutdown_race_exit_at_deadline(tmp_path):
             assert rep["status"] == "CHILD_EXIT"
         else:
             assert rep["status"] == "INCOMPLETE_BUDGET"
+            assert rep.get("enforcement") == "verified", rep
         outcomes.append(rep["status"])
     assert outcomes  # recorded distribution; either verdict is contract-valid.
