@@ -19,3 +19,16 @@ work started under the voided labels.
 First merge: budget enforcement + execution regressions.
 Second merge: corrected execution/cost contracts + reliable control ticks.
 Then: economic scoring on the corrected stack.
+
+## 30MIN status 2026-10-13 ~04:40Z (manager)
+- main @ 25c6cb7: W5 IOC probes (61d4c04) + W5 cost/control probes (91d74ad)
+  + W4 funnel/ROUND-01 (25c6cb7, via worker4/30min-research). Suite: 968
+  passed, 1 skipped, 10 xfailed (4 IOC + 3 cost + 3 controls, all owned).
+- W4-30MIN filed COMPLETE (funnel slice: 253 intents -> 2 filled + 8
+  IOC-cancelled; ROUND-01 frozen 04:34:54Z, 11 configs, S5 excluded).
+- In flight: W1 IOC arrival fix (paper_engine + test_ioc_arrival.py),
+  W2 cost contract (costs.py + bench_run.py + test_costs.py),
+  W3 runtime (session/producer/config + binance_live).
+- Routing notes: cost reds -> cloud-vega (W2); control reds + missing-ts
+  KeyError crash -> cool-amalthea (W3); W5 session name = crystal-parallax
+  (bright-pegasus stale). One misroute to white-aldebaran bounced+fixed.
