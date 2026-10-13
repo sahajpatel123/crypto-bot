@@ -126,12 +126,95 @@ macOS closes pipe-block + ps-failure and degrades honestly on daemon kill
 
 ## 6. Pending (blocked on others)
 
-- W1–W3 CORR diffs: no `worker1|2|3/*corr*` branches on origin yet → review
-  and after-proof OWED; W5 will file an addendum when they land.
-- Adversarial end-to-end on the integrated revision: blocked until manager
-  publishes the integrated SHA.
-- Final `coord/outbox/W5-CORR.json`: filed; covers base probes, nested
-  repair, allowlist/reconciler. W1–W3 + e2e ride an addendum.
+- W2 CORR diff: no `worker2/*corr*` branch on origin yet → review OWED.
+- Adversarial end-to-end on the integrated revision: blocked until the
+  final integrated SHA (W1+W2 still unmerged at this writing).
+- `coord/outbox/W5-CORR.json`: filed; covers base probes, nested repair,
+  allowlist/reconciler. W1+W3 reviews banked below; W2+e2e ride a second
+  addendum.
+
+## 7. Addendum — substantive W1 + W3 reviews (APPROVE both)
+
+Reviewed in scratch worktrees at branch tips (read-only; no commits
+there). All pytest runs use `PYTHONPATH=src` pinned to the review
+worktree: the shared venv carries an editable install of the main
+checkout, and a bare `pytest` silently imports the WRONG `cryptobot`
+(this initially produced 13 false failures on W1's branch; re-run with
+the pin: 103/103). Every job ran under the repaired `run_budget`.
+
+### W1 `origin/worker1/corr-exec` (fix `5987619`) — APPROVE
+
+- Official probe IOC leg: `defect_observed=false`, fill @101.0 (arrival
+  ask, stamped 10s−1ns via pre-flush), nothing at 200ms. Round-trip
+  `open_orders`/`_is_flat` unchanged (correctly W2 territory).
+- Full suite: 1030 passed, 1 skipped in 163.8s — claim verified exactly.
+  Targeted (IOC + 3 touched files + IOC adversarial): 103 passed.
+- No test removed: 12→19 in `test_ioc_arrival.py`; the two superseded
+  tests were replaced by strictly stronger ones (first-opportunity-only,
+  same-ts-cancel-rejected); the genuine-race test is byte-identical;
+  the 6 legacy price pins moved to due-time prices with rationale
+  comments, assertion shapes intact (approx, fee>0, exec-id,
+  exactly-once). Margin/fee deltas rechecked for direction.
+- W5 adversarial extras: never-quoted-symbol edge (their disclosed gap)
+  probed benign — LIMIT arrival-cancels, MARKET venue-rejects
+  (`no market`), zero fills, no cross-symbol leakage; recommend a
+  committed test. Exec-vs-ack separation holds under 5s delivery delay
+  (fill still @101). Sweep-send path appears unreachable on pinned
+  nautilus (venue always terminalizes evaluated IOCs; stat stays 0) —
+  harmless defense-in-depth, but untested backstop is recorded.
+- Scope clean: only `paper_engine.py` in `src/`; sparse-data model
+  declared + tested; accept+1-tick removed.
+
+### W3 `origin/worker3/corr-data` (`b3b2161`, merged as `8f5710c`) — APPROVE
+
+- Full suite: 1043 passed, 1 skipped in 160.3s. Targeted (freshness +
+  audit + runtime): 41 passed.
+- Candidate scoping verified by matrix: all four fresh/stale BTC×ETH
+  combinations gate each symbol on its own observations only (base
+  first-feed-wins defect gone); at-bound passes, bound+1ms fails;
+  unknown symbol fails closed; a stale event through real ingestion
+  keeps exchange-time age → stale (no forward-fill relabeling).
+- Exchange-mark leg: in-suite tests cover both orderings
+  (fresh-mark+stale-quote and fresh-quote+stale-mark both reject) plus
+  mark-without-ts, mark-not-required, unconfigured bound, malformed
+  timestamps. Signature migration complete (1 production caller passes
+  the candidate instrument; health/books keep valuation age);
+  `test_runtime_30min.py` diff is signature-only with identical verdicts.
+- `tools/audit_dataset.py`: suite-tested and proven on the observed
+  cap-30min capture (verdict SCORABLE with honest warmup/depth
+  warnings). `tools/export_warmup.py`: FUNCTIONAL on the observed
+  capture (rc 0, timestamped milestones, honestly empty unreached
+  milestones) but has ZERO in-suite tests — observation, recommend one.
+  No W3 outbox was filed (reviewed from the diff directly).
+- Scope clean: only `session.py` in `src/`.
+
+## 8. Addendum — W1 M1 fixup review (APPROVE with one claim correction)
+
+W1's branch gained `23fae67` (fixup: IOC resolves at due time, no tick
+required) + re-filed outbox `76fc812`, merged as `86e5818`. Reviewed at
+the branch tip in a read-only scratch worktree.
+
+- Official probe: `at_200ms=[fill @101.0]`, `at_10s=[]`,
+  `defect_observed=false` — claim verified exactly.
+- Full suite: 1030 passed, 1 skipped in 161.8s — claim verified exactly.
+- Gate-claim replicas (BUY/SELL by 200ms at arrival prices, partial +
+  exactly one same-opportunity terminal, zero later fills, frozen qty,
+  never-quoted edge): all reproduced independently.
+- Audit-pin migration is manager-authorized (merge `86e5818` cites CORR
+  directive supersession) and strictly stronger (`len==1` fills, added
+  no-revival asserts). Causality invariant holds by construction: any
+  data arrival is itself a drain opportunity, so no data can exist in
+  (due, opportunity] and the standing book at resolution is always the
+  due-time book; verified empirically across paths.
+- CLAIM CORRECTION (observation, not a blocker): the fill timestamp is
+  the first opportunity after due (200ms), not the modeled due (50ms) —
+  no due-time stamp exists on the event. "Occurrence and time fixed at
+  due time" overstates; accurate phrasing is "occurrence at first
+  opportunity after due, price at due-time book". Residual ≤ the
+  opportunity gap (150ms here vs ~10s pre-M1). The handoff's causal
+  pricing + ordering demands hold; backdating would create worse
+  attribution problems.
+- Scope clean: `paper_engine.py` + the two IOC test files only.
 
 ## Repro commands (all ≤25 min jobs; battery ~65 s)
 
