@@ -45,3 +45,5 @@ Then: economic scoring on the corrected stack.
   Price-band red GREEN/unmarked. 3 IOC reds await W5 probe updates
   (stale ioc_maker_relabeled key x2; marketable needs an arrival tick).
   Follow-up: Session._flatten off submit_immediate (manager-owned).
+- W5 probe updates integrated (1f63a77): all 11 IOC probes green, suite
+  984+1+6x (xfails now 3 cost + 3 controls only). W1 review: SOUND.
