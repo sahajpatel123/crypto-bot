@@ -58,3 +58,7 @@ Then: economic scoring on the corrected stack.
   checkpoints, 811k-event split-resume parity. Suite 1022+1+0x —
   ALL probes green. Absolute manifest paths verified correct per
   _resolve semantics (kept). All 5 workers integrated.
+- Scoring: first 2-day BTC COMBINED run yielded 0 intents — bench clock
+  lagged event time, killing all candidates at the 1s quote-age gate.
+  Manager fix on main (0b0c1fc): replay clock tracks event time +
+  regression test. Scoring re-run in flight.
