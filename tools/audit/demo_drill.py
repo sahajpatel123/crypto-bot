@@ -189,7 +189,11 @@ def cmd_drill(drill):
                   f"closed {out_filled}/{filled}")
         if out_filled != filled:
             fails += 1
-        engine.cancel(stop, "demo:position-closed")
+        try:
+            engine.cancel(stop, "demo:position-closed")
+        except Exception as exc:
+            drill.log("drill/protection-cancel", "FAIL", repr(exc))
+            fails += 1
     else:
         drill.log("drill/protection-exit", "BLOCKED",
                   "no fill to protect (honest no-trade)")
@@ -222,10 +226,23 @@ def cmd_drill(drill):
                       "dropped response did not raise UNKNOWN")
             fails += 1
         except UnknownOutcomeError as exc:
-            cids = [c for c in [exc.client_id]
-                    if engine2.lookup(c) is not None]
-            drill.log("drill/ambiguous-submit", "PASS",
-                      f"UNKNOWN {exc.client_id}, single order, no duplicate")
+            found = engine2.lookup(exc.client_id)
+            intents = [r for r in engine2._read_journal()
+                       if r.get("event") == "submit-intent"
+                       and r.get("reservation_id") == "demo-ambig-1"]
+            dupes = [o for o in engine2.open_orders()
+                     if o.client_order_id == exc.client_id]
+            if found is not None and len(intents) == 1 and len(dupes) <= 1:
+                drill.log(
+                    "drill/ambiguous-submit", "PASS",
+                    f"UNKNOWN {exc.client_id} resolved; 1 submit intent, "
+                    f"{len(dupes)} open leg(s); no duplicate")
+            else:
+                drill.log(
+                    "drill/ambiguous-submit", "FAIL",
+                    f"cid={exc.client_id} resolved={found is not None} "
+                    f"intents={len(intents)} open_legs={len(dupes)}")
+                fails += 1
     # Phase 4: restart adoption in a fresh process.
     child = subprocess.run(
         [sys.executable, str(Path(__file__).resolve()), "--dir", str(drill.dir),
