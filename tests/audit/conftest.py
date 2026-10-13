@@ -30,6 +30,22 @@ KNOWN_FAILURES = (
     # Owner W1/W2: price band not enforced at arrival (same root cause).
     "test_ioc_adversarial.py"
     "::test_price_band_bounds_the_cross_at_arrival",
+    # Owner W4: research/selector cost split (26 vs 31 bps), unsigned
+    # funding, implicit spread semantics (§5 unified contract).
+    "test_cost_contract.py"
+    "::test_research_selector_agree_on_frozen_inputs",
+    "test_cost_contract.py"
+    "::test_funding_sign_is_representable",
+    "test_cost_contract.py"
+    "::test_spread_semantics_are_explicit",
+    # Owner W1/W2: no shipped 1s max-age profile; missing timestamps
+    # crash instead of blocking; no feed-independent control path.
+    "test_runtime_controls.py"
+    "::test_operational_profile_enforces_one_second_max_age",
+    "test_runtime_controls.py"
+    "::test_missing_event_timestamps_fail_closed",
+    "test_runtime_controls.py"
+    "::test_control_path_recognizes_stop_despite_blocked_producer",
 )
 
 
