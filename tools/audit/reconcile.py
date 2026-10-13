@@ -16,8 +16,13 @@ metrics. Verdicts per run:
 Exit 1 iff any MISMATCH, else 0.
 
 Usage:
-    reconcile.py --run runs/<id> [--run ...] [--comparison <comparison.json>
-      --runs-root <runs/>] --out <report.json>
+    reconcile.py --run runs/<id> [--run ...] [--pruned-run <cell-run> ...]
+      [--comparison <comparison.json> --runs-root <runs/>] --out <report.json>
+
+--pruned-run asserts the documented pruned cell layout (report.json +
+ledger.json + engine journal; fills/equity/rejections pruned away).
+When run_dir/cell.json or ../cell.json exists, cell metrics and the
+stream hash are cross-checked against the run report automatically.
 """
 import argparse
 import json
@@ -71,8 +76,29 @@ def _economics(fills):
             "net_qty": netqty, "n": len(fills)}
 
 
-def reconcile_run(run_dir):
-    """Reconcile one Session run dir or benchmark cell dir."""
+def _find_journal(run_dir):
+    for name in ("engine_journal.jsonl", "paper_engine_journal.jsonl"):
+        journal = _load_jsonl(run_dir / name)
+        if journal is not None:
+            return name, journal
+    return None, None
+
+
+def _find_cell(run_dir):
+    for cand in (run_dir / "cell.json", run_dir.parent / "cell.json"):
+        cell = _load_json(cand)
+        if cell is not None:
+            return str(cand), cell
+    return None, None
+
+
+def reconcile_run(run_dir, pruned=False):
+    """Reconcile one Session run dir or benchmark cell dir.
+
+    pruned=True asserts the documented pruned layout (report.json +
+    ledger.json + engine journal only; fills/equity/rejections pruned
+    away) so their absence is recorded, not failed.
+    """
     run_dir = Path(run_dir)
     checks = []
     report = _load_json(run_dir / "report.json")
@@ -130,14 +156,16 @@ def reconcile_run(run_dir):
     fills_file = _load_jsonl(run_dir / "fills.jsonl")
     new_layout = any((run_dir / name).exists() for name in
                      ("equity.jsonl", "store.db", "fills.jsonl",
-                      "engine_journal.jsonl"))
+                      "engine_journal.jsonl", "paper_engine_journal.jsonl"))
     if fills_file is None or len(fills_file) == 0:
+        excused = pruned and "pruned layout asserted (--pruned)"
         check("fills-jsonl-present",
-              len(fills) == 0 or not new_layout,
-              "fills.jsonl missing/empty; ledger journal is canonical"
-              f" (old layout, excused)" if fills and not new_layout else
-              (f"fills.jsonl missing/empty but ledger holds {len(fills)}"
-               if fills else "no fills anywhere; consistent"))
+              len(fills) == 0 or not new_layout or bool(excused),
+              excused if fills and excused else
+              ("fills.jsonl missing/empty; ledger journal is canonical"
+               f" (old layout, excused)" if fills and not new_layout else
+               (f"fills.jsonl missing/empty but ledger holds {len(fills)}"
+                if fills else "no fills anywhere; consistent")))
     else:
         check("fills-jsonl-count", len(fills_file) == len(fills),
               f"file {len(fills_file)} vs ledger {len(fills)}")
@@ -150,8 +178,12 @@ def reconcile_run(run_dir):
                   f"curve {marked} vs report {closing}")
     else:
         check("equity-curve-present", True, "absent (old layout); skipped")
-    journal = _load_jsonl(run_dir / "engine_journal.jsonl")
-    if journal is not None:
+    journal_name, journal = _find_journal(run_dir)
+    if journal is None:
+        check("engine-journal-present", not pruned,
+              "pruned layout requires the engine journal"
+              if pruned else "absent (old layout); skipped")
+    else:
         jfills = [r.get("detail", r.get("Detail", {})) for r in journal
                   if r.get("event") == "fill"]
         jkeys = sorted((_k("BUY" if str(f.get("venue_side", "")).upper()
@@ -161,7 +193,22 @@ def reconcile_run(run_dir):
         lkeys = sorted((_k(*k) for k in
                         (_ledger_fill_key(f) for f in fills)))
         check("engine-ledger-fills-agree", jkeys == lkeys,
-              f"journal {len(jkeys)} vs ledger {len(lkeys)} fill keys")
+              f"{journal_name} {len(jkeys)} vs ledger {len(lkeys)} fill keys")
+    cell_path, cell = _find_cell(run_dir)
+    if cell is not None:
+        for key in ("events_seen", "intents_admitted", "closing_equity",
+                    "net_return_pct", "paid_costs", "funding_net", "realised"):
+            if key in cell:
+                check(f"cell-{key}-agree",
+                      _close(cell[key], report.get(key, cell[key]),
+                             tol=1e-4 if key == "net_return_pct" else TOL),
+                      f"cell.json {cell[key]} vs report "
+                      f"{report.get(key)}")
+        cell_hash = (cell.get("replay_stream") or {}).get("events_hash")
+        rep_hash = (report.get("replay_stream") or {}).get("events_hash")
+        if cell_hash or rep_hash:
+            check("cell-stream-hash-agree", cell_hash == rep_hash,
+                  f"cell {cell_hash} vs report {rep_hash} ({cell_path})")
     # -- verdict ----------------------------------------------------------------
     if not fills:
         strat_n = ((report.get("latency_ms") or {}).get("strategy_eval")
@@ -169,10 +216,16 @@ def reconcile_run(run_dir):
         intents = (report.get("store_counts") or {}).get("intents", 0)
         rej_file = _load_jsonl(run_dir / "rejections.jsonl") or []
         rej_counts = report.get("reject_counts") or {}
+        _armset = (cell or {}).get("armset")
         if not strat_n and not intents:
-            reason = ("strategies never evaluated "
-                      f"(strategy_eval n={strat_n}, intents={intents}); "
-                      "warmup/readiness gated the whole run")
+            if _armset and str(_armset).upper() != "COMBINED":
+                reason = (f"control arm {_armset}: strategies disabled by "
+                          f"design (eval n={strat_n}, intents={intents}); "
+                          f"0 fills expected")
+            else:
+                reason = ("strategies never evaluated "
+                          f"(strategy_eval n={strat_n}, intents={intents}); "
+                          "warmup/readiness gated the whole run")
         elif rej_file or rej_counts:
             reason = (f"evaluated, all rejected with reasons "
                       f"({len(rej_file)} lines, {len(rej_counts)} classes)")
@@ -211,6 +264,7 @@ def _k(side, qty, price, fee):
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--run", action="append", default=[])
+    parser.add_argument("--pruned-run", action="append", default=[])
     parser.add_argument("--comparison", default=None)
     parser.add_argument("--runs-root", default=None)
     parser.add_argument("--out", required=True)
@@ -218,6 +272,8 @@ def main() -> int:
     results = []
     for run in args.run:
         results.append(reconcile_run(run))
+    for run in args.pruned_run:
+        results.append(reconcile_run(run, pruned=True))
     if args.comparison:
         comp = _load_json(args.comparison)
         cells = (comp or {}).get("cells", {})
