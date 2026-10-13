@@ -27,9 +27,9 @@ KNOWN_FAILURES = (
     # Owner whisper-redshift (execution): marketable IOC does not fill against the arrival book.
     "test_ioc_adversarial.py"
     "::test_marketable_ioc_fills_at_arrival_book_both_sides",
-    # Owner whisper-redshift (execution): price band not enforced at arrival (same root cause).
-    "test_ioc_adversarial.py"
-    "::test_price_band_bounds_the_cross_at_arrival",
+    # FIXED by W1 arrival gate + manager order_status repair (arrival-cancelled
+    # IOCs report CANCELED): test_price_band_bounds_the_cross_at_arrival is
+    # green and runs unmarked.
     # Owner cloud-vega (data): research/selector cost split (26 vs 31 bps), unsigned
     # funding, implicit spread semantics (§5 unified contract).
     "test_cost_contract.py"

@@ -603,6 +603,11 @@ class NautilusPaperEngine:
         real = self.resolve(entry_client_id) or entry_client_id
         order = self._orders.get(real)
         if order is None:
+            if real in self._ioc_done:
+                # 30MIN §4: arrival-cancelled IOC is known to the engine
+                # with zero resting quantity — refused, not unknown.
+                raise ValueError(
+                    "protection attaches only to an entry with fills")
             raise KeyError(f"unknown entry_client_id: {entry_client_id!r}")
         filled = float(order.filled_qty)
         if filled <= 1e-12:
@@ -893,6 +898,10 @@ class NautilusPaperEngine:
         """Local applied nautilus state name of a tracked order (runtime use)."""
         order = self._orders.get(client_order_id)
         if order is None:
+            if client_order_id in self._ioc_done:
+                # 30MIN §4: arrival/remainder-cancelled IOC is terminally
+                # CANCELED even though it never rests in the simulator.
+                return "CANCELED"
             raise KeyError(f"unknown client_order_id: {client_order_id!r}")
         return OrderStatus(int(order.status)).name
 
