@@ -216,6 +216,81 @@ the branch tip in a read-only scratch worktree.
   attribution problems.
 - Scope clean: `paper_engine.py` + the two IOC test files only.
 
+## 9. Closing addendum — W2 review + e2e on `3b83d7c` (APPROVE; e2e PASS)
+
+W2 integrated from worktree as `b58fe67` (no branch; reviewed the
+main-tree diff plus `W2-CORR.json`). E2E target `3b83d7c` (all workers
++ manager acceptance gate) verified in a read-only scratch worktree.
+Later main tips `c98075b` (evidence + late W3 outbox) and `e74b539`
+(merge of this branch's evidence) touch only reports/coord — no code
+impact on this verdict.
+
+### W2 `b58fe67` — APPROVE
+
+- Official probes on the integrated SHA: checkpoint 135 slots/warmed →
+  1 feed/warmed True, 20 fields, orphan-flat False, changed-config
+  False, round-trip filled-orders flat True — matches W2's claimed
+  repro.after exactly. IOC defect false (fill @101 at 200ms), freshness
+  matrix fixed, nested 1.274s INCOMPLETE/verified.
+- `_is_flat` rewrite reviewed: spans position, flatten-pending, ledger
+  qty (orphans count), engine nonterminal orders (terminal states are
+  history), submit queue, pending events, IOC tracking, portfolio
+  positions, risk reservations/unresolved; unreadable → not flat,
+  absent → pass. Sound fail-closed design.
+- `_commit` force-parameter removal: no remaining `force=` callers;
+  end-of-input with exposure → `INCOMPLETE_EXPOSURE` + nonzero exit,
+  no forced commit/flatten (code-read verified). Identity gate refuses
+  v1 checkpoints (probed: `runner_version 'bench-run-v1' !=
+  'bench-run-v2'`) and config drift.
+- W2's `/tmp` acceptance harness independently re-run against the
+  integrated tree (retargeted copy; originals untouched): ref/det/flat
+  /exposed all COMPLETE with PARITY on status, booked, estimates,
+  cursor, fills, risk_state, intents (1300), execution_events,
+  risk_transitions, checkpoints. Absolute economics differ from W2's
+  tree (M1 pricing + W3 freshness change the trade path) — parity is
+  internal ref-vs-resumed, which is the requirement. The manager has
+  since persisted the tape in-repo as
+  `test_bench_restart_equivalence.py` (green here).
+- Tests: 6→12 in `test_bench_run.py`, none dropped, all new asserts
+  strengthen; bars/depth diffs add round-trip asserts only; market-data
+  src diffs are pure-additive except one `__all__` extension. Scope
+  clean: bench_run + market-data round-trips, no session.py.
+- W2's session-owned followups (reservation expiry, protection qty,
+  OCO) noted, out of W5 scope, not blocking checkpoint acceptance.
+
+### E2E verdict: PASS (one documented test-margin flake, not a defect)
+
+- Manager acceptance gate 10/10 (5 consecutive green runs + targeted
+  run); battery 10/10 + budget 5/5 on the integrated tree; reconciler
+  and net guard unchanged since base (validations stand).
+- Full suite on `3b83d7c`: 1104 passed, 1 skipped, 1 failed — the single
+  failure is `test_nested_budget_stops_descendants` (manager's gate),
+  twice, on the `observed < 2.0` wall assertion (2.22s observed). The
+  failed run's own wrapper report proves enforcement: `verified — all
+  3 known descendants dead`, rc 124. The 2.0s threshold has ~0.7s margin
+  over a 1s nested double-Python spawn and breaks under full-suite
+  machine load. RECOMMENDATION (manager's file, not edited by W5):
+  raise the threshold to 5s (as W5's battery does) and/or assert on the
+  report's `enforcement` field plus the pgrep identity check instead of
+  a tight wall clock.
+- Requirement vs test: every descendant-stop requirement is proven
+  (verified enforcement + battery + pgrep checks green); only the
+  gate's timing margin fails under load. E2E is therefore PASS with
+  the flake documented.
+
+### Linux note (final)
+
+No Linux runtime exists in this environment (no docker daemon, no VM
+instances; colima image download ran ~5%/100s and was killed). The
+subreaper path in `tools/run_budget.py` is import-safe, Linux-gated,
+and verified no-op on macOS (`subreaper=false`, zero behavioral
+effect). Daemon-kill-on-Linux holds by construction (prctl
+`PR_SET_CHILD_SUBREAPER` reparents orphans to the wrapper, where the
+existing walk kills them); killpg/setsid/ps/signal semantics are
+otherwise identical across platforms. Closure needs one Linux CI run
+of `test_daemon_reparent_escape` (asserts the kill on subreaper
+platforms, honest degradation elsewhere).
+
 ## Repro commands (all ≤25 min jobs; battery ~65 s)
 
 - Base probes: `PYTHONPATH=src .venv/bin/python
