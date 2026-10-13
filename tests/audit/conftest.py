@@ -18,18 +18,12 @@ import pytest
 # 30min (W5): §4 IOC arrival-scheduling failures below, strict-xfail
 # with owner; XPASS forces trim at each fix's integration.
 KNOWN_FAILURES = (
-    # Owner whisper-redshift (execution): nonmarketable IOC rests and revives on later liquidity
-    # instead of canceling at arrival (both sides).
-    "test_ioc_adversarial.py"
-    "::test_nonmarketable_buy_ioc_dead_at_arrival_no_late_revival",
-    "test_ioc_adversarial.py"
-    "::test_nonmarketable_sell_ioc_dead_at_arrival_no_late_revival",
-    # Owner whisper-redshift (execution): marketable IOC does not fill against the arrival book.
-    "test_ioc_adversarial.py"
-    "::test_marketable_ioc_fills_at_arrival_book_both_sides",
-    # FIXED by W1 arrival gate + manager order_status repair (arrival-cancelled
-    # IOCs report CANCELED): test_price_band_bounds_the_cross_at_arrival is
-    # green and runs unmarked.
+    # FIXED by W1 arrival gate (f11e899) + manager query repairs (fdad744):
+    # nonmarketable IOCs cancel at arrival (both sides, probes updated to
+    # the ioc_artifact_corrected stat); marketable IOC restated to
+    # tick-driven semantics (no fabrication on bare advance; arrival tick
+    # fills at arrival prices) and green; price band green. All four run
+    # unmarked.
     # Owner cloud-vega (data): research/selector cost split (26 vs 31 bps), unsigned
     # funding, implicit spread semantics (§5 unified contract).
     "test_cost_contract.py"
