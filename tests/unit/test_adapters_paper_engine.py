@@ -383,6 +383,60 @@ def test_submit_protected_cancels_when_touch_unreachable():
     assert [c.payload.client_order_id for c in cancels] == [cid]
 
 
+def _maker_filled_event(engine, client_id, price=60000.00):
+    # Fabricate the nautilus OrderFilled nautilus emits when a resting
+    # IOC limit is matched by a trade print (MatchingCore labels every
+    # limit fill MAKER; F-W1B1 crashed COMBINED|dev on this flag).
+    from nautilus_trader.core.uuid import UUID4
+    from nautilus_trader.model.enums import LiquiditySide, OrderSide, OrderType
+    from nautilus_trader.model.events import OrderFilled
+    from nautilus_trader.model.identifiers import (
+        AccountId, ClientOrderId, PositionId, StrategyId, TradeId,
+        TraderId, VenueOrderId)
+    from nautilus_trader.model.objects import Currency, Money, Price, Quantity
+    iid = engine.instrument_id("BTCUSDT")
+    return OrderFilled(
+        trader_id=TraderId("T-001"), strategy_id=StrategyId("S-001"),
+        instrument_id=iid, client_order_id=ClientOrderId(client_id),
+        venue_order_id=VenueOrderId(client_id), account_id=AccountId("BINANCE-001"),
+        trade_id=TradeId("T-maker-1"), position_id=PositionId(f"{iid}-001"),
+        order_side=OrderSide.SELL, order_type=OrderType.LIMIT,
+        last_qty=Quantity(0.001, 3), last_px=Price(price, 2),
+        currency=Currency.from_str("USDT"),
+        commission=Money(0.003, Currency.from_str("USDT")),
+        liquidity_side=LiquiditySide.MAKER, event_id=UUID4(),
+        ts_event=int(T0.timestamp() * 1e9), ts_init=int(T0.timestamp() * 1e9))
+
+
+def test_ioc_maker_fill_relabeled_taker(tmp_path):
+    # F-W1B1: a real IOC can never earn a maker fill, so nautilus's
+    # MAKER flag on an IOC trade-print match is relabeled taker and
+    # journaled instead of crashing the cell. Live proof: 10-min
+    # 09-13 window replay fills at 08:39:44.476 with relabel=1 (pre-fix
+    # raises RuntimeError non-taker identically to the dev crash).
+    engine = _engine()
+    engine.journal_path = tmp_path / "journal.jsonl"
+    _quote(engine, 0, 60000.00, 60001.00)
+    cid = engine.submit_protected(
+        EngineOrder("BTCUSDT", "SELL", 0.001, "MARKET"), 60000.50)
+    event = engine._translate(_maker_filled_event(engine, cid))
+    assert event is not None and event.kind == "fill"
+    assert event.payload.liquidity == "taker"
+    assert event.payload.client_order_id == cid
+    assert engine.stats["ioc_maker_relabeled"] == 1
+    assert "relabel" in (tmp_path / "journal.jsonl").read_text()
+
+
+def test_non_ioc_maker_fill_still_fails_closed():
+    # The relabel is IOC-only: a MAKER flag on a GTC order is still a
+    # genuine model violation and must raise, not book.
+    engine = _engine()
+    _quote(engine, 0, 60000.00, 60001.00)
+    cid = engine.submit(EngineOrder("BTCUSDT", "SELL", 0.001, "MARKET"))
+    with pytest.raises(RuntimeError, match="non-taker fill"):
+        engine._translate(_maker_filled_event(engine, cid))
+
+
 def test_submit_protected_rejects_bad_limit():
     engine = _engine()
     _quote(engine, 0, 60000.00, 60000.50)

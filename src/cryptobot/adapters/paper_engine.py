@@ -258,6 +258,7 @@ class NautilusPaperEngine:
             "queued_submits": 0,
             "restamped_ticks": 0,
             "funding_events": 0,
+            "ioc_maker_relabeled": 0,
         }
         if self.journal_path is not None:
             self.journal_path.parent.mkdir(parents=True, exist_ok=True)
@@ -955,7 +956,9 @@ class NautilusPaperEngine:
             "liquidity=taker-only: MARKET/STOP_MARKET/TAKE_PROFIT_MARKET cross the book; "
             "canonical LIMIT maps to nautilus LIMIT IOC (marketable-or-cancel, keeps price "
             "protection); resting GTC limits unsupported (no queue model); non-taker fills "
-            "fail closed",
+            "fail closed except IOC entries, whose nautilus maker flag on a sub-tick "
+            "trade-print cross is relabeled taker and journaled (F-W1B1: a real IOC "
+            "cannot rest, so the flag is a simulator artifact)",
             "markets are GTC (never IOC-cancelled for thin prints): with quotes they "
             "resolve on the next tick; on trade-only replay prints seed L1 size, the "
             "print size fills at-print and swept excess walks one tick adverse "
@@ -1174,9 +1177,23 @@ class NautilusPaperEngine:
         symbol = self._symbols.get(coid, event.instrument_id.symbol.value)
         if isinstance(event, OrderFilled):
             if event.liquidity_side != LiquiditySide.TAKER:
-                raise RuntimeError(
-                    f"non-taker fill for {coid}: {event.liquidity_side} "
-                    f"(taker-only model; refusing to book mislabeled costs)")
+                order = self._orders.get(coid)
+                tif = getattr(order, "time_in_force", None)
+                if tif == TimeInForce.IOC:
+                    # F-W1B1: a real IOC can never earn a maker fill (it
+                    # takes or cancels without resting). Nautilus flags a
+                    # sub-tick trade-print cross of a just-submitted IOC
+                    # as maker; that label is a simulator artifact, so the
+                    # fill is booked as a take (taker costs, conservative
+                    # at every real venue) with the relabel journaled.
+                    self.stats["ioc_maker_relabeled"] += 1
+                    self._journal("relabel", {
+                        "client_id": coid, "from": "maker", "to": "taker",
+                        "reason": "ioc-trade-print-artifact"})
+                else:
+                    raise RuntimeError(
+                        f"non-taker fill for {coid}: {event.liquidity_side} "
+                        f"(taker-only model; refusing to book mislabeled costs)")
             return EngineEvent("fill", EngineFill(
                 execution_id=event.trade_id.value,
                 client_order_id=coid,
