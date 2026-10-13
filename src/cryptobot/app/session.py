@@ -27,7 +27,7 @@ from cryptobot.market_data.bridge import load_snapshots
 from cryptobot.market_data.replayer import assert_input_class
 from cryptobot.market_data.views import DepthStore, book_flow_for
 from cryptobot.risk.policy import RiskPolicy
-from cryptobot.risk.rounding import ceil_to_tick, floor_to_tick
+from cryptobot.risk.rounding import ceil_to_tick, floor_to_step, floor_to_tick
 from cryptobot.risk.types import AccountSnapshot, Approved, RiskConfig
 
 from .config import AppConfig
@@ -126,6 +126,10 @@ class _SymbolFeed:
     def __init__(self, symbol: str, warmup: int) -> None:
         self.agg = BarAggregator(symbol)
         self.bars: deque = deque(maxlen=warmup + 5)
+        # W3-P1: parallel per-window gap cause (None for real bars,
+        # "id-jump"/"quiet-window" for BarMissing) so strategy-visible
+        # quality separates causes. Same maxlen: evicts with bars.
+        self.missing_cause: deque = deque(maxlen=warmup + 5)
         self.mark: float | None = None
         self.mark_ts: datetime | None = None
         self.missing = 0
@@ -193,6 +197,14 @@ class Session:
         self._submit_ts: dict[str, datetime] = {}
         self._events_seen = 0
         self._flatten_pending = False
+        self._orphan_close_ids: list[str] = []  # pos-less flatten closes.
+        # W3-P2: native replay milestones (export_warmup probes, made
+        # native): first-event/bar/ready/eval/intent/gate per symbol.
+        self._milestones: dict[str, Any] = {
+            "first_event": None, "first_bar": {}, "ready": {},
+            "first_eval": {}, "first_intent": {}, "gate_ready": {},
+            "capture_end": None}
+        self._ms_t0_ms: int | None = None
         self._warmed = False
         self._last_seq = 0
         self._last_equity_sample: datetime | None = None
@@ -506,6 +518,17 @@ class Session:
         if missing:
             reasons = list(reasons) + [
                 f"gap:missing-windows:{missing}"]
+            # W3-P1: separate id-jump gaps from quiet windows so strategy
+            # rejects attribute by cause (cause deque evicts with bars in
+            # production; tests building bars directly just undercount).
+            causes = [c for c in getattr(feed, "missing_cause", [])
+                      if c is not None]
+            jumps = sum(1 for c in causes if c == "id-jump")
+            quiets = sum(1 for c in causes if c == "quiet-window")
+            if jumps:
+                reasons = list(reasons) + [f"gap:id-jump:{jumps}"]
+            if quiets:
+                reasons = list(reasons) + [f"gap:quiet-window:{quiets}"]
         view = MarketView(
             instrument=symbol, bars=tuple(bars), now_utc=self.now_utc(),
             depth=depth, flow=flow_view, quality=quality,
@@ -522,8 +545,19 @@ class Session:
                 continue
             finally:
                 self._eval_ms.append((time.perf_counter() - start) * 1000)
+            key = f"{name}/{symbol}"
+            if key not in self._milestones["first_eval"]:
+                iso, rel = self._ms_stamp()
+                self._milestones["first_eval"][key] = {
+                    "ts_utc": iso, "rel_ms": rel,
+                    "reject": outcome.reject_reason,
+                    "fired": outcome.intent is not None}
             if outcome.intent is not None:
                 out.append(Candidate(outcome.intent.strategy, outcome.intent))
+                if key not in self._milestones["first_intent"]:
+                    iso, rel = self._ms_stamp()
+                    self._milestones["first_intent"][key] = {
+                        "ts_utc": iso, "rel_ms": rel}
             else:
                 out.append(Candidate(adapter.strategy_id, None,
                                      f"strategy:{outcome.reject_reason}"))
@@ -662,7 +696,10 @@ class Session:
             return "reconcile:unknown-outcomes"
         return None
 
-    def _maybe_admit(self, candidates: list[Candidate]) -> None:
+    def _maybe_admit(self, candidates: list[Candidate], *,
+                     symbol: str | None = None) -> None:
+        # W2-P1: intent-less (strategy-stage) rejects carry the evaluated
+        # symbol when the caller knows it, so rejections attribute.
         hold = self._admission_hold()
         if hold is not None:
             for cand in candidates:
@@ -673,7 +710,7 @@ class Session:
                                       cand.intent.side.value)
                 else:
                     strat, _, _ = self._split_ref(cand.strategy_id)
-                    self._note_reject(hold, strat)
+                    self._note_reject(hold, strat, symbol or "")
                 self.store.record_intent(
                     self.run_id, ref, cand.strategy_id,
                     cand.intent.instrument if cand.intent else "",
@@ -712,7 +749,7 @@ class Session:
                                       cand.intent.side.value)
                 else:
                     strat, _, _ = self._split_ref(cand.strategy_id)
-                    self._note_reject(reason, strat)
+                    self._note_reject(reason, strat, symbol or "")
                 self.store.record_intent(
                     self.run_id, ref, cand.strategy_id,
                     cand.intent.instrument if cand.intent else "",
@@ -725,7 +762,7 @@ class Session:
         self._decide_ms.append((time.perf_counter() - start) * 1000)
         for ref, reason in decision.rejections:
             strat, inst, side = self._split_ref(ref)
-            self._note_reject(reason, strat, inst, side)
+            self._note_reject(reason, strat, inst or (symbol or ""), side)
         for cand in candidates:
             if cand.intent is None:
                 continue
@@ -756,8 +793,13 @@ class Session:
                     intent.instrument, intent.side.value, "rejected",
                     verdict.reason, self.now_utc().isoformat())
                 return
-        verdict = self.policy.evaluate(
-            intent, self._snapshot_account(symbol=intent.instrument))
+        # READY-§5 inv 1: size on the ACTUAL venue step. Policy filters
+        # armed via arm_run_mode/arm_replay_filters win; otherwise pull the
+        # engine's armed step so approval never sizes on the 1e-8 fallback
+        # while the venue floors to its real LOT_SIZE (0.33293226 vs 0.332).
+        self._sync_venue_filters(intent.instrument)
+        snapshot = self._snapshot_account(symbol=intent.instrument)
+        verdict = self.policy.evaluate(intent, snapshot)
         if not isinstance(verdict, Approved):
             self._note_reject(f"risk:{verdict.reason}", intent.strategy,
                               intent.instrument, intent.side.value)
@@ -774,6 +816,23 @@ class Session:
             if verdict.reason.startswith("halt:"):
                 self.engine.set_exit_only(True, verdict.reason)
                 self._set_state("halted", verdict.reason)
+            return
+        # READY-§5 inv 1: snap the approved qty to the venue step BEFORE
+        # submitting and recheck risk, margin and minimums after rounding.
+        # Approved = risk-budgeted request; executable = submitted; fills =
+        # booked. A snap that breaks minimums rejects loudly (hold freed).
+        executable = self._snap_qty(intent.instrument, verdict.qty)
+        recheck = self._recheck_executable(intent, snapshot, executable,
+                                           verdict.reserved_risk)
+        if recheck is not None:
+            self.policy.release(verdict.reservation_id)
+            reason = f"risk:{recheck}"
+            self._note_reject(reason, intent.strategy, intent.instrument,
+                              intent.side.value)
+            self.store.record_intent(
+                self.run_id, intent.evidence_ref, intent.strategy,
+                intent.instrument, intent.side.value, "rejected",
+                reason, self.now_utc().isoformat())
             return
         try:
             stop, target, time_exit, legacy = self._derive_exits(intent)
@@ -795,7 +854,7 @@ class Session:
         # engine has no protected IOC (non-economic tool): it keeps MARKET.
         cap = self._entry_cap(intent)
         order = EngineOrder(
-            instrument=intent.instrument, side=side, qty=verdict.qty,
+            instrument=intent.instrument, side=side, qty=executable,
             kind="MARKET", reservation_id=verdict.reservation_id,
             expire_at_utc=intent.entry_expiry_utc)
         submit_protected = getattr(self.engine, "submit_protected", None)
@@ -828,11 +887,22 @@ class Session:
                           "legs": [], "stop": stop, "target": target,
                           "time_exit": time_exit, "legacy_exit": legacy,
                           "protected": False, "protect_attempts": 0,
-                          "entry_cap": cap}
+                          "entry_cap": cap,
+                          "approved_qty": verdict.qty,
+                          "executable_qty": executable,
+                          "exposure_noted": False,
+                          "executable_noted": False,
+                          "close_ids": [],
+                          "emergency_latched": False,
+                          "strategy": intent.strategy,
+                          "admit_snapshot": snapshot,
+                          "admit_budget": verdict.reserved_risk,
+                          "admit_intent": intent}
         self._admitted += 1
         self._set_state("holding", f"admitted:{intent.evidence_ref}")
         self.store.checkpoint(self.run_id, "admit", {
             "reservation_id": verdict.reservation_id, "qty": verdict.qty,
+            "executable_qty": executable,
             "notional": verdict.notional_usdt, "legacy_exit": legacy,
             "entry_cap": cap,
             "entry_band": [intent.entry_low, intent.entry_high]})
@@ -850,6 +920,157 @@ class Session:
         if intent.side.value == "LONG":
             return floor_to_tick(raw, float(tick))
         return ceil_to_tick(raw, float(tick))
+
+    def _engine_venue_filters(self, symbol: str) -> dict[str, float] | None:
+        """Best-effort read of the engine's armed venue filters (READY-§5).
+
+        The paper engine auto-registers LOT_SIZE/tick/mins from venue data
+        while the policy may never have been armed (bench arms the engine
+        only), so the Session pulls the true step here to size on it.
+        Guarded: anything missing/malformed returns None and the caller
+        falls back to policy filters, then to post-submit narrowing.
+        """
+        raw = getattr(self.engine, "_filters", None)
+        if not isinstance(raw, dict):
+            return None
+        entry = raw.get(symbol.upper())
+        if not isinstance(entry, dict):
+            return None
+        try:
+            out = {"tick": float(entry["tick"]), "step": float(entry["step"]),
+                   "min_qty": float(entry["min_qty"]),
+                   "min_notional": float(entry["min_notional"])}
+        except (KeyError, TypeError, ValueError):
+            return None
+        if not all(math.isfinite(v) for v in out.values()):
+            return None
+        if out["step"] <= 0:
+            return None
+        return out
+
+    def _sync_venue_filters(self, symbol: str) -> bool:
+        """Ensure policy sizes on the actual venue step (READY-§5 inv 1).
+
+        Armed policy filters (arm_run_mode/arm_replay_filters) always win;
+        otherwise the engine's armed step is pulled in. True when the
+        policy now holds a symbol record (from either source).
+        """
+        if symbol in self.policy.config.instrument_filters:
+            return True
+        eng = self._engine_venue_filters(symbol)
+        if eng is None:
+            return False
+        from dataclasses import replace
+
+        from cryptobot.risk.types import InstrumentFilter
+        merged = dict(self.policy.config.instrument_filters)
+        merged[symbol] = InstrumentFilter(
+            min_notional_usdt=eng["min_notional"]
+            or self.config.min_notional_usdt,
+            qty_step=eng["step"], min_qty=eng["min_qty"],
+            tick_size=eng["tick"] or None)
+        asof = self.now_utc()
+        self.policy.config = replace(
+            self.policy.config, instrument_filters=merged,
+            filters_asof_utc=asof)
+        self.store.checkpoint(self.run_id, "filters-synced",
+                              {"symbol": symbol, "step": eng["step"],
+                               "min_qty": eng["min_qty"],
+                               "asof_utc": asof.isoformat()})
+        return True
+
+    def _snap_qty(self, symbol: str, qty: float) -> float:
+        """Floor a risk-approved qty to the known venue step (READY-§5)."""
+        filt = self.policy.config.instrument_filters.get(symbol)
+        step = filt.qty_step if filt is not None else 1e-8
+        return floor_to_step(qty, step)
+
+    def _recheck_executable(self, intent: Any, snapshot: Any,
+                            qty: float, budget: float) -> str | None:
+        """Recheck risk, margin and minimums after venue rounding (READY-§5).
+
+        Same arithmetic as RiskPolicy.evaluate's cap plus plan_size's
+        within_budget/affordable/minimum gates, applied to the ROUNDED
+        qty (not the raw approval). Returns a rejection reason or None.
+        """
+        cfg = self.policy.config
+        filt = cfg.instrument_filters.get(intent.instrument)
+        min_qty = filt.min_qty if filt is not None else 0.0
+        min_notional = (filt.min_notional_usdt if filt is not None
+                        else cfg.min_notional_usdt)
+        if qty <= 0 or qty < min_qty:
+            return "skip:min-notional"
+        long = intent.side.value == "LONG"
+        adverse = intent.entry_high if long else intent.entry_low
+        if qty * adverse < min_notional:
+            return "skip:min-notional"
+        stop_dist = abs(adverse - intent.invalidation_price)
+        fc = intent.forecast_cost
+        stressed = ((fc.fee_bps + fc.spread_bps + fc.slippage_bps
+                     + fc.funding_bps) / 10000 * cfg.stress_multiplier)
+        if qty * stop_dist + qty * adverse * stressed > budget * (1 + 1e-9):
+            return "sizing:budget-exceeded"
+        notional = qty * adverse
+        avail = snapshot.available_margin_usdt
+        if avail is not None:
+            affordable = ((avail - snapshot.fee_buffer_usdt)
+                          * cfg.leverage_cap
+                          - snapshot.inflight_exposure_usdt)
+            if notional > affordable:
+                return "margin:insufficient"
+        if notional > cfg.leverage_cap * snapshot.reconciled_equity:
+            return "leverage:cap-exceeded"
+        return None
+
+    def _narrow_entry_executable(self, pos: dict[str, Any],
+                                 statuses: dict[str, Any]) -> None:
+        """Narrow the reservation to the engine-recorded qty (READY-§5).
+
+        Runs when the entry first appears in open_orders (covers queued
+        submits): the recorded order qty is the authoritative submitted
+        quantity after venue flooring. Rechecks minimums/risk/margin on
+        the recorded qty; on failure cancels the entry, frees the hold
+        and clears loudly (fail closed, never silently undersized).
+        Idempotent via executable_noted.
+        """
+        if pos.get("executable_noted"):
+            return
+        entry_id = pos.get("entry_id") or pos.get("entry_pre_id") or ""
+        status = statuses.get(entry_id)
+        if status is None:
+            return  # not recorded yet (queued); retry on a later pass.
+        recorded = float(status.qty or 0.0)
+        if not self.policy.note_executable_qty(pos["reservation_id"],
+                                               recorded):
+            if not pos.get("narrow_failed"):
+                pos["narrow_failed"] = True
+                self.store.checkpoint(self.run_id, "executable-unknown",
+                                      {"reservation_id":
+                                       pos["reservation_id"]})
+            return
+        pos["executable_noted"] = True
+        pos["executable_qty"] = recorded
+        self.store.checkpoint(self.run_id, "executable-narrowed", {
+            "reservation_id": pos["reservation_id"],
+            "approved_qty": pos.get("approved_qty"),
+            "executable_qty": recorded})
+        snapshot = pos.get("admit_snapshot")
+        budget = pos.get("admit_budget")
+        if snapshot is None or budget is None:
+            return  # legacy/test-built position: minimums enforced at submit.
+        recheck = self._recheck_executable(
+            pos.get("admit_intent"), snapshot, recorded, budget) \
+            if pos.get("admit_intent") is not None else None
+        if recheck is not None:
+            try:
+                self.engine.cancel(entry_id, f"executable-recheck:{recheck}")
+            except Exception:
+                pass
+            self.policy.release(pos["reservation_id"])
+            self._note_reject(f"risk:{recheck}", pos.get("strategy", ""),
+                              pos.get("instrument", ""), pos.get("side", ""))
+            self._position = None
+            self._set_state("ready", f"executable-recheck:{recheck}")
 
     def _note_reject(self, reason: str, strategy: str = "",
                      instrument: str = "", side: str = "") -> None:
@@ -941,6 +1162,8 @@ class Session:
                  "qty": payload.qty, "price": payload.price, "fee": payload.fee,
                  "liquidity": payload.liquidity},
                 payload.ts_utc.isoformat())
+            self._note_fill_exposure(payload.client_order_id,
+                                     payload.execution_id)
         elif event.kind in ("cancel", "reject", "expire"):
             self.store.record_event(
                 self.run_id, payload.client_order_id, event.kind,
@@ -960,6 +1183,50 @@ class Session:
             self._reconcile_funding()
         self._update_position(event)
 
+    def _note_fill_exposure(self, client_order_id: str,
+                             execution_id: str) -> None:
+        """First-nonzero-fill reservation→exposure transition (READY-§5).
+
+        Exactly once per position: narrows executable from the recorded
+        entry first (authoritative submitted qty), then converts the
+        reservation via policy.note_fill (idempotent; duplicates/late
+        fills never double-book — deltas are exec_id-gated in the sink).
+        Only fills belonging to this position convert it; unknown fills
+        keep blocking through booked/exposure state, never convert.
+        """
+        pos = self._position
+        if pos is None or pos.get("exposure_noted"):
+            return
+        tracked = [pos.get("entry_pre_id"), pos.get("entry_id")]
+        tracked += list(pos.get("legs") or [])
+        tracked += list(pos.get("close_ids") or [])
+        ours = client_order_id in tracked
+        if not ours:
+            for tid in tracked:
+                if not tid:
+                    continue
+                try:
+                    if self.engine.resolve(tid) == client_order_id:
+                        ours = True
+                        break
+                except (ValueError, KeyError, AttributeError):
+                    continue
+        if not ours:
+            return
+        try:
+            statuses = {s.client_order_id: s
+                        for s in self.engine.open_orders()}
+        except (ValueError, KeyError, AttributeError):
+            statuses = {}
+        self._narrow_entry_executable(pos, statuses)
+        if self._position is None:
+            return  # narrow failed closed (recheck): hold freed, cleared.
+        self.policy.note_fill(pos["reservation_id"])
+        pos["exposure_noted"] = True
+        self.store.checkpoint(self.run_id, "exposure-noted", {
+            "reservation_id": pos["reservation_id"],
+            "exec_id": execution_id})
+
     def _update_position(self, event: EngineEvent) -> None:
         pos = self._position
         if pos is None:
@@ -971,90 +1238,358 @@ class Session:
                 if pos["entry_pre_id"] in self._submit_ts:
                     self._submit_ts[real] = self._submit_ts[pos["entry_pre_id"]]
         statuses = {s.client_order_id: s for s in self.engine.open_orders()}
+        self._mark_seen(pos, statuses)
+        self._narrow_entry_executable(pos, statuses)
+        if self._position is None:
+            return  # narrow failed closed (recheck): hold freed, cleared.
+        pos = self._position
         entry = statuses.get(pos["entry_id"] or "")
-        if entry is not None and entry.filled_qty > 1e-12 and not pos["protected"]:
+        # Sibling settling + terminal pruning (ids tracked to terminal).
+        self._settle_leg_terminals(pos, statuses)
+        # Coverage supervision: verify until protected, re-verify on growth.
+        if entry is not None and entry.filled_qty > 1e-12 \
+                and not pos["protected"]:
             self._ensure_protection(pos)
+        elif pos["protected"]:
+            self._reverify_protection(pos, statuses)
         # Time exit: cancel legs, flatten the remainder at market.
-        if (self.ledger.has_position()
+        if (self._position is not None
+                and self.ledger.has_position()
                 and self.now_utc() >= pos["time_exit"]):
             self._flatten("time-exit")
-        # Flat inference: filled entry + ledger flat + no live reservation orders.
-        if entry is not None and entry.filled_qty > 1e-12:
-            live = [s for s in statuses.values()
-                    if s.reservation_id == pos["reservation_id"]
-                    and s.state not in ("filled", "rejected", "cancelled", "expired")]
-            if not self.ledger.has_position() and not live:
-                # Release the risk hold: booked exposure nets zero, so this
-                # frees the reservation (or lifts a zero-net unresolved
-                # leftover). Without it the next approval blocks on
-                # exposure:unresolved forever (Q-007 finding).
-                self.policy.note_flat()
-                self.policy.release(pos["reservation_id"])
-                self._position = None
-                self._set_state("ready", "position-flat")
-        # Entry died with zero fills: free the risk hold, then clear.
-        if entry is not None and entry.filled_qty <= 1e-12 and entry.state in (
-                "rejected", "cancelled", "expired"):
+        # Flat inference: release ONLY on full agreement (ledger, booked,
+        # engine/venue, pending commands, children, risk state).
+        if self._position is not None and self._release_agrees(
+                pos, statuses, entry):
+            # Booked exposure nets zero, so this frees the reservation (or
+            # lifts a zero-net unresolved leftover). Without it the next
+            # approval blocks on exposure:unresolved forever (Q-007 finding).
+            self.policy.note_flat()
+            self.policy.release(pos["reservation_id"])
+            self._position = None
+            self._set_state("ready", "position-flat")
+            return
+        # Entry died with zero fills: cancel tracked children, then free
+        # the risk hold and clear once nothing tracked is live.
+        if self._position is not None and entry is not None \
+                and entry.filled_qty <= 1e-12 and entry.state in (
+                    "rejected", "cancelled", "expired"):
+            outcomes = [self._request_cancel(
+                pos, lid, statuses, "entry-dead-cleanup")
+                for lid in list(pos.get("legs") or [])
+                + list(pos.get("retired") or [])
+                + list(pos.get("close_ids") or [])]
+            if any(o in ("sent", "failed", "unknown") for o in outcomes):
+                return  # retry once cancels confirm; hold retained.
             self.policy.release(pos["reservation_id"])
             self._position = None
             self._set_state("ready", f"entry-dead:{entry.state}")
 
-    def _ensure_protection(self, pos: dict[str, Any]) -> None:
-        """Attach + VERIFY required stop cover (B8 protection invariant).
+    def _protection_need(self, pos: dict[str, Any],
+                         statuses: dict[str, Any]) -> float:
+        """Quantity the live stop must cover (READY-§5 inv 3).
 
-        protected flips True only when the stop leg is acknowledged and
-        verified live with covering quantity. On failure: entries stay
-        blocked (position retained), retries are bounded (3), then a
-        reduce-only emergency close is attempted. Never falsely protected.
+        Confirmed ledger net always; plus approved-but-unfilled remainder
+        ONLY when the entry outcome is unknown (absent: conservative
+        coverable demand). A terminal entry retires its unfilled remainder
+        (IOC cancel included) — never demanded. A live entry's pending
+        remainder is covered by resize-on-fill, not demanded up front
+        (legs can only attach to filled qty).
         """
-        entry_id = pos["entry_id"] or ""
-        if not pos["legs"]:
-            if pos["protect_attempts"] >= 3:
+        net = abs(self.ledger.position_qty())
+        coverable = self.policy.required_stop_qty(pos["reservation_id"])
+        entry = statuses.get(pos.get("entry_id") or "")
+        if entry is None:
+            if pos.get("entry_dropped"):
+                return net  # dropped pre-record: zero fills possible.
+            return max(net, coverable if coverable is not None else net)
+        if entry.state in ("filled", "rejected", "cancelled", "expired"):
+            return net
+        return net
+
+    def _pending_fillable(self, pos: dict[str, Any],
+                          statuses: dict[str, Any]) -> float:
+        """Entry qty that can still fill (0 once retired/dropped)."""
+        coverable = self.policy.required_stop_qty(pos["reservation_id"])
+        base = coverable if coverable is not None \
+            else abs(self.ledger.position_qty())
+        entry = statuses.get(pos.get("entry_id") or "")
+        if entry is None:
+            return 0.0 if pos.get("entry_dropped") else base
+        if entry.state in ("filled", "rejected", "cancelled", "expired"):
+            return 0.0
+        return max(0.0, base - float(entry.filled_qty or 0.0))
+
+    def _settle_leg_terminals(self, pos: dict[str, Any],
+                              statuses: dict[str, Any]) -> None:
+        """Settle siblings on leg fills; prune confirmed terminals (inv 4).
+
+        A filled tracked leg settles its siblings (cancel requests; ids
+        stay tracked until terminal confirmation). Only CONFIRMED terminal
+        ids are pruned — absent/unknown ids are never dropped.
+        """
+        for key in ("legs", "retired"):
+            for lid in list(pos.get(key) or []):
+                st = statuses.get(lid)
+                if st is None:
+                    continue  # unknown: keep tracking, never prune.
+                if st.state == "filled" and key == "legs":
+                    for sib in list(pos.get("legs") or []) \
+                            + list(pos.get("retired") or []):
+                        if sib != lid:
+                            self._request_cancel(pos, sib, statuses,
+                                                 "sibling-settled")
+                if st.state in ("filled", "rejected", "cancelled",
+                                "expired"):
+                    pos[key].remove(lid)
+
+    def _mark_seen(self, pos: dict[str, Any],
+                   statuses: dict[str, Any]) -> None:
+        """Record tracked ids observed in engine state (READY-§5 inv 4).
+
+        Distinguishes queue-dropped ids (never seen: terminal, prune on
+        KeyError) from engine amnesia (seen before, now unknown: keep
+        blocking) after cancel requests.
+        """
+        seen = pos.setdefault("seen_ids", set())
+        for lid in list(pos.get("legs") or []) \
+                + list(pos.get("retired") or []) \
+                + list(pos.get("close_ids") or []) \
+                + [pos.get("entry_pre_id"), pos.get("entry_id")]:
+            if lid and lid in statuses:
+                seen.add(lid)
+
+    def _request_cancel(self, pos: dict[str, Any], lid: str,
+                        statuses: dict[str, Any], reason: str) -> str:
+        """Single cancel path: send, or resolve already-gone (READY-§5).
+
+        Returns sent/failed/dropped/unknown/terminal. A KeyError for a
+        never-seen id means the venue queue dropped it (terminal outcome:
+        the order will never exist) — pruned from tracking. A KeyError
+        for a previously-seen id means engine amnesia — kept blocking.
+        """
+        st = statuses.get(lid)
+        if st is not None and st.state not in ("open", "partial"):
+            return "terminal"
+        try:
+            self.engine.cancel(lid, reason)
+        except KeyError:
+            if lid not in pos.get("seen_ids", set()):
+                for key in ("legs", "retired", "close_ids"):
+                    tracked = pos.get(key) or []
+                    if lid in tracked:
+                        tracked.remove(lid)
+                return "dropped"
+            return "unknown"
+        except Exception:
+            return "failed"
+        return "sent"
+
+    def _cancel_tracked(self, pos: dict[str, Any],
+                        statuses: dict[str, Any], reason: str,
+                        ids: list[str] | None = None) -> bool:
+        """Request cancel on tracked children (default all). True if sent."""
+        if ids is None:
+            ids = list(pos.get("legs") or []) \
+                + list(pos.get("retired") or []) \
+                + list(pos.get("close_ids") or [])
+        sent = False
+        for lid in ids:
+            if self._request_cancel(pos, lid, statuses, reason) == "sent":
+                sent = True
+        return sent
+
+    def _ensure_protection(self, pos: dict[str, Any]) -> None:
+        """Attach + VERIFY required stop cover (READY-§5 inv 3/4).
+
+        protected flips True only when a tracked stop is live with
+        covering quantity over the computed need. Child ids are NEVER
+        dropped until terminal confirmation: short/dead cover is
+        REPLACED (old pair retired with cancel requested, fresh pair
+        attached), terminals pruned on confirmation. Attach attempts are
+        bounded (3, reset on verify success or new entry fills); then a
+        latched emergency close converges via idempotent flatten.
+        Never falsely protected.
+        """
+        statuses = {s.client_order_id: s for s in self.engine.open_orders()}
+        self._mark_seen(pos, statuses)
+        self._settle_leg_terminals(pos, statuses)
+        need = self._protection_need(pos, statuses)
+        if need <= 1e-9:
+            # Vacuous: nothing to cover — cancel live tracked legs and
+            # stay quiet (flat inference clears; no checkpoint spam).
+            self._cancel_tracked(pos, statuses, "protection-vacuous")
+            return
+        stop = statuses.get((pos.get("legs") or [None])[0] or "")
+        if stop is not None and stop.state in ("open", "partial") \
+                and stop.qty - stop.filled_qty + 1e-9 >= need:
+            if not pos["protected"]:
+                pos["protected"] = True
+                pos["protect_attempts"] = 0
+                self.store.checkpoint(self.run_id, "protection-verified",
+                                      {"legs": list(pos["legs"]),
+                                       "need": need})
+                fillable = self._pending_fillable(pos, statuses)
+                if fillable > 1e-9:
+                    # Resize armed: pending entry remainder is explicitly
+                    # tracked and covered by replace-on-fill, not by this
+                    # pair (legs attach to filled qty only).
+                    self.store.checkpoint(
+                        self.run_id, "protection-partial",
+                        {"need": need, "fillable_pending": fillable})
+            return
+        # No covering stop: replace the pair (retire with cancel requested,
+        # attach fresh). Attempts bound attach calls; new entry fills reset.
+        entry = statuses.get(pos.get("entry_id") or "")
+        entry_filled = float(entry.filled_qty or 0.0) \
+            if entry is not None else 0.0
+        if entry_filled > pos.get("attach_filled", 0.0):
+            pos["protect_attempts"] = 0
+        if pos["protect_attempts"] >= 3:
+            if not pos.get("emergency_latched"):
+                pos["emergency_latched"] = True
                 self.store.checkpoint(self.run_id, "protection-emergency",
-                                      {"attempts": pos["protect_attempts"]})
-                self._flatten("protection-emergency-close")
-                self._drain_engine()
-                return
-            pos["protect_attempts"] += 1
-            try:
-                pos["legs"] = self.engine.attach_protection(
-                    entry_id, pos["stop"], pos["target"])
-            except (ValueError, KeyError) as exc:
-                self.store.checkpoint(self.run_id, "protection-failed",
-                                      {"attempt": pos["protect_attempts"],
-                                       "reason": str(exc)})
-                return
+                                      {"attempts": pos["protect_attempts"],
+                                       "need": need})
+            self._flatten("protection-emergency-close")
+            self._drain_engine()
+            return
+        if pos.get("legs"):
+            self._cancel_tracked(pos, statuses, "protection-replace",
+                                 ids=list(pos["legs"]))
+            for lid in list(pos["legs"]):
+                # _request_cancel may already have pruned queue-dropped
+                # ids; the rest retire with cancel requested.
+                if lid in pos["legs"]:
+                    pos.setdefault("retired", []).append(lid)
+                    pos["legs"].remove(lid)
+        pos["protect_attempts"] += 1
+        pos["attach_filled"] = entry_filled
+        try:
+            pos["legs"] = self.engine.attach_protection(
+                pos["entry_id"] or "", pos["stop"], pos["target"])
+        except (ValueError, KeyError) as exc:
+            self.store.checkpoint(self.run_id, "protection-failed",
+                                  {"attempt": pos["protect_attempts"],
+                                   "reason": str(exc)})
+            return
         # Acknowledgement gate: queued legs resolve on a later drain.
-        resolved = [self.engine.resolve(lid) for lid in pos["legs"]]
+        try:
+            resolved = [self.engine.resolve(lid) for lid in pos["legs"]]
+        except (ValueError, KeyError, AttributeError):
+            return
         if any(rid is None for rid in resolved):
             return
         pos["legs"] = resolved
-        # Verify against a FRESH snapshot: stop leg live + covering.
+        # Verify the fresh pair against a FRESH snapshot.
         statuses = {s.client_order_id: s for s in self.engine.open_orders()}
-        net = abs(self.ledger.position_qty())
-        # B8 ack loop (V-007): the stop must also cover the risk-approved
-        # quantity (partial fills leave the remainder approved-but-unfilled).
-        # Unknown (None) falls back to the ledger net, never to verified.
-        required = self.policy.required_stop_qty(pos["reservation_id"])
-        need = net if required is None else max(net, required)
-        stop = statuses.get(pos["legs"][0])
+        need = self._protection_need(pos, statuses)
+        stop = statuses.get((pos.get("legs") or [None])[0] or "")
         if stop is None or stop.state not in ("open", "partial"):
             self.store.checkpoint(self.run_id, "protection-unverified",
-                                  {"leg": pos["legs"][0],
+                                  {"leg": (pos.get("legs") or [None])[0],
                                    "state": stop.state if stop else "missing"})
-            pos["legs"] = []
+            # Prune newly-confirmed terminals (live/unknown stay tracked).
+            self._settle_leg_terminals(pos, statuses)
             return
         if stop.qty - stop.filled_qty + 1e-9 < need:
             self.store.checkpoint(self.run_id, "protection-unverified",
                                   {"leg": pos["legs"][0], "reason": "qty-short",
                                    "open_qty": stop.qty - stop.filled_qty,
-                                   "net": net, "required_stop_qty": required})
-            pos["legs"] = []
+                                   "need": need,
+                                   "required_stop_qty":
+                                   self.policy.required_stop_qty(
+                                       pos["reservation_id"])})
+            self._settle_leg_terminals(pos, statuses)
             return
         if not pos["protected"]:
             pos["protected"] = True
+            pos["protect_attempts"] = 0
             self.store.checkpoint(self.run_id, "protection-verified",
-                                  {"legs": pos["legs"]})
+                                  {"legs": list(pos["legs"]), "need": need})
+            self._settle_leg_terminals(pos, statuses)
+
+    def _reverify_protection(self, pos: dict[str, Any],
+                             statuses: dict[str, Any]) -> None:
+        """Ongoing supervision of verified cover (READY-§5 inv 4).
+
+        Additional entry fills grow need past the verified pair: unprotect
+        and replace (resize). Lost cover (dead/settled stop) likewise.
+        Vacuous need cancels tracked legs quietly; flat inference clears.
+        """
+        need = self._protection_need(pos, statuses)
+        if need <= 1e-9:
+            self._cancel_tracked(pos, statuses, "protection-vacuous")
+            return
+        stop = statuses.get((pos.get("legs") or [None])[0] or "")
+        if stop is not None and stop.state in ("open", "partial") \
+                and stop.qty - stop.filled_qty + 1e-9 >= need:
+            return  # still covered.
+        pos["protected"] = False
+        self.store.checkpoint(self.run_id, "protection-unverified",
+                              {"reason": "cover-lost", "need": need})
+        self._ensure_protection(pos)
+
+    def _release_agrees(self, pos: dict[str, Any],
+                        statuses: dict[str, Any], entry: Any) -> bool:
+        """Full-agreement gate for releasing a position (READY-§5 inv 5).
+
+        Ledger, booked, engine/venue, pending commands, children and risk
+        state must ALL agree flat/settled. Unknown (absent) tracked ids
+        block — they are not agreement.
+        """
+        if entry is None:
+            if not pos.get("entry_dropped"):
+                return False  # entry never recorded: submit still pending.
+        elif entry.state in ("open", "partial"):
+            return False  # fillable remainder pending.
+        if self.ledger.has_position():
+            return False
+        if self.policy.booked_net(pos["reservation_id"]) != 0.0:
+            return False
+        # entry_pre_id is an alias superseded once entry_id resolves —
+        # only the unresolved handle blocks.
+        if pos.get("entry_id"):
+            tracked = [pos.get("entry_id")]
+        else:
+            tracked = [pos.get("entry_pre_id")]
+        tracked += list(pos.get("legs") or [])
+        tracked += list(pos.get("retired") or [])
+        tracked += list(pos.get("close_ids") or [])
+        for tid in tracked:
+            if not tid:
+                continue
+            st = statuses.get(tid)
+            if st is None:
+                if pos.get("entry_dropped") and tid in (
+                        pos.get("entry_pre_id"), pos.get("entry_id")):
+                    continue  # queue-dropped entry: terminal, zero fills.
+                return False  # unknown outcome: blocks (inv 2).
+            if st.state in ("open", "partial"):
+                return False
+        for st in statuses.values():
+            if st.reservation_id == pos["reservation_id"] \
+                    and st.state in ("open", "partial"):
+                return False  # live reservation-linked order (any role).
+        if getattr(self.engine, "_submit_queue", []):
+            return False  # pending commands not yet submitted.
+        if getattr(self.engine, "_pending", []):
+            return False  # unconsumed execution events.
+        cache = getattr(self.engine, "_cache", None)
+        if cache is not None:
+            try:
+                if cache.positions_open():
+                    return False
+            except Exception:
+                return False  # unreadable venue position: not agreed.
+        unknown = getattr(self.engine, "unknown_ids", None)
+        if callable(unknown):
+            try:
+                if unknown():
+                    return False
+            except Exception:
+                return False
+        return True
 
     def _retry_pending_flatten(self, reason: str) -> None:
         if not self.ledger.has_position():
@@ -1079,28 +1614,83 @@ class Session:
         return None
 
     def _flatten(self, reason: str) -> None:
+        """Idempotent tracked close (READY-§5 inv 5).
+
+        Cancels every tracked live child (entry, legs, retired — closes
+        in flight are left to work), then submits ONE reduce-only close
+        sized exactly to the ledger net when no close is already in
+        flight. Unknown (absent) closes count as in flight: reconcile
+        before retry, never duplicate. Checkpoints only when it ACTS, so
+        repeated empty calls are silent instead of looping.
+        """
         if self.config.mode == "prod" and not self.config.allow_live_submission:
             raise ValueError("config:prod-submission-disabled")
+        # No drain here: callers drain around flatten (_update_position runs
+        # post-drain; others drain after), and draining would recurse via
+        # time-exit. Retries always observe drained state. Statuses below
+        # are read fresh from engine state regardless.
         pos = self._position
-        legs = pos["legs"] if pos is not None else []
-        for leg in legs:
-            try:
-                self.engine.cancel(leg, reason)
-            except Exception:
-                pass
+        try:
+            statuses = {s.client_order_id: s
+                        for s in self.engine.open_orders()}
+        except (ValueError, KeyError, AttributeError):
+            statuses = {}
+        acted = False
+        requested = pos.setdefault("cancel_requested", set()) \
+            if pos is not None else set()
+        if pos is not None:
+            self._mark_seen(pos, statuses)
+            # Own in-flight closes are left to work (canceling them
+            # would self-sabotage); legs/retired/entry must die first.
+            for lid in list(pos.get("legs") or []) \
+                    + list(pos.get("retired") or []):
+                if self._request_cancel(pos, lid, statuses, reason) \
+                        == "sent" and lid not in requested:
+                    requested.add(lid)
+                    acted = True
+            entry_id = pos.get("entry_id") or pos.get("entry_pre_id") or ""
+            entry = statuses.get(entry_id)
+            if entry is None or entry.state in ("open", "partial"):
+                # Live (or unrecorded) entry must die too, or it refills
+                # behind the close. Absent ids cancel via queue drop.
+                outcome = self._request_cancel(pos, entry_id, statuses,
+                                               reason)
+                if outcome == "sent" and entry_id not in requested:
+                    requested.add(entry_id)
+                    acted = True
+                elif outcome == "dropped":
+                    # Queue-dropped before ever recording: terminal outcome
+                    # (zero fills possible) — release may proceed past it.
+                    pos["entry_dropped"] = True
+            closes = list(pos.get("close_ids") or [])
+        else:
+            closes = list(self._orphan_close_ids)
+        close_live = False
+        for cid in closes:
+            st = statuses.get(cid)
+            if st is None or st.state in ("open", "partial"):
+                close_live = True  # unknown counts as in flight.
+                break
         net = self.ledger.position_qty()
-        if abs(net) > 1e-12:
+        if abs(net) > 1e-12 and not close_live:
             symbol = pos["instrument"] if pos is not None else self._position_symbol()
             if symbol is None:
                 raise ValueError("cannot flatten: exposure without instrument")
             side = "SELL" if net > 0 else "BUY"
-            self.engine.submit_immediate(EngineOrder(
+            # Reduce-only + exact-net sizing: never opens or reverses.
+            pre_id = self.engine.submit_immediate(EngineOrder(
                 instrument=symbol, side=side, qty=abs(net),
                 kind="MARKET", reduce_only=True,
                 reservation_id=pos["reservation_id"] if pos is not None else None,
                 role="target"))
-        self.store.checkpoint(self.run_id, "flatten",
-                              {"reason": reason, "net": net})
+            if pos is not None:
+                pos.setdefault("close_ids", []).append(pre_id)
+            else:
+                self._orphan_close_ids.append(pre_id)
+            acted = True
+        if acted:
+            self.store.checkpoint(self.run_id, "flatten",
+                                  {"reason": reason, "net": net})
 
     # -- replay --------------------------------------------------------------
     def _prime_replay_books(
@@ -1309,6 +1899,12 @@ class Session:
                 skipped_prefix += 1
                 continue
             self._ingest(event, adapters, modules)
+            if self._milestones["first_event"] is None:
+                iso, rel = self._ms_stamp()
+                self._milestones["first_event"] = {
+                    "ts_utc": iso, "rel_ms": rel,
+                    "channel": event.get("channel"),
+                    "symbol": event.get("symbol")}
             self._last_seq = int(event.get("seq", 0))
             self._events_seen += 1
             if self._events_seen % 500 == 0:
@@ -1353,6 +1949,8 @@ class Session:
                             "input_class": expect_class,
                             "capture": str(capture_dir)})
         self._set_state("stopped", "run-complete")
+        iso, rel = self._ms_stamp()
+        self._milestones["capture_end"] = {"ts_utc": iso, "rel_ms": rel}
         report = self._build_report(str(capture_dir), expect_class)
         report["replay_stream"] = {
             "mode": "streaming-v1",
@@ -1385,7 +1983,13 @@ class Session:
         if channel in ("aggTrade", "bookTicker", "depth", "markPrice") and symbol:
             # Engine + views see every market channel (depth/markPrice used
             # to be dropped here, which starved funding terms and book/flow
-            # views on the Session path).
+            # views on the Session path). Null/malformed payloads fail
+            # closed with a LOUD count (W5 READY note): they can neither
+            # age a mark nor admit an entry — dropped, never raised.
+            if not self._market_payload_ok(channel, event.get("payload")):
+                self._reject_counts["event-malformed-payload"] = (
+                    self._reject_counts.get("event-malformed-payload", 0) + 1)
+                return
             if hasattr(self.engine, "note_event"):
                 self.engine.note_event(event)
             if channel == "markPrice" and isinstance(
@@ -1470,15 +2074,46 @@ class Session:
             if isinstance(bar, BarMissing):
                 feed.missing += 1
                 feed.bars.append(None)
+                feed.missing_cause.append(
+                    "id-jump" if bar.gap_before else "quiet-window")
             else:
                 feed.bars.append(to_s1_bar(bar))
+                feed.missing_cause.append(None)
+            n_bars = len(feed.bars)
+            if symbol not in self._milestones["first_bar"]:
+                iso, rel = self._ms_stamp()
+                self._milestones["first_bar"][symbol] = {
+                    "ts_utc": iso, "rel_ms": rel, "bars": n_bars}
+            if symbol not in self._milestones["ready"] \
+                    and feed.ready(self.config.warmup_bars):
+                iso, rel = self._ms_stamp()
+                self._milestones["ready"][symbol] = {
+                    "ts_utc": iso, "rel_ms": rel, "bars": n_bars}
+            if symbol not in self._milestones["gate_ready"] \
+                    and symbol in self._milestones["ready"]:
+                if self._quote_age_gate(symbol) is None:
+                    iso, rel = self._ms_stamp()
+                    self._milestones["gate_ready"][symbol] = {
+                        "ts_utc": iso, "rel_ms": rel}
             if feed.ready(self.config.warmup_bars):
                 if not self._warmed:
                     self._warmed = True
                     self._set_state("ready", "warmup-complete")
-                self._maybe_admit(self._evaluate_symbol(symbol, adapters, modules))
+                self._maybe_admit(
+                    self._evaluate_symbol(symbol, adapters, modules),
+                    symbol=symbol)
         if closed:
             self._sample_equity("bar")
+            # W3-P3: per-bar-close gap-class counters for eligibility joins.
+            causes = list(getattr(feed, "missing_cause", []))
+            with open(self.workdir / "gap_windows.jsonl", "a") as fh:
+                fh.write(json.dumps({
+                    "symbol": symbol,
+                    "ts_utc": self.now_utc().isoformat(),
+                    "window_bars": len(feed.bars),
+                    "quiet": sum(1 for c in causes if c == "quiet-window"),
+                    "id_jump": sum(1 for c in causes if c == "id-jump"),
+                }) + "\n")
             self._event_prepare_flat()
             if self.protection is not None and symbol is not None:
                 # Fold one reading per bar-close (bounded, causal):
@@ -1493,6 +2128,34 @@ class Session:
             self.engine.set_exit_only(True, ";".join(health.reasons))
             self._set_state("halted", ";".join(health.reasons))
         self._run_stop_actions()
+
+    @staticmethod
+    def _market_payload_ok(channel: str, payload: Any) -> bool:
+        """Structural payload check for market channels (fail-closed)."""
+        if not isinstance(payload, dict):
+            return False
+        if channel == "aggTrade":
+            need = ("price",)
+        elif channel == "bookTicker":
+            need = ("bid", "ask")
+        else:
+            return True  # depth/markPrice carry their own guards downstream.
+        for key in need:
+            try:
+                value = float(payload[key])
+            except (KeyError, TypeError, ValueError):
+                return False
+            if not math.isfinite(value):
+                return False
+        return True
+
+    def _ms_stamp(self) -> tuple[str, int]:
+        """Millisecond timeline stamp relative to first call (W3-P2)."""
+        now = self.now_utc()
+        cur = int(now.timestamp() * 1000)
+        if self._ms_t0_ms is None:
+            self._ms_t0_ms = cur
+        return now.isoformat(), cur - self._ms_t0_ms
 
     def _run_stop_actions(self) -> None:
         """Execute stop ACTION demands: cancel, reduce, alert, recover.
@@ -1699,7 +2362,12 @@ class Session:
         try:
             self.engine.cancel(entry_id, "event-prepare-flat")
         except (ValueError, KeyError):
-            pass  # already gone; still clear + release below.
+            pass  # already gone; clear + release below still apply.
+        # NOTE (READY-§5 scope): clear-on-request is the pinned EV-001
+        # contract. A fill landing between the cancel request and this
+        # clear is the genuine sub-latency cancel/fill race: it still
+        # books to ledger+booked and blocks new entries (fail-closed
+        # direction), but resurrection tracking is out of scope here.
         self.policy.release(pos["reservation_id"])
         self._position = None
         self._set_state("ready", "event-prepare-flat")
@@ -2096,6 +2764,8 @@ class Session:
             window_end_utc=self.now_utc(),
             manifest_extra={"note": "live public feed; no frozen manifest"})
         self._set_state("stopped", "run-complete")
+        iso, rel = self._ms_stamp()
+        self._milestones["capture_end"] = {"ts_utc": iso, "rel_ms": rel}
         report = self._build_report("live-public-feed", expect_class,
                                     mode=self.config.mode)
         (self.workdir / "report.json").write_text(json.dumps(report, indent=2))
@@ -2138,7 +2808,21 @@ class Session:
                 "control_step": _summarize(list(self._tick_ms))},
             "dropped_feed_events": self._dropped_feed,
             "workdir": str(self.workdir),
+            "milestones": self._milestone_report(),
         }
+
+    def _milestone_report(self) -> dict[str, Any]:
+        """Native replay timeline for W3 eligibility joins (W3-P2)."""
+        out = {k: (dict(v) if isinstance(v, dict) else v)
+               for k, v in self._milestones.items()}
+        end = self._milestones.get("capture_end") or {}
+        if end:
+            eligible = {}
+            for symbol, gate in self._milestones["gate_ready"].items():
+                eligible[symbol] = (
+                    end["rel_ms"] - gate["rel_ms"]) / 1000.0
+            out["eligible_s"] = eligible
+        return out
 
     def _render_report(self, report: dict[str, Any]) -> str:
         lines = [f"# {report['mode'].title()} report {report['run_id']}", "",

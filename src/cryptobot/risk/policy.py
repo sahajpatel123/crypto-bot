@@ -47,6 +47,13 @@ class RiskPolicy:
         self._now_utc = now_utc or (lambda: datetime.now(timezone.utc))
         self._state: RiskState = load_state(self.state_path)
         self._ledger: Ledger | None = None
+        # READY-§5 executable narrowing (runtime-only, position-scoped like
+        # Session._position — intentionally unpersisted): reservation id ->
+        # venue-snapped executable qty reported by the Session from the
+        # engine-recorded order. Approved (reservation.qty) is the
+        # risk-budgeted request; executable is what was actually submitted;
+        # booked/fill ledger is what executed. Popped on lifecycle end.
+        self._executable: dict[str, float] = {}
 
     # -- day lifecycle ---------------------------------------------------
     def reconcile_day(self, day_start_equity: float, flows_cumulative: float = 0.0) -> str:
@@ -328,6 +335,7 @@ class RiskPolicy:
         True only when a live reservation was actually freed. An unresolved
         id with zero booked exposure is lifted (reconciliation accepted) but
         reports False; nonzero booked exposure retains the block either way.
+        Lifecycle end pops executable narrowing in both freed branches.
         """
         if reservation_id in self._state.reservations:
             if self._booked_net(reservation_id) != 0.0:
@@ -335,15 +343,37 @@ class RiskPolicy:
                 save_state(self.state_path, self._state)
                 return False
             del self._state.reservations[reservation_id]
+            self._executable.pop(reservation_id, None)
             save_state(self.state_path, self._state)
             return True
         if reservation_id in self._state.unresolved:
             if self._booked_net(reservation_id) != 0.0:
                 return False
             del self._state.unresolved[reservation_id]
+            self._executable.pop(reservation_id, None)
             save_state(self.state_path, self._state)
             return False
         return False
+
+    def note_executable_qty(self, reservation_id: str, qty: float) -> bool:
+        """Narrow a reservation to the venue-snapped executable quantity.
+
+        Called by the Session from the engine-recorded order qty (the
+        authoritative submitted quantity after venue flooring). False for
+        unknown ids (caller fails closed); last-wins on repeats (the
+        recorded qty is immutable, so repeats agree). Survives note_fill
+        (conversion) so protection need stays narrowed after the first
+        fill; popped by release at lifecycle end.
+        """
+        if not _finite(qty) or qty <= 0:
+            return False
+        known = (reservation_id in self._state.reservations
+                 or reservation_id in self._state.unresolved
+                 or reservation_id in self._executable)
+        if not known:
+            return False
+        self._executable[reservation_id] = float(qty)
+        return True
 
     def note_fill(self, reservation_id: str) -> None:
         """First-nonzero-fill transition: reservation converts to exposure.
@@ -386,9 +416,13 @@ class RiskPolicy:
         """Position quantity the protective stop must cover (V-007 B8).
 
         The manager compares the engine-acknowledged stop quantity against
-        this before flipping `protected`. None means unknown (legacy record
-        or unknown id) and must never count as verified.
+        this before flipping `protected`. READY-§5: executable narrowing
+        wins over approved qty (a canceled/unsubmitted remainder is never
+        demanded). None means unknown (legacy record or unknown id) and
+        must never count as verified.
         """
+        if reservation_id in self._executable:
+            return self._executable[reservation_id]
         reservation = self._state.reservations.get(reservation_id)
         if reservation is not None:
             return reservation.qty
