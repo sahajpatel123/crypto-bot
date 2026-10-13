@@ -188,6 +188,34 @@ the pin: 103/103). Every job ran under the repaired `run_budget`.
   No W3 outbox was filed (reviewed from the diff directly).
 - Scope clean: only `session.py` in `src/`.
 
+## 8. Addendum — W1 M1 fixup review (APPROVE with one claim correction)
+
+W1's branch gained `23fae67` (fixup: IOC resolves at due time, no tick
+required) + re-filed outbox `76fc812`, merged as `86e5818`. Reviewed at
+the branch tip in a read-only scratch worktree.
+
+- Official probe: `at_200ms=[fill @101.0]`, `at_10s=[]`,
+  `defect_observed=false` — claim verified exactly.
+- Full suite: 1030 passed, 1 skipped in 161.8s — claim verified exactly.
+- Gate-claim replicas (BUY/SELL by 200ms at arrival prices, partial +
+  exactly one same-opportunity terminal, zero later fills, frozen qty,
+  never-quoted edge): all reproduced independently.
+- Audit-pin migration is manager-authorized (merge `86e5818` cites CORR
+  directive supersession) and strictly stronger (`len==1` fills, added
+  no-revival asserts). Causality invariant holds by construction: any
+  data arrival is itself a drain opportunity, so no data can exist in
+  (due, opportunity] and the standing book at resolution is always the
+  due-time book; verified empirically across paths.
+- CLAIM CORRECTION (observation, not a blocker): the fill timestamp is
+  the first opportunity after due (200ms), not the modeled due (50ms) —
+  no due-time stamp exists on the event. "Occurrence and time fixed at
+  due time" overstates; accurate phrasing is "occurrence at first
+  opportunity after due, price at due-time book". Residual ≤ the
+  opportunity gap (150ms here vs ~10s pre-M1). The handoff's causal
+  pricing + ordering demands hold; backdating would create worse
+  attribution problems.
+- Scope clean: `paper_engine.py` + the two IOC test files only.
+
 ## Repro commands (all ≤25 min jobs; battery ~65 s)
 
 - Base probes: `PYTHONPATH=src .venv/bin/python
