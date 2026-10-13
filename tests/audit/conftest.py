@@ -32,14 +32,9 @@ KNOWN_FAILURES = (
     "::test_funding_sign_is_representable",
     "test_cost_contract.py"
     "::test_spread_semantics_are_explicit",
-    # Owner cool-amalthea (runtime): no shipped 1s max-age profile; missing timestamps
-    # crash instead of blocking; no feed-independent control path.
-    "test_runtime_controls.py"
-    "::test_operational_profile_enforces_one_second_max_age",
-    "test_runtime_controls.py"
-    "::test_missing_event_timestamps_fail_closed",
-    "test_runtime_controls.py"
-    "::test_control_path_recognizes_stop_despite_blocked_producer",
+    # FIXED by W3 runtime controls (worker3/30min-runtime): 1s max-age
+    # profile, fail-closed missing-ts ingest, feed-independent control
+    # path — all 3 control probes green and running unmarked.
 )
 
 
