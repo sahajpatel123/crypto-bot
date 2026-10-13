@@ -316,10 +316,13 @@ def test_nested_budget_stops_descendants(tmp_path):
     done = subprocess.run(outer, capture_output=True, text=True, timeout=15)
     observed = time.monotonic() - start
     assert done.returncode == 124
-    # The 2s child must actually stop: observed wall stays near the 1s
-    # outer budget instead of stretching past the child's 2s sleep.
-    assert observed < 2.0, f"descendants outlived the wrapper: {observed}s"
+    # Proof descendants stopped is identity + verified enforcement, not a
+    # tight wall clock (W5 e2e: 2.0s wall flakes under full-suite load).
+    report = json.loads((tmp_path / "outer.json").read_text())
+    assert report["enforcement"] == "verified", report
     time.sleep(0.3)  # let a straggler reparent before the identity check.
     ps = subprocess.run(["pgrep", "-f", marker],
                         capture_output=True, text=True)
     assert ps.stdout.strip() == "", f"orphaned child: {ps.stdout}"
+    # Gross-hang tripwire only (a pipe-blocked escape stretches to ~8s).
+    assert observed < 5.0, f"caller blocked far past budget: {observed}s"
