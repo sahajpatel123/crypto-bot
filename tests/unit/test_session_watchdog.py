@@ -104,8 +104,8 @@ def _armed_session(tmp_path: Path, engine, monkeypatch):
         filters_asof_utc=asof, run_mode=True)
     primes = []
     monkeypatch.setattr(
-        session, "_prime_live_books",
-        lambda: primes.append(1) or {"primed": [], "depth_failed": {}})
+        session, "_fetch_depth_snapshots",
+        lambda: primes.append(1) or {})
     return session, store, primes
 
 
@@ -135,11 +135,15 @@ def test_engine_clock_advances_on_idle_heartbeats(tmp_path, monkeypatch):
 
 def test_stream_stall_triggers_book_resync(tmp_path, monkeypatch):
     import time
+    from dataclasses import replace
 
     from cryptobot.app import session as session_mod
 
     engine = _WatchdogStubEngine()
     session, store, primes = _armed_session(tmp_path, engine, monkeypatch)
+    # Explicit symbols so the startup prime really fetches (dynamic
+    # discovery skips the upfront prime).
+    session.config = replace(session.config, symbols=["BTCUSDT"])
     real_mono = time.monotonic()
     fake = {"now": real_mono}
     monkeypatch.setattr(time, "monotonic", lambda: fake["now"])
@@ -147,10 +151,22 @@ def test_stream_stall_triggers_book_resync(tmp_path, monkeypatch):
     monkeypatch.setattr(session_mod.time, "monotonic", lambda: fake["now"])
     now_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
     base = (now_ms // 1000) * 1000 - 9000
+    # The pump thread drains gen() ahead of the control thread, so the
+    # 61s silence jump is driven from the control thread after wake 1.
+    calls = {"n": 0}
+    real_step = session._control_step
+
+    def stepping(event, producer, adapters, modules, ctx, deadline, expect):
+        calls["n"] += 1
+        if calls["n"] == 2:
+            fake["now"] = real_mono + 61.0  # 61s of market silence.
+        return real_step(event, producer, adapters, modules, ctx,
+                         deadline, expect)
+
+    monkeypatch.setattr(session, "_control_step", stepping)
 
     def gen():
         yield _bbo(base)
-        fake["now"] = real_mono + 61.0  # 61s of market silence.
         yield None
         yield None
 

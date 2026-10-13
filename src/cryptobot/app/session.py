@@ -32,6 +32,7 @@ from cryptobot.risk.types import AccountSnapshot, Approved, RiskConfig
 
 from .config import AppConfig
 from .engine import EngineEvent, EngineOrder
+from .producer import TIMEOUT, AsyncCall, BoundedProducer, deadline_remaining_s
 from .reference import ReferenceEngine
 from .store import RunStore
 
@@ -200,13 +201,32 @@ class Session:
         self._crash_after: int | None = None
         self._stop_flag: str | None = None
         self._pid = pid
+        # W3-30MIN §4 runtime controls.
+        self._reconciled = True  # _resume_live clears until recovery lands.
+        self._tick_ms: deque[float] = deque(maxlen=10000)
+        self._prime_call: Any | None = None  # in-flight async resync prime.
+        self._tick_ctx: dict[str, Any] | None = None  # control_tick pacing.
+        self._filter_call: Any | None = None  # in-flight async filter fetch.
+        self._dropped_feed = 0  # producer overflow count (loud).
 
     # -- lifecycle ---------------------------------------------------------
     def _set_state(self, state: str, reason: str = "") -> None:
         try:
-            old = (self.store.get_run(self.run_id) or {}).get("state", "")
+            row = self.store.get_run(self.run_id) or {}
+            old = row.get("state", "")
         except Exception:
             old = ""
+            row = {}
+        if not row:
+            # Pre-run supervision (control_tick before create_run):
+            # register the run row so the transition is recorded,
+            # not lost. A concurrent create falls through to set_state.
+            try:
+                self.store.create_run(self.run_id, self.config.mode,
+                                      self.config.fingerprint,
+                                      str(self.workdir), self._pid)
+            except Exception:
+                pass
         self.store.set_state(self.run_id, state, reason)
         self._append_run_file("risk.jsonl", {
             "ts_utc": self.now_utc().isoformat(),
@@ -217,21 +237,12 @@ class Session:
     # -- run-mode filter arming (paper only) -----------------------------------
     def arm_run_mode(self, symbols: list[str], *, http_get: Any = None) -> None:
         """Fetch live venue filters and arm strict run mode. Fail-closed."""
-        from dataclasses import replace
-
         from .filters import build_run_filters
         filters, asof = build_run_filters(
             symbols,
             max_notional_cap_usdt=self.config.max_notional_cap_usdt,
             http_get=http_get)
-        merged = dict(self.policy.config.instrument_filters)
-        merged.update(filters)
-        self.policy.config = replace(
-            self.policy.config, instrument_filters=merged,
-            filters_asof_utc=asof, run_mode=True)
-        self.store.checkpoint(self.run_id, "filters-armed",
-                              {"symbols": sorted(filters),
-                               "asof_utc": asof.isoformat()})
+        self._apply_run_filters(filters, asof)
 
     def arm_replay_filters(self, filters: dict[str, dict[str, Any]],
                          origin: str, *,
@@ -540,7 +551,55 @@ class Session:
             return parts[0], parts[2], parts[3]
         return ref, "", ""
 
+    def _quote_age_gate(self) -> str | None:
+        """Quote/valuation age gate for new entries (W3-30MIN §4).
+
+        Returns a rejection reason, or None when admission may proceed.
+        Fail closed on missing timestamps; rejects future-dated quotes
+        (clock validation) and quotes older than quote_max_age_s.
+        """
+        _, source, ts = self._reference_mark_full()
+        if source == "none" or ts is None:
+            return "gate:quote-age-unknown"
+        now = self.now_utc()
+        if ts.tzinfo is None or now.tzinfo is None:
+            return "gate:quote-age-unknown"
+        age = (now - ts).total_seconds()
+        if age < -self.config.max_clock_skew_s:
+            return "gate:clock-future-quote"
+        if age > self.config.quote_max_age_s:
+            return "gate:stale-quote"
+        return None
+
+    def _admission_hold(self) -> str | None:
+        """Hard admission holds: prod default-off, reconcile, unknowns."""
+        if self.config.mode == "prod" and not self.config.allow_live_submission:
+            return "config:prod-submission-disabled"
+        if not self._reconciled or self._flatten_pending:
+            return "reconcile:restart-pending"
+        unknown = getattr(self.engine, "unknown_ids", lambda: ())()
+        if unknown:
+            return "reconcile:unknown-outcomes"
+        return None
+
     def _maybe_admit(self, candidates: list[Candidate]) -> None:
+        hold = self._admission_hold() or self._quote_age_gate()
+        if hold is not None:
+            for cand in candidates:
+                ref = cand.intent.evidence_ref if cand.intent else cand.strategy_id
+                if cand.intent is not None:
+                    self._note_reject(hold, cand.intent.strategy,
+                                      cand.intent.instrument,
+                                      cand.intent.side.value)
+                else:
+                    strat, _, _ = self._split_ref(cand.strategy_id)
+                    self._note_reject(hold, strat)
+                self.store.record_intent(
+                    self.run_id, ref, cand.strategy_id,
+                    cand.intent.instrument if cand.intent else "",
+                    cand.intent.side.value if cand.intent else "",
+                    "rejected", hold, self.now_utc().isoformat())
+            return
         if self._position is not None:
             for cand in candidates:
                 ref = cand.intent.evidence_ref if cand.intent else cand.strategy_id
@@ -917,6 +976,8 @@ class Session:
         return None
 
     def _flatten(self, reason: str) -> None:
+        if self.config.mode == "prod" and not self.config.allow_live_submission:
+            raise ValueError("config:prod-submission-disabled")
         pos = self._position
         legs = pos["legs"] if pos is not None else []
         for leg in legs:
@@ -995,29 +1056,47 @@ class Session:
             else:
                 summary["failed"][str(snap.get("symbol", "?"))] = outcome
 
-    def _prime_live_books(self) -> dict[str, Any]:
-        """REST depth snapshot per configured symbol at live start.
+    def _rest_timeout(self, default: float = 15.0) -> float:
+        """REST timeout bounded by the remaining job budget (W3-30MIN §4)."""
+        remaining = deadline_remaining_s()
+        if remaining is None:
+            return default
+        return max(1.0, min(default, remaining))
 
-        Dynamic discovery (empty symbols) cannot prime upfront: recorded
-        as skipped. A failed fetch never aborts the run; the symbol is
-        recorded unprimed and its book stays unsynced.
+    def _fetch_depth_snapshots(self) -> dict[str, Any]:
+        """Pure-REST depth fetch (no session state; safe off-thread).
+
+        Returns {symbol: payload-or-error}; the control thread installs.
         """
         import urllib.request
-        summary: dict[str, Any] = {"source": "rest:fapi/v1/depth",
-                                   "applied": 0, "synced": [],
-                                   "primed": [], "failed": {}}
-        if not self.config.symbols:
-            summary["skipped"] = "dynamic-symbols"
-            return summary
+        fetched: dict[str, Any] = {}
+        timeout = self._rest_timeout()
         for symbol in self.config.symbols:
             url = ("https://fapi.binance.com/fapi/v1/depth"
                    f"?symbol={symbol}&limit=1000")
             try:
                 req = urllib.request.Request(url, headers={
                     "User-Agent": "cryptobot-paper/0.1"})
-                with urllib.request.urlopen(req, timeout=15.0) as resp:
-                    payload = json.loads(resp.read().decode("utf-8"))
-                recv_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
+                with urllib.request.urlopen(req, timeout=timeout) as resp:
+                    fetched[symbol] = json.loads(resp.read().decode("utf-8"))
+            except Exception as exc:  # noqa: BLE001 - recorded, not raised.
+                fetched[symbol] = exc
+        return fetched
+
+    def _install_depth_snapshots(self, fetched: dict[str, Any]) -> dict[str, Any]:
+        """Install fetched snapshots on the control thread (single owner)."""
+        summary: dict[str, Any] = {"source": "rest:fapi/v1/depth",
+                                   "applied": 0, "synced": [],
+                                   "primed": [], "failed": {}}
+        recv_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
+        for symbol, payload in fetched.items():
+            if isinstance(payload, BaseException):
+                summary["failed"][symbol] = {
+                    "stage": "fetch",
+                    "error": f"{type(payload).__name__}",
+                    "sync": self._depth_store.sync_report(symbol)}
+                continue
+            try:
                 # P2: report the ACTUAL install outcome, never the fetch.
                 outcome = self._depth_store.apply_snapshot_record({
                     "symbol": symbol, "bids": payload["bids"],
@@ -1027,7 +1106,7 @@ class Session:
                     "exchange_ts_ms": payload.get("T")})
             except Exception as exc:  # noqa: BLE001 - priming never aborts.
                 summary["failed"][symbol] = {
-                    "stage": "fetch-or-install",
+                    "stage": "install",
                     "error": f"{type(exc).__name__}",
                     "sync": self._depth_store.sync_report(symbol)}
                 continue
@@ -1040,6 +1119,20 @@ class Session:
                     "stage": "install", "outcome": outcome,
                     "sync": self._depth_store.sync_report(symbol)}
         return summary
+
+    def _prime_live_books(self) -> dict[str, Any]:
+        """REST depth snapshot per configured symbol at live start.
+
+        Dynamic discovery (empty symbols) cannot prime upfront: recorded
+        as skipped. A failed fetch never aborts the run; the symbol is
+        recorded unprimed and its book stays unsynced. Synchronous (used
+        at startup); stall-resync uses the async fetch+install split.
+        """
+        if not self.config.symbols:
+            return {"source": "rest:fapi/v1/depth", "applied": 0,
+                    "synced": [], "primed": [], "failed": {},
+                    "skipped": "dynamic-symbols"}
+        return self._install_depth_snapshots(self._fetch_depth_snapshots())
 
     def run_replay(self, capture_dir: str | Path, *,
                    expect_class: str = "observed-public",
@@ -1211,10 +1304,22 @@ class Session:
                         self._resyncs_seen.get(symbol, 0) + 1)
         if channel not in ("aggTrade", "bookTicker") or not symbol:
             return
+        try:
+            exchange_ms = int(event["exchange_ts_ms"])
+        except (KeyError, TypeError, ValueError):
+            # Fail-closed (W3-30MIN §4): a market event without usable
+            # exchange timestamps can neither age a mark nor admit an
+            # entry — drop it loudly instead of crashing the loop.
+            self._reject_counts["event-no-timestamp"] = (
+                self._reject_counts.get("event-no-timestamp", 0) + 1)
+            return
         if hasattr(self.clock, "set_ms"):
-            self.clock.set_ms(int(event["exchange_ts_ms"]))  # replay: event time.
-        age = int(event.get("local_recv_ms", event["exchange_ts_ms"])) - int(
-            event["exchange_ts_ms"])
+            self.clock.set_ms(exchange_ms)  # replay: event time.
+        try:
+            recv_ms = int(event.get("local_recv_ms", exchange_ms))
+        except (TypeError, ValueError):
+            recv_ms = exchange_ms
+        age = recv_ms - exchange_ms
         if len(self._age_ms) < 20000:
             self._age_ms.append(float(age))
         feed = self._feeds.get(symbol)
@@ -1534,7 +1639,25 @@ class Session:
         self._day = today
 
     def _refresh_filters_if_stale(self) -> None:
-        """Re-arm paper filters when the record outlives its max age."""
+        """Re-arm paper filters when the record outlives its max age.
+
+        The REST fetch runs off-thread (AsyncCall); the control thread
+        only installs a finished fetch (single owner preserved).
+        """
+        if self._filter_call is not None:
+            done, result = self._filter_call.poll()
+            if not done:
+                return
+            self._filter_call = None
+            from .filters import FilterError
+            try:
+                if isinstance(result, BaseException):
+                    raise result
+                self._apply_run_filters(*result)
+            except (FilterError, ValueError, OSError) as exc:
+                self.engine.set_exit_only(True, f"filters-refresh:{exc}")
+                self._set_state("halted", "filters:refresh-failed")
+            return
         if self.config.mode != "paper" or not self.policy.config.run_mode:
             return
         asof = self.policy.config.filters_asof_utc
@@ -1546,12 +1669,23 @@ class Session:
         symbols = sorted(self._feeds)
         if not symbols:
             return
-        from .filters import FilterError
-        try:
-            self.arm_run_mode(symbols)
-        except (FilterError, ValueError, OSError) as exc:
-            self.engine.set_exit_only(True, f"filters-refresh:{exc}")
-            self._set_state("halted", "filters:refresh-failed")
+        from .filters import build_run_filters
+        cap = self.config.max_notional_cap_usdt
+        self._filter_call = AsyncCall(
+            lambda: build_run_filters(symbols, max_notional_cap_usdt=cap),
+            name="filters")
+
+    def _apply_run_filters(self, filters: dict, asof: Any) -> None:
+        """Install fetched venue filters on the control thread."""
+        from dataclasses import replace
+        merged = dict(self.policy.config.instrument_filters)
+        merged.update(filters)
+        self.policy.config = replace(
+            self.policy.config, instrument_filters=merged,
+            filters_asof_utc=asof, run_mode=True)
+        self.store.checkpoint(self.run_id, "filters-armed",
+                              {"symbols": sorted(filters),
+                               "asof_utc": asof.isoformat()})
 
     # -- persistence / recovery -------------------------------------------------
     def _write_run_identity(self, *, dataset: str, window_start_utc: datetime,
@@ -1630,12 +1764,15 @@ class Session:
         run = self.store.get_run(self.run_id)
         if run is None:
             raise KeyError(f"unknown run {self.run_id}")
+        # W3-30MIN §4: restart enters reconciliation before new entries.
+        self._reconciled = False
         ledger_path = self.workdir / "ledger.json"
         if ledger_path.exists():
             self.ledger = Ledger.from_dict(
                 json.loads(ledger_path.read_text(encoding="utf-8")))
             self.policy.bind_ledger(self.ledger)
         self.engine.recover(self.policy)
+        self._reconciled = True
         self._day = accounting_date(self.now_utc()).isoformat()
         try:
             self._run_start_utc = datetime.fromisoformat(
@@ -1652,6 +1789,126 @@ class Session:
             self._retry_pending_flatten("resume-reconcile")
 
     # -- live paper ------------------------------------------------------------
+
+    def tick_latency_ms(self) -> dict[str, float | int]:
+        """p50/p95/p99 of control-step durations (W3-30MIN §4 drill)."""
+        samples = sorted(self._tick_ms)
+        if not samples:
+            return {"n": 0, "p50": 0.0, "p95": 0.0, "p99": 0.0,
+                    "max": 0.0}
+        pick = lambda p: samples[min(len(samples) - 1,
+                                     int(p * len(samples)))]
+        return {"n": len(samples), "p50": pick(0.50), "p95": pick(0.95),
+                "p99": pick(0.99), "max": samples[-1]}
+
+    def _poll_async_prime(self) -> None:
+        """Install a finished stall-resync fetch on the control thread."""
+        call = self._prime_call
+        if call is None:
+            return
+        done, result = call.poll()
+        if not done:
+            return
+        self._prime_call = None
+        if isinstance(result, BaseException):
+            prime = {"source": "rest:fapi/v1/depth", "applied": 0,
+                     "synced": [], "primed": [],
+                     "failed": {"_": {"stage": "async",
+                                      "error": type(result).__name__}}}
+        else:
+            prime = self._install_depth_snapshots(result)
+        self.store.checkpoint(self.run_id, "stall-resync", prime)
+
+    def _control_step(self, event: Any | None, producer: Any | None,
+                      adapters: dict[str, Any], modules: dict[str, Any],
+                      ctx: dict[str, Any], deadline_mono: float,
+                      expect_class: str) -> str | None:
+        """One control wake: event + position + supervision (W3-30MIN §4).
+
+        Runs on every tick (event or 250ms timeout), independent of feed
+        progress: a blocked producer only yields empty wakes, never a
+        stalled supervisor. Returns an end reason, or None to continue.
+        ``producer`` may be None in deterministic tests (no feed calls).
+        """
+        if producer is not None:
+            producer.raise_if_failed()
+            self._dropped_feed = producer.dropped
+            if event is TIMEOUT:
+                # Tick wake (no queued item). Feed-ended only when the
+                # pump is done AND the queue is drained; an item that
+                # lands after the timeout is picked up next wake.
+                if producer.finished and producer.qsize == 0:
+                    return "feed-ended"
+                event = None
+        if event is not None:
+            if event.get("input_class", expect_class) != expect_class:
+                return None
+            self._ingest(event, adapters, modules)
+            self._events_seen += 1
+            ctx["last_market_mono"] = time.monotonic()
+        # Position management on every wake: time exits and flat
+        # inference cannot wait for the next market event.
+        self._advance_engine_clock()
+        self._drain_engine(bounded=True)
+        if self._position is not None:
+            self._update_position(EngineEvent("tick", None, self.now_utc()))
+        now_mono = time.monotonic()
+        self._poll_async_prime()
+        if now_mono - ctx["last_market_mono"] > 60.0:
+            ctx["last_market_mono"] = now_mono
+            self._append_run_file("risk.jsonl", {
+                "ts_utc": self.now_utc().isoformat(),
+                "wall_ts_utc": datetime.now(timezone.utc).isoformat(),
+                "kind": "stream-stall",
+                "from_state": "streaming", "to_state": "resync",
+                "reason": "no market events for 60s; re-priming books"})
+            if self._prime_call is None:  # reconnect off the control thread.
+                self._prime_call = AsyncCall(self._fetch_depth_snapshots,
+                                             name="prime")
+        # Supervision on EVERY tick (stop recognition cannot wait for
+        # traffic); heartbeat/persist stay on the slow beat.
+        stop_reason = self._supervise(ctx, now_mono)
+        if stop_reason is not None:
+            return stop_reason
+        if now_mono >= deadline_mono:
+            return "duration-elapsed"
+        return None
+
+    def _supervise(self, ctx: dict[str, Any],
+                   now_mono: float) -> str | None:
+        """Position + risk supervision shared by the loop and control_tick."""
+        tick = self.policy.monitor_tick(account=None)
+        if not tick.ok:
+            self.engine.set_exit_only(True, ";".join(tick.reasons))
+            self._set_state("halted", ";".join(tick.reasons))
+        self._run_stop_actions()
+        self._drain_unknown_outcomes()
+        self._refresh_filters_if_stale()
+        if now_mono - ctx["last_beat"] >= 30.0:
+            ctx["last_beat"] = now_mono
+            self.store.heartbeat(self.run_id, self._pid)
+            self._persist_local_state()
+        stop = self._stop_flag or self.store.stop_requested(self.run_id)
+        if stop is not None:
+            if stop == "flatten":
+                self._flatten("operator-stop-flatten")
+                self._drain_engine()
+            return f"operator-stop:{stop}"
+        return None
+
+    def control_tick(self) -> str | None:
+        """Feed-independent supervision tick (W3-30MIN §4).
+
+        Runs the same supervision as the live loop (risk monitor, stop
+        actions, unknown-outcome drain, operator-stop recognition)
+        without touching the feed. Control-thread only. Returns an
+        operator-stop reason, or None.
+        """
+        if self._tick_ctx is None:
+            self._tick_ctx = {"last_beat": 0.0,
+                              "last_market_mono": time.monotonic()}
+        return self._supervise(self._tick_ctx, time.monotonic())
+
     def run_live(self, event_iter: Any, *, duration_s: int,
                  expect_class: str = "observed-public",
                  resume: bool = False) -> dict[str, Any]:
@@ -1663,12 +1920,13 @@ class Session:
         Resume continues wall-now with recovered state (no live cursor);
         any recovered exposure is flattened before continuing.
         """
-        if self.config.mode != "paper":
-            raise ValueError("run_live needs a paper-mode config")
+        if self.config.mode not in ("paper", "prod"):
+            raise ValueError("run_live needs a paper/prod-mode config")
         if resume:
             self._resume_live()
         else:
-            self.store.create_run(self.run_id, "paper", self.config.fingerprint,
+            self.store.create_run(self.run_id, self.config.mode,
+                                  self.config.fingerprint,
                                   str(self.workdir), self._pid)
             self.policy.reconcile_day(self.config.paper_capital_usdt, 0.0)
             self._day = accounting_date(self.now_utc()).isoformat()
@@ -1681,68 +1939,39 @@ class Session:
         adapters, modules = self._strategy_adapters()
         self._set_state("warming", "paper-start")
         deadline = time.monotonic() + duration_s
-        last_beat = 0.0
+        tick_s = self.config.control_tick_s
+        producer = BoundedProducer(event_iter,
+                                   maxsize=self.config.feed_queue_max)
         # Watchdog: stream-stall detector. Heartbeats prove the loop is
         # awake; only real market events prove the venue feed is alive.
         # 60s of market silence = resync books (P3-style reaction), never
         # a silent stall. Crypto majors tick every second in practice.
-        last_market_mono = time.monotonic()
-        stall_notified = False
+        ctx: dict[str, Any] = {"last_beat": 0.0,
+                               "last_market_mono": time.monotonic()}
         end_reason = "duration-elapsed"
-        for event in event_iter:
-            # None = idle heartbeat (B3): iterators never block longer
-            # than 1s, so timers/stop/duration below run on every wake,
-            # with or without market traffic.
-            if event is None:
-                pass
-            elif event.get("input_class", expect_class) != expect_class:
-                continue
-            else:
-                self._ingest(event, adapters, modules)
-                self._events_seen += 1
-                last_market_mono = time.monotonic()
-                stall_notified = False
-            # Position management on every wake (B3): time exits and flat
-            # inference cannot wait for the next market event.
-            self._advance_engine_clock()
-            self._drain_engine(bounded=True)
-            if self._position is not None:
-                self._update_position(EngineEvent("tick", None, self.now_utc()))
-            now_mono = time.monotonic()
-            if (not stall_notified
-                    and now_mono - last_market_mono > 60.0):
-                stall_notified = True
-                self._append_run_file("risk.jsonl", {
-                    "ts_utc": self.now_utc().isoformat(),
-                    "wall_ts_utc": datetime.now(timezone.utc).isoformat(),
-                    "kind": "stream-stall",
-                    "from_state": "streaming", "to_state": "resync",
-                    "reason": "no market events for 60s; re-priming books"})
-                prime = self._prime_live_books()
-                self.store.checkpoint(self.run_id, "stall-resync", prime)
-                last_market_mono = time.monotonic()
-                stall_notified = False  # re-arm: fire again per 60s window.
-            if now_mono - last_beat >= 30.0:
-                last_beat = now_mono
-                self.store.heartbeat(self.run_id, self._pid)
-                self._persist_local_state()
-                # Traffic-independent oversight tick (+ dead-monitor stamp).
-                tick = self.policy.monitor_tick(account=None)
-                if not tick.ok:
-                    self.engine.set_exit_only(True, ";".join(tick.reasons))
-                    self._set_state("halted", ";".join(tick.reasons))
-                self._run_stop_actions()
-                self._drain_unknown_outcomes()
-                self._refresh_filters_if_stale()
-            stop = self._stop_flag or self.store.stop_requested(self.run_id)
-            if stop is not None:
-                end_reason = f"operator-stop:{stop}"
-                if stop == "flatten":
-                    self._flatten("operator-stop-flatten")
-                    self._drain_engine()
-                break
-            if now_mono >= deadline:
-                break
+        try:
+            while True:
+                event = producer.poll(tick_s)
+                # Control-step latency is decision work, not the poll
+                # wait: the timer starts after the tick wake fires.
+                step_start = time.perf_counter()
+                reason = self._control_step(event, producer, adapters,
+                                            modules, ctx, deadline,
+                                            expect_class)
+                self._tick_ms.append((time.perf_counter() - step_start)
+                                     * 1000.0)
+                if reason is not None:
+                    end_reason = reason
+                    break
+        finally:
+            producer.close()
+            self._dropped_feed = producer.dropped
+        if self._prime_call is not None:
+            # Shutdown drain: install the in-flight stall resync (bounded
+            # by the run budget; never hangs shutdown).
+            wait_s = min(deadline_remaining_s(default=5.0) or 0.0, 5.0)
+            self._prime_call.wait(timeout=wait_s)
+            self._poll_async_prime()
         if self._position is not None and end_reason == "duration-elapsed":
             self._flatten("duration-end")
             self._drain_engine()
@@ -1761,7 +1990,7 @@ class Session:
             manifest_extra={"note": "live public feed; no frozen manifest"})
         self._set_state("stopped", "run-complete")
         report = self._build_report("live-public-feed", expect_class,
-                                    mode="paper")
+                                    mode=self.config.mode)
         (self.workdir / "report.json").write_text(json.dumps(report, indent=2))
         (self.workdir / "report.md").write_text(self._render_report(report))
         self._stop_refresh()
@@ -1798,7 +2027,9 @@ class Session:
                 "feed_age": _summarize(self._age_ms),
                 "strategy_eval": _summarize(self._eval_ms),
                 "selector_decide": _summarize(self._decide_ms),
-                "submit_to_fill_modeled": _summarize(self._dispatch_ms)},
+                "submit_to_fill_modeled": _summarize(self._dispatch_ms),
+                "control_step": _summarize(list(self._tick_ms))},
+            "dropped_feed_events": self._dropped_feed,
             "workdir": str(self.workdir),
         }
 

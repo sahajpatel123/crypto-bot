@@ -69,6 +69,16 @@ class AppConfig:
     engine_base_url: str | None
     submit_delay_ms: int
     fill_delay_ms: int
+    # W3-30MIN §4/§9: live submission is DISABLED by default at every
+    # layer (config default False + adapter default-off). api_key_ref is
+    # a reference label only — keys never live in config files.
+    allow_live_submission: bool = False
+    api_key_ref: str | None = None
+    # W3-30MIN §4 runtime controls: control-tick target, bounded feed
+    # queue, quote-age gate for new entries.
+    control_tick_s: float = 0.25
+    feed_queue_max: int = 1000
+    quote_max_age_s: float = 1.0
     symbols: tuple[str, ...] = ()
     max_symbols: int = 8
     warmup_bars: int = 130
@@ -106,6 +116,12 @@ class AppConfig:
             out["daily_loss_halt_pct"] = self.daily_loss_halt_pct
         return out
 
+    @property
+    def risk(self) -> "RiskConfig":
+        """Risk profile view: the exact RiskConfig the Session builds."""
+        from cryptobot.risk.types import RiskConfig
+        return RiskConfig(**self.to_risk_kwargs())
+
 
 def _parse_duration(raw: object) -> int:
     if not isinstance(raw, str) or not raw:
@@ -137,10 +153,11 @@ def load_config(path: str | Path) -> AppConfig:
     data = raw.get("data", {})
     storage = raw.get("storage", {})
     strategies = raw.get("strategies", {})
+    runtime = raw.get("runtime", {})
 
     mode = run.get("mode")
-    if mode not in ("replay", "paper"):
-        raise ConfigError(f"run.mode must be 'replay' or 'paper', got {mode!r}")
+    if mode not in ("replay", "paper", "prod"):
+        raise ConfigError(f"run.mode must be 'replay', 'paper' or 'prod', got {mode!r}")
     tz = run.get("accounting_tz")
     if tz != "Asia/Kolkata":
         raise ConfigError(f"run.accounting_tz must be 'Asia/Kolkata', got {tz!r}")
@@ -148,12 +165,28 @@ def load_config(path: str | Path) -> AppConfig:
     if engine_kind not in ("reference", "nautilus", "live"):
         raise ConfigError("engine.kind must be 'reference', 'nautilus' or "
                           f"'live', got {engine_kind!r}")
-    if engine_kind == "live" and not bool(engine.get("demo", False)):
-        raise ConfigError("engine.kind = 'live' requires demo = true "
+    if (engine_kind == "live" and mode != "prod"
+            and not bool(engine.get("demo", False))):
+        raise ConfigError("non-prod engine.kind = 'live' requires demo = true "
                           "(production orders are disabled)")
     if mode == "paper" and engine_kind not in ("nautilus", "live"):
         raise ConfigError("paper mode requires engine.kind = 'nautilus' or "
                           "'live' (reference engine is replay/tests only)")
+    # W3-30MIN §9: explicit production path, separate from demo. Prod is
+    # observe-only unless allow_live_submission is explicitly enabled;
+    # the preflight tool (tools/preflight.py) gates real runs.
+    if mode == "prod" and engine_kind != "live":
+        raise ConfigError("prod mode requires engine.kind = 'live'")
+    if mode == "prod" and bool(engine.get("demo", False)):
+        raise ConfigError("prod mode forbids demo = true (demo is paper-live)")
+    if mode == "prod" and engine.get("base_url"):
+        host = str(engine["base_url"])
+        if "demo-fapi" in host or "testnet" in host:
+            raise ConfigError("prod mode forbids demo/testnet hosts")
+    for secret_key in ("api_key", "api_secret", "secret"):
+        if secret_key in engine:
+            raise ConfigError(f"engine.{secret_key} is forbidden in config "
+                              f"files (use api_key_ref + env, never keys)")
     arms = strategies.get("arms", "base")
     if arms not in ("base", "all"):
         raise ConfigError(f"strategies.arms must be 'base' or 'all', got {arms!r}")
@@ -201,6 +234,15 @@ def load_config(path: str | Path) -> AppConfig:
                          if engine.get("base_url") else None),
         submit_delay_ms=int(_finite(engine.get("submit_delay_ms", 0), "engine.submit_delay_ms")),
         fill_delay_ms=int(_finite(engine.get("fill_delay_ms", 0), "engine.fill_delay_ms")),
+        allow_live_submission=bool(engine.get("allow_live_submission", False)),
+        api_key_ref=(str(engine.get("api_key_ref"))
+                     if engine.get("api_key_ref") else None),
+        control_tick_s=_positive(runtime.get("control_tick_s", 0.25),
+                                 "runtime.control_tick_s"),
+        feed_queue_max=int(_positive(runtime.get("feed_queue_max", 1000),
+                                     "runtime.feed_queue_max")),
+        quote_max_age_s=_positive(runtime.get("quote_max_age_s", 1.0),
+                                  "runtime.quote_max_age_s"),
         symbols=symbols,
         max_symbols=int(_positive(data.get("max_symbols", 8), "data.max_symbols")),
         warmup_bars=int(_positive(data.get("warmup_bars", 130), "data.warmup_bars")),
@@ -222,6 +264,10 @@ def load_config(path: str | Path) -> AppConfig:
         "fees": {"label": cfg.fee_label, "taker_bps": cfg.taker_bps,
                  "funding_bps": cfg.funding_bps_per_8h},
         "engine": cfg.engine_kind, "submit_delay_ms": cfg.submit_delay_ms,
+        "allow_live_submission": cfg.allow_live_submission,
+        "demo": cfg.engine_demo,
+        "runtime": {"tick_s": cfg.control_tick_s, "queue": cfg.feed_queue_max,
+                  "quote_age_s": cfg.quote_max_age_s},
         "fill_delay_ms": cfg.fill_delay_ms, "symbols": list(cfg.symbols),
         "strategies": list(cfg.strategies_enabled), "arms": cfg.strategies_arms,
         "cooldown_s": cfg.cooldown_s, "min_reward_multiple": cfg.min_reward_multiple,

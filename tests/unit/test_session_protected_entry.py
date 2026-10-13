@@ -101,6 +101,12 @@ def _ready_session(tmp_path: Path, engine) -> tuple[Session, RunStore]:
         {"BTCUSDT": {"tick_size": 0.10, "step_size": 0.001,
                      "min_qty": 0.001, "min_notional": 5.0}},
         origin="test", asof_utc=now)
+    # Fresh valuation mark so the quote-age gate passes (W3-30MIN).
+    from cryptobot.app.session import _SymbolFeed
+    _feed = _SymbolFeed("BTCUSDT", 0)
+    _feed.mark = 100.0
+    _feed.mark_ts = now
+    session._feeds["BTCUSDT"] = _feed
     return session, store
 
 
