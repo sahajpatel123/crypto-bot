@@ -994,7 +994,8 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Portfolio backtest harness")
     parser.add_argument("--dataset", required=True,
                         choices=["synth_quotes", "synth_noquotes",
-                                 "captured", "benchmark-30d"])
+                                 "captured", "benchmark-30d",
+                                 "cap-30min", "cap-2h"])
     parser.add_argument("--out", required=True)
     parser.add_argument("--config", required=True)
     parser.add_argument("--splits", default="dev,validation,test")
