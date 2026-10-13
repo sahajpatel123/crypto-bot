@@ -299,7 +299,22 @@ class Session:
             return False
         return True
 
-    def _snapshot_account(self) -> AccountSnapshot:
+    def _symbol_executable_age_ms(self, symbol: str) -> float | None:
+        """Age of a symbol's OWN executable observation (CORR-DATA).
+
+        None when the symbol has no usable observation (fail closed
+        downstream); never substitutes another symbol's timestamp.
+        """
+        feed = self._feeds.get(symbol)
+        ts = feed.mark_ts if feed is not None and feed.mark else None
+        now = self.now_utc()
+        if not isinstance(ts, datetime) or ts.tzinfo is None:
+            return None
+        if now.tzinfo is None:
+            return None
+        return max(0.0, (now - ts).total_seconds() * 1000.0)
+
+    def _snapshot_account(self, symbol: str | None = None) -> AccountSnapshot:
         mark = self._reference_mark()
         close_bps = self.config.taker_bps
         # V-008 admission inputs: available margin from the engine account
@@ -319,11 +334,16 @@ class Session:
             fee_buffer = 2 * available * close_bps / 1e4
         # W3-24H P3: mark age rides the snapshot; the policy fails closed
         # when max_mark_age_ms is configured (None = unrecorded here).
-        _m, _s, _ts = self._reference_mark_full()
-        mark_age: float | None = None
-        if _ts is not None:
-            mark_age = max(
-                0.0, (self.now_utc() - _ts).total_seconds() * 1000.0)
+        # CORR-DATA: admission snapshots carry the CANDIDATE symbol's
+        # own executable age; books/health snapshots keep valuation age.
+        if symbol is not None:
+            mark_age = self._symbol_executable_age_ms(symbol)
+        else:
+            _m, _s, _ts = self._reference_mark_full()
+            mark_age = None
+            if _ts is not None:
+                mark_age = max(
+                    0.0, (self.now_utc() - _ts).total_seconds() * 1000.0)
         return AccountSnapshot(
             reconciled_equity=self.ledger.marked_equity(mark),
             marked_equity=self.ledger.marked_equity(mark),
@@ -551,25 +571,75 @@ class Session:
             return parts[0], parts[2], parts[3]
         return ref, "", ""
 
-    def _quote_age_gate(self) -> str | None:
-        """Quote/valuation age gate for new entries (W3-30MIN §4).
-
-        Returns a rejection reason, or None when admission may proceed.
-        Fail closed on missing timestamps; rejects future-dated quotes
-        (clock validation) and quotes older than quote_max_age_s.
-        """
-        _, source, ts = self._reference_mark_full()
-        if source == "none" or ts is None:
-            return "gate:quote-age-unknown"
-        now = self.now_utc()
-        if ts.tzinfo is None or now.tzinfo is None:
-            return "gate:quote-age-unknown"
+    def _age_verdict(self, ts: Any, bound_s: float, kind: str,
+                     now: datetime) -> str | None:
+        """One observation age check. Never raises on malformed input."""
+        if not isinstance(ts, datetime) or ts.tzinfo is None:
+            return f"gate:{kind}-age-unknown"
+        if now.tzinfo is None:
+            return f"gate:{kind}-age-unknown"
         age = (now - ts).total_seconds()
         if age < -self.config.max_clock_skew_s:
-            return "gate:clock-future-quote"
-        if age > self.config.quote_max_age_s:
-            return "gate:stale-quote"
+            return f"gate:clock-future-{kind}"
+        if age > bound_s:
+            return f"gate:stale-{kind}"
         return None
+
+    def _exchange_mark_ts_for(self, symbol: str) -> tuple[bool, Any]:
+        """(required, ts) for the candidate symbol's exchange mark.
+
+        Required exactly when valuation would use the engine mark for
+        this symbol (same conditions as _reference_mark_full): exchange
+        marks flowed this run, the engine exposes a mark, and it has
+        one for this symbol. Otherwise valuation falls back to the
+        feed and no mark observation is required.
+        """
+        use_exchange = self._saw_exchange_marks and hasattr(
+            self.engine, "note_event")
+        valuation_mark = getattr(self.engine, "valuation_mark", None)
+        if not (use_exchange and callable(valuation_mark)):
+            return False, None
+        try:
+            mark = valuation_mark(symbol)
+        except (ValueError, KeyError, AttributeError):
+            return False, None
+        if not mark:
+            return False, None
+        valuation_ts = getattr(self.engine, "valuation_mark_ts", None)
+        if not callable(valuation_ts):
+            return True, None
+        try:
+            return True, valuation_ts(symbol)
+        except (ValueError, KeyError, AttributeError):
+            return True, None
+
+    def _quote_age_gate(self, symbol: str) -> str | None:
+        """Symbol-scoped freshness gate for new entries (CORR-DATA).
+
+        The candidate symbol's OWN executable observation (last
+        BBO/trade exchange time) must be present, sane, and within
+        quote_max_age_s; when exchange valuation marks are the
+        valuation source for this symbol, the mark observation must
+        additionally be within max_mark_age_ms. No cross-symbol
+        substitution: another symbol's freshness never admits this one.
+        Returns a rejection reason, or None when admission may proceed.
+        """
+        feed = self._feeds.get(symbol)
+        now = self.now_utc()
+        exec_ts = feed.mark_ts if feed is not None and feed.mark else None
+        verdict = self._age_verdict(exec_ts, self.config.quote_max_age_s,
+                                    "quote", now)
+        if verdict is not None:
+            return verdict
+        required, mark_ts = self._exchange_mark_ts_for(symbol)
+        if not required:
+            return None
+        limit_ms = self.config.risk.max_mark_age_ms
+        if limit_ms is None:
+            # Unconfigured bound: mark age unenforced, mirroring the
+            # risk layer's opt-in (policy._check_mark_age skips too).
+            return None
+        return self._age_verdict(mark_ts, limit_ms / 1000.0, "mark", now)
 
     def _admission_hold(self) -> str | None:
         """Hard admission holds: prod default-off, reconcile, unknowns."""
@@ -583,7 +653,7 @@ class Session:
         return None
 
     def _maybe_admit(self, candidates: list[Candidate]) -> None:
-        hold = self._admission_hold() or self._quote_age_gate()
+        hold = self._admission_hold()
         if hold is not None:
             for cand in candidates:
                 ref = cand.intent.evidence_ref if cand.intent else cand.strategy_id
@@ -600,6 +670,28 @@ class Session:
                     cand.intent.side.value if cand.intent else "",
                     "rejected", hold, self.now_utc().isoformat())
             return
+        # CORR-DATA: freshness is per-candidate-symbol. Each intent is
+        # gated on its OWN symbol's observations; a stale symbol never
+        # rides another symbol's freshness (and vice versa). Intent-less
+        # no-fire signals carry no entry and flow to selection as before.
+        passing: list[Candidate] = []
+        for cand in candidates:
+            if cand.intent is None:
+                passing.append(cand)
+                continue
+            gate = self._quote_age_gate(cand.intent.instrument)
+            if gate is not None:
+                self._note_reject(gate, cand.intent.strategy,
+                                  cand.intent.instrument,
+                                  cand.intent.side.value)
+                self.store.record_intent(
+                    self.run_id, cand.intent.evidence_ref,
+                    cand.strategy_id, cand.intent.instrument,
+                    cand.intent.side.value, "rejected", gate,
+                    self.now_utc().isoformat())
+            else:
+                passing.append(cand)
+        candidates = passing
         if self._position is not None:
             for cand in candidates:
                 ref = cand.intent.evidence_ref if cand.intent else cand.strategy_id
@@ -654,7 +746,8 @@ class Session:
                     intent.instrument, intent.side.value, "rejected",
                     verdict.reason, self.now_utc().isoformat())
                 return
-        verdict = self.policy.evaluate(intent, self._snapshot_account())
+        verdict = self.policy.evaluate(
+            intent, self._snapshot_account(symbol=intent.instrument))
         if not isinstance(verdict, Approved):
             self._note_reject(f"risk:{verdict.reason}", intent.strategy,
                               intent.instrument, intent.side.value)
@@ -1333,17 +1426,21 @@ class Session:
             feed = _SymbolFeed(symbol, self.config.warmup_bars)
             self._feeds[symbol] = feed
         closed: list = []
+        # CORR-DATA: executable observations are stamped with EXCHANGE
+        # event time, never receipt/clock time — a late stale event must
+        # keep its true old age so the gate sees it as stale.
+        event_ts = _EPOCH + timedelta(milliseconds=exchange_ms)
         if channel == "aggTrade":
             payload = event["payload"]
             feed.mark = float(payload["price"])
-            feed.mark_ts = self.now_utc()
+            feed.mark_ts = event_ts
             closed = feed.agg.on_trade(event)
         else:
             payload = event["payload"]
             bid, ask = float(payload["bid"]), float(payload["ask"])
             if bid > 0 and ask >= bid:
                 feed.mark = (bid + ask) / 2
-                feed.mark_ts = self.now_utc()
+                feed.mark_ts = event_ts
             feed.agg.on_bbo(bid, ask, int(event["exchange_ts_ms"]))
         # Once exchange marks flow, stop echoing the feed mark into the
         # engine: the engine keeps the exchange mark (with its age) instead

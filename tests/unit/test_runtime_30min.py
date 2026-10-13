@@ -272,7 +272,7 @@ def test_stale_quote_blocks_admit(tmp_path):
     session, store = _ctl_session(tmp_path, engine)
     try:
         _seed_mark(session, age_s=2.0)
-        assert session._quote_age_gate() == "gate:stale-quote"
+        assert session._quote_age_gate("BTCUSDT") == "gate:stale-quote"
         session._maybe_admit([Candidate("S1", _intent(session.now_utc()))])
         assert session._position is None
         assert engine.submits == []
@@ -285,7 +285,7 @@ def test_future_quote_blocked_as_clock_fault(tmp_path):
     session, store = _ctl_session(tmp_path)
     try:
         _seed_mark(session, age_s=-30.0)  # 30s in the future.
-        assert session._quote_age_gate() == "gate:clock-future-quote"
+        assert session._quote_age_gate("BTCUSDT") == "gate:clock-future-quote"
     finally:
         store.close()
 
@@ -293,7 +293,7 @@ def test_future_quote_blocked_as_clock_fault(tmp_path):
 def test_unknown_quote_age_blocks_admit(tmp_path):
     session, store = _ctl_session(tmp_path)
     try:
-        assert session._quote_age_gate() == "gate:quote-age-unknown"
+        assert session._quote_age_gate("BTCUSDT") == "gate:quote-age-unknown"
     finally:
         store.close()
 
@@ -303,7 +303,7 @@ def test_fresh_quote_passes_gate(tmp_path):
     session, store = _ctl_session(tmp_path, engine)
     try:
         _seed_mark(session)
-        assert session._quote_age_gate() is None
+        assert session._quote_age_gate("BTCUSDT") is None
         session._maybe_admit([Candidate("S1", _intent(session.now_utc()))])
         gates = [r for r in session._reject_counts if r.startswith("gate:")]
         assert gates == []
