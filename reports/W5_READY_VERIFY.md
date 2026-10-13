@@ -64,9 +64,56 @@ Scoring (matches reviewer exactly):
 
 ## 4. Pending
 
-- W1–W4 READY branches: none on origin yet → substantive reviews owed.
+- W1/W3 READY: not yet integrated → substantive reviews owed.
 - Final adversarial challenge + PASS/VETO on the integrated SHA.
 - Final `coord/outbox/W5-READY.json`.
+
+## 5. Addendum — substantive W2 + W4A reviews (APPROVE both)
+
+Reviewed on main-tree integrations (manager serializes from worktrees;
+no branches): W4A `624dc0a`, W2 `44387e4`. Verified in a read-only
+scratch worktree at `44387e4` with `PYTHONPATH=src` pinned. Every job
+under `run_budget`.
+
+### W2 (scoring/funnel `624dc0a..44387e4`) — APPROVE
+
+- Independent probes: all three scoring legs match W2's claimed after
+  values exactly (partial {closed:0,n:0}; funded {0.74 booked/daily/
+  trade, IST 2026-10-12}; symsec {S1:2}). Session legs unchanged
+  (W1 territory, still broken as expected).
+- Tests: owned+neighbors 87 passed (16+71, counts exact); full
+  `tests/unit` 885 passed, 1 skipped in 361s — claim verified exactly.
+  No test removed (2→8 scoring, 5→8 funnel); zero removed assertions.
+- Code: episode linkage (open/partial/closed/orphan-exit, closed-only
+  trades), equal-split funding over open-holders with day-level
+  fallback, IST realized days + marked/realized split, missing-ledger
+  None/False, (strategy,symbol,second) symbol-seconds with attribution
+  + invalid-denominator labels, state-based watch (unreadable→unknown).
+  All reviewed line-level; sound.
+- Adversarial extras: orphan exit disclosed (`orphan_exit_episodes:1`
+  + full list, closed 0, flat_valid False with reason) while cash
+  proceeds stay in booked with reconciliation identity holding;
+  pre-episode funding lands day-level with identity holding;
+  missing-ledger full dir → booked None + flat False; funding-only day
+  preserved with funding in daily. Consumer `score_phaseb.py` passes
+  net through (null-safe).
+- Scope clean: scoring.py + funnel.py + their tests only.
+
+### W4 phase A (`442501c..624dc0a`) — APPROVE (phase A scope)
+
+- 61 candidates (S1:16, S3:45, matching 12+45+4+0): required fields
+  present, cost arithmetic exact (10+5+10+1=26bps, half-per-leg spread
+  not double-booked), gap = reward−cost, all conservative-simulation
+  labeled. Zero fills/P&L claims in the file.
+- Export re-run byte-identical to W4's `/tmp` output (45/45 intents,
+  3292/3292 rejects, identical validation + candidate payloads) and
+  consistent with committed candidates.
+- Hypothesis discipline: `trials/ready-01.json` frozen 17:48:56Z,
+  export outputs written 17:51Z+ (filesystem mtimes) — freeze precedes
+  numbers. H-R1/H-R2 + 7-config variant set + selection rule + locked-
+  eval designation all frozen; H-R1 holds descriptively (0/61 within
+  5bps); no threshold change, no economics run.
+- Scope clean: new tool + outputs/reports/trials/coord only, no src.
 
 Repro: from the base tag worktree (the cdcd10c probe script is tracked
 there since `db58f3b`, no copy needed):
