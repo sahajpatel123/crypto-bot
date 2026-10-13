@@ -52,3 +52,9 @@ Then: economic scoring on the corrected stack.
   1s gates + preflight/prod guards. 21 new tests; suite 1008+1+3x
   (cost only). 3 control reds green + unmarked. Drills reproduced
   (stop 0.55s/8 ticks, burst pass, preflight GO).
+- W2-30MIN filed COMPLETE + integrated (0df168b + a96899c, via
+  worker2/30min-data, worktree integration): cost-contract-v1 (26bps,
+  signed funding), selector 31->26, bench runner + flat-boundary
+  checkpoints, 811k-event split-resume parity. Suite 1022+1+0x —
+  ALL probes green. Absolute manifest paths verified correct per
+  _resolve semantics (kept). All 5 workers integrated.
