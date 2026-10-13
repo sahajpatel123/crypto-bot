@@ -38,6 +38,8 @@ from .experiments import (
     VALIDATION_SEEDS_S3,
     VALIDATION_SEEDS_S4,
 )
+from cryptobot.costs import COST_S1, roundtrip_bps
+
 from .runner import EVALUATORS
 from .synthetic import GENERATOR_ID, generate_fixture
 
@@ -50,7 +52,7 @@ VAL_RANGE = (375, 465)  # scored inclusive; (465, 600) is outcome room
 HOLDOUT_RANGE = (120, 465)  # one scored region; outcomes to 600
 HOLDOUT_SEEDS_S3 = (91, 92)
 HOLDOUT_SEEDS_S4 = (93, 94)
-ROUNDTRIP_COST_BPS = 2 * (5.0 + 5.0) + 5.0 + 1.0  # NET_S1_V1 = 26.0
+ROUNDTRIP_COST_BPS = roundtrip_bps(COST_S1)  # cost-contract-v1 = 26.0
 TAKE_R = 1.5
 S3_MID_LOOKBACK = 64
 

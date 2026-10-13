@@ -47,8 +47,10 @@ class Selector:
         self._cooldowns: dict[tuple[str, str], datetime] = {}
 
     def _round_trip_bps(self, intent: Intent) -> float:
+        # cost-contract-v1 (NET_S1_V1): spread_bps is the FULL spread, each
+        # leg crosses half; funding is signed (+ paid, - received).
         fc = intent.forecast_cost
-        one_way = fc.fee_bps + fc.spread_bps + fc.slippage_bps
+        one_way = fc.fee_bps + fc.spread_bps / 2 + fc.slippage_bps
         return 2.0 * one_way + fc.funding_bps
 
     def _reward_bps(self, intent: Intent) -> float | None:

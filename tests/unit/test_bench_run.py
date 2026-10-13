@@ -1,0 +1,182 @@
+"""Bounded-runner tests (W2, 30MIN §6). Tiny synthetic manifests only."""
+import json
+from datetime import datetime, timezone
+from pathlib import Path
+
+from cryptobot.bench_run import main
+
+SYM = "BTCUSDT"
+DAY1 = "2026-10-11"
+DAY2 = "2026-10-12"
+T1 = int(datetime(2026, 10, 11, tzinfo=timezone.utc).timestamp() * 1000)
+T2 = int(datetime(2026, 10, 12, tzinfo=timezone.utc).timestamp() * 1000)
+
+
+def _trade(seq, ts, agg_id, price):
+    return {"v": 1, "format": "cryptobot-events/1",
+            "input_class": "observed-public", "source": "synthetic-test",
+            "route": "test", "run_id": "t", "seq": seq, "channel": "aggTrade",
+            "symbol": SYM, "exchange_ts_ms": ts, "local_recv_ms": ts + 5,
+            "local_mono_ns": seq, "gap_kind": None, "venue_seq": agg_id,
+            "payload": {"agg_id": agg_id, "price": price, "qty": 0.5,
+                        "first_id": agg_id, "last_id": agg_id,
+                        "trade_ts_ms": ts, "buyer_is_maker": False}}
+
+
+def _manifest(tmp_path: Path, n1=12, n2=12) -> Path:
+    events = [_trade(i + 1, T1 + 60_000 + i * 1000, 1000 + i, 100.0)
+              for i in range(n1)]
+    events += [_trade(n1 + i + 1, T2 + 60_000 + i * 1000, 2000 + i, 101.0)
+               for i in range(n2)]
+    ev_path = tmp_path / "events.jsonl"
+    ev_path.write_text("\n".join(json.dumps(e) for e in events) + "\n")
+    toml = tmp_path / "cap.toml"
+    toml.write_text(
+        "[dataset]\nname = \"t\"\nkind = \"captured-runs\"\n"
+        "manifest_version = 1\n\n[[source]]\nrun_id = \"t\"\n"
+        "file = \"events.jsonl\"\n"
+        f"local = \"{ev_path}\"\nsymbols = [\"{SYM}\"]\n")
+    return toml
+
+
+def _filters(tmp_path: Path) -> Path:
+    path = tmp_path / "filters.json"
+    path.write_text(json.dumps({
+        "symbols": [{
+            "symbol": SYM, "pricePrecision": 2, "quantityPrecision": 3,
+            "filters": [
+                {"filterType": "PRICE_FILTER", "tickSize": "0.01"},
+                {"filterType": "LOT_SIZE", "stepSize": "0.001",
+                 "minQty": "0.001"},
+                {"filterType": "MIN_NOTIONAL", "notional": "5.0"},
+            ]}]}))
+    return path
+
+
+def _args(tmp_path, manifest, ckpt, report, extra=()):
+    base = ["--config", "configs/paper.toml", "--dataset", str(manifest),
+            "--symbol", SYM, "--days", f"{DAY1},{DAY2}",
+            "--wall-budget-s", "600", "--checkpoint-dir", str(ckpt),
+            "--report-out", str(report),
+            "--filters-file", str(_filters(tmp_path))]
+    return base + list(extra)
+
+
+def test_fresh_run_completes_and_commits(tmp_path):
+    manifest = _manifest(tmp_path)
+    ckpt, report = tmp_path / "ck", tmp_path / "rep.json"
+    rc = main(_args(tmp_path, manifest, ckpt, report, ["--run-id", "r1"]))
+    assert rc == 0
+    doc = json.loads(report.read_text())
+    assert doc["status"] == "COMPLETE"
+    assert doc["events"]["ingested"] == 24
+    assert doc["events"]["commits"] >= 2  # day-boundary commits.
+    assert set(doc["booked"]) == {"equity_open", "equity_close", "realised",
+                                  "commissions", "funding"}
+    assert "estimated_costs" in doc and "profile" in doc
+    assert (ckpt / "bench_checkpoint.json").exists()
+
+
+def test_split_resume_matches_reference(tmp_path):
+    manifest = _manifest(tmp_path, n1=12, n2=12)
+    ref_ckpt, ref_rep = tmp_path / "ref-ck", tmp_path / "ref.json"
+    assert main(_args(tmp_path, manifest, ref_ckpt, ref_rep,
+                      ["--run-id", "ref"])) == 0
+    ref = json.loads(ref_rep.read_text())
+    # Split mid-day-1, resume across the day boundary.
+    sp_ckpt, sp_rep1, sp_rep2 = (tmp_path / "sp-ck", tmp_path / "sp1.json",
+                                 tmp_path / "sp2.json")
+    rc1 = main(_args(tmp_path, manifest, sp_ckpt, sp_rep1,
+                     ["--run-id", "sp", "--max-events", "8"]))
+    assert rc1 == 124
+    assert json.loads(sp_rep1.read_text())["status"] == "TRUNCATED_MAX_EVENTS"
+    rc2 = main(_args(tmp_path, manifest, sp_ckpt, sp_rep2,
+                     ["--run-id", "sp", "--resume"]))
+    assert rc2 == 0
+    split = json.loads(sp_rep2.read_text())
+    assert split["status"] == "COMPLETE"
+    assert split["events"]["replayed_tail"] > 0  # tail replayed, not dropped.
+    for key in ("equity_close", "realised", "commissions", "funding"):
+        assert split["booked"][key] == ref["booked"][key], key
+    assert split["estimated_costs"] == ref["estimated_costs"]
+    chunk1 = json.loads(sp_rep1.read_text())["events"]["ingested"]
+    assert chunk1 + split["events"]["ingested"] - \
+        split["events"]["replayed_tail"] == ref["events"]["ingested"]
+
+
+def test_wall_budget_reports_incomplete_never_pass(tmp_path):
+    manifest = _manifest(tmp_path, n1=30, n2=30)
+    ckpt, report = tmp_path / "ck", tmp_path / "rep.json"
+    rc = main(_args(tmp_path, manifest, ckpt, report,
+                    ["--run-id", "b1", "--wall-budget-s", "0.000001"]))
+    assert rc == 124
+    doc = json.loads(report.read_text())
+    assert doc["status"] == "INCOMPLETE_BUDGET"
+    assert doc["stop_reason"] == "wall_budget"
+    assert doc["events"]["ingested"] >= 1
+
+
+def test_resume_requires_checkpoint_and_fresh_refuses_overwrite(tmp_path):
+    manifest = _manifest(tmp_path)
+    ckpt, report = tmp_path / "ck", tmp_path / "rep.json"
+    rc = main(_args(tmp_path, manifest, ckpt, report,
+                    ["--run-id", "x", "--resume"]))
+    assert rc == 1  # no checkpoint.
+    assert main(_args(tmp_path, manifest, ckpt, report,
+                      ["--run-id", "y"])) == 0
+    rc = main(_args(tmp_path, manifest, ckpt, report, ["--run-id", "z"]))
+    assert rc == 1  # exists without --resume.
+
+
+def test_checkpoint_preserves_position_economics(tmp_path):
+    """Snapshot/restore round-trips ledger, risk, cooldowns, journal."""
+    import argparse
+    from datetime import timedelta
+
+    from cryptobot.bench_run import BenchRunner
+
+    args = argparse.Namespace(
+        config="configs/paper.toml", checkpoint_dir=str(tmp_path / "ck"),
+        engine_seed=42, filters_file=str(_filters(tmp_path)))
+    runner = BenchRunner(args)
+    session = runner._build_session("mech")
+    try:
+        now = datetime(2026, 10, 11, 1, tzinfo=timezone.utc)
+        session.clock.set_ms(int(now.timestamp() * 1000))
+        session.policy.reconcile_day(120.0, 0.0)
+        session._day = "2026-10-11"
+        session.ledger.record_fill("BUY", 0.5, 100.0, 0.05, now, "e1")
+        session.selector._cooldowns[("S1", SYM)] = now
+        session.engine._journal("submitted", {"client_id": "pe-1"})
+        session._events_seen, session._admitted = 41, 2
+        session._reject_counts = {"a:b": 3}
+        session._last_seq = 40
+        cursor = {"day": DAY1, "seq": 40}
+        runner._commit(session, cursor, force=True)
+        snap = json.loads((tmp_path / "ck" / "bench_checkpoint.json").read_text())
+        assert snap["ledger"]["snapshot"]["qty"] == 0.5
+        assert snap["counts"] == {"events_seen": 41, "admitted": 2,
+                                  "reject_counts": {"a:b": 3}}
+        assert snap["cooldowns"] == {f"S1|{SYM}": now.isoformat()}
+        journal = tmp_path / "ck" / "work" / "engine_journal.jsonl"
+        assert snap["journal_bytes"] == journal.stat().st_size > 0
+        committed_journal = journal.read_bytes()
+        # Mutate everything past the commit, then restore.
+        session.ledger.record_fill("SELL", 0.5, 101.0, 0.05, now, "e2")
+        session.selector._cooldowns[("S2", SYM)] = now + timedelta(seconds=1)
+        session.engine._journal("fill", {"client_id": "pe-1"})
+        session._events_seen = 999
+        restored = runner._restore(session)
+        assert restored == cursor
+        assert session.ledger.position_qty() == 0.5
+        assert session.ledger.net_realised() == -0.05  # one fee booked.
+        assert session.selector._cooldowns == {("S1", SYM): now}
+        # Truncated to the commit, plus recover's inert "recovered" marker.
+        assert journal.read_bytes()[:snap["journal_bytes"]] == committed_journal
+        assert b'"fill"' not in journal.read_bytes()
+        assert session._events_seen == 41 and session._admitted == 2
+        assert session._reject_counts == {"a:b": 3}
+        assert session._last_seq == 40 and session._day == "2026-10-11"
+    finally:
+        session.engine.close()
+        session.store.close()
