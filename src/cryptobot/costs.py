@@ -159,11 +159,10 @@ def estimate_for_notional(spec: CostSpec, notional_usdt: float) -> EstimatedCost
 
 
 def from_forecast_cost(forecast_cost: Any) -> CostSpec:
-    """Map a ForecastCost (symmetric, unsigned) onto the contract.
+    """Map a ForecastCost (symmetric) onto the contract.
 
     Both legs share fee/slippage; spread is full; funding passes
-    through (ForecastCost forbids negatives — received funding needs
-    the contract directly until intent.py relaxes the sign rule).
+    through (signed under cost-contract-v1: + paid, - received).
     """
     leg = CostLeg(fee_bps=float(forecast_cost.fee_bps),
                   adverse_bps=float(forecast_cost.slippage_bps))

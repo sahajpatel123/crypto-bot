@@ -24,14 +24,9 @@ KNOWN_FAILURES = (
     # tick-driven semantics (no fabrication on bare advance; arrival tick
     # fills at arrival prices) and green; price band green. All four run
     # unmarked.
-    # Owner cloud-vega (data): research/selector cost split (26 vs 31 bps), unsigned
-    # funding, implicit spread semantics (§5 unified contract).
-    "test_cost_contract.py"
-    "::test_research_selector_agree_on_frozen_inputs",
-    "test_cost_contract.py"
-    "::test_funding_sign_is_representable",
-    "test_cost_contract.py"
-    "::test_spread_semantics_are_explicit",
+    # FIXED by W2 cost-contract-v1 (worker2/30min-data): research/selector
+    # agree on 26bps, signed funding, explicit spread semantics — all 3
+    # cost probes green unmodified and running unmarked.
     # FIXED by W3 runtime controls (worker3/30min-runtime): 1s max-age
     # profile, fail-closed missing-ts ingest, feed-independent control
     # path — all 3 control probes green and running unmarked.
