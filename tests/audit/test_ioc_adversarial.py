@@ -76,7 +76,7 @@ def test_nonmarketable_buy_ioc_dead_at_arrival_no_late_revival():
     _qt(engine, 1000, 99.0, 100.0)
     assert engine.filled_qty(cid) == 0.0, "canceled IOC revived on later ask"
     assert _fills_for(engine, cid) == []
-    assert engine.stats["ioc_maker_relabeled"] == 0
+    assert engine.stats["ioc_artifact_corrected"] == 0
 
 
 def test_nonmarketable_sell_ioc_dead_at_arrival_no_late_revival():
@@ -91,12 +91,13 @@ def test_nonmarketable_sell_ioc_dead_at_arrival_no_late_revival():
     assert engine.filled_qty(cid) == 0.0
     _qt(engine, 1000, 100.0, 101.0)
     assert engine.filled_qty(cid) == 0.0, "canceled IOC revived on later bid"
-    assert engine.stats["ioc_maker_relabeled"] == 0
+    assert engine.stats["ioc_artifact_corrected"] == 0
 
 
-def test_marketable_ioc_fills_at_arrival_book_both_sides():
-    """Marketable IOC executes against the arrival book: BUY fills at
-    ask 101, SELL at bid 99 — not at whatever a later tick shows."""
+def test_marketable_ioc_fills_on_arrival_tick_at_arrival_prices():
+    """Marketable IOC, tick-driven semantics (manager ruling): bare time
+    advance fabricates nothing; the arrival tick fills BUY at ask 101
+    and SELL at bid 99; a later moved tick fills nothing more."""
     engine = _engine(submit_delay_ms=10, fill_delay_ms=10)
     _qt(engine, 0, 99.0, 101.0)
     buy = engine.submit(_order("BUY", 0.1, price=101.50,
@@ -104,16 +105,23 @@ def test_marketable_ioc_fills_at_arrival_book_both_sides():
     sell = engine.submit(_order("SELL", 0.1, price=98.50,
                                 reservation_id="w5-ioc-s"))
     engine.advance_to(T0 + timedelta(milliseconds=200))
-    assert engine.filled_qty(buy) == 0.1, "marketable BUY not filled at arrival"
-    assert engine.filled_qty(sell) == 0.1, "marketable SELL not filled at arrival"
-    buys = [e for e in engine.poll() if e.kind == "fill"
+    assert engine.filled_qty(buy) == 0.0, "fill fabricated without a data tick"
+    assert engine.filled_qty(sell) == 0.0, "fill fabricated without a data tick"
+    _qt(engine, 300, 99.0, 101.0)
+    assert engine.filled_qty(buy) == 0.1, "marketable BUY not filled on tick"
+    assert engine.filled_qty(sell) == 0.1, "marketable SELL not filled on tick"
+    events = engine.poll()
+    buys = [e for e in events if e.kind == "fill"
             and e.payload.client_order_id == buy]
-    sells = [e for e in engine.poll() if e.kind == "fill"
+    sells = [e for e in events if e.kind == "fill"
              and e.payload.client_order_id == sell]
     assert buys and buys[0].payload.price == 101.0, (
         f"BUY filled off arrival book: {buys!r}")
     assert sells and sells[0].payload.price == 99.0, (
         f"SELL filled off arrival book: {sells!r}")
+    _qt(engine, 1000, 100.0, 102.0)
+    assert engine.filled_qty(buy) == 0.1, "BUY filled twice"
+    assert engine.filled_qty(sell) == 0.1, "SELL filled twice"
 
 
 def test_partial_fill_cancels_remainder_without_resting():
