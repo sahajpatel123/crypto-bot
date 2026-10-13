@@ -77,28 +77,24 @@ def test_ioc_nonmarketable_cancels_at_arrival_no_revival():
 
 
 def test_corr_marketable_ioc_executes_at_arrival_not_later_quote():
-    # CORR-EXEC acceptance: probe shape verbatim (T0 99/101, BUY 0.001
-    # cap 101.50, 50+50ms). Bare advance resolves nothing (manager
-    # ruling); at the 10s tick the IOC executes against ARRIVAL
-    # liquidity (pre-tick 99/101 → fill ~101) — the quote 10s later at
-    # ask 90 MUST NOT determine the execution (no fill at 90), and the
-    # remainder never revives afterwards.
+    # CORR-EXEC acceptance M1: probe shape verbatim (T0 99/101, BUY 0.001
+    # cap 101.50, 50+50ms). Due at T0+50ms against the standing arrival
+    # book, the IOC fills @101 in the 200ms drain — no tick required —
+    # and the quote 10s later at ask 90 determines NOTHING (no fill at
+    # 90, no revival, occurrence and time fixed at due time).
     engine = _engine(submit_delay_ms=50, fill_delay_ms=50)
     _quote(engine, T0, 99.0, 101.0)
     coid = engine.submit(EngineOrder(instrument="BTCUSDT", side="BUY",
                                      qty=0.001, kind="LIMIT", price=101.50,
                                      role="entry"))
     engine.advance_to(T0 + timedelta(milliseconds=200))
-    assert [e.kind for e in _drain(engine)].count("fill") == 0
-    assert engine.filled_qty(coid) == 0.0
-    _quote(engine, T0 + timedelta(seconds=10), 89.0, 90.0)
-    late = _drain(engine)
-    fills = [e for e in late if e.kind == "fill"]
-    assert len(fills) == 1, f"expected arrival-liquidity fill, got {late}"
+    early = _drain(engine)
+    fills = [e for e in early if e.kind == "fill"]
+    assert len(fills) == 1, f"expected due-time execution, got {early}"
     assert fills[0].payload.client_order_id == coid
     assert fills[0].payload.price == pytest.approx(101.0)
     assert fills[0].payload.qty == pytest.approx(0.001)
-    _quote(engine, T0 + timedelta(seconds=11), 89.0, 90.0)
+    _quote(engine, T0 + timedelta(seconds=10), 89.0, 90.0)
     assert [e.kind for e in _drain(engine)].count("fill") == 0
     assert engine.filled_qty(coid) == pytest.approx(0.001)
 
@@ -352,23 +348,20 @@ def test_exit_latency_sensitivity_instant_vs_realistic(tmp_path):
 
 
 def test_ioc_marketable_sell_mirror_executes_at_arrival():
-    # SELL mirror of the CORR acceptance: marketable at arrival (bid 99
-    # >= cap 98.50) → bare advance fills nothing; at the 10s tick it
-    # executes against arrival liquidity (~99); the bid 10s later at 110
-    # must not determine the execution (no fill at 110).
+    # SELL mirror of the CORR acceptance M1: marketable at arrival (bid
+    # 99 >= cap 98.50) → fills @99 in the 200ms drain, no tick required;
+    # the bid 10s later at 110 determines nothing (no fill at 110).
     engine = _engine(submit_delay_ms=50, fill_delay_ms=50)
     _quote(engine, T0, 99.0, 101.0)
     coid = engine.submit(EngineOrder(instrument="BTCUSDT", side="SELL",
                                      qty=0.001, kind="LIMIT", price=98.50,
                                      role="entry"))
     engine.advance_to(T0 + timedelta(milliseconds=200))
-    assert [e.kind for e in _drain(engine)].count("fill") == 0
-    _quote(engine, T0 + timedelta(seconds=10), 110.0, 111.0)
-    late = _drain(engine)
-    fills = [e for e in late if e.kind == "fill"]
-    assert len(fills) == 1, f"expected arrival-liquidity fill, got {late}"
+    early = _drain(engine)
+    fills = [e for e in early if e.kind == "fill"]
+    assert len(fills) == 1, f"expected due-time execution, got {early}"
     assert fills[0].payload.price == pytest.approx(99.0)
-    _quote(engine, T0 + timedelta(seconds=11), 110.0, 111.0)
+    _quote(engine, T0 + timedelta(seconds=10), 110.0, 111.0)
     assert [e.kind for e in _drain(engine)].count("fill") == 0
     assert engine.filled_qty(coid) == pytest.approx(0.001)
 
@@ -412,20 +405,21 @@ def test_ioc_queued_past_window_expires_never_submits():
     assert engine.resolve(coid) is None
 
 
-def test_ioc_no_subsequent_tick_rests_open_unfilled():
-    # Declared sparse-data model: no data + no advance means no matching
-    # opportunity — the IOC rests open, reported open, never filled, and
-    # nothing is invented to evaluate it.
+def test_ioc_no_subsequent_tick_resolves_at_due_time():
+    # M1: immediate-or-cancel never rests open. No subsequent tick, but
+    # the standing arrival book exists — so the advance past due resolves
+    # the IOC at due time (fill @101), with nothing invented.
     engine = _engine()
     _quote(engine, T0, 99.0, 101.0)
     coid = engine.submit(EngineOrder(instrument="BTCUSDT", side="BUY",
                                      qty=0.001, kind="LIMIT", price=101.50,
                                      role="entry"))
-    # No feed, no advance: zero opportunities.
-    assert _drain(engine) == []
+    engine.advance_to(T0 + timedelta(milliseconds=200))
+    early = _drain(engine)
+    assert [e.kind for e in early].count("fill") == 1
+    assert engine.filled_qty(coid) == pytest.approx(0.001)
     states = {s.client_order_id: s.state for s in engine.open_orders()}
-    assert states.get(coid) in ("open", "submitted")
-    assert engine.filled_qty(coid) == 0.0
+    assert states[coid] == "filled"  # terminal, not resting.
 
 
 def test_ioc_partial_remainder_cancels_same_opportunity():

@@ -557,12 +557,14 @@ class NautilusPaperEngine:
         self._reservations[client_id] = cmd.reservation_id
         # CORR-EXEC: the command enters the venue at its MODELED due time,
         # not at observation time — a drain at T for a due at T-150ms must
-        # not let post-due information determine the execution. Drains on
-        # bare time advance keep observation-time stamping instead: an
-        # advance carries no market information, so venue-visible arrival
-        # there would fabricate executions from nothing (manager ruling:
-        # bare advance resolves nothing; the next data tick does).
-        if venue_ts_ns is not None:
+        # not let post-due information determine the execution. Canonical
+        # LIMIT (nautilus IOC) ALWAYS resolves at due time against the
+        # standing arrival book — immediate-or-cancel by definition, no
+        # tick required — so it ignores the advance observation override:
+        # drains on bare time advance resolve it in that same advance.
+        # Other kinds keep observation-time stamping on advance drains
+        # (next-tick resolution, baseline behavior).
+        if venue_ts_ns is not None and kind != "LIMIT":
             venue_ts = venue_ts_ns
         else:
             venue_ts = (self._clock.timestamp_ns() if arrival_ns is None
@@ -583,7 +585,8 @@ class NautilusPaperEngine:
 
     def _drain_pending(self, venue_now_ns: int | None = None) -> None:
         # venue_now_ns: observation-time stamp for advance-context drains
-        # (None = modeled-due-time stamp for feed/poll/submit drains).
+        # of non-IOC kinds (None = modeled-due-time stamp for feed/poll/
+        # submit drains; canonical LIMIT always stamps due time).
         now_ns = self._clock.timestamp_ns()
         due_now = [item for item in self._submit_queue if item[0] <= now_ns]
         self._submit_queue = [item for item in self._submit_queue if item[0] > now_ns]
@@ -1090,10 +1093,9 @@ class NautilusPaperEngine:
         if ts_ns < self._clock.timestamp_ns():
             raise ValueError("advance_to must be non-decreasing")
         self._clock.set_time(ts_ns)
-        # Observation-time stamp (baseline behavior): a bare advance
-        # carries no market information, so commands drained here resolve
-        # at the next data tick, not from nothing (manager ruling); only
-        # already-venue-due messages process below, exactly as before.
+        # Observation-time stamp for non-IOC drains (baseline behavior);
+        # canonical LIMIT ignores it and resolves at due time in this same
+        # advance (CORR-EXEC M1: immediate-or-cancel needs no tick).
         self._drain_pending(venue_now_ns=ts_ns)
         self._exchange.process(ts_ns)
         self._op_seq += 1
@@ -1124,21 +1126,25 @@ class NautilusPaperEngine:
             "earlier-due execution and cancels due before a tick win it. "
             "Same-tick ties use the installed book; with no reference ever "
             "seen the first tick installs before anything resolves (wait "
-            "model). Advance-drained commands keep observation-time stamping "
-            "(bare advance resolves nothing new — manager ruling). "
-            "Nonmarketable IOCs (cap not crossing executable touch+size, BBO "
-            "else last print, none when unquoted) cancel AT arrival and never "
-            "submit. A submitted IOC is evaluated at the first opportunity "
-            "after accept; any live remainder cancels at that opportunity's "
-            "end (opportunity-counted — no tick-count bound; the venue "
-            "usually enforces natively, the adapter sweep retires tracking). "
-            "A same-timestamp submit/cancel tie breaks at the venue and a "
-            "fill executing before a sub-latency cancel lands stands as a "
-            "genuine race. A maker flag on a tracked-IOC fill is the sub-tick "
-            "artifact and books as taker (journaled ioc-artifact); any other "
-            "non-taker fill fails closed. SPARSE-DATA MODEL (declared): no "
-            "data and no advance means no evaluation (the order rests open, "
-            "reported open, never filled); gaps never invent ticks.",
+            "model). Canonical LIMIT (nautilus IOC) ALWAYS resolves at "
+            "modeled due time against the standing arrival book — "
+            "immediate-or-cancel by definition, no tick required; "
+            "advance-drained IOCs resolve in that same advance. Other kinds "
+            "drained on advance keep observation-time stamping (next-tick "
+            "resolution, baseline behavior). Nonmarketable IOCs (cap not "
+            "crossing executable touch+size, BBO else last print, none when "
+            "unquoted) cancel AT arrival and never submit. A submitted IOC "
+            "fills up to executable size at the due-time opportunity and "
+            "any remainder cancels there (opportunity-counted — no "
+            "tick-count bound; the venue usually enforces natively, the "
+            "adapter sweep retires tracking). A same-timestamp submit/cancel "
+            "tie breaks at the venue and a fill executing before a "
+            "sub-latency cancel lands stands as a genuine race. A maker flag "
+            "on a tracked-IOC fill is the sub-tick artifact and books as "
+            "taker (journaled ioc-artifact); any other non-taker fill fails "
+            "closed. SPARSE-DATA MODEL (declared): gaps never invent ticks; "
+            "an IOC with a standing book resolves at due time, without any "
+            "reference it cancels at arrival.",
             "markets are GTC (never IOC-cancelled for thin prints): with quotes they "
             "resolve at the next tick against the pre-tick book when already due; "
             "on trade-only replay prints seed L1 size, the "

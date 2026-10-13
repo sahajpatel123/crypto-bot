@@ -6,10 +6,13 @@ remainder, queued expiry, price-band enforcement, cancel/fill races,
 late-but-valid exactly-once, protection after partials, reduce-only
 exits, and emergency-exit latency labeling.
 
-Drive rule: the engine matches only on fed data ticks, never on bare
-time advance — so arrival-vs-later-tick separation is exactly what
-these probes test. Each test fails before its fix and passes after;
-open items carry strict-xfail with owner in tests/audit/conftest.py.
+Drive rule: canonical LIMIT (nautilus IOC) resolves at due time
+against the standing arrival book — bare advance past due resolves it,
+no tick required (CORR directive Worker-1 supersedes the earlier
+tick-driven pin); other kinds resolve on ticks/advance as before. So
+arrival-vs-later-tick separation is exactly what these probes test.
+Each test fails before its fix and passes after; open items carry
+strict-xfail with owner in tests/audit/conftest.py.
 """
 import sys
 from datetime import datetime, timedelta, timezone
@@ -95,9 +98,11 @@ def test_nonmarketable_sell_ioc_dead_at_arrival_no_late_revival():
 
 
 def test_marketable_ioc_fills_on_arrival_tick_at_arrival_prices():
-    """Marketable IOC, tick-driven semantics (manager ruling): bare time
-    advance fabricates nothing; the arrival tick fills BUY at ask 101
-    and SELL at bid 99; a later moved tick fills nothing more."""
+    """Marketable IOC, due-time semantics (CORR directive Worker-1
+    supersedes the earlier tick-driven pin): due at T0+10ms against the
+    standing 99/101 book, the advance to T0+200ms fills BUY at ask 101
+    and SELL at bid 99 with no tick required; later ticks — including a
+    moved one — fill nothing more, exactly once each."""
     engine = _engine(submit_delay_ms=10, fill_delay_ms=10)
     _qt(engine, 0, 99.0, 101.0)
     buy = engine.submit(_order("BUY", 0.1, price=101.50,
@@ -105,23 +110,25 @@ def test_marketable_ioc_fills_on_arrival_tick_at_arrival_prices():
     sell = engine.submit(_order("SELL", 0.1, price=98.50,
                                 reservation_id="w5-ioc-s"))
     engine.advance_to(T0 + timedelta(milliseconds=200))
-    assert engine.filled_qty(buy) == 0.0, "fill fabricated without a data tick"
-    assert engine.filled_qty(sell) == 0.0, "fill fabricated without a data tick"
-    _qt(engine, 300, 99.0, 101.0)
-    assert engine.filled_qty(buy) == 0.1, "marketable BUY not filled on tick"
-    assert engine.filled_qty(sell) == 0.1, "marketable SELL not filled on tick"
+    assert engine.filled_qty(buy) == 0.1, "marketable BUY not filled at due time"
+    assert engine.filled_qty(sell) == 0.1, "marketable SELL not filled at due time"
     events = engine.poll()
     buys = [e for e in events if e.kind == "fill"
             and e.payload.client_order_id == buy]
     sells = [e for e in events if e.kind == "fill"
              and e.payload.client_order_id == sell]
-    assert buys and buys[0].payload.price == 101.0, (
+    assert len(buys) == 1 and buys[0].payload.price == 101.0, (
         f"BUY filled off arrival book: {buys!r}")
-    assert sells and sells[0].payload.price == 99.0, (
+    assert len(sells) == 1 and sells[0].payload.price == 99.0, (
         f"SELL filled off arrival book: {sells!r}")
-    _qt(engine, 1000, 100.0, 102.0)
+    _qt(engine, 300, 99.0, 101.0)
     assert engine.filled_qty(buy) == 0.1, "BUY filled twice"
     assert engine.filled_qty(sell) == 0.1, "SELL filled twice"
+    _qt(engine, 1000, 100.0, 102.0)
+    assert engine.filled_qty(buy) == 0.1, "BUY revived on moved tick"
+    assert engine.filled_qty(sell) == 0.1, "SELL revived on moved tick"
+    assert _fills_for(engine, buy) == []
+    assert _fills_for(engine, sell) == []
 
 
 def test_partial_fill_cancels_remainder_without_resting():
