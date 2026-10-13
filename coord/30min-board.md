@@ -47,3 +47,8 @@ Then: economic scoring on the corrected stack.
   Follow-up: Session._flatten off submit_immediate (manager-owned).
 - W5 probe updates integrated (1f63a77): all 11 IOC probes green, suite
   984+1+6x (xfails now 3 cost + 3 controls only). W1 review: SOUND.
+- W3-30MIN filed COMPLETE + integrated (523b20d + 3abc5e5): bounded
+  producer + 250ms tick + control_tick seam + fail-closed missing-ts +
+  1s gates + preflight/prod guards. 21 new tests; suite 1008+1+3x
+  (cost only). 3 control reds green + unmarked. Drills reproduced
+  (stop 0.55s/8 ticks, burst pass, preflight GO).
