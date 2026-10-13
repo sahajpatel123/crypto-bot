@@ -92,13 +92,46 @@ battery above is the acceptance gate either way.
   it also caught a deliberately inconsistent fixture I wrote (nonzero net
   with zero fills). `tests/audit/test_cost_contract.py`: 3 passed.
 
-## 5. Pending (blocked on others)
+## 5. Repair (manager-authorized, commit `0b14c32`)
+
+`tools/run_budget.py` repaired on this branch; battery updated to the new
+contract and extended to 10 tests. Changes:
+
+- Linux child subreaper (best-effort ctypes, no hard dependency): orphans
+  reparent to the wrapper, closing the daemon hole where the OS allows.
+- Birth registry: descendants scanned every 0.25 s during life; the kill
+  set is registry ∪ fresh snapshot ∪ {child} — birth-registry identity
+  only, unrelated PIDs never signaled.
+- Wrapper-owned stdout/stderr relay (portable threads): the child tree
+  never inherits the caller's pipes, so no descendant can block a
+  capturing caller past wrapper exit (bounded 2 s drain). Child stdio is
+  now always pipes, never a tty (documented behavior change).
+- Fail-closed reporting: `ps` nonzero/empty output counts as enumeration
+  failure (this hole was caught by the new flaky-ps test during repair
+  development); post-kill verification sweep; report carries
+  `enforcement: verified|UNVERIFIED` + detail + `subreaper` + a
+  no-subreaper honesty note on macOS. Exit stays 124.
+
+Results: battery 10/10, repo `test_run_budget.py` 5/5, full
+`tests/unit+tests/audit+tests/runtime` 858 passed / 1 skipped (4m25s, all
+under the frozen base outer wrapper). The 4 key regression tests fail on
+the pre-fix wrapper (verified via stash) and pass post-fix. Review probes
+re-run with the repaired wrapper: identical 4 findings, nested plain case
+1.166 s with `enforcement: verified`. Every run ends with zero strays.
+
+Platform truth table after repair: Linux closes all three holes (daemon
+kill via subreaper — code path present, runtime proof needs a Linux host);
+macOS closes pipe-block + ps-failure and degrades honestly on daemon kill
+(report says so; caller never blocks).
+
+## 6. Pending (blocked on others)
 
 - W1–W3 CORR diffs: no `worker1|2|3/*corr*` branches on origin yet → review
-  and after-proof not started.
+  and after-proof OWED; W5 will file an addendum when they land.
 - Adversarial end-to-end on the integrated revision: blocked until manager
   publishes the integrated SHA.
-- Final `coord/outbox/W5-CORR.json`: filed as interim; final after the above.
+- Final `coord/outbox/W5-CORR.json`: filed; covers base probes, nested
+  repair, allowlist/reconciler. W1–W3 + e2e ride an addendum.
 
 ## Repro commands (all ≤25 min jobs; battery ~65 s)
 
