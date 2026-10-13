@@ -64,9 +64,65 @@ Scoring (matches reviewer exactly):
 
 ## 4. Pending
 
-- W1/W3 READY: not yet integrated → substantive reviews owed.
+- W1 READY: not yet integrated → substantive review owed.
 - Final adversarial challenge + PASS/VETO on the integrated SHA.
 - Final `coord/outbox/W5-READY.json`.
+
+## 6. Addendum — substantive W3 review (APPROVE)
+
+Reviewed branch `origin/worker3/ready-data` (`808b94b`) in a read-only
+scratch worktree. No W3 outbox filed; reviewed from the diff directly.
+Every job under `run_budget`.
+
+### Deadline containment — APPROVE (fixes a real hole)
+
+- Dual-root discovery (child + wrapper self) fixes a genuine gap in the
+  CORR repair: with a subreaper, orphans reparent to the WRAPPER as
+  siblings of the child, which the child-rooted walk missed — this is
+  the likely mechanism behind the reviewer's Linux daemon-survival
+  marker. Self excluded from results and signals; wrapper spawns
+  nothing else, so the wider root is safe. macOS behavior unchanged.
+- `/proc`-direct enumeration on Linux (paren-safe stat parse,
+  self-presence health gate, mid-scan churn tolerated) with `ps`
+  fallback; transient ps PID excluded from the registry (narrows a
+  PID-reuse hazard); waitpid reaping of adopted kills before the
+  survivor check (zombie false-survivor fix, portable no-op on macOS);
+  `CRYPTOBOT_BREAK_ENUMERATION` test hook, default off, fail-closed by
+  construction; additive `enum_source` report field.
+- Battery changes are NOT a weakening: the two ps-hiding tests (vacuous
+  on /proc Linux) gained Linux skipifs with correct rationale, and two
+  hook-based platform-neutral tests assert the identical contracts on
+  all platforms. No other battery test touched.
+- Observation (test strength, pre-existing): neither the original
+  flaky-ps test nor the hook port isolates the birth registry —
+  single-level kills succeed via {child} alone. A nested variant would
+  truly discriminate registry coverage.
+- Residual (pre-existing design): PID-reuse hazard for short-lived
+  descendants generally (manager-approved birth-registry identity);
+  W3 narrowed the ps-transient instance only.
+- Tests: 12 battery + 5 budget + 7 eligibility, 24 green, no strays.
+
+### Gap taxonomy + eligible intervals — APPROVE
+
+- `eligibility.py` reviewed line-level: seven classes implemented as
+  documented; raw single-ID skips are volume caveats only; lone
+  markers exclude nothing; no forward-fill; causal exchange times;
+  mechanical/market clocks separated with labeled intersection.
+- Crafted-capture probe: agg jump → `missing-trade-ids` span with exact
+  absent-ID range; global silence → `transport-gap` seconds;
+  cadence break → `stale-executable` span; marker noted without
+  exclusion; bad row counted; market intervals exact
+  ((0,100),(2100,3000),(6100,7000) with fail-closed bar cuts).
+- Observations (not blocking): quiet seconds inside a jump window are
+  attributed to the jump (jump dominates, fail-closed); total silence
+  carries both `transport-gap` and `stale-executable` classes, so "one
+  class per span" holds entry-level and on the real captures (zero
+  transport gaps there) but not span-level under total silence —
+  intervals unaffected either way; input assumed time-ordered (no
+  sortedness assertion).
+- Tool `eligible_intervals.py` re-ran correctly on the crafted capture;
+  committed cap reports internally consistent (dense captures, zero
+  ID breaks, 315 quiet seconds explained).
 
 ## 5. Addendum — substantive W2 + W4A reviews (APPROVE both)
 
