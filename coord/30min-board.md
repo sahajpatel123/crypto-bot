@@ -32,3 +32,9 @@ Then: economic scoring on the corrected stack.
 - Routing notes: cost reds -> cloud-vega (W2); control reds + missing-ts
   KeyError crash -> cool-amalthea (W3); W5 session name = crystal-parallax
   (bright-pegasus stale). One misroute to white-aldebaran bounced+fixed.
+- W5-30MIN filed COMPLETE (branch worker5/30min-verify @cb358b6): 18
+  probes (8 green, 10 red xfail, session-name owners), demo drill
+  runner + procedure integrated (154102b, 890de6b) with safe paths
+  manager-verified (no-creds full -> 0+4 BLOCKEDs; non-demo refused).
+  W5 review: W4 batch PASS; W1/W2/W3 pending. IOC owner confirmed =
+  whisper-redshift. Review note to W5: Phase-3 cids unasserted.
