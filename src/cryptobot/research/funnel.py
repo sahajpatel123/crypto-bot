@@ -11,6 +11,13 @@ strategy/instrument/second), (1) intents (store.db, unique intent_id),
 (2) submissions (journal client_id), (3) fills (journal exec_id).
 Banked cells (aggregates only) are mapped with row counts explicitly
 labeled as repeated rows.
+
+Eligibility is counted in SYMBOL-seconds: one (strategy, instrument,
+second) triple is one unit of strategy attention on one market.
+Clock-second unions are reported separately and labeled; dividing a
+clock-second numerator by symbol-second elapsed time is invalid.
+Rows without instrument attribution key under "unknown" and are never
+merged into attributed symbols.
 """
 from __future__ import annotations
 
@@ -18,7 +25,7 @@ import argparse
 import json
 import sqlite3
 from collections import Counter
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -26,6 +33,10 @@ BUCKETS = ("unavailable_data", "missing_sequence", "healthy_no_trade",
            "no_setup", "below_cost", "below_minimum", "stale_expired",
            "nonmarketable", "ioc_cancelled", "exposure_cooldown",
            "startup", "stale_input", "missing_depth", "other_hold")
+
+# Quantity dust below this is treated as zero when deciding whether an
+# episode is open, partially closed, or fully closed.
+_QTY_EPS = 1e-9
 
 _UNAVAILABLE_TOKENS = ("gap:fail", "warmup", "flow:never",
                        "flow:missing", "quality")
@@ -125,13 +136,13 @@ def analyze_run(run_dir: str | Path) -> dict[str, Any]:
             if line.strip()]
     buckets: Counter = Counter()
     unmapped: Counter = Counter()
+    # (strategy, instrument) -> seconds. Symbol-seconds are the unit:
+    # two symbols evaluated in one clock second are two opportunities.
     opps: dict[tuple[str, str], set[str]] = {}
     elig: dict[tuple[str, str], set[str]] = {}
     for row in rows:
         bucket = map_reason(row.get("stage", ""), row.get("reason", ""))
-        # Strategy-stage rows carry instrument=unknown; only selection+
-        # rows are instrument-attributed. Eligible time is per strategy.
-        key = row.get("strategy", "?")
+        key = (row.get("strategy", "?"), row.get("instrument", "?"))
         sec = _second(row["ts_utc"])
         opps.setdefault(key, set()).add(sec)
         if bucket:
@@ -154,31 +165,45 @@ def analyze_run(run_dir: str | Path) -> dict[str, Any]:
     # intent's existence proves its second was eligible-time.
     for row in real:
         sec = _second(row["ts_utc"])
-        opps.setdefault(row["strategy"], set()).add(sec)
-        elig.setdefault(row["strategy"], set()).add(sec)
+        key = (row["strategy"], row.get("instrument", "?"))
+        opps.setdefault(key, set()).add(sec)
+        elig.setdefault(key, set()).add(sec)
     selected = [row for row in intents if row["decision"] == "selected"]
-    selected_secs: dict[str, set[str]] = {}
+    selected_secs: dict[tuple[str, str], set[str]] = {}
     for row in selected:
-        key = row["strategy"]
+        key = (row["strategy"], row.get("instrument", "?"))
         selected_secs.setdefault(key, set()).add(_second(row["ts_utc"]))
-    healthy = {strategy: len(elig.get(strategy, set())
-                             - selected_secs.get(strategy, set()))
-               for strategy in elig}
+
+    def _by_strategy(triples: dict[tuple[str, str], set[str]]
+                     ) -> dict[str, int]:
+        rolled: Counter = Counter()
+        for (strategy, _instrument), secs in triples.items():
+            rolled[strategy] += len(secs)
+        return dict(sorted(rolled.items()))
+
+    healthy = _by_strategy(
+        {key: elig.get(key, set()) - selected_secs.get(key, set())
+         for key in elig})
+    for strategy in {key[0] for key in elig}:
+        healthy.setdefault(strategy, 0)
 
     journal = _read_journal(run_dir / "engine_journal.jsonl")
     outcomes = _reservation_outcomes(journal)
     ioc_bucket_n = outcomes["entries_cancelled_unfilled"]
 
-    # Startup: evaluation seconds strictly before the strategy's first
-    # eligible second (warmup/causal prefix). Never-eligible strategies
-    # report 0 startup: their time is data-denied, not startup.
+    # Startup: evaluation symbol-seconds strictly before the
+    # strategy-instrument's first eligible second (warmup/causal prefix).
+    # Never-eligible pairs report 0 startup: their time is data-denied,
+    # not startup.
     startup: dict[str, int] = {}
-    for strategy, secs in opps.items():
-        first_elig = min(elig.get(strategy, set()), default=None)
+    for key, secs in opps.items():
+        first_elig = min(elig.get(key, set()), default=None)
         if first_elig is None:
-            startup[strategy] = 0
+            startup.setdefault(key[0], 0)
         else:
-            startup[strategy] = sum(1 for s in secs if s < first_elig)
+            startup[key[0]] = startup.get(key[0], 0) + sum(
+                1 for s in secs if s < first_elig)
+    startup = dict(sorted(startup.items()))
 
     paths = _intent_stage_paths(real)
     terminal_counts: Counter = Counter(
@@ -186,8 +211,18 @@ def analyze_run(run_dir: str | Path) -> dict[str, Any]:
     cost_pass = sum(1 for p in paths.values()
                     if p["terminal_bucket"] != "below_cost")
     usable_seconds = len({s for secs in opps.values() for s in secs})
+    usable_symbol_seconds = {
+        f"{s}|{i}": len(secs) for (s, i), secs in sorted(opps.items())}
 
     unique_opps = sum(len(v) for v in opps.values())
+
+    def _attributed(triples: dict[tuple[str, str], set[str]]
+                    ) -> dict[str, int]:
+        return {f"{s}|{i}": len(secs)
+                for (s, i), secs in sorted(triples.items())}
+
+    eligible_seconds = _by_strategy(elig)
+    opportunity_seconds = _by_strategy(opps)
     return {
         "run_dir": str(run_dir),
         "rejection_rows": len(rows),
@@ -196,10 +231,13 @@ def analyze_run(run_dir: str | Path) -> dict[str, Any]:
                                  if unique_opps else 0.0),
         "strategy_row_buckets": dict(buckets),
         "unmapped_reasons": dict(unmapped),
-        "eligible_seconds": {strategy: len(v)
-                             for strategy, v in sorted(elig.items())},
-        "opportunity_seconds": {strategy: len(v)
-                                for strategy, v in sorted(opps.items())},
+        "eligible_seconds": eligible_seconds,
+        "opportunity_seconds": opportunity_seconds,
+        "eligible_symbol_seconds": _attributed(elig),
+        "opportunity_symbol_seconds": _attributed(opps),
+        "usable_symbol_seconds": usable_symbol_seconds,
+        "usable_symbol_seconds_total": sum(
+            usable_symbol_seconds.values()),
         "startup_seconds": startup,
         "healthy_no_trade_seconds": healthy,
         "intent_rows": len(intents),
@@ -219,16 +257,29 @@ def analyze_run(run_dir: str | Path) -> dict[str, Any]:
         "fill_exec_ids": outcomes["fill_exec_ids"],
         "reservations": outcomes["reservations"],
         "closed_reservations": outcomes["closed_reservations"],
+        "partial_reservations": outcomes["partial_reservations"],
+        "open_reservations": outcomes["open_reservations"],
+        "closed_reservation_ids": outcomes["closed_reservation_ids"],
+        "partial_reservation_ids": outcomes["partial_reservation_ids"],
+        "open_reservation_ids": outcomes["open_reservation_ids"],
         "stages": {
             "usable_data_seconds": usable_seconds,
-            "strategy_eligible_seconds": {
-                s: len(v) for s, v in sorted(elig.items())},
+            "usable_data_note": "clock-second union across strategies; "
+                                "use usable_symbol_seconds_total as the "
+                                "denominator for symbol-time coverage.",
+            "strategy_eligible_seconds": eligible_seconds,
+            "strategy_eligible_note": "symbol-seconds per strategy "
+                                      "(sum over instruments); see "
+                                      "eligible_symbol_seconds for "
+                                      "attribution.",
             "setup_unique_intents": len(unique_intents),
             "cost_pass_unique_intents": cost_pass,
             "portfolio_risk_pass_unique": outcomes["reservations"],
             "submitted_entries": outcomes["entry_client_ids"],
             "filled_entries": outcomes["entries_filled"],
             "closed_reservations": outcomes["closed_reservations"],
+            "partial_reservations": outcomes["partial_reservations"],
+            "open_reservations": outcomes["open_reservations"],
         },
         "buckets": {
             "unavailable_data": buckets["unavailable_data"],
@@ -249,8 +300,10 @@ def analyze_run(run_dir: str | Path) -> dict[str, Any]:
         "notes": [
             "strategy buckets count ROWS; see unique_opportunities for the "
             "deduped count and rows_per_opportunity for repetition.",
-            "healthy_no_trade counts eligible seconds with no selected "
-            "intent (unique seconds, not rows).",
+            "unique_opportunities counts (strategy, instrument, second) "
+            "symbol-seconds; repetition across rows never multiplies it.",
+            "healthy_no_trade counts eligible symbol-seconds with no "
+            "selected intent (unique triples, not rows).",
             "startup counts pre-first-eligible seconds per strategy; "
             "never-eligible time stays in data buckets, not startup.",
             "ioc_cancelled counts unique entry client_ids submitted but "
@@ -308,16 +361,18 @@ def _reservation_outcomes(journal: list[dict[str, Any]]) -> dict[str, Any]:
                 res_of[detail["client_id"]] = detail.get("reservation_id",
                                                          "")
     entry_ids = [c for c, role in roles.items() if role == "entry"]
-    fills_by_res: dict[str, dict[str, bool]] = {}
+    fills_by_res: dict[str, dict[str, float]] = {}
     exec_ids: set[str] = set()
     for event in journal:
         if event.get("event") != "fill":
             continue
+        # A fill without qty cannot prove cover (real journals always
+        # carry qty; qty-less fixtures stay unclosed, never closed).
         detail = event.get("detail", {})
         res = detail.get("reservation_id", "")
-        slot = fills_by_res.setdefault(res, {"entry": False, "exit": False})
+        slot = fills_by_res.setdefault(res, {"entry": 0.0, "exit": 0.0})
         slot["entry" if roles.get(detail.get("client_id")) == "entry"
-             else "exit"] = True
+             else "exit"] += float(detail.get("qty", 0.0) or 0.0)
         if detail.get("exec_id"):
             exec_ids.add(detail["exec_id"])
     terminal_cancel = {
@@ -332,8 +387,18 @@ def _reservation_outcomes(journal: list[dict[str, Any]]) -> dict[str, Any]:
                      for e in journal)}
     reservations = {r for r in
                     [res_of.get(c, "") for c in entry_ids] if r}
+    # Closure is quantity-aware: a reservation with entry fills but only
+    # a smaller exit fill is partially closed, never closed.
     closed = sorted(r for r, slot in fills_by_res.items()
-                    if slot["entry"] and slot["exit"])
+                    if r and slot["entry"] > _QTY_EPS
+                    and slot["exit"] >= slot["entry"] - _QTY_EPS)
+    partial = sorted(r for r, slot in fills_by_res.items()
+                     if r and slot["entry"] > _QTY_EPS
+                     and _QTY_EPS < slot["exit"]
+                     < slot["entry"] - _QTY_EPS)
+    open_res = sorted(r for r, slot in fills_by_res.items()
+                      if r and slot["entry"] > _QTY_EPS
+                      and slot["exit"] <= _QTY_EPS)
     return {
         "entry_client_ids": len(entry_ids),
         "entries_filled": len(filled),
@@ -345,6 +410,11 @@ def _reservation_outcomes(journal: list[dict[str, Any]]) -> dict[str, Any]:
              and c not in terminal_cancel]),
         "reservations": len(reservations),
         "closed_reservations": len(closed),
+        "partial_reservations": len(partial),
+        "open_reservations": len(open_res),
+        "closed_reservation_ids": closed,
+        "partial_reservation_ids": partial,
+        "open_reservation_ids": open_res,
         "fill_exec_ids": len(exec_ids),
     }
 
@@ -402,9 +472,11 @@ def analyze_symbol_time(capture_path: str | Path) -> dict[str, Any]:
             ts_ms = event.get("exchange_ts_ms",
                               event.get("local_recv_ms", 0))
             try:
+                # UTC labels: portable across machines (counts are
+                # tz-independent, but evidence labels must not depend on
+                # the local zone).
                 sec = datetime.fromtimestamp(
-                    int(ts_ms) / 1000,
-                    tz=datetime.now().astimezone().tzinfo).replace(
+                    int(ts_ms) / 1000, tz=timezone.utc).replace(
                         microsecond=0).isoformat()
             except (ValueError, TypeError, OSError):
                 continue
@@ -447,6 +519,8 @@ def analyze_banked(cell: dict[str, Any], journal_path: str | Path,
             outcomes["entries_cancelled_unfilled"],
         "entries_open_at_end": outcomes["entries_open_at_end"],
         "closed_reservations": outcomes["closed_reservations"],
+        "partial_reservations": outcomes["partial_reservations"],
+        "open_reservations": outcomes["open_reservations"],
         "fill_exec_ids": outcomes["fill_exec_ids"],
         "closing_equity": cell.get("closing_equity"),
         "net_return_pct": cell.get("net_return_pct"),

@@ -149,6 +149,94 @@ def test_blocked_intent_keeps_original_verdict(tmp_path):
     assert report["stages"]["cost_pass_unique_intents"] == 1
 
 
+def test_two_symbols_same_second_counts_two_symbol_seconds(tmp_path):
+    run = tmp_path / "run"
+    run.mkdir()
+    rows = [{"ts_utc": "2026-10-11T10:00:01+00:00", "stage": "strategy",
+             "reason": "breakout:fail|breakout:fail", "strategy": "S1",
+             "instrument": symbol, "side": "unknown"}
+            for symbol in ("BTCUSDT", "ETHUSDT")]
+    (run / "rejections.jsonl").write_text(
+        "\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8")
+    con = sqlite3.connect(run / "store.db")
+    con.execute("create table intents (id integer primary key, run_id text,"
+                "intent_id text,strategy text,instrument text,side text,"
+                "decision text,reason text,ts_utc text)")
+    con.commit()
+    con.close()
+    (run / "engine_journal.jsonl").write_text("", encoding="utf-8")
+    report = analyze_run(run)
+    assert report["unique_opportunities"] == 2
+    assert report["eligible_seconds"] == {"S1": 2}
+    assert report["stages"]["strategy_eligible_seconds"] == {"S1": 2}
+    assert report["eligible_symbol_seconds"] == {"S1|BTCUSDT": 1,
+                                                 "S1|ETHUSDT": 1}
+    assert report["usable_symbol_seconds_total"] == 2
+    assert report["stages"]["usable_data_seconds"] == 1
+    assert report["rejection_rows"] == 2
+
+
+def test_unattributed_rows_keyed_separately(tmp_path):
+    run = tmp_path / "run"
+    run.mkdir()
+    rows = [
+        {"ts_utc": "2026-10-11T10:00:01+00:00", "stage": "strategy",
+         "reason": "breakout:fail|breakout:fail", "strategy": "S1",
+         "instrument": "BTCUSDT", "side": "unknown"},
+        {"ts_utc": "2026-10-11T10:00:01+00:00", "stage": "strategy",
+         "reason": "breakout:fail|breakout:fail", "strategy": "S1",
+         "side": "unknown"},
+    ]
+    (run / "rejections.jsonl").write_text(
+        "\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8")
+    con = sqlite3.connect(run / "store.db")
+    con.execute("create table intents (id integer primary key, run_id text,"
+                "intent_id text,strategy text,instrument text,side text,"
+                "decision text,reason text,ts_utc text)")
+    con.commit()
+    con.close()
+    (run / "engine_journal.jsonl").write_text("", encoding="utf-8")
+    report = analyze_run(run)
+    assert report["unique_opportunities"] == 2
+    assert report["eligible_symbol_seconds"] == {"S1|BTCUSDT": 1,
+                                                 "S1|?": 1}
+
+
+def test_partial_reservation_is_qty_aware(tmp_path):
+    run = tmp_path / "run"
+    run.mkdir()
+    (run / "rejections.jsonl").write_text("", encoding="utf-8")
+    con = sqlite3.connect(run / "store.db")
+    con.execute("create table intents (id integer primary key, run_id text,"
+                "intent_id text,strategy text,instrument text,side text,"
+                "decision text,reason text,ts_utc text)")
+    con.commit()
+    con.close()
+    journal = [
+        {"event": "submitted",
+         "detail": {"client_id": "e1", "role": "entry",
+                    "reservation_id": "r1"}},
+        {"event": "submitted",
+         "detail": {"client_id": "x1", "role": "target",
+                    "reservation_id": "r1"}},
+        {"event": "fill",
+         "detail": {"client_id": "e1", "reservation_id": "r1",
+                    "exec_id": "T-1", "qty": 0.01}},
+        {"event": "fill",
+         "detail": {"client_id": "x1", "reservation_id": "r1",
+                    "exec_id": "T-2", "qty": 0.005}},
+    ]
+    (run / "engine_journal.jsonl").write_text(
+        "\n".join(json.dumps(e) for e in journal) + "\n", encoding="utf-8")
+    report = analyze_run(run)
+    assert report["closed_reservations"] == 0
+    assert report["partial_reservations"] == 1
+    assert report["open_reservations"] == 0
+    assert report["partial_reservation_ids"] == ["r1"]
+    assert report["stages"]["closed_reservations"] == 0
+    assert report["entries_filled"] == 1
+
+
 def test_symbol_time_counts_per_symbol_seconds(tmp_path):
     capture = tmp_path / "events.jsonl"
     base_ms = 1_757_000_000_000
