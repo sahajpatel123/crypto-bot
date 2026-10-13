@@ -253,14 +253,19 @@ def test_rapid_fork_during_grace(tmp_path, stray_reaper):
     assert not survivors, f"{len(survivors)} late-forked grandchildren survived: {survivors[:5]}"
 
 
+@pytest.mark.skipif(sys.platform == "linux", reason=(
+    "Linux enumerates via /proc, so hiding `ps` cannot break the kill "
+    "set there; the fail-closed path is covered on all platforms by "
+    "test_enumeration_hook_fail_closed"))
 def test_enumeration_failure_must_not_fail_open(tmp_path):
     """If descendant enumeration fails, the wrapper must not claim enforcement.
 
-    With `ps` unavailable for the whole run, no kill set can be built and
-    grandchildren escape (each wrapper child starts in its OWN session, so
-    group-kill-only cannot reach them). Required: the report carries
-    enforcement=UNVERIFIED naming enumeration failure, rc stays 124, and
-    the caller still returns promptly (relay containment, not a pipe hang).
+    With `ps` unavailable for the whole run (ps-enumerated platforms),
+    no kill set can be built and grandchildren escape (each wrapper
+    child starts in its OWN session, so group-kill-only cannot reach
+    them). Required: the report carries enforcement=UNVERIFIED naming
+    enumeration failure, rc stays 124, and the caller still returns
+    promptly (relay containment, not a pipe hang).
     """
     import os as _os
     root = _repo_root()
@@ -292,6 +297,10 @@ def test_enumeration_failure_must_not_fail_open(tmp_path):
     assert wall < 6.5, f"caller blocked {wall:.2f}s despite relay"
 
 
+@pytest.mark.skipif(sys.platform == "linux", reason=(
+    "Linux enumerates via /proc, so a flaky `ps` is never consulted; "
+    "the mid-run-failure registry path is covered on all platforms by "
+    "test_registry_hook_fail_after_midrun"))
 def test_registry_kills_when_ps_dies_midrun(tmp_path):
     """REGRESSION: a birth registry built during life covers kill-time failure.
 
@@ -332,6 +341,78 @@ def test_registry_kills_when_ps_dies_midrun(tmp_path):
     assert not marker.exists(), (
         "registry kill failed: 8s sleeper survived although `ps` worked "
         "during life")
+    assert wall < 3.0 + 1.0 + DRAIN_ALLOW, f"caller blocked {wall:.2f}s"
+    assert rep.get("enforcement") == "UNVERIFIED", (
+        f"kill-phase enumeration failed yet report claims "
+        f"{rep.get('enforcement')}: {rep}")
+
+
+def test_enumeration_hook_fail_closed(tmp_path):
+    """CRYPTOBOT_BREAK_ENUMERATION=1: UNVERIFIED, rc 124, prompt return.
+
+    Platform-neutral version of the enumeration-failure contract (the
+    ps-hiding variant only exercises ps-enumerated platforms). Nested
+    shape: the outer kill set cannot be built, so the report must say
+    UNVERIFIED and name enumeration; the caller must still return
+    promptly via the relay.
+    """
+    root = _repo_root()
+    marker = tmp_path / "hookenum-done.txt"
+    inner = [sys.executable, "tools/run_budget.py", "--budget-s", "30",
+             "--checkpoint-dir", str(tmp_path / "inner"), "--report-out",
+             str(tmp_path / "inner.json"), "--", sys.executable, "-c",
+             f"import time; time.sleep(8); "  # {TOKEN}
+             f"open({str(marker)!r}, 'w').write('survived')"]
+    cmd = WRAPPER + ["--budget-s", "1", "--checkpoint-dir",
+                     str(tmp_path / "ckpt"), "--report-out",
+                     str(tmp_path / "rep.json"), "--term-grace-s", ".2",
+                     "--", *inner]
+    env = dict(os.environ)
+    env["CRYPTOBOT_BREAK_ENUMERATION"] = "1"
+    t0 = time.monotonic()
+    proc = subprocess.run(cmd, capture_output=True, text=True, cwd=root,
+                          timeout=60, env=env)
+    wall = time.monotonic() - t0
+    assert proc.returncode == 124, proc.stderr
+    rep = json.loads((tmp_path / "rep.json").read_text())
+    assert rep["status"] == "INCOMPLETE_BUDGET"
+    assert rep.get("enforcement") == "UNVERIFIED", (
+        f"fail-open: enumeration broken yet report claims "
+        f"{rep.get('enforcement')}: {rep}")
+    assert "enumeration" in (rep.get("enforcement_detail") or ""), rep
+    assert wall < 6.5, f"caller blocked {wall:.2f}s despite relay"
+    # The sleeper may survive (no kill set exists by construction); it
+    # exits alone at 8s holding only dead inner pipes — never our caller.
+
+
+def test_registry_hook_fail_after_midrun(tmp_path):
+    """Birth registry covers kill-phase enumeration failure (all platforms).
+
+    Enumeration works for the first scans (registry learns the sleeper)
+    then fails from scan 7 on. Required: the registry kill set still
+    stops the tree (marker absent), the caller returns on time, and the
+    report is honest (UNVERIFIED: enumeration failed during the kill).
+    """
+    root = _repo_root()
+    marker = tmp_path / "hookflaky-done.txt"
+    cmd = WRAPPER + ["--budget-s", "3", "--checkpoint-dir",
+                     str(tmp_path / "ckpt"), "--report-out",
+                     str(tmp_path / "rep.json"), "--term-grace-s", "1",
+                     "--", sys.executable, "-c",
+                     f"import time; time.sleep(8); "  # {TOKEN}
+                     f"open({str(marker)!r}, 'w').write('survived')"]
+    env = dict(os.environ)
+    env["CRYPTOBOT_BREAK_ENUMERATION"] = "after:6"
+    t0 = time.monotonic()
+    proc = subprocess.run(cmd, capture_output=True, text=True, cwd=root,
+                          timeout=60, env=env)
+    wall = time.monotonic() - t0
+    assert proc.returncode == 124, proc.stderr
+    rep = json.loads((tmp_path / "rep.json").read_text())
+    time.sleep(max(0.0, 8.5 - wall))
+    assert not marker.exists(), (
+        "registry kill failed: 8s sleeper survived although enumeration "
+        "worked during life")
     assert wall < 3.0 + 1.0 + DRAIN_ALLOW, f"caller blocked {wall:.2f}s"
     assert rep.get("enforcement") == "UNVERIFIED", (
         f"kill-phase enumeration failed yet report claims "
