@@ -10,12 +10,25 @@ Contract:
 - The child runs in its own process group; at the deadline the whole
   process TREE gets SIGTERM, then SIGKILL after --term-grace-s.
 - Kill identity is the birth registry: every descendant PID ever observed
-  under the child (plus a fresh snapshot at kill time). Only those PIDs
-  (and the child itself) are ever signaled; unrelated processes are never
-  touched.
+  under the child AND under the wrapper itself (plus a fresh snapshot at
+  kill time). The wrapper root matters: with a subreaper, orphaned
+  descendants reparent to the wrapper and are siblings of the child, so a
+  child-rooted walk alone misses them. Only those PIDs (and the child
+  itself) are ever signaled; unrelated processes are never touched, and
+  the wrapper never signals itself.
 - On Linux the wrapper becomes a child subreaper, so orphaned descendants
   reparent to it and stay visible. Other platforms (macOS) have no
   subreaper: enforcement there is best-effort and the report says so.
+- Enumeration reads /proc directly on Linux (no subprocess, no PATH or
+  ps-format dependency); other platforms (and Linux /proc failure) fall
+  back to `ps -eo pid,ppid`. The wrapper's own transient ps call is
+  excluded from the registry by its PID.
+- Reparented descendants killed by the wrapper are reaped (waitpid)
+  before the survivor check, so dead children are not misreported as
+  survivors. Reaping never touches the direct child (proc.wait owns it).
+- Test hook CRYPTOBOT_BREAK_ENUMERATION: "1" fails every scan, "after:N"
+  fails after N successful scans. Fail-closed by construction (any scan
+  failure forces enforcement=UNVERIFIED); default off.
 - The child tree NEVER inherits the caller's stdout/stderr: output flows
   through a wrapper-owned relay. An escaped descendant therefore cannot
   block a capturing caller past wrapper exit (bounded drain). Note: the
@@ -79,21 +92,77 @@ def _try_subreaper() -> bool:
         return False
 
 
-def _scan_descendants(root: int) -> tuple[set[int], bool]:
-    # All live PIDs under root. Returns (pids, ok): ok=False when the
-    # enumeration itself failed, so callers fail closed instead of
-    # mistaking "no data" for "no descendants".
+_ENUM_BREAK = os.environ.get("CRYPTOBOT_BREAK_ENUMERATION", "")
+_ENUM_OK_SCANS = 0
+_ENUM_SOURCE = "none"  # last successful table source: proc | ps | ps-fallback.
+
+
+def _enum_hook_says_fail() -> bool:
+    """Test hook: force enumeration failure, fail-closed. Default off."""
+    global _ENUM_OK_SCANS
+    if _ENUM_BREAK == "1":
+        return True
+    if _ENUM_BREAK.startswith("after:"):
+        try:
+            limit = int(_ENUM_BREAK.split(":", 1)[1])
+        except ValueError:
+            return False
+        if _ENUM_OK_SCANS >= limit:
+            return True
+    return False
+
+
+def _scan_table_proc() -> tuple[dict[int, int], bool]:
+    """pid -> ppid from /proc (Linux, no subprocess, no PATH dependency).
+
+    PIDs that vanish mid-scan are normal churn and skipped; a table that
+    does not even contain this process is failed enumeration (fail closed).
+    """
     try:
-        proc = subprocess.run(["ps", "-eo", "pid,ppid"], capture_output=True,
-                              text=True, timeout=10)
-    except (OSError, subprocess.SubprocessError):
-        return set(), False
+        entries = os.listdir("/proc")
+    except OSError:
+        return {}, False
+    table: dict[int, int] = {}
+    for entry in entries:
+        if not entry.isdigit():
+            continue
+        try:
+            with open(f"/proc/{entry}/stat", "rb") as fh:
+                data = fh.read()
+        except OSError:
+            continue  # exited mid-scan.
+        try:
+            # comm may contain spaces/parens: ppid follows the last ')'.
+            ppid = int(data.rsplit(b")", 1)[1].split()[1])
+            table[int(entry)] = ppid
+        except (IndexError, ValueError):
+            continue
+    if os.getpid() not in table:
+        return {}, False
+    return table, True
+
+
+def _scan_table_ps() -> tuple[dict[int, int], int | None, bool]:
+    """pid -> ppid via `ps`, plus our own transient ps PID to exclude."""
+    try:
+        proc = subprocess.Popen(["ps", "-eo", "pid,ppid"],
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.DEVNULL, text=True)
+    except OSError:
+        return {}, None, False
+    try:
+        out, _ = proc.communicate(timeout=10)
+    except subprocess.SubprocessError:
+        try:
+            proc.kill()
+        except OSError:
+            pass
+        return {}, None, False
     # A nonzero exit or empty output is failed enumeration, NOT an empty
     # tree: parsing it as "no descendants" would fail open.
-    if proc.returncode != 0 or not proc.stdout.strip():
-        return set(), False
-    out = proc.stdout
-    kids: dict[int, list[int]] = {}
+    if proc.returncode != 0 or not (out or "").strip():
+        return {}, None, False
+    table: dict[int, int] = {}
     for line in out.splitlines()[1:]:
         parts = line.split()
         if len(parts) != 2:
@@ -102,16 +171,70 @@ def _scan_descendants(root: int) -> tuple[set[int], bool]:
             pid, ppid = int(parts[0]), int(parts[1])
         except ValueError:
             continue
+        table[pid] = ppid
+    return table, proc.pid, True
+
+
+def _scan_descendants(*roots: int) -> tuple[set[int], bool]:
+    # All live PIDs under any root. Returns (pids, ok): ok=False when the
+    # enumeration itself failed, so callers fail closed instead of
+    # mistaking "no data" for "no descendants".
+    global _ENUM_OK_SCANS, _ENUM_SOURCE
+    if _enum_hook_says_fail():
+        return set(), False
+    # Exclude only transient helper PIDs (our own ps call). Roots are
+    # always traversed (the wrapper root is how adopted orphans are
+    # found) but never reported; callers add the child explicitly and
+    # never signal the wrapper itself.
+    exclude: set[int] = set()
+    if sys.platform == "linux":
+        table, ok = _scan_table_proc()
+        if ok:
+            _ENUM_SOURCE = "proc"
+        else:
+            table, ps_pid, ok = _scan_table_ps()
+            if ps_pid is not None:
+                exclude.add(ps_pid)
+            if ok:
+                _ENUM_SOURCE = "ps-fallback"
+    else:
+        table, ps_pid, ok = _scan_table_ps()
+        if ps_pid is not None:
+            exclude.add(ps_pid)
+        if ok:
+            _ENUM_SOURCE = "ps"
+    if not ok:
+        return set(), False
+    _ENUM_OK_SCANS += 1
+    kids: dict[int, list[int]] = {}
+    for pid, ppid in table.items():
+        if pid in exclude:
+            continue
         kids.setdefault(ppid, []).append(pid)
-    seen = {root}
-    stack = [root]
+    seen: set[int] = set()
+    stack = list(roots)
+    traversed = set(roots)
     while stack:
         for child in kids.get(stack.pop(), []):
-            if child not in seen:
+            if child not in seen and child not in traversed:
                 seen.add(child)
                 stack.append(child)
-    seen.discard(root)
     return seen, True
+
+
+def _reap(pids: set[int], protected: int) -> None:
+    """Reap dead adopted descendants so zombies are not survivors.
+
+    waitpid on one PID at a time; the direct child is never touched
+    (proc.wait owns it). Non-children and the living are skipped.
+    """
+    for pid in pids:
+        if pid == protected or pid <= 0:
+            continue
+        try:
+            os.waitpid(pid, os.WNOHANG)
+        except (ChildProcessError, OSError):
+            pass
 
 
 def _alive(pid: int) -> bool:
@@ -247,6 +370,11 @@ def main(argv: list[str]) -> int:
                             stdout=out_w, stderr=err_w)
     relay.close_parent_write_ends()  # parent must not hold the write ends.
     pgid = proc.pid  # start_new_session => child is its own group leader.
+    self_pid = os.getpid()
+    # Discovery roots: the child subtree plus the wrapper itself, so
+    # subreaper-adopted orphans (reparented siblings of the child) are
+    # still found. The wrapper never signals itself (excluded in scan).
+    roots = (proc.pid, self_pid)
     last_beat = 0.0
     registry: set[int] = set()  # every descendant PID ever observed.
     enum_healthy = True
@@ -258,10 +386,11 @@ def main(argv: list[str]) -> int:
             rc = None
         now = time.monotonic()
         if rc is None:  # child still running: refresh the birth registry.
-            seen, ok = _scan_descendants(proc.pid)
+            seen, ok = _scan_descendants(*roots)
             if not ok:
                 enum_healthy = False
             registry |= seen
+            _reap(registry, proc.pid)  # adopted exits must not linger.
         if now - last_beat >= min(args.heartbeat_s, 60.0):
             last_beat = now
             print(f"[run_budget] elapsed={now - start_mono:.1f}s "
@@ -290,21 +419,23 @@ def main(argv: list[str]) -> int:
 
     def sweep(sig: int) -> set[int]:
         nonlocal kill_enum_ok
-        seen, ok = _scan_descendants(proc.pid)
+        seen, ok = _scan_descendants(*roots)
         if not ok:
             kill_enum_ok = False
         registry.update(seen)
-        targets = set(registry) | {proc.pid}
+        targets = (set(registry) | {proc.pid}) - {self_pid}
         _kill_targets(pgid, targets, sig)
+        _reap(registry, proc.pid)
         return targets
 
     sweep(signal.SIGTERM)
     grace_until = time.monotonic() + max(0.0, args.term_grace_s)
     while time.monotonic() < grace_until:
-        seen, ok = _scan_descendants(proc.pid)
+        seen, ok = _scan_descendants(*roots)
         if not ok:
             kill_enum_ok = False
         registry.update(seen)
+        _reap(registry, proc.pid)
         if proc.poll() is not None and not seen:
             break
         time.sleep(0.1)
@@ -316,11 +447,12 @@ def main(argv: list[str]) -> int:
         pass
     relay.drain()
     # Verification sweep: prove known descendants stopped, fail closed.
-    final_seen, final_ok = _scan_descendants(proc.pid)
+    final_seen, final_ok = _scan_descendants(*roots)
     if not final_ok:
         kill_enum_ok = False
-    survivors = sorted(p for p in (set(final_seen) | registry)
-                       if _alive(p))
+    registry.update(final_seen)
+    _reap(registry, proc.pid)
+    survivors = sorted(p for p in registry if _alive(p))
     if kill_enum_ok and enum_healthy and not survivors:
         enforcement, enforcement_detail = "verified", (
             f"all {len(registry)} known descendants dead; "
@@ -341,6 +473,7 @@ def main(argv: list[str]) -> int:
               "note": "deadline reached; partial work is incomplete, never PASS",
               "enforcement": enforcement,
               "enforcement_detail": enforcement_detail,
+              "enum_source": _ENUM_SOURCE,
               "subreaper": subreaper,
               "platform_note": None if subreaper else
               "no child subreaper on this OS: daemonizing children that "
