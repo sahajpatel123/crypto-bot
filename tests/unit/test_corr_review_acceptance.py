@@ -223,6 +223,74 @@ def test_changed_config_resume_refused(tmp_path):
         changed_session.store.close()
 
 
+# -- Finding 4: freshness is scoped to the candidate symbol -------------------
+def _gate_session(tmp_path):
+    from cryptobot.app.config import load_config
+    from cryptobot.app.session import Session, ReplayClock
+    from cryptobot.app.store import RunStore
+    cfg = load_config("configs/paper.toml")
+    store = RunStore(tmp_path / "gate.db")
+    session = Session(cfg, store, tmp_path / "gate", "gate",
+                      clock=ReplayClock(T0))
+    return session, store
+
+
+def _gate_feed(session, symbol, age_s, naive=False):
+    from cryptobot.app.session import _SymbolFeed
+    feed = _SymbolFeed(symbol, 130)
+    feed.mark = 100.0
+    ts = T0 - timedelta(seconds=age_s)
+    feed.mark_ts = ts.replace(tzinfo=None) if naive else ts
+    session._feeds[symbol] = feed
+
+
+def test_gate_scoped_to_candidate_both_directions(tmp_path):
+    session, store = _gate_session(tmp_path)
+    try:
+        _gate_feed(session, "BTCUSDT", 0)
+        _gate_feed(session, "ETHUSDT", 60)
+        assert session._quote_age_gate("BTCUSDT") is None
+        eth = session._quote_age_gate("ETHUSDT")
+        assert eth is not None and eth.startswith("gate:"), eth
+        _gate_feed(session, "BTCUSDT", 60)
+        _gate_feed(session, "ETHUSDT", 0)
+        btc = session._quote_age_gate("BTCUSDT")
+        assert btc is not None and btc.startswith("gate:"), btc
+        assert session._quote_age_gate("ETHUSDT") is None
+    finally:
+        session.engine.close()
+        store.close()
+
+
+def test_gate_missing_candidate_fails_closed(tmp_path):
+    session, store = _gate_session(tmp_path)
+    try:
+        _gate_feed(session, "BTCUSDT", 0)
+        # No ETH feed at all: must reject, never raise, never borrow BTC.
+        eth = session._quote_age_gate("ETHUSDT")
+        assert eth is not None and eth.startswith("gate:"), eth
+    finally:
+        session.engine.close()
+        store.close()
+
+
+def test_gate_future_and_malformed_ts_rejected(tmp_path):
+    session, store = _gate_session(tmp_path)
+    try:
+        feed_setup = session._feeds
+        _gate_feed(session, "BTCUSDT", -60)  # 60s in the future.
+        future = session._quote_age_gate("BTCUSDT")
+        assert future is not None and future.startswith("gate:"), future
+        feed_setup.clear()
+        _gate_feed(session, "BTCUSDT", 0, naive=True)
+        malformed = session._quote_age_gate("BTCUSDT")
+        assert malformed is not None and malformed.startswith("gate:"), \
+            malformed
+    finally:
+        session.engine.close()
+        store.close()
+
+
 # -- Finding 5: nested deadline stops descendants (platform-sensitive) --------
 def test_nested_budget_stops_descendants(tmp_path):
     marker = f"corr-nested-{time.time_ns()}"
