@@ -71,6 +71,15 @@ def _session(tmp_path: Path, **over) -> tuple[Session, RunStore]:
     return session, store
 
 
+def _seed_mark(session, symbol="BTCUSDT"):
+    """Fresh valuation mark so the quote-age gate passes (W3-30MIN)."""
+    from cryptobot.app.session import _SymbolFeed
+    feed = _SymbolFeed(symbol, 0)
+    feed.mark = 100.0
+    feed.mark_ts = session.now_utc()
+    session._feeds[symbol] = feed
+
+
 def test_full_loop_no_trade_reports(tmp_path):
     session, store = _session(tmp_path, warmup_bars=3)
     try:
@@ -136,6 +145,7 @@ def test_admit_protect_flatten_cycle(tmp_path):
             holding_limit_s=600,
             forecast_cost=ForecastCost(5.0, 5.0, 5.0, 1.0),
             evidence_ref="test:1", data_quality=DataQuality.CLEAN)
+        _seed_mark(session)
         session._maybe_admit([Candidate("S1", intent)])
         assert session._position is not None
         # Advance past the modeled submit delay, then drain to fills.
@@ -216,6 +226,7 @@ def test_fill_rows_match_b9_schema(tmp_path):
             holding_limit_s=600,
             forecast_cost=ForecastCost(5.0, 5.0, 5.0, 1.0),
             evidence_ref="test:1", data_quality=DataQuality.CLEAN)
+        _seed_mark(session)
         session._maybe_admit([Candidate("S1", intent)])
         session.clock.set_ms(int(now.timestamp() * 1000) + 5000)
         session._drain_engine()
@@ -252,6 +263,7 @@ def test_short_uses_venue_sell_side(tmp_path):
             holding_limit_s=600,
             forecast_cost=ForecastCost(5.0, 5.0, 5.0, 1.0),
             evidence_ref="test:short", data_quality=DataQuality.CLEAN)
+        _seed_mark(session)
         session._maybe_admit([Candidate("S1", intent)])
         assert session._position is not None
         session.clock.set_ms(int(now.timestamp() * 1000) + 5000)
@@ -770,6 +782,7 @@ def test_event_gate_blocks_admit(tmp_path):
         from cryptobot.events.runtime import ProtectionRuntime
         gate = _gate_at(session.now_utc(), offset_s=0)
         session.protection = ProtectionRuntime(gate.store, gate.config)
+        _seed_mark(session)
         session._maybe_admit([Candidate("S1", _intent(now))])
         assert session._position is None
         assert session.policy._state.reservations == {}
@@ -794,6 +807,7 @@ def test_event_gate_clear_passes_through(tmp_path):
         from cryptobot.events.runtime import ProtectionRuntime
         gate = _gate_at(session.now_utc(), offset_s=10_000)
         session.protection = ProtectionRuntime(gate.store, gate.config)
+        _seed_mark(session)
         session._maybe_admit([Candidate("S1", _intent(now))])
         # Reached risk + submit (rejected there, proving gate passed).
         assert ("execution:submit-rejected:ValueError"
@@ -1006,6 +1020,7 @@ def test_submit_rejection_releases_and_continues(tmp_path):
         now = datetime(2026, 10, 12, 6, 0, tzinfo=timezone.utc)
         session.clock.set_ms(int(now.timestamp() * 1000))
         session.policy.reconcile_day(120.0, 0.0)
+        _seed_mark(session)
         session._maybe_admit([Candidate("S1", _intent(now))])
         assert session._position is None
         assert session.policy._state.reservations == {}
@@ -1029,6 +1044,7 @@ def test_replay_filters_arm_step_sizing(tmp_path):
             {"BTCUSDT": {"tick_size": 0.01, "step_size": 0.001,
                          "min_qty": 0.001, "min_notional": 5.0}},
             "manifest-frozen", asof_utc=now)
+        _seed_mark(session)  # fresh mark: test is about sizing, not age.
         verdict = session.policy.evaluate(
             _intent(now), session._snapshot_account())
         assert isinstance(verdict, Approved)

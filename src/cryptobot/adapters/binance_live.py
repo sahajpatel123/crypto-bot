@@ -138,8 +138,23 @@ class UrllibTransport:
         self._base = base_url.rstrip("/")
         self._timeout = timeout_s
 
+    def _effective_timeout(self) -> float:
+        """Configured timeout bounded by the remaining job budget."""
+        import os
+        import time
+
+        raw = os.environ.get("CRYPTOBOT_DEADLINE_MONO")
+        if raw is None:
+            return self._timeout
+        try:
+            remaining = float(raw) - time.monotonic()
+        except ValueError:
+            return self._timeout
+        return max(1.0, min(self._timeout, remaining))
+
     def request(self, method: str, path: str, params: dict[str, Any],
                 headers: dict[str, str]) -> Any:
+        timeout = self._effective_timeout()
         body = urllib.parse.urlencode(params or {}).encode("utf-8")
         url = self._base + path
         if method == "GET" and body:
@@ -149,7 +164,7 @@ class UrllibTransport:
             url, data=body if method != "GET" else None, headers=headers,
             method=method)
         try:
-            with urllib.request.urlopen(req, timeout=self._timeout) as resp:
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
                 return json.loads(resp.read().decode("utf-8"))
         except urllib.error.HTTPError as exc:
             try:

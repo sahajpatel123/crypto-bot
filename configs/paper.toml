@@ -16,7 +16,7 @@ stress_multiplier = 1.5
 operating_stop_pct = 0.005
 emergency_stop_pct = 0.01
 profile_version = "24h-1"
-# max_mark_age_ms unset: stale-mark block opt-in (W3-24H)
+max_mark_age_ms = 1000  # §4: 1s maximum quote/valuation age (W3-30MIN)
 daily_target_pct = 0.02
 profit_arm_pct = 0.01
 profit_retain_pct = 0.70
