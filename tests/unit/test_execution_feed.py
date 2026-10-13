@@ -107,7 +107,9 @@ def test_file_pump_feeds_engine_and_views(tmp_path):
     engine.note_event(_ticker(7, T0MS + 3000, 60002.00, 60002.50))
     fills = [e for e in engine.poll() if e.kind == "fill"]
     assert [f.payload.client_order_id for f in fills] == [cid]
-    assert fills[0].payload.price == pytest.approx(60002.50)
+    # CORR-EXEC: due at T0+2.1s, so it crosses the due-time print
+    # (60001.00); the T0+3s ticker is future information at that time.
+    assert fills[0].payload.price == pytest.approx(60001.00)
 
 
 def test_funding_settles_once_when_crossed_with_position(tmp_path):

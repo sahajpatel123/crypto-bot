@@ -110,8 +110,11 @@ def test_market_order_taker_fill_with_fee():
     assert fill.client_order_id == cid
     assert fill.instrument == "BTCUSDT" and fill.side == "BUY"
     assert fill.liquidity == "taker"
-    assert fill.price == pytest.approx(60001.50)  # crossed the ask, never mid.
-    assert fill.fee == pytest.approx(60001.50 * 0.001 * 0.0005)
+    # CORR-EXEC: due at T0, so it crosses the T0 ask (60000.50); the T1
+    # ask is future information at the modeled due time and cannot price
+    # the execution (same defect class as the marketable-IOC probe).
+    assert fill.price == pytest.approx(60000.50)  # crossed the ask, never mid.
+    assert fill.fee == pytest.approx(60000.50 * 0.001 * 0.0005)
     assert fill.fee > 0
     assert fill.execution_id  # ledger dedup key present.
 
@@ -365,7 +368,8 @@ def test_submit_protected_fills_at_or_better():
     _quote(engine, 1, 60001.00, 60001.50)
     fills = [e for e in engine.poll() if e.kind == "fill"]
     assert [f.payload.client_order_id for f in fills] == [cid]
-    assert fills[0].payload.price == pytest.approx(60001.50)  # lifted the ask...
+    # CORR-EXEC: due at T0 → lifts the due-time ask, not the later tick's.
+    assert fills[0].payload.price == pytest.approx(60000.50)  # lifted the ask...
     assert fills[0].payload.price < 60002.00  # ...better than the limit.
 
 
@@ -456,7 +460,8 @@ def test_note_event_feeds_true_taker_cross():
     engine.note_event(_ticker_record(2, t0ms + 1000, 60001.00, 60001.50))
     fills = [e for e in engine.poll() if e.kind == "fill"]
     assert [f.payload.client_order_id for f in fills] == [cid]
-    assert fills[0].payload.price == pytest.approx(60001.50)  # crossed the ask.
+    # CORR-EXEC: due at the first ticker → crosses its ask (60000.50).
+    assert fills[0].payload.price == pytest.approx(60000.50)  # crossed the ask.
 
 
 def test_note_event_mark_price_only_records():
@@ -793,8 +798,9 @@ def test_account_margin_locks_and_releases():
     _quote(engine, 1, 60001.00, 60001.50)
     assert engine.poll()
     available, free = engine.account_margin()
-    assert (available, free) == (pytest.approx(9396.984925),
-                                 pytest.approx(8796.969925))
+    # CORR-EXEC: entry due at T0 fills at the T0 ask (60000.50).
+    assert (available, free) == (pytest.approx(9396.994975),
+                                 pytest.approx(8796.989975))
     assert free < available < 10000.0  # exposure locks margin.
     engine.submit(EngineOrder("BTCUSDT", "SELL", 0.1, "MARKET", role="target"))
     _quote(engine, 2, 60002.00, 60002.50)

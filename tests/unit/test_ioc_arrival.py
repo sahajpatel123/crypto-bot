@@ -76,6 +76,29 @@ def test_ioc_nonmarketable_cancels_at_arrival_no_revival():
     assert "ioc_maker_relabeled" not in engine.stats  # F-W1B1 superseded.
 
 
+def test_corr_marketable_ioc_executes_at_arrival_not_later_quote():
+    # CORR-EXEC acceptance M1: probe shape verbatim (T0 99/101, BUY 0.001
+    # cap 101.50, 50+50ms). Due at T0+50ms against the standing arrival
+    # book, the IOC fills @101 in the 200ms drain — no tick required —
+    # and the quote 10s later at ask 90 determines NOTHING (no fill at
+    # 90, no revival, occurrence and time fixed at due time).
+    engine = _engine(submit_delay_ms=50, fill_delay_ms=50)
+    _quote(engine, T0, 99.0, 101.0)
+    coid = engine.submit(EngineOrder(instrument="BTCUSDT", side="BUY",
+                                     qty=0.001, kind="LIMIT", price=101.50,
+                                     role="entry"))
+    engine.advance_to(T0 + timedelta(milliseconds=200))
+    early = _drain(engine)
+    fills = [e for e in early if e.kind == "fill"]
+    assert len(fills) == 1, f"expected due-time execution, got {early}"
+    assert fills[0].payload.client_order_id == coid
+    assert fills[0].payload.price == pytest.approx(101.0)
+    assert fills[0].payload.qty == pytest.approx(0.001)
+    _quote(engine, T0 + timedelta(seconds=10), 89.0, 90.0)
+    assert [e.kind for e in _drain(engine)].count("fill") == 0
+    assert engine.filled_qty(coid) == pytest.approx(0.001)
+
+
 def test_ioc_nonmarketable_sell_mirror():
     # SELL cap 99.50 > bid 99.00: non-marketable, cancels at arrival;
     # the later bid 98 (marketable then) must not revive it.
@@ -125,67 +148,83 @@ def _trade(engine, at, price, size):
 
 
 def test_ioc_partial_fill_cancels_remainder():
-    # Print 0.0005 < qty 0.002: partial fill, then the remainder cancels
-    # instead of resting for later prints (no revival).
+    # Arrival ask size 0.0005 < qty 0.002: partial fill at the first
+    # opportunity, then the remainder cancels (no revival on later size).
     engine = _engine()
-    _quote(engine, T0, 99.0, 101.0)
+    _quote(engine, T0, 99.0, 101.0, ask_size=0.0005)
     coid = engine.submit(EngineOrder(instrument="BTCUSDT", side="BUY",
                                      qty=0.002, kind="LIMIT", price=101.50,
                                      role="entry"))
-    _trade(engine, T0 + timedelta(seconds=1), 101.0, 0.0005)
+    _quote(engine, T0 + timedelta(seconds=1), 99.0, 101.0, ask_size=5.0)
     first = _drain(engine)
     fills = [e for e in first if e.kind == "fill"]
     assert len(fills) == 1
     part = engine.filled_qty(coid)
     assert 0.0 < part < 0.002  # partial, whatever nautilus matched.
-    _trade(engine, T0 + timedelta(seconds=2), 101.0, 5.0)
-    _trade(engine, T0 + timedelta(seconds=3), 101.0, 5.0)
+    _quote(engine, T0 + timedelta(seconds=2), 99.0, 101.0, ask_size=5.0)
+    _quote(engine, T0 + timedelta(seconds=3), 99.0, 101.0, ask_size=5.0)
     rest = _drain(engine)
     assert [e.kind for e in rest].count("fill") == 0, \
-        "remainder revived on later prints"
+        "remainder revived on later size"
     assert engine.filled_qty(coid) == pytest.approx(part)  # frozen.
 
 
-def test_ioc_zero_match_prints_no_revival():
-    # Marketable at arrival but matched by nothing for two prints above
-    # the cap: the IOC terminates (nautilus evaluates per trade tick),
-    # so the later print at 100.50 cannot revive it.
+def test_ioc_marketable_executes_first_opportunity_only():
+    # Marketable at arrival: executes at the FIRST opportunity (against
+    # arrival liquidity, before later prints matter) and never again —
+    # exactly one fill even with deep later prints.
     engine = _engine()
     _quote(engine, T0, 99.0, 101.0)
     coid = engine.submit(EngineOrder(instrument="BTCUSDT", side="BUY",
                                      qty=0.001, kind="LIMIT", price=101.50,
                                      role="entry"))
     _trade(engine, T0 + timedelta(seconds=1), 101.60, 1.0)
-    _trade(engine, T0 + timedelta(seconds=2), 101.70, 1.0)
-    _drain(engine)
-    _trade(engine, T0 + timedelta(seconds=3), 100.50, 1.0)
+    first = _drain(engine)
+    assert [e.kind for e in first].count("fill") == 1
+    _trade(engine, T0 + timedelta(seconds=2), 100.50, 5.0)
+    _trade(engine, T0 + timedelta(seconds=3), 100.50, 5.0)
     rest = _drain(engine)
     assert [e.kind for e in rest].count("fill") == 0
+    assert engine.filled_qty(coid) == pytest.approx(0.001)
+
+
+def test_ioc_cancel_while_queued_drops_submit():
+    # Chronological due-time cancel: submit_delay 50ms, cancel arrives at
+    # T0 before the submit's T0+50ms due time → the queued submit is
+    # dropped, nothing ever enters the venue (no fill, no order events).
+    engine = _engine(submit_delay_ms=50, fill_delay_ms=50)
+    _quote(engine, T0, 99.0, 101.0, ask_size=1.0)
+    coid = engine.submit(EngineOrder(instrument="BTCUSDT", side="BUY",
+                                     qty=0.001, kind="LIMIT", price=101.50,
+                                     role="entry"))
+    engine.cancel(coid, "test-early-cancel")
+    engine.advance_to(T0 + timedelta(milliseconds=200))
+    _quote(engine, T0 + timedelta(seconds=1), 99.0, 101.0, ask_size=5.0)
+    assert _drain(engine) == []
     assert engine.filled_qty(coid) == 0.0
+    assert engine.resolve(coid) is None  # never reached the venue.
 
 
-def test_ioc_race_fill_stands_then_frozen():
-    # The sweep cancels after the accept tick, but nautilus matches each
-    # tick BEFORE processing queued cancels — so a fill executing before
-    # the cancel lands is genuine and stands (same race as real venues);
-    # the order is then terminal and later size cannot revive it.
+def test_ioc_same_ts_cancel_rejected_fill_stands():
+    # Same-timestamp submit/cancel tie-breaks AT the venue: the cancel
+    # for the not-yet-accepted order is rejected ("not found") and the
+    # arrival fill stands — the adapter reports the venue verdict as-is
+    # (one fill + one reject, exactly the submitted qty, no revival).
     engine = _engine()
     _quote(engine, T0, 99.0, 101.0, ask_size=1.0)
     coid = engine.submit(EngineOrder(instrument="BTCUSDT", side="BUY",
                                      qty=0.001, kind="LIMIT", price=101.50,
                                      role="entry"))
-    _quote(engine, T0 + timedelta(seconds=1), 99.0, 101.0, ask_size=0.0001)
-    _drain(engine)
-    assert engine.stats["ioc_remainder_canceled"] >= 1
+    engine.cancel(coid, "test-same-ts-cancel")
+    _quote(engine, T0 + timedelta(seconds=1), 99.0, 101.0, ask_size=5.0)
+    events = _drain(engine)
+    kinds = [e.kind for e in events]
+    assert kinds.count("fill") == 1
+    assert kinds.count("reject") == 1
+    assert "not found" in events[kinds.index("reject")].payload.reason
+    assert engine.filled_qty(coid) == pytest.approx(0.001)
     _quote(engine, T0 + timedelta(seconds=2), 99.0, 101.0, ask_size=5.0)
-    race = _drain(engine)
-    assert [e.kind for e in race].count("fill") <= 1  # race fill, if any.
-    frozen = engine.filled_qty(coid)
-    _quote(engine, T0 + timedelta(seconds=3), 99.0, 101.0, ask_size=5.0)
-    _quote(engine, T0 + timedelta(seconds=4), 99.0, 101.0, ask_size=5.0)
-    rest = _drain(engine)
-    assert [e.kind for e in rest].count("fill") == 0
-    assert engine.filled_qty(coid) == pytest.approx(frozen)
+    assert [e.kind for e in _drain(engine)].count("fill") == 0
 
 
 def test_ioc_cancel_fill_race_is_exactly_once():
@@ -212,11 +251,11 @@ def test_protection_attaches_after_partial_fill():
     # Protection legs size to FILLED qty (not ordered qty) after a
     # partial — verified individually, never assumed.
     engine = _engine()
-    _quote(engine, T0, 99.0, 101.0)
+    _quote(engine, T0, 99.0, 101.0, ask_size=0.0005)
     coid = engine.submit(EngineOrder(instrument="BTCUSDT", side="BUY",
                                      qty=0.002, kind="LIMIT", price=101.50,
                                      role="entry"))
-    _trade(engine, T0 + timedelta(seconds=1), 101.0, 0.0005)
+    _quote(engine, T0 + timedelta(seconds=1), 99.0, 101.0, ask_size=5.0)
     _drain(engine)
     part = engine.filled_qty(coid)
     assert 0.0 < part < 0.002
@@ -269,17 +308,21 @@ def test_exit_latency_sensitivity_instant_vs_realistic(tmp_path):
     # times — base economics must not silently depend on instant exits.
     # (Session._flatten migration to delayed exits is manager-owned;
     # this test pins the engine-side sensitivity + labeling.)
+    # Dense 10ms ticks after exit submission: the 100ms modeled
+    # latency gap is visible (1s ticks would quantize both to one tick).
+    base = T0 + timedelta(seconds=1)
     fast = _engine()
     fast.journal_path = tmp_path / "fast.jsonl"
     _quote(fast, T0, 99.0, 101.0)
     fast.submit(EngineOrder(instrument="BTCUSDT", side="BUY", qty=0.001,
                             kind="MARKET", role="entry"))
-    _quote(fast, T0 + timedelta(seconds=1), 99.0, 101.0)
+    _quote(fast, base, 99.0, 101.0)
     _drain(fast)
     fast.submit_immediate(EngineOrder(
         instrument="BTCUSDT", side="SELL", qty=0.001, kind="MARKET",
         reduce_only=True, role="target"))
-    _quote(fast, T0 + timedelta(seconds=2), 99.0, 101.0)
+    for ms in (10, 20, 30, 200):
+        _quote(fast, base + timedelta(milliseconds=ms), 99.0, 101.0)
     _drain(fast)
 
     slow = _engine(submit_delay_ms=50, fill_delay_ms=50)
@@ -287,12 +330,12 @@ def test_exit_latency_sensitivity_instant_vs_realistic(tmp_path):
     _quote(slow, T0, 99.0, 101.0)
     slow.submit(EngineOrder(instrument="BTCUSDT", side="BUY", qty=0.001,
                             kind="MARKET", role="entry"))
-    _quote(slow, T0 + timedelta(seconds=1), 99.0, 101.0)
+    _quote(slow, base, 99.0, 101.0)
     _drain(slow)
     slow.submit(EngineOrder(instrument="BTCUSDT", side="SELL", qty=0.001,
                             kind="MARKET", reduce_only=True, role="target"))
-    _quote(slow, T0 + timedelta(seconds=2), 99.0, 101.0)
-    _quote(slow, T0 + timedelta(seconds=3), 99.0, 101.0)
+    for ms in (10, 20, 30, 200):
+        _quote(slow, base + timedelta(milliseconds=ms), 99.0, 101.0)
     _drain(slow)
 
     fast_fills = _journal_fills(tmp_path / "fast.jsonl")
@@ -302,6 +345,102 @@ def test_exit_latency_sensitivity_instant_vs_realistic(tmp_path):
     assert fast_fills[1]["ts_utc"] < slow_fills[1]["ts_utc"]
     assert "immediate_exit" in (tmp_path / "fast.jsonl").read_text()
     assert "immediate_exit" not in (tmp_path / "slow.jsonl").read_text()
+
+
+def test_ioc_marketable_sell_mirror_executes_at_arrival():
+    # SELL mirror of the CORR acceptance M1: marketable at arrival (bid
+    # 99 >= cap 98.50) → fills @99 in the 200ms drain, no tick required;
+    # the bid 10s later at 110 determines nothing (no fill at 110).
+    engine = _engine(submit_delay_ms=50, fill_delay_ms=50)
+    _quote(engine, T0, 99.0, 101.0)
+    coid = engine.submit(EngineOrder(instrument="BTCUSDT", side="SELL",
+                                     qty=0.001, kind="LIMIT", price=98.50,
+                                     role="entry"))
+    engine.advance_to(T0 + timedelta(milliseconds=200))
+    early = _drain(engine)
+    fills = [e for e in early if e.kind == "fill"]
+    assert len(fills) == 1, f"expected due-time execution, got {early}"
+    assert fills[0].payload.price == pytest.approx(99.0)
+    _quote(engine, T0 + timedelta(seconds=10), 110.0, 111.0)
+    assert [e.kind for e in _drain(engine)].count("fill") == 0
+    assert engine.filled_qty(coid) == pytest.approx(0.001)
+
+
+def test_ioc_trade_only_print_gates_arrival():
+    # Sparse data, no BBO ever: the last print is the executable
+    # reference. BUY cap 100.50 >= print 100 → marketable, submits and
+    # fills; BUY cap 99.50 < print 100 → cancels at arrival, no revival.
+    engine = _engine()
+    _trade(engine, T0, 100.0, 1.0)
+    good = engine.submit(EngineOrder(instrument="BTCUSDT", side="BUY",
+                                     qty=0.001, kind="LIMIT", price=100.50,
+                                     role="entry"))
+    bad = engine.submit(EngineOrder(instrument="BTCUSDT", side="BUY",
+                                    qty=0.001, kind="LIMIT", price=99.50,
+                                    role="entry"))
+    _trade(engine, T0 + timedelta(seconds=1), 100.0, 1.0)
+    events = _drain(engine)
+    by_id = {}
+    for e in events:
+        by_id.setdefault(e.payload.client_order_id, []).append(e.kind)
+    assert "fill" in by_id[good]
+    assert by_id[bad] == ["cancel"]
+    assert engine.filled_qty(good) == pytest.approx(0.001)
+    assert engine.filled_qty(bad) == 0.0
+
+
+def test_ioc_queued_past_window_expires_never_submits():
+    # Expiry interplay: submit_delay 50ms but the window already passed
+    # when the submit drains → expire event, never submitted, no fill.
+    engine = _engine(submit_delay_ms=50, fill_delay_ms=1)
+    _quote(engine, T0, 99.0, 101.0)
+    coid = engine.submit(EngineOrder(
+        instrument="BTCUSDT", side="BUY", qty=0.001, kind="LIMIT",
+        price=101.50, role="entry",
+        expire_at_utc=T0 + timedelta(milliseconds=10)))
+    engine.advance_to(T0 + timedelta(milliseconds=200))
+    events = _drain(engine)
+    assert [e.kind for e in events] == ["expire"]
+    assert engine.filled_qty(coid) == 0.0
+    assert engine.resolve(coid) is None
+
+
+def test_ioc_no_subsequent_tick_resolves_at_due_time():
+    # M1: immediate-or-cancel never rests open. No subsequent tick, but
+    # the standing arrival book exists — so the advance past due resolves
+    # the IOC at due time (fill @101), with nothing invented.
+    engine = _engine()
+    _quote(engine, T0, 99.0, 101.0)
+    coid = engine.submit(EngineOrder(instrument="BTCUSDT", side="BUY",
+                                     qty=0.001, kind="LIMIT", price=101.50,
+                                     role="entry"))
+    engine.advance_to(T0 + timedelta(milliseconds=200))
+    early = _drain(engine)
+    assert [e.kind for e in early].count("fill") == 1
+    assert engine.filled_qty(coid) == pytest.approx(0.001)
+    states = {s.client_order_id: s.state for s in engine.open_orders()}
+    assert states[coid] == "filled"  # terminal, not resting.
+
+
+def test_ioc_partial_remainder_cancels_same_opportunity():
+    # Thin arrival liquidity (0.0005 < 0.002): partial fill at the first
+    # opportunity, remainder canceled within that same opportunity (venue
+    # enforces IOC natively; the adapter sweep retires tracking as a
+    # backstop) — later size never revives it, qty frozen.
+    engine = _engine()
+    _quote(engine, T0, 99.0, 101.0, ask_size=0.0005)
+    coid = engine.submit(EngineOrder(instrument="BTCUSDT", side="BUY",
+                                     qty=0.002, kind="LIMIT", price=101.50,
+                                     role="entry"))
+    _quote(engine, T0 + timedelta(seconds=1), 99.0, 101.0, ask_size=5.0)
+    events = _drain(engine)
+    assert [e.kind for e in events].count("fill") == 1
+    assert [e.kind for e in events].count("cancel") == 1
+    part = engine.filled_qty(coid)
+    assert 0.0 < part < 0.002
+    _quote(engine, T0 + timedelta(seconds=2), 99.0, 101.0, ask_size=5.0)
+    assert [e.kind for e in _drain(engine)].count("fill") == 0
+    assert engine.filled_qty(coid) == pytest.approx(part)  # frozen.
 
 
 def test_queued_submit_past_window_expires_unsubmitted():

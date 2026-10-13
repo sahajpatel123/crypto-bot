@@ -83,7 +83,8 @@ def test_entry_fill_converts_and_propagates_real_fee(tmp_path):
     assert len(sink.deltas) == 1
     res, exec_id, sym, side, qty, price, fee, ts = sink.deltas[0]
     assert (res, sym, side) == ("res-1", "BTCUSDT", "BUY")
-    assert qty == pytest.approx(0.002) and fee == pytest.approx(60001.5 * 0.002 * 0.0005)
+    # CORR-EXEC: entry due at T0 fills at the T0 ask (60000.50).
+    assert qty == pytest.approx(0.002) and fee == pytest.approx(60000.5 * 0.002 * 0.0005)
     assert fee > 0 and exec_id  # real simulator fee, durable exec id.
     trader.poll()  # idempotent: no duplicate callbacks.
     assert sink.fills == ["res-1"] and len(sink.deltas) == 1
