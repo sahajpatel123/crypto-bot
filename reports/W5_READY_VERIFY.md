@@ -64,9 +64,41 @@ Scoring (matches reviewer exactly):
 
 ## 4. Pending
 
-- W1 READY: not yet integrated → substantive review owed.
 - Final adversarial challenge + PASS/VETO on the integrated SHA.
 - Final `coord/outbox/W5-READY.json`.
+
+## 7. Addendum — substantive W1 review (APPROVE)
+
+Reviewed branch `origin/worker1/ready-lifecycle` (fix `1c1ec7f`,
+outbox `f1764a0`, merged as `30f9175` with all four files identical)
+in a read-only scratch worktree. Every job under `run_budget`.
+
+- Independent probes: both tapes COMPLETE rc=0, forgotten 0, expiry 0,
+  protection `{verified:1}` each, fills 0.332/0.332 both tapes,
+  quiet exit @100.23 via time-exit — every claimed after-value exact.
+- Full suite: 1130 passed, 1 skipped in 296.5s — claim verified
+  exactly. Owned 23 lifecycle tests + replay file: 67 green.
+- Code line-reviewed: venue-step snap + double recheck
+  (approve→executable→recorded), first-fill exposure transition
+  (exec-gated, tracked-only), protection need (net + unknown-only
+  remainder, terminal retires), settle/prune with seen-set
+  queue-drop-vs-amnesia distinguisher, full-agreement release,
+  idempotent flatten (one reduce-only exact-net close, unknown counts
+  in-flight, checkpoint-on-action), null-payload loud reject,
+  executable narrowing unpersisted+popped (post-restart need falls back
+  to approved = conservative over-cover).
+- B8 adaptation is a strengthening (legs retained + retired-with-
+  cancel, 3 new asserts, rationale comment). No test removed.
+- W5 adversarial extras: null + NaN payloads → loud
+  `event-malformed-payload` counter, no raise (my base note folded);
+  in-bracket stop-fill sweep: entry+stop filled, target cancelled,
+  ZERO live orders, queues empty, position released, ledger flat.
+- Observations (not blocking): async-attach pairs churn through
+  replace-to-emergency (fail-closed; paper path synchronous and
+  proven); `seen_ids`/`cancel_requested` sets verified never
+  serialized; post-restart `_executable` absence over-covers by design.
+- Scope: session.py + policy.py + lifecycle tests only; engine files
+  untouched (guarded reads only).
 
 ## 6. Addendum — substantive W3 review (APPROVE)
 
