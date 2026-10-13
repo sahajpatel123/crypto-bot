@@ -362,6 +362,14 @@ class BenchRunner:
                         session._day = accounting_date(
                             session.now_utc()).isoformat()
                         baselined = True
+                    exch_ms = event.get("exchange_ts_ms")
+                    if isinstance(exch_ms, (int, float)) and exch_ms > 0:
+                        # Replay clock tracks event time (30MIN scoring fix):
+                        # without this the 1s quote-age gate compares a
+                        # heartbeat-lagged clock against event-time marks and
+                        # every candidate dies stale on the bench path.
+                        # set_ms is forward-only: safe for resume/replay.
+                        session.clock.set_ms(int(exch_ms))
                     t1 = time.perf_counter()
                     session._ingest(event, adapters, modules)
                     session._roll_day_if_needed()

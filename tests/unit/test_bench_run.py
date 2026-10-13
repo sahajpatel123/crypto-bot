@@ -180,3 +180,17 @@ def test_checkpoint_preserves_position_economics(tmp_path):
     finally:
         session.engine.close()
         session.store.close()
+
+
+def test_replay_clock_tracks_event_time(tmp_path):
+    # 30MIN scoring fix (manager): the session clock must follow event
+    # exchange timestamps on the bench path. Before the fix the clock
+    # advanced only 1s per heartbeat, so the 1s quote-age gate compared
+    # a lagged clock against event-time marks and every strategy
+    # candidate died stale (0 intents on an 811k-event slice).
+    manifest = _manifest(tmp_path)
+    ckpt, report = tmp_path / "ck", tmp_path / "rep.json"
+    rc = main(_args(tmp_path, manifest, ckpt, report, ["--run-id", "rclock"]))
+    assert rc == 0
+    commit = json.loads((ckpt / "bench_checkpoint.json").read_text())
+    assert commit["clock_ms"] == T2 + 71_000  # last event exchange_ts.
