@@ -14,9 +14,23 @@ import pytest
 # integration to the Required design (protected profile + tracker
 # layer; see commit). F-W5R1 (four-budget sizing) fixed by the manager
 # four-budget cap (policy computes remaining-daily/floor-cushion cap,
-# sizing takes the min); probes now pass unmarked. List retained
-# (empty) for future findings.
-KNOWN_FAILURES = ()
+# sizing takes the min); probes now pass unmarked.
+# 30min (W5): §4 IOC arrival-scheduling failures below, strict-xfail
+# with owner; XPASS forces trim at each fix's integration.
+KNOWN_FAILURES = (
+    # Owner W1/W2: nonmarketable IOC rests and revives on later liquidity
+    # instead of canceling at arrival (both sides).
+    "test_ioc_adversarial.py"
+    "::test_nonmarketable_buy_ioc_dead_at_arrival_no_late_revival",
+    "test_ioc_adversarial.py"
+    "::test_nonmarketable_sell_ioc_dead_at_arrival_no_late_revival",
+    # Owner W1/W2: marketable IOC does not fill against the arrival book.
+    "test_ioc_adversarial.py"
+    "::test_marketable_ioc_fills_at_arrival_book_both_sides",
+    # Owner W1/W2: price band not enforced at arrival (same root cause).
+    "test_ioc_adversarial.py"
+    "::test_price_band_bounds_the_cross_at_arrival",
+)
 
 
 def pytest_collection_modifyitems(items):
