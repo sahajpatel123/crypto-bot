@@ -34,7 +34,7 @@ from .synthetic import (
     SCENARIO_WIDE_SPREAD,
 )
 
-REGISTRY_VERSION = "0.3.0"
+REGISTRY_VERSION = "0.4.0"
 TRAIN_FRAC = 0.70
 EMBARGO_FRAC = 0.05
 VALIDATION_FRAC = 0.25
@@ -164,6 +164,90 @@ EXP_004 = {
     "trials_executed": 0,
 }
 
+# ROUND-01: the 30-minute plan section 7 preregistered research round
+# (Worker 4, 30MIN). FROZEN 2026-10-13 BEFORE any score is observed.
+# 11 configurations (4 baselines + 5 variants + COMBINED + CASH).
+# S5 excluded: no synced depth in scoring data (0 eligible seconds on
+# the diagnosis slice; 1.2-1.4M never-synced rows in banked cells).
+# S2-V/S2-F deferred by the 12-config cap, not rejected.
+ROUND_01_CONFIGS = (
+    {"config_id": "R01-S1", "family": "S1", "arm": "S1",
+     "role": "baseline", "mechanism": "price expansion continues after "
+     "an executable entry (30-min plan section 7 S1 hypothesis)"},
+    {"config_id": "R01-S2", "family": "S2", "arm": "S2",
+     "role": "baseline", "mechanism": "resumption within an established "
+     "trend offers sufficient net continuation"},
+    {"config_id": "R01-S3", "family": "S3", "arm": "S3",
+     "role": "baseline", "mechanism": "reversion toward value exceeds "
+     "total execution costs in a quiet range"},
+    {"config_id": "R01-S4", "family": "S4", "arm": "S4",
+     "role": "baseline", "mechanism": "a measured reclaim supports a "
+     "reversal toward the prior range"},
+    {"config_id": "R01-S1-V", "family": "S1", "arm": "S1-V",
+     "role": "variant", "mechanism": "volume confirmation (vol_z>=1.0) "
+     "filters false breaks and chasing"},
+    {"config_id": "R01-S1-F", "family": "S1", "arm": "S1-F",
+     "role": "variant", "mechanism": "directional-fraction confirmation "
+     "(10-bar buy_frac>=0.58, real-trade input) filters adverse drift "
+     "during latency"},
+    {"config_id": "R01-S3-R", "family": "S3", "arm": "S3-R",
+     "role": "variant", "mechanism": "regime filter (width<=120bps, "
+     ">=2 touches) avoids trend-transition fades"},
+    {"config_id": "R01-S3-C", "family": "S3", "arm": "S3-C",
+     "role": "variant", "mechanism": "cost cover (entry-to-mid>=26bps) "
+     "avoids ranges narrower than round-trip costs"},
+    {"config_id": "R01-S4-S", "family": "S4", "arm": "S4-S",
+     "role": "variant", "mechanism": "ablation: tests whether the pierce "
+     "requirement costs genuine reversals"},
+    {"config_id": "R01-COMBINED", "family": "COMBINED", "arm": "COMBINED",
+     "role": "portfolio", "mechanism": "single-account bot under the "
+     "same portfolio limits; must beat the strongest single family"},
+    {"config_id": "R01-CASH", "family": "CASH", "arm": "CASH",
+     "role": "benchmark", "mechanism": "flat benchmark"},
+)
+ROUND_01 = {
+    "round_id": "ROUND-01",
+    "plan": "30-minute plan section 7",
+    "frozen_utc": "2026-10-13T04:34:54+00:00",
+    "frozen_by": "worker4/30min-research",
+    "registry_version": "0.4.0",
+    "strategy_version": STRATEGY_VERSION,
+    "configs": list(ROUND_01_CONFIGS),
+    "excluded": [
+        {"family": "S5", "reason": "ineligible: no synchronized depth in "
+         "scoring data (0/8869 eligible seconds on diagnosis slice; "
+         "1.2-1.4M book:never-synced rows banked; 0 snapshots "
+         "installed). Reinstate only on depth-enabled captures with "
+         "sync gating; never on invented depth."},
+        {"family": "S2", "arm": "S2-V",
+         "reason": "deferred: outside the 12-config cap; weaker "
+         "mechanism priority than S1-V/S1-F. Not rejected."},
+        {"family": "S2", "arm": "S2-F",
+         "reason": "deferred: outside the 12-config cap; weaker "
+         "mechanism priority than S1-V/S1-F. Not rejected."},
+    ],
+    "splits": {
+        "development": "observed-archive 2026-09-12..2026-10-03 "
+                       "(already viewed: diagnostic knowledge only)",
+        "holdout": "FRESH uninspected archive coverage, >=10 complete "
+                   "calendar days, chronology + selection history "
+                   "defensible (manager/W2 to identify; if unavailable, "
+                   "report the limitation, never manufacture one)",
+        "purge_s": 300,
+        "purge_covers": "120-bar features + 15s entry delay + 120s max "
+                        "hold + margin at every boundary",
+    },
+    "stopping_rule": "score each config exactly once per split; select "
+                     "ONE final candidate on development BEFORE any "
+                     "holdout inspection; score the holdout once; no "
+                     "re-tuning after the holdout look; a negative round "
+                     "is a valid result",
+    "engine": "corrected IOC execution (post-W1 fix) + frozen cost "
+              "contract; no scoring until both land",
+    "status": "preregistered",
+    "trials_executed": 0,
+}
+
 __all__ = [
     "EMBARGO_FRAC",
     "EXP_001",
@@ -172,6 +256,8 @@ __all__ = [
     "EXP_004",
     "NET_S1_V1",
     "REGISTRY_VERSION",
+    "ROUND_01",
+    "ROUND_01_CONFIGS",
     "S1_SCENARIOS",
     "S2_SCENARIOS",
     "S3_SCENARIOS",
@@ -223,17 +309,19 @@ class TrialRecord:
     exp_id: str
     arm: str
     seed: int
-    split: str  # "train" | "validation"
-    status: str  # "ok" | "failed"
+    split: str  # "train" | "validation" | "development" | "holdout"
+    status: str  # "ok" | "failed" | "discarded"
     reason: str
     utc: str
     metrics: tuple[tuple[str, str], ...] = ()
 
     def __post_init__(self) -> None:
-        if self.split not in ("train", "validation"):
-            raise ValueError("split must be train or validation")
-        if self.status not in ("ok", "failed"):
-            raise ValueError("status must be ok or failed")
+        if self.split not in ("train", "validation", "development",
+                              "holdout"):
+            raise ValueError("split must be train, validation, "
+                             "development or holdout")
+        if self.status not in ("ok", "failed", "discarded"):
+            raise ValueError("status must be ok, failed or discarded")
         if not self.trial_id:
             raise ValueError("trial_id must be non-empty")
 
@@ -268,6 +356,9 @@ class TrialLog:
 
     def failed(self) -> list[TrialRecord]:
         return [t for t in self.trials if t.status == "failed"]
+
+    def discarded(self) -> list[TrialRecord]:
+        return [t for t in self.trials if t.status == "discarded"]
 
     def to_json(self) -> str:
         return json.dumps([t.to_dict() for t in self.trials], indent=2)

@@ -20,7 +20,7 @@ def test_manifest_derived_from_frozen_definitions():
     # arms x scenarios x (3 train seeds on train split + 2 val seeds on val split)
     assert m1["planned"] == 3 * 6 * 5
     assert m1["promotion_rule"].startswith("NONE")
-    assert m1["code"]["registry_version"] == "0.3.0"
+    assert m1["code"]["registry_version"] == "0.4.0"
     ids = [t["trial_id"] for t in m1["trials"]]
     assert len(set(ids)) == len(ids)
     first = m1["trials"][0]
