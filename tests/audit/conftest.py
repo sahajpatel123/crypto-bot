@@ -18,19 +18,19 @@ import pytest
 # 30min (W5): §4 IOC arrival-scheduling failures below, strict-xfail
 # with owner; XPASS forces trim at each fix's integration.
 KNOWN_FAILURES = (
-    # Owner W1/W2: nonmarketable IOC rests and revives on later liquidity
+    # Owner whisper-redshift (execution): nonmarketable IOC rests and revives on later liquidity
     # instead of canceling at arrival (both sides).
     "test_ioc_adversarial.py"
     "::test_nonmarketable_buy_ioc_dead_at_arrival_no_late_revival",
     "test_ioc_adversarial.py"
     "::test_nonmarketable_sell_ioc_dead_at_arrival_no_late_revival",
-    # Owner W1/W2: marketable IOC does not fill against the arrival book.
+    # Owner whisper-redshift (execution): marketable IOC does not fill against the arrival book.
     "test_ioc_adversarial.py"
     "::test_marketable_ioc_fills_at_arrival_book_both_sides",
-    # Owner W1/W2: price band not enforced at arrival (same root cause).
+    # Owner whisper-redshift (execution): price band not enforced at arrival (same root cause).
     "test_ioc_adversarial.py"
     "::test_price_band_bounds_the_cross_at_arrival",
-    # Owner W4: research/selector cost split (26 vs 31 bps), unsigned
+    # Owner cloud-vega (data): research/selector cost split (26 vs 31 bps), unsigned
     # funding, implicit spread semantics (§5 unified contract).
     "test_cost_contract.py"
     "::test_research_selector_agree_on_frozen_inputs",
@@ -38,7 +38,7 @@ KNOWN_FAILURES = (
     "::test_funding_sign_is_representable",
     "test_cost_contract.py"
     "::test_spread_semantics_are_explicit",
-    # Owner W1/W2: no shipped 1s max-age profile; missing timestamps
+    # Owner cool-amalthea (runtime): no shipped 1s max-age profile; missing timestamps
     # crash instead of blocking; no feed-independent control path.
     "test_runtime_controls.py"
     "::test_operational_profile_enforces_one_second_max_age",
