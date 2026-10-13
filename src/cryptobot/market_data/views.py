@@ -80,6 +80,46 @@ class DepthStore:
         self._ever_synced: set[str] = set()
         self._flow: dict[str, dict[str, Any]] = {}
 
+    def to_dict(self) -> dict[str, Any]:
+        """Full store state: books, applied times, sync set, flow windows."""
+        flow = {}
+        for symbol, state in self._flow.items():
+            closed = state["closed"]
+            flow[symbol] = {
+                "window": state["window"],
+                "trades": [dict(t) for t in state["trades"]],
+                "prev_last_id": state["prev_last_id"],
+                "closed": (None if closed is None else
+                           [closed[0] if closed[0] is None else dict(closed[0]),
+                            closed[1], closed[2]]),
+                "resync_pending": state["resync_pending"]}
+        return {"levels": self.levels, "stale_after_ms": self.stale_after_ms,
+                "books": {s: b.to_dict() for s, b in self._books.items()},
+                "applied_ms": dict(self._applied_ms),
+                "ever_synced": sorted(self._ever_synced), "flow": flow}
+
+    @classmethod
+    def from_dict(cls, raw: dict[str, Any]) -> "DepthStore":
+        """Rebuild store state exactly (checkpoint restore)."""
+        store = cls(levels=int(raw["levels"]),
+                    stale_after_ms=int(raw["stale_after_ms"]))
+        store._books = {s: DepthBook.from_dict(b)
+                        for s, b in raw["books"].items()}
+        store._applied_ms = {s: int(v)
+                             for s, v in raw["applied_ms"].items()}
+        store._ever_synced = set(raw["ever_synced"])
+        for symbol, state in raw["flow"].items():
+            closed = state["closed"]
+            store._flow[symbol] = {
+                "window": state["window"],
+                "trades": [dict(t) for t in state["trades"]],
+                "prev_last_id": state["prev_last_id"],
+                "closed": (None if closed is None else
+                           (closed[0] if closed[0] is None else dict(closed[0]),
+                            closed[1], closed[2])),
+                "resync_pending": state["resync_pending"]}
+        return store
+
     # -- ingestion ------------------------------------------------------
     def apply_snapshot_record(self, snap: dict[str, Any],
                               as_of_ms: int | None = None) -> str:

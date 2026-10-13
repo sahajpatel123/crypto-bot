@@ -47,6 +47,40 @@ class DepthBook:
                           self.resyncs, self.applied, self.dropped_stale,
                           self._resync_reason)
 
+    def to_dict(self) -> dict[str, Any]:
+        """Full book state: levels, sync lifecycle, buffer, counters.
+
+        Level key/value types are preserved verbatim (the book mixes
+        str and float keys across snapshot/diff paths); sorting is by
+        numeric price so the output is deterministic.
+        """
+        return {"symbol": self.symbol,
+                "bids": [[p, q] for p, q in sorted(
+                    self.bids.items(), key=lambda kv: float(kv[0]))],
+                "asks": [[p, q] for p, q in sorted(
+                    self.asks.items(), key=lambda kv: float(kv[0]))],
+                "synced": self._synced,
+                "last_update_id": self._last_update_id,
+                "buffer": [dict(p) for p in self._buffer],
+                "resyncs": self.resyncs, "applied": self.applied,
+                "dropped_stale": self.dropped_stale,
+                "resync_reason": self._resync_reason}
+
+    @classmethod
+    def from_dict(cls, raw: dict[str, Any]) -> "DepthBook":
+        """Rebuild book state exactly (checkpoint restore)."""
+        book = cls(str(raw["symbol"]))
+        book.bids = {p: q for p, q in raw["bids"]}
+        book.asks = {p: q for p, q in raw["asks"]}
+        book._synced = bool(raw["synced"])
+        book._last_update_id = int(raw["last_update_id"])
+        book._buffer = [dict(p) for p in raw["buffer"]]
+        book.resyncs = int(raw["resyncs"])
+        book.applied = int(raw["applied"])
+        book.dropped_stale = int(raw["dropped_stale"])
+        book._resync_reason = str(raw["resync_reason"])
+        return book
+
     def on_diff(self, payload: dict[str, Any]) -> str:
         """Handle one NORMALIZED depth payload (first/last/prev_last_update keys).
 

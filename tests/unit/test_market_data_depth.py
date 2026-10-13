@@ -67,3 +67,27 @@ def test_state_carries_resync_reason_until_synced():
     assert book.state.last_reason == "chain-break"
     assert book.on_snapshot([["100", "1"]], [["101", "1"]], 100) == "synced"
     assert book.state.last_reason == ""  # synced: no stale reason.
+
+
+def test_book_dict_round_trip_preserves_levels_and_lifecycle():
+    import json
+
+    from cryptobot.market_data.views import DepthStore
+
+    store = DepthStore()
+    assert store.apply_snapshot_record(
+        {"symbol": "BTCUSDT", "bids": [["100.0", "1.0"]],
+         "asks": [["101.0", "1.0"]], "last_update_id": 100,
+         "rest_recv_ms": 5000, "exchange_ts_ms": 4999}) == "synced"
+    store.apply_diff("BTCUSDT", {"first_update": 101, "last_update": 101,
+                                 "prev_last_update": 100,
+                                 "bids": [[100.5, 2.0]], "asks": []}, 5100)
+    store.apply_trade("BTCUSDT", {"agg_id": 9, "price": 100.5, "qty": 0.5,
+                                  "first_id": 9, "last_id": 9,
+                                  "trade_ts_ms": 5100,
+                                  "buyer_is_maker": False})
+    raw = json.loads(json.dumps(store.to_dict()))
+    restored = DepthStore.from_dict(raw)
+    assert restored.to_dict() == raw
+    assert restored.book_flow_for("BTCUSDT", 5200)[0] is not None
+    assert restored.book_flow_for("BTCUSDT", 5200)[0].bids[0][0] == 100.5

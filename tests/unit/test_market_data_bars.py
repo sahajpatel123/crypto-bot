@@ -1,5 +1,5 @@
 """1s-bar causality tests (Worker 2, E-006). Synthetic trade streams only."""
-from cryptobot.market_data.bars import Bar1s, BarAggregator, BarMissing, to_s1_bar
+from cryptobot.market_data.bars import Bar1s, BarAggregator, BarMissing, bar_from_dict, bar_to_dict, to_s1_bar
 
 
 def _trade(ts_ms, trade_id, price=100.0, qty=1.0, maker=False):
@@ -93,3 +93,29 @@ def test_flush_drains_and_duplicate_ids_drop():
     out = agg.flush()  # drains through max observed time: bar + trailing empty.
     assert len(out) == 2 and isinstance(out[0], Bar1s) and isinstance(out[1], BarMissing)
     assert (out[1].symbol, out[1].window_start_ms) == ("BTCUSDT", 1000)
+
+
+def test_bar_dict_round_trip():
+    import json
+
+    bar = Bar1s("BTCUSDT", 1000, 1.0, 2.0, 0.5, 1.5, 3.0, 2, 1.0, 7, 8, 2.5, False)
+    raw = json.loads(json.dumps(bar_to_dict(bar)))  # strict-JSON safe.
+    assert bar_from_dict(raw) == bar
+    missing = BarMissing("BTCUSDT", 2000, True)
+    assert bar_from_dict(json.loads(json.dumps(bar_to_dict(missing)))) == missing
+
+
+def test_aggregator_dict_round_trip_preserves_watermark_and_seq():
+    import json
+
+    agg = BarAggregator("BTCUSDT", lateness_ms=500)
+    agg.on_trade(_trade(100, 1, 100.0))
+    agg.on_trade(_trade(700, 2, 101.0))
+    agg.on_bbo(100.9, 101.1, 700)
+    raw = json.loads(json.dumps(agg.to_dict()))
+    restored = BarAggregator.from_dict(raw)
+    assert restored.to_dict() == raw
+    assert restored.stats() == agg.stats()
+    # Identical continuation: same outputs for the same next trades.
+    nxt = [_trade(1600, 3, 102.0), _trade(2600, 4, 103.0)]
+    assert [restored.on_trade(t) for t in nxt] == [agg.on_trade(t) for t in nxt]

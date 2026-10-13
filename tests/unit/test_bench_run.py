@@ -71,8 +71,10 @@ def test_fresh_run_completes_and_commits(tmp_path):
     assert doc["status"] == "COMPLETE"
     assert doc["events"]["ingested"] == 24
     assert doc["events"]["commits"] >= 2  # day-boundary commits.
-    assert set(doc["booked"]) == {"equity_open", "equity_close", "realised",
+    assert set(doc["booked"]) == {"equity_open", "equity_close", "valuation",
+                                  "valuation_reason", "realised",
                                   "commissions", "funding"}
+    assert doc["booked"]["valuation"] == "cash-exact"  # flat: no mark needed.
     assert "estimated_costs" in doc and "profile" in doc
     assert (ckpt / "bench_checkpoint.json").exists()
 
@@ -152,14 +154,23 @@ def test_checkpoint_preserves_position_economics(tmp_path):
         session._reject_counts = {"a:b": 3}
         session._last_seq = 40
         cursor = {"day": DAY1, "seq": 40}
-        runner._commit(session, cursor, force=True)
-        snap = json.loads((tmp_path / "ck" / "bench_checkpoint.json").read_text())
+        # Orphan exposure: the flat gate must refuse a commit here.
+        assert runner._is_flat(session) is False
+        assert runner._commit(session, cursor) is False
+        # Snapshot/restore round-trip still preserves the economics.
+        record = runner._snapshot(session, cursor)
+        (tmp_path / "ck" / "bench_checkpoint.json").write_text(
+            json.dumps(record), encoding="utf-8")
+        snap = record
         assert snap["ledger"]["snapshot"]["qty"] == 0.5
         assert snap["counts"] == {"events_seen": 41, "admitted": 2,
-                                  "reject_counts": {"a:b": 3}}
+                                  "reject_counts": {"a:b": 3},
+                                  "dispatch_ms": 0}
+        assert set(snap["run_files"]) == {"fills.jsonl", "equity.jsonl",
+                                          "rejections.jsonl", "risk.jsonl"}
         assert snap["cooldowns"] == {f"S1|{SYM}": now.isoformat()}
         journal = tmp_path / "ck" / "work" / "engine_journal.jsonl"
-        assert snap["journal_bytes"] == journal.stat().st_size > 0
+        assert snap["engine"]["journal_bytes"] == journal.stat().st_size > 0
         committed_journal = journal.read_bytes()
         # Mutate everything past the commit, then restore.
         session.ledger.record_fill("SELL", 0.5, 101.0, 0.05, now, "e2")
@@ -172,7 +183,8 @@ def test_checkpoint_preserves_position_economics(tmp_path):
         assert session.ledger.net_realised() == -0.05  # one fee booked.
         assert session.selector._cooldowns == {("S1", SYM): now}
         # Truncated to the commit, plus recover's inert "recovered" marker.
-        assert journal.read_bytes()[:snap["journal_bytes"]] == committed_journal
+        assert journal.read_bytes()[:snap["engine"]["journal_bytes"]] == \
+            committed_journal
         assert b'"fill"' not in journal.read_bytes()
         assert session._events_seen == 41 and session._admitted == 2
         assert session._reject_counts == {"a:b": 3}
@@ -194,3 +206,178 @@ def test_replay_clock_tracks_event_time(tmp_path):
     assert rc == 0
     commit = json.loads((ckpt / "bench_checkpoint.json").read_text())
     assert commit["clock_ms"] == T2 + 71_000  # last event exchange_ts.
+
+
+def _corr_runner(tmp_path):
+    import argparse
+
+    from cryptobot.bench_run import BenchRunner
+
+    args = argparse.Namespace(
+        config="configs/paper.toml", checkpoint_dir=str(tmp_path / "ck"),
+        engine_seed=42, filters_file=str(_filters(tmp_path)))
+    runner = BenchRunner(args)
+    runner._adapter_names, runner._dataset_id, runner._last_mark = [], {}, {}
+    return runner
+
+
+def test_is_flat_terminal_orders_are_history_not_exposure(tmp_path):
+    from types import SimpleNamespace
+
+    from cryptobot.bench_run import BenchRunner
+
+    runner = _corr_runner(tmp_path)
+    filled = [SimpleNamespace(state="filled"), SimpleNamespace(state="filled")]
+    engine = SimpleNamespace(open_orders=lambda: filled, _submit_queue=[],
+                             _pending=[], _ioc_open={}, _cache=None)
+    assert BenchRunner._is_flat(None, SimpleNamespace(
+        _position=None, engine=engine)) is True
+    live = [SimpleNamespace(state="filled"), SimpleNamespace(state="partial")]
+    engine2 = SimpleNamespace(open_orders=lambda: live, _submit_queue=[],
+                              _pending=[], _ioc_open={}, _cache=None)
+    assert runner._is_flat(SimpleNamespace(
+        _position=None, engine=engine2)) is False
+    queued = SimpleNamespace(open_orders=lambda: filled, _submit_queue=[1],
+                             _pending=[], _ioc_open={}, _cache=None)
+    assert runner._is_flat(SimpleNamespace(
+        _position=None, engine=queued)) is False
+
+
+def test_is_flat_orphan_and_pending_and_reservations(tmp_path):
+    from types import SimpleNamespace
+
+    runner = _corr_runner(tmp_path)
+    session = runner._build_session("flatcases")
+    try:
+        assert runner._is_flat(session) is True
+        now = datetime(2026, 10, 11, 1, tzinfo=timezone.utc)
+        session.ledger.record_fill("BUY", 0.5, 100.0, 0.05, now, "o1")
+        assert runner._is_flat(session) is False  # orphan exposure.
+        session.ledger.record_fill("SELL", 0.5, 100.0, 0.05, now, "o2")
+        assert runner._is_flat(session) is True
+        session.engine._submit_queue.append(("x", 1))
+        assert runner._is_flat(session) is False  # pending command.
+        session.engine._submit_queue.clear()
+        session._flatten_pending = True
+        assert runner._is_flat(session) is False
+        session._flatten_pending = False
+        assert runner._is_flat(session) is True
+    finally:
+        session.engine.close()
+        session.store.close()
+
+
+def test_feeds_and_warmed_restore_exactly(tmp_path):
+    runner = _corr_runner(tmp_path)
+    session = runner._build_session("feeds")
+    try:
+        session.store.create_run("feeds", "bench", session.config.fingerprint,
+                                 str(session.workdir), None)
+        t0 = int(datetime(2026, 10, 1, tzinfo=timezone.utc).timestamp() * 1000)
+        seq = 0
+        for second in range(141):
+            ts = t0 + second * 1000
+            for channel, payload in [
+                    ("bookTicker", {"bid": 99.99, "ask": 100.01,
+                                    "bid_qty": 5.0, "ask_qty": 5.0}),
+                    ("aggTrade", {"agg_id": second + 1, "price": 100.0,
+                                  "qty": 0.5, "buyer_is_maker": False})]:
+                seq += 1
+                session._ingest({"channel": channel, "symbol": SYM,
+                                 "exchange_ts_ms": ts, "local_recv_ms": ts,
+                                 "seq": seq, "payload": payload}, {}, {})
+        feed0 = session._feeds[SYM]
+        assert len(feed0.bars) == 135 and session._warmed is True
+        bars0 = [None if b is None else (b.ts_utc.isoformat(), b.open,
+                                         b.high, b.low, b.close, b.volume,
+                                         b.trades, b.buy_frac, b.spread_bps,
+                                         b.source) for b in feed0.bars]
+        agg0 = feed0.agg.to_dict()
+        assert runner._commit(session, {"day": "2026-10-01", "seq": seq})
+        session2 = runner._build_session("feeds")
+        try:
+            runner._restore(session2)
+            feed1 = session2._feeds[SYM]
+            bars1 = [None if b is None else (b.ts_utc.isoformat(), b.open,
+                                             b.high, b.low, b.close,
+                                             b.volume, b.trades, b.buy_frac,
+                                             b.spread_bps, b.source)
+                     for b in feed1.bars]
+            assert bars1 == bars0 and len(feed1.bars) == 135
+            assert feed1.agg.to_dict() == agg0
+            assert session2._warmed is True
+            assert feed1.mark == feed0.mark and feed1.missing == feed0.missing
+        finally:
+            session2.engine.close()
+            session2.store.close()
+    finally:
+        session.engine.close()
+        session.store.close()
+
+
+def test_identity_refuses_changed_config(tmp_path):
+    runner = _corr_runner(tmp_path)
+    session = runner._build_session("ident")
+    try:
+        session.store.create_run("ident", "bench", session.config.fingerprint,
+                                 str(session.workdir), None)
+        assert runner._commit(session, {"day": DAY1, "seq": 0})
+        changed = tmp_path / "changed.toml"
+        changed.write_text(Path("configs/paper.toml").read_text().replace(
+            "cooldown_s = 300", "cooldown_s = 301"))
+        runner.args.config = str(changed)
+        session2 = runner._build_session("ident")
+        try:
+            import pytest
+
+            with pytest.raises(ValueError, match="identity mismatch"):
+                runner._restore(session2)
+        finally:
+            session2.engine.close()
+            session2.store.close()
+    finally:
+        session.engine.close()
+        session.store.close()
+
+
+def test_store_rollback_removes_tail_dupes(tmp_path):
+    runner = _corr_runner(tmp_path)
+    session = runner._build_session("store")
+    try:
+        session.store.create_run("store", "bench", session.config.fingerprint,
+                                 str(session.workdir), None)
+        session.store.checkpoint("store", "admit", {"a": 1})
+        cursors = runner._snapshot_store(session)
+        session.store.checkpoint("store", "admit", {"a": 2})  # tail row.
+        n_before = session.store._db.execute(
+            "SELECT COUNT(*) FROM checkpoints").fetchone()[0]
+        assert n_before == cursors["checkpoints"] + 1
+        runner._restore_store(session, {"store_cursors": cursors})
+        n_after = session.store._db.execute(
+            "SELECT COUNT(*) FROM checkpoints").fetchone()[0]
+        assert n_after == cursors["checkpoints"]
+    finally:
+        session.engine.close()
+        session.store.close()
+
+
+def test_closing_valuation_never_zero(tmp_path):
+    runner = _corr_runner(tmp_path)
+    session = runner._build_session("val")
+    try:
+        close = runner._value_close(session)
+        assert close["valuation"] == "cash-exact"
+        assert close["equity_close"] == 120.0
+        now = datetime(2026, 10, 11, 1, tzinfo=timezone.utc)
+        session.ledger.record_fill("BUY", 0.5, 100.0, 0.05, now, "v1")
+        runner._last_mark = {}
+        close = runner._value_close(session)
+        assert close["equity_close"] is None
+        assert close["valuation"] == "unavailable"
+        runner._last_mark = {"price": 101.0, "ts_ms": 1, "source": "aggTrade"}
+        close = runner._value_close(session)
+        assert close["valuation"] == "sourced-mark"
+        assert close["equity_close"] == session.ledger.marked_equity(101.0)
+    finally:
+        session.engine.close()
+        session.store.close()

@@ -24,7 +24,8 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-__all__ = ["Bar1s", "BarAggregator", "BarMissing", "to_s1_bar"]
+__all__ = ["Bar1s", "BarAggregator", "BarMissing", "to_s1_bar",
+         "bar_from_dict", "bar_to_dict"]
 
 _EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
 
@@ -62,6 +63,41 @@ class BarMissing:
     symbol: str
     window_start_ms: int
     gap_before: bool  # True when a trade-ID discontinuity may hide trades here.
+
+
+def bar_to_dict(bar: Bar1s | BarMissing) -> dict[str, Any]:
+    """JSON-safe dict for a closed bar/missing marker (checkpointing)."""
+    if isinstance(bar, BarMissing):
+        return {"kind": "missing", "symbol": bar.symbol,
+                "window_start_ms": bar.window_start_ms,
+                "gap_before": bar.gap_before}
+    return {"kind": "bar", "symbol": bar.symbol,
+            "window_start_ms": bar.window_start_ms, "open": bar.open,
+            "high": bar.high, "low": bar.low, "close": bar.close,
+            "volume": bar.volume, "trades": bar.trades,
+            "buy_volume": bar.buy_volume, "first_id": bar.first_id,
+            "last_id": bar.last_id, "spread_bps": bar.spread_bps,
+            "gap_before": bar.gap_before}
+
+
+def bar_from_dict(raw: dict[str, Any]) -> Bar1s | BarMissing:
+    """Inverse of :func:`bar_to_dict` (checkpoint restore)."""
+    if raw["kind"] == "missing":
+        return BarMissing(symbol=raw["symbol"],
+                          window_start_ms=int(raw["window_start_ms"]),
+                          gap_before=bool(raw["gap_before"]))
+    if raw["kind"] != "bar":
+        raise ValueError(f"unknown bar kind {raw.get('kind')!r}")
+    spread = raw["spread_bps"]
+    return Bar1s(symbol=raw["symbol"],
+                 window_start_ms=int(raw["window_start_ms"]),
+                 open=float(raw["open"]), high=float(raw["high"]),
+                 low=float(raw["low"]), close=float(raw["close"]),
+                 volume=float(raw["volume"]), trades=int(raw["trades"]),
+                 buy_volume=float(raw["buy_volume"]),
+                 first_id=int(raw["first_id"]), last_id=int(raw["last_id"]),
+                 spread_bps=None if spread is None else float(spread),
+                 gap_before=bool(raw["gap_before"]))
 
 
 def to_s1_bar(bar: Bar1s | BarMissing | None):
@@ -216,3 +252,57 @@ class BarAggregator:
             "spreads_seen": self.spreads_seen,
             "open_windows": len(self._windows),
         }
+
+    def to_dict(self) -> dict[str, Any]:
+        """Full aggregator state: open windows, watermark, seq, counters."""
+        windows = {}
+        for start, w in self._windows.items():
+            # h/low are +/-inf until the first trade: persist null then
+            # (from_dict restores defaults), keeping the dict strict-JSON.
+            windows[str(start)] = {
+                "o": w.o, "h": w.h if w.has_trades else None,
+                "low": w.low if w.has_trades else None, "c": w.c,
+                "volume": w.volume, "trades": w.trades,
+                "buy_volume": w.buy_volume, "first_id": w.first_id,
+                "last_id": w.last_id, "spread_bps": w.spread_bps,
+                "has_trades": w.has_trades}
+        return {"symbol": self.symbol, "lateness_ms": self.lateness_ms,
+                "windows": windows, "max_ts_ms": self._max_ts_ms,
+                "last_id": self._last_id, "last_ts_ms": self._last_ts_ms,
+                "gap_flag_windows": sorted(self._gap_flag_windows),
+                "closed_through_ms": self._closed_through_ms,
+                "late_dropped": self.late_dropped,
+                "empty_windows": self.empty_windows,
+                "gap_jumps": self.gap_jumps,
+                "spreads_seen": self.spreads_seen}
+
+    @classmethod
+    def from_dict(cls, raw: dict[str, Any]) -> "BarAggregator":
+        """Rebuild aggregator state exactly (checkpoint restore)."""
+        agg = cls(str(raw["symbol"]), lateness_ms=int(raw["lateness_ms"]))
+        for key, wd in raw["windows"].items():
+            w = _Window(int(key))
+            if wd["has_trades"]:
+                w.o = float(wd["o"])
+                w.h = float(wd["h"])
+                w.low = float(wd["low"])
+                w.c = float(wd["c"])
+                w.volume = float(wd["volume"])
+                w.trades = int(wd["trades"])
+                w.buy_volume = float(wd["buy_volume"])
+                w.first_id = int(wd["first_id"])
+                w.last_id = int(wd["last_id"])
+                w.has_trades = True
+            spread = wd["spread_bps"]
+            w.spread_bps = None if spread is None else float(spread)
+            agg._windows[int(key)] = w
+        agg._max_ts_ms = int(raw["max_ts_ms"])
+        agg._last_id = int(raw["last_id"])
+        agg._last_ts_ms = int(raw["last_ts_ms"])
+        agg._gap_flag_windows = {int(v) for v in raw["gap_flag_windows"]}
+        agg._closed_through_ms = int(raw["closed_through_ms"])
+        agg.late_dropped = int(raw["late_dropped"])
+        agg.empty_windows = int(raw["empty_windows"])
+        agg.gap_jumps = int(raw["gap_jumps"])
+        agg.spreads_seen = int(raw["spreads_seen"])
+        return agg
