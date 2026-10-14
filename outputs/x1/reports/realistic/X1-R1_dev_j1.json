@@ -20,12 +20,12 @@
   },
   "windows": {
    "BTCUSDT": {
-    "modeled_windows": 172669,
-    "trade_windows": 172669
+    "modeled_windows": 195938,
+    "trade_windows": 195938
    },
    "ETHUSDT": {
-    "modeled_windows": 186727,
-    "trade_windows": 186727
+    "modeled_windows": 210714,
+    "trade_windows": 210714
    }
   }
  },
@@ -49,17 +49,17 @@
  ],
  "elapsed_s": 900.0,
  "events": {
-  "ingested": 1594049,
+  "ingested": 2120483,
   "replayed_tail": 0,
-  "heartbeats": 90608,
+  "heartbeats": 95474,
   "skipped_window": 3634217,
-  "commits": 800
+  "commits": 1063
  },
  "cursor": {
   "day": "2026-09-13",
   "seqs": {
-   "BTCUSDT": 104995,
-   "ETHUSDT": 119224
+   "BTCUSDT": 320604,
+   "ETHUSDT": 430049
   }
  },
  "booked": {
@@ -73,11 +73,11 @@
  },
  "estimated_costs": [],
  "profile": {
-  "read_s": 14.196,
-  "ingest_s": 873.947,
-  "commit_s": 2.935,
-  "fsync_s": 2.495,
-  "store_s": 0.007,
-  "events_per_s": 1771.2
+  "read_s": 13.554,
+  "ingest_s": 874.404,
+  "commit_s": 3.065,
+  "fsync_s": 2.601,
+  "store_s": 0.008,
+  "events_per_s": 2356.1
  }
 }
