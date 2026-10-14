@@ -1,7 +1,7 @@
 # Crypto bot — integrated release report (the single complete record)
 
 Status: RELEASE CANDIDATE. Starting SHA `48029fb` (`release-start-48029fb`);
-this report written against main `4228cb9` (tag `rel-rc-1` on W5-RC).
+this report written against main `eb63acc` (tag `rel-rc-1` on W5-RC).
 Runtime: Python 3.14.6, NautilusTrader 1.231.0 (locked `uv.lock`).
 Full suite **1285 passed + 1 skipped** (rc=0, 257 s, budgeted).
 Production submission: DISABLED. No live orders were placed at any point.
