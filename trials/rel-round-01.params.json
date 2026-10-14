@@ -1,0 +1,50 @@
+{
+ "families": {
+  "S1": {
+   "module_consts": {
+    "MAX_CONSECUTIVE_MISSING_HALT": 5
+   },
+   "params": {
+    "breakout_n": 120,
+    "entry_expiry_s": 15,
+    "entry_tol_bps": 2.0,
+    "flow_f": 10,
+    "flow_min": 0.58,
+    "holding_limit_s": 120,
+    "inval_m": 30,
+    "mom_m": 30,
+    "mom_min_bps": 5.0,
+    "spread_max_bps": 3.0,
+    "take_r": 1.5,
+    "vol_v": 60,
+    "vol_z_min": 1.0
+   }
+  },
+  "S2": {
+   "module_consts": {
+    "MAX_CONSECUTIVE_MISSING_HALT": 5,
+    "WARMUP_N": 120
+   },
+   "params": {
+    "entry_expiry_s": 15,
+    "entry_tol_bps": 2.0,
+    "flow_f": 10,
+    "flow_min": 0.58,
+    "holding_limit_s": 120,
+    "inval_buf_bps": 2.0,
+    "pull_m": 10,
+    "pull_max_bps": 60.0,
+    "pull_min_bps": 8.0,
+    "resume_k": 5,
+    "resume_min_bps": 2.0,
+    "spread_max_bps": 3.0,
+    "take_r": 1.5,
+    "trend_min_bps": 25.0,
+    "trend_n": 60,
+    "vol_v": 60,
+    "vol_z_min": 1.0,
+    "warmup_n": 120
+   }
+  }
+ }
+}
