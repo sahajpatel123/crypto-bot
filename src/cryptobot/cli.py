@@ -731,6 +731,12 @@ def cmd_backtest(args: argparse.Namespace) -> int:
         argv += ["--max-events", str(args.max_events)]
     if args.sensitivity:
         argv += ["--sensitivity"]
+    if args.require_round:
+        argv += ["--require-round", args.require_round]
+    if args.round_params:
+        argv += ["--round-params", args.round_params]
+    if args.require_config:
+        argv += ["--require-config", args.require_config]
     try:
         return int(harness_main(argv))
     except (ValueError, FileNotFoundError) as exc:
@@ -814,6 +820,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--symbols", default=None)
     p.add_argument("--max-events", type=int, default=None)
     p.add_argument("--sensitivity", action="store_true")
+    p.add_argument("--require-round", default=None)
+    p.add_argument("--round-params", default=None)
+    p.add_argument("--require-config", default=None)
     p.set_defaults(func=cmd_backtest)
     return parser
 
