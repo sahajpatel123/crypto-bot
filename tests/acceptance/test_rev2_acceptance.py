@@ -543,6 +543,7 @@ def _crafted_row(ev_ms, evaluated_ms):
             "instrument": "BTCUSDT", "_ev_ms": ev_ms,
             "evidence_ts_utc": _iso(ev_ms),
             "evaluated_now_utc": _iso(evaluated_ms),
+            "_dec_ms": evaluated_ms,
             "entry_expiry_utc": _iso(10000), "entry_low": 99.0,
             "entry_high": 100.2, "stop_price": 99.0,
             "target_price": 102.0, "time_exit_utc": _iso(4000)}
@@ -563,7 +564,7 @@ def test_rev2_causality_fill_never_before_decision(tmp_path, monkeypatch):
     # Defect case (review §4.6): evidence 01.0, decision 02.5.
     tape = ([(1000, 99.9, 100.0, 1, 1), (2500, 100.9, 101.0, 1, 1)],
             [(1500, 1, 99.0, 1), (4500, 2, 101.0, 1)],
-            [(1000, 100.0)])
+            [(1000, 100.0, None, 99999999)])
     row = _crafted_row(1000, 2500)
     with patch.object(hr2, "_load_window", return_value=tape):
         bad = hr2.evaluate_one(row)
@@ -574,11 +575,11 @@ def test_rev2_causality_fill_never_before_decision(tmp_path, monkeypatch):
         f"{row['evaluated_now_utc']}")
     # Positive control: decision (00.5) at/before fill (01.0) scores;
     # stop trigger print 99.0 but exit-side bid is 98.5 after trigger.
-    tape_ok = ([(1000, 99.9, 100.0, 1, 1), (1500, 98.4, 98.6, 1, 1),
-                (1600, 98.5, 98.7, 1, 1)],
+    tape_ok = ([(500, 99.9, 100.0, 1, 1), (1000, 99.9, 100.0, 1, 1),
+                (1500, 98.4, 98.6, 1, 1), (1600, 98.5, 98.7, 1, 1)],
                [(1500, 9, 99.0, 1)],
-               [(1000, 100.0), (31000, 99.9), (61000, 99.9),
-                (121000, 99.9), (301000, 99.9)])
+               [(1000, 100.0, None, 99999999), (31000, 99.9, None, 99999999), (61000, 99.9, None, 99999999),
+                (121000, 99.9, None, 99999999), (301000, 99.9, None, 99999999)])
     with patch.object(hr2, "_load_window", return_value=tape_ok):
         good = hr2.evaluate_one(_crafted_row(500, 500))
     assert good["entry"] == "filled", (
@@ -595,10 +596,14 @@ def test_rev2_causality_unsupported_horizons_unscorable(tmp_path,
     coverage are unscorable, never carried-forward marks."""
     from unittest.mock import patch
     import tools.hr2_diagnostic as hr2
-    # Marks end at +60s; horizons 120/300 have no coverage.
-    tape = ([(1000, 99.9, 100.0, 1, 1), (1500, 102.4, 102.6, 1, 1)],
-            [(1500, 9, 102.5, 1)],
-            [(1000, 100.0), (31000, 100.1), (61000, 100.2)])
+    # Marks end at +60s; horizons 120/300 have no coverage. Books
+    # and prints near the 30/60s marks keep those horizons covered.
+    tape = ([(500, 99.9, 100.0, 1, 1), (1000, 99.9, 100.0, 1, 1),
+             (1500, 102.4, 102.6, 1, 1), (1600, 102.5, 102.7, 1, 1),
+             (30000, 100.0, 100.2, 1, 1), (60000, 100.1, 100.3, 1, 1)],
+            [(1500, 9, 102.5, 1), (30000, 10, 100.1, 1),
+             (60000, 11, 100.2, 1)],
+            [(1000, 100.0, None, 99999999), (31000, 100.1, None, 99999999), (61000, 100.2, None, 99999999)])
     with patch.object(hr2, "_load_window", return_value=tape):
         got = hr2.evaluate_one(_crafted_row(500, 500))
     assert got["entry"] == "filled", (
