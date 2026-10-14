@@ -65,19 +65,58 @@ def _until(fn, timeout_s=20.0, step_s=0.05):
 
 
 def _halted(engine):
-    """Exit-only, tolerant of the reason-set repair (W1 may replace
-    the last-writer-wins boolean with an independent-reason set)."""
+    """Exit-only across halt generations: the legacy boolean and the
+    reason-keyed set (callable or attribute)."""
     if getattr(engine, "_exit_only", False):
         return True
     reasons = getattr(engine, "exit_only_reasons",
                       getattr(engine, "_exit_only_reasons", None))
-    if reasons is not None:
+    if callable(reasons):
         try:
-            return bool(len(reasons)) if not isinstance(reasons, bool) \
-                else reasons
+            reasons = reasons()
         except TypeError:
-            return bool(reasons)
-    return False
+            return True
+    if reasons is None:
+        return False
+    if isinstance(reasons, bool):
+        return reasons
+    try:
+        return len(reasons) > 0
+    except TypeError:
+        return bool(reasons)
+
+
+def _pump_owner(session):
+    """One owner tick: exactly the per-tick owner duties run_live
+    performs — drain the attached user stream first (R1 owner
+    application), then the engine. Guarded so the pre-fix tree
+    (no attachment attribute) still pumps the engine."""
+    stream = getattr(session, "_user_stream_attachment", None)
+    if stream is not None:
+        stream.drain_owner()
+    session._drain_engine()
+
+
+def _until_drained(session, fn, timeout_s=20.0, step_s=0.05,
+                   ignore=()):
+    """Bounded wait that pumps the NORMAL owner loop: the fixed
+    architecture delivers on the thread and books on owner drain.
+    Drain errors propagate (never swallowed) except an explicitly
+    injected fault class under test."""
+    deadline = time.monotonic() + timeout_s
+    while time.monotonic() < deadline:
+        try:
+            _pump_owner(session)
+        except ignore:
+            pass
+        if fn():
+            return True
+        time.sleep(step_s)
+    try:
+        _pump_owner(session)
+    except ignore:
+        pass
+    return bool(fn())
 
 
 def _fills(store, run_id):
@@ -112,6 +151,29 @@ def _live_pair(tmp_path, run_id="rev2", prelude=True):
     return ca, venues, ready, orders, engine, transport, session, store
 
 
+def _reopen(ca, tmp_path, engine, run_id):
+    """Reopen an EXISTING run after a crash: the joint-test _session
+    construction minus create_run — the run row survived the crash,
+    so recreating it would be the harness's bug, not the test."""
+    cfg = ca["load_config"](ca["_config"](tmp_path))
+    store = ca["RunStore"](tmp_path / "runs" / "cryptobot.db")
+    session = ca["Session"](cfg, store, tmp_path / "runs" / run_id,
+                            run_id, engine=engine)
+    now = datetime(2026, 10, 12, 6, 0, tzinfo=timezone.utc)
+    session.clock.set_ms(int(now.timestamp() * 1000))
+    session.policy.reconcile_day(120.0, 0.0)
+    session.arm_replay_filters(
+        {"BTCUSDT": {"tick_size": 0.10, "step_size": 0.001,
+                     "min_qty": 0.001, "min_notional": 5.0}},
+        origin=ca["MECHANICS"], asof_utc=now)
+    from cryptobot.app.session import _SymbolFeed
+    feed = _SymbolFeed("BTCUSDT", 0)
+    feed.mark = 100.0
+    feed.mark_ts = now
+    session._feeds["BTCUSDT"] = feed
+    return session, store
+
+
 def _admit_limit(ca, orders, engine, transport, session, store):
     """Admit one LIMIT intent through the NORMAL Session path."""
     transport.append(
@@ -133,15 +195,28 @@ def _trade(orders, entry_cid, qty, price="100.50"):
     return stream
 
 
-def _algo_scripts(transport, entry):
+def _algo_scripts(transport, entry, qty=None, trade_id=None):
     # Connect order: listen-key, reconnect lookup of the live entry
-    # (still NEW — the stream fill has not arrived), then protection.
+    # (still NEW — the stream fill has not arrived), then the fill's
+    # own push dialogue (entry-truth lookup + tape for the protection
+    # attach), then protection.
     transport.append(
         ("POST", "/fapi/v1/listenKey", None, ("ok", {"listenKey": "K"})),
         ("GET", "/fapi/v1/order", {"origClientOrderId": entry},
          ("ok", {"orderId": 5, "origClientOrderId": entry,
                  "status": "NEW", "executedQty": "0.0",
                  "avgPrice": "0.0"})))
+    if qty is not None:
+        transport.append(
+            ("GET", "/fapi/v1/order", None,
+             ("ok", {"orderId": 7, "status": "FILLED",
+                     "executedQty": f"{qty:.3f}",
+                     "avgPrice": "100.50"})),
+            ("GET", "/fapi/v1/userTrades", {"orderId": 7},
+             ("ok", [{"id": trade_id, "orderId": 7,
+                      "symbol": "BTCUSDT", "qty": f"{qty:.3f}",
+                      "price": "100.50", "commission": "0.03000000",
+                      "commissionAsset": "USDT", "buyer": True}])))
     transport.append(
         ("POST", "/fapi/v1/algoOrder", {"reduceOnly": "true"},
          ("ok", {"algoId": 11, "algoStatus": "WORKING"})),
@@ -161,16 +236,16 @@ def test_rev2_thread_fill_books_and_protects(tmp_path):
     try:
         entry, qty = _admit_limit(ca, orders, engine, transport, session,
                                   store)
-        _algo_scripts(transport, entry)
         trade = _trade(orders, entry, qty)
+        _algo_scripts(transport, entry, qty, trade["o"]["t"])
         # ACTUAL DEFAULT command path: default thread, real store.
         att = attach_user_stream(session, engine,
                                  lambda url: _socket()([trade]))
-        assert _until(lambda: len(_fills(store, "rev2")) == 1), (
+        assert _until_drained(session, lambda: len(_fills(store, "rev2")) == 1), (
             "thread fill never durably booked")
         assert session.ledger.has_position(), "ledger missing position"
         assert session.policy.booked_total_qty() == pytest.approx(qty)
-        assert _until(lambda: session._position.get("protected") is True), (
+        assert _until_drained(session, lambda: session._position.get("protected") is True), (
             "protection never attached")
         assert len(session._position.get("legs", [])) == 2
         algos = [r for r in transport.requests
@@ -194,13 +269,18 @@ def test_rev2_thread_duplicate_books_once(tmp_path):
     try:
         entry, qty = _admit_limit(ca, orders, engine, transport, session,
                                   store)
-        _algo_scripts(transport, entry)
         trade = _trade(orders, entry, qty)
+        _algo_scripts(transport, entry, qty, trade["o"]["t"])
         att = attach_user_stream(
             session, engine, lambda url: _socket()([trade, trade]))
-        assert _until(lambda: len(_fills(store, "rev2")) == 1), (
+        assert _until_drained(session, lambda: len(_fills(store, "rev2")) == 1), (
             "setup: first delivery never booked")
-        time.sleep(2.0)  # let the duplicate arrive + settle.
+        # Let the duplicate arrive + settle through the owner loop.
+        deadline = time.monotonic() + 2.0
+        while time.monotonic() < deadline:
+            _pump_owner(session)
+            time.sleep(0.05)
+        _pump_owner(session)
         rows = _fills(store, "rev2")
         assert len(rows) == 1, f"duplicate booked: {len(rows)} rows"
         assert session.ledger.position_qty() == pytest.approx(qty)
@@ -234,6 +314,10 @@ def test_rev2_booking_failure_halts_entries_keeps_exits(tmp_path,
                 raise RuntimeError("w5rev2 injected booking failure")
             return real_record(run_id, execution_id, kind, payload,
                                ts_utc=ts_utc)
+        trade = _trade(orders, entry, qty)
+        # Minimal dialogue: the booking fault trips the fill's push
+        # BEFORE position sync, so the fill-pair/algos are never
+        # consumed — scripting them would strand the exit probe.
         transport.append(
             ("POST", "/fapi/v1/listenKey", None,
              ("ok", {"listenKey": "K"})),
@@ -241,26 +325,42 @@ def test_rev2_booking_failure_halts_entries_keeps_exits(tmp_path,
              ("ok", {"orderId": 5, "origClientOrderId": entry,
                      "status": "NEW", "executedQty": "0.0",
                      "avgPrice": "0.0"})))
-        trade = _trade(orders, entry, qty)
-        # Idle polls first so the stream heals BEFORE the fill; the
-        # booking fault arms only after the heal is proven.
-        att = attach_user_stream(
-            session, engine,
-            lambda url: _socket()([None, None, None, trade]))
-        assert _until(lambda: not att.halted, timeout_s=20.0), (
+        # The fill is delivered only AFTER the heal is proven and the
+        # booking fault armed: appending to the live socket script is
+        # the deterministic injection point (no race with heal).
+        box = {}
+
+        def factory(url):
+            sock = _socket()([None])
+            box["sock"] = sock
+            return sock
+
+        att = attach_user_stream(session, engine, factory)
+        assert _until_drained(session, lambda: not att.halted,
+                                timeout_s=20.0), (
             "setup: stream never healed")
         assert not _halted(engine), "setup: still halted after heal"
         monkeypatch.setattr(store, "record_event", fail_fill)
+        box["sock"].script.append(trade)
         # Adapter-side adoption proves the fill ARRIVED (thread-safe).
-        assert _until(lambda: engine._adopted_qty.get(entry, 0.0) > 0,
-                      timeout_s=20.0), "setup: fill never arrived"
+        assert _until_drained(
+            session,
+            lambda: engine._adopted_qty.get(entry, 0.0) > 0,
+            timeout_s=20.0), "setup: fill never arrived"
         # Entries must halt: the failure is visible, never swallowed.
-        assert _until(lambda: _halted(engine), timeout_s=20.0), (
+        # (The injected RuntimeError surfacing through drain is the
+        # fault under test, not harness noise.)
+        assert _until_drained(session, lambda: _halted(engine),
+                              timeout_s=20.0, ignore=(RuntimeError,)), (
             "booking failure did not halt entries")
         kinds = _checkpoints(store, "rev2")
-        assert any("halt" in k or "booking" in k or "error" in k
-                   for k in kinds), f"no halt/error checkpoint: {kinds}"
-        assert att.errors > 0, "thread error not surfaced as evidence"
+        assert "user-stream-apply-failed" in kinds, (
+            f"no apply-failure checkpoint: {sorted(kinds)}")
+        assert att.pending_failures(), (
+            "apply failure not kept as evidence")
+        reasons = engine.exit_only_reasons()
+        assert any("user-stream" in r for r in reasons), (
+            f"halt reason does not name the stream: {reasons}")
         # New admission must refuse while halted (behavioral).
         before = session._position["entry_pre_id"]
         session._maybe_admit(
@@ -276,8 +376,8 @@ def test_rev2_booking_failure_halts_entries_keeps_exits(tmp_path,
                      "avgPrice": "0.0"})))
         engine.submit(EngineOrder(
             instrument="BTCUSDT", side="SELL", qty=qty, kind="MARKET",
-            role="exit", reservation_id="r-exit-ok",
-            reduce_only=True, client_id="w5rev2-exit-probe"))
+            role="target", reservation_id="r-exit-ok",
+            reduce_only=True))
         with pytest.raises(Exception):
             engine.submit(EngineOrder(
                 instrument="BTCUSDT", side="BUY", qty=qty, kind="MARKET",
@@ -305,17 +405,21 @@ def test_rev2_disconnect_recovery_heals(tmp_path):
             ("POST", "/fapi/v1/listenKey", None,
              ("ok", {"listenKey": "K"})))
         att = attach_user_stream(session, engine, factory)
-        assert _until(lambda: _halted(engine), timeout_s=20.0), (
+        assert _until_drained(session, lambda: _halted(engine),
+                                timeout_s=20.0), (
             "disconnect did not halt entries")
         assert "user-stream-gap" in _checkpoints(store, "rev2gap")
-        assert _until(lambda: not _halted(engine)
-                      and not att.halted, timeout_s=30.0), (
+        assert _until_drained(session, lambda: not _halted(engine)
+                                and not att.halted, timeout_s=30.0), (
             "reconnect did not heal")
         assert "user-stream-healed" in _checkpoints(store, "rev2gap")
         # Entries genuinely resume: a real admission works.
         transport.append(*_prelude(venues, ready))
         _admit_limit(ca, orders, engine, transport, session, store)
-        assert att.errors == 0, f"errors: {att.errors}"
+        assert att.errors == 1, (
+            f"injected death counted {att.errors}x, want exactly once")
+        assert getattr(att, "fatal_error", None) is None, (
+            "pump died instead of reporting")
     finally:
         if att is not None:
             att.close()
@@ -341,11 +445,15 @@ def test_rev2_halt_independence(tmp_path):
         # Standing operator halt, set before the stream episode.
         engine.set_exit_only(True, "halt:operator-stop")
         att = attach_user_stream(session, engine, factory)
-        assert _until(lambda: att.halted, timeout_s=20.0), (
+        assert _until_drained(session, lambda: att.halted,
+                                timeout_s=20.0), (
             "setup: stream gap halt never engaged")
-        assert _until(lambda: not att.halted, timeout_s=30.0), (
+        assert _until_drained(session, lambda: not att.halted,
+                                timeout_s=30.0), (
             "setup: stream never healed")
         assert "user-stream-healed" in _checkpoints(store, "rev2halt")
+        assert att.errors == 1, (
+            f"injected death counted {att.errors}x, want exactly once")
         # The operator reason must persist: admission still refuses.
         transport.append(*_prelude(venues, ready))
         session._maybe_admit(
@@ -369,35 +477,37 @@ def test_rev2_restart_with_exposure_adopts_once(tmp_path):
     try:
         entry, qty = _admit_limit(ca, orders, engine, transport, session,
                                   store)
-        _algo_scripts(transport, entry)
         trade = _trade(orders, entry, qty)
+        _algo_scripts(transport, entry, qty, trade["o"]["t"])
         att = attach_user_stream(session, engine,
                                  lambda url: _socket()([trade]))
-        assert _until(lambda: len(_fills(store, "rev2restart")) == 1), (
+        assert _until_drained(
+            session, lambda: len(_fills(store, "rev2restart")) == 1), (
             "setup: thread fill never booked")
         assert session.ledger.position_qty() == pytest.approx(qty)
+        legs = list(session._position.get("legs", []))
+        assert len(legs) == 2, "setup: protection legs missing"
         att.close()
         att = None
         store.close()
         # Dirty restart: fresh engine over the SAME journal, fresh
-        # Session over the SAME RunStore file, same run id.
+        # Session over the SAME RunStore file, same run id — then the
+        # REAL operator resume (what run_live(resume=True) runs).
         engine2, transport2 = venues.make_engine(tmp_path, [])
         ca2 = _ca()
-        session2, store2 = ca2["_session"](tmp_path, engine2,
-                                           "rev2restart")
+        session2, store2 = _reopen(ca2, tmp_path, engine2,
+                                   "rev2restart")
         try:
-            transport2.append(
-                ("GET", "/fapi/v1/order", {"origClientOrderId": entry},
-                 ("ok", {"orderId": 7, "origClientOrderId": entry,
-                         "status": "FILLED", "executedQty": f"{qty:.3f}",
-                         "avgPrice": "100.50"})),
-                ("GET", "/fapi/v1/userTrades", {"orderId": 7},
-                 ("ok", [{"id": 424242, "orderId": 7,
-                          "symbol": "BTCUSDT", "qty": f"{qty:.3f}",
-                          "price": "100.50", "commission": "0.00003000",
-                          "commissionAsset": "USDT", "buyer": True}])))
-            st = engine2.lookup(entry)
-            assert getattr(st, "state", None) == "filled", st
+            # Recovery dialogue: the entry is terminal in the journal
+            # (no revisit); each open leg re-resolves on the algo rail.
+            for i, leg in enumerate(legs):
+                transport2.append(
+                    ("GET", "/fapi/v1/algoOrder",
+                     {"origClientAlgoId": leg},
+                     ("ok", {"algoId": 11 + i, "algoStatus": "WORKING",
+                             "origClientAlgoId": leg,
+                             "executedQty": "0.0"})))
+            session2._resume_live()
             session2._drain_engine()
             session2._drain_engine()
             assert session2.ledger.position_qty() == pytest.approx(qty), (
@@ -405,7 +515,7 @@ def test_rev2_restart_with_exposure_adopts_once(tmp_path):
             assert len(_fills(store2, "rev2restart")) == 1, (
                 "restart duplicated the booking")
             posts = [r for r in transport2.requests
-                     if r[0] == "POST" and r[1] == "/fapi/v1/order"]
+                     if r[0] == "POST"]
             assert posts == [], f"restart resubmitted: {posts}"
         finally:
             store2.close()
