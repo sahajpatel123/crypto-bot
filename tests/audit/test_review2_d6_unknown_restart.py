@@ -110,7 +110,8 @@ def test_recovery_rebuilds_unknown_block(tmp_path):
         + _ready_steps(ready)
         + [("POST", "/fapi/v1/order", ("ok", order_ack))])
     engine2 = _engine(tmp_path, transport2)
-    engine2.recover(outcome_sink=None)
+    # Contract v1: recover takes the EngineEvent handler.
+    engine2.recover(lambda event: None)
     assert engine2._unknown_for("r1") == [cid], (
         f"recovery dropped the reservation mapping: _unknown_for(r1)="
         f"{engine2._unknown_for('r1')}, journal keeps UNKNOWN {cid}")
@@ -143,6 +144,7 @@ def test_recovery_replays_fills_idempotently(tmp_path):
         ("GET", "/fapi/v1/userTrades", ("ok", tape)),
     ])
     eng2 = _engine(tmp_path, t2)
-    eng2.recover(outcome_sink=None)
+    # Contract v1: recover takes the EngineEvent handler.
+    eng2.recover(lambda event: None)
     assert eng2.filled_qty(cid) == 0.5, (
         f"recovery double-adopted trade 555: filled={eng2.filled_qty(cid)}")

@@ -339,7 +339,9 @@ def cmd_resume_adopt(drill):
     if drill.creds() is None:
         return EXIT_BLOCKED
     engine = drill.engine()
-    engine.recover(outcome_sink=None)
+    # Contract v1: recover takes the EngineEvent handler; the drill
+    # only inspects journal state, so adopted fills are discarded.
+    engine.recover(lambda event: None)
     unknowns = engine.unknown_ids()
     opens = engine.open_orders()
     print(f"adopted journal={drill.journal_path} unknowns={len(unknowns)} "

@@ -440,7 +440,9 @@ class BenchRunner:
         if journal.exists():
             with open(journal, "r+b") as fh:
                 fh.truncate(keep)  # drop the uncommitted tail; replay re-appends.
-        engine.recover(session.policy)
+        # Contract v1: recover through the Session event entry (a
+        # policy is not an EngineEvent callable).
+        engine.recover(session._on_engine_event)
         if saved.get("cash") is not None:
             free, _locked = engine.account_margin()
             if abs(float(free) - float(saved["cash"][0])) > 1e-6:

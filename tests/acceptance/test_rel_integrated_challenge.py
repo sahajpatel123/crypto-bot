@@ -173,8 +173,10 @@ def test_rel_filled_absent_from_open(tmp_path):
         assert str(state).lower() == "filled", (
             f"order_status truth must report filled, got {st!r}")
         by_id = {s.client_order_id: s for s in engine.open_orders()}
-        assert by_id[coid].state == "filled", (
-            f"filled id {coid} has non-terminal state: {by_id[coid]}")
+        # Open-only (§2, per this test's docstring): the filled id is
+        # absent from the open list; truth comes from order_status().
+        assert coid not in by_id, (
+            f"filled id {coid} present in open-only list: {by_id[coid]}")
         live_ids = [s.client_order_id for s in engine.open_orders()
                     if s.state in ("open", "partial")]
         assert coid not in live_ids, (
@@ -530,6 +532,13 @@ def test_rel_foreign_venue_position_flagged_untouched(tmp_path):
     lh = _livehelpers()
     h = _w1()
     script = [
+        # Contract v1: account_snapshot reads fresh venue truth (one
+        # signed GET, timestamped AccountSnapshot — no cached raw dict).
+        ("GET", "/fapi/v2/account", None, ("ok", {
+            "totalWalletBalance": "120.0", "availableBalance": "100.0",
+            "totalMarginBalance": "120.5",
+            "positions": [{"symbol": "ETHUSDT", "positionAmt": "0.5",
+                           "entryPrice": "3000.0"}]})),
         ("GET", "/fapi/v1/openOrders", None, ("ok", [
             {"clientOrderId": "someone-elses-order", "symbol": "ETHUSDT",
              "status": "NEW", "origQty": "0.5", "executedQty": "0.0"}])),
@@ -543,9 +552,11 @@ def test_rel_foreign_venue_position_flagged_untouched(tmp_path):
                                    "ep": "3000.0"}]}})
         snap = engine.account_snapshot()
         assert snap is not None, "snapshot missing after ACCOUNT_UPDATE"
-        eth = [p for p in snap["a"]["P"] if p["s"] == "ETHUSDT"]
+        assert snap.complete is True
+        assert snap.asof_utc is not None
+        eth = [p for p in snap.positions if p.instrument == "ETHUSDT"]
         assert eth, f"foreign position not exposed: {snap!r}"
-        assert float(eth[0]["pa"]) == pytest.approx(0.5)
+        assert eth[0].qty == pytest.approx(0.5)
         session, store = h["_session"](tmp_path, engine)
         try:
             assert engine.open_orders() == [], "foreign stray leaked in"
