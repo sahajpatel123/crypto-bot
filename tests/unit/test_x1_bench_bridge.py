@@ -29,13 +29,15 @@ def _load_tool(name):
 
 
 def _cell_kit(tmp_path: Path, fills=2, run_id="x1-realistic-X1-R1_dev"):
+    from cryptobot.app.config import load_config
+
+    toml = str(REPO / "configs" / "paper.toml")
     ckpt = tmp_path / "ckpt"
     work = ckpt / "work"
     work.mkdir(parents=True)
     (ckpt / "bench_checkpoint.json").write_text(json.dumps({
-        "run_id": run_id,
         "cursor": {"day": "2026-09-11", "seqs": {"BTCUSDT": 10}},
-        "identity": {"config_fingerprint": "fp1",
+        "identity": {"config_fingerprint": load_config(toml).fingerprint,
                      "dataset": {"manifest_sha": "abc",
                                  "symbols": ["BTCUSDT", "ETHUSDT"]}},
         "engine": {"position": {}, "reservations": {}},
@@ -56,20 +58,19 @@ def _cell_kit(tmp_path: Path, fills=2, run_id="x1-realistic-X1-R1_dev"):
                    [(run_id,), (run_id,)])
     db.commit()
     db.close()
+    cursor = {"day": "2026-09-11", "seqs": {"BTCUSDT": 10}}
     rep1 = tmp_path / "j1.json"
     rep1.write_text(json.dumps({
-        "run_id": run_id, "status": "INCOMPLETE_BUDGET",
+        "run_id": run_id, "status": "INCOMPLETE_BUDGET", "cursor": cursor,
         "booked": {"equity_close": 121.0, "commissions": 0.1,
                    "funding": 0.0, "realised": 0.5},
         "events": {"ingested": 100, "skipped_window": 5}}))
     rep2 = tmp_path / "j2.json"
     rep2.write_text(json.dumps({
-        "run_id": run_id, "status": "COMPLETE",
+        "run_id": run_id, "status": "COMPLETE", "cursor": cursor,
         "booked": {"equity_close": 122.0, "commissions": 0.2,
                    "funding": 0.0, "realised": 1.0},
         "events": {"ingested": 50, "skipped_window": 0}}))
-    toml = tmp_path / "cell.toml"
-    toml.write_text("[paper]\ncapital_usdt = 120.0\n[fees]\ntaker_bps = 5.0\n")
     splits = tmp_path / "splits.toml"
     splits.write_text(
         "[[split]]\nidx = 1\nrole = \"dev\"\n"

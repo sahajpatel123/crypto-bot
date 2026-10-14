@@ -39,7 +39,7 @@ def _load(path: str) -> dict:
 def _toml_value(toml_path: str, key: str) -> float:
     doc = tomllib.load(open(toml_path, "rb"))
     if key == "paper_capital_usdt":
-        return float(doc["paper"]["capital_usdt"])
+        return float(doc["run"]["paper_capital_usdt"])
     if key == "taker_bps":
         return float(doc["fees"]["taker_bps"])
     raise KeyError(key)
@@ -117,8 +117,23 @@ def bridge_cell(cell: dict, out_dir: Path, splits_path: str) -> dict:
     if not ckpt_file.exists():
         raise ValueError(f"missing checkpoint {ckpt_file}")
     ckpt = _load(str(ckpt_file))
-    if ckpt.get("run_id") != run_id:
-        raise ValueError("checkpoint run-id mismatch")
+    # Chain binding (bench checkpoints carry no run_id): the TOML's
+    # live fingerprint must equal the checkpoint identity (binds
+    # checkpoint to cell config), and the checkpoint cursor must be
+    # comparable-and-behind the final report cursor (same day, no
+    # symbol ahead — the report includes the uncommitted tail).
+    from cryptobot.app.config import load_config
+
+    live_fp = load_config(cell["toml"]).fingerprint
+    if ckpt.get("identity", {}).get("config_fingerprint") != live_fp:
+        raise ValueError("checkpoint config != cell TOML")
+    ckpt_cursor = ckpt.get("cursor", {})
+    final_cursor = final.get("cursor", {})
+    if ckpt_cursor.get("day") != final_cursor.get("day"):
+        raise ValueError("checkpoint day != final report day")
+    for sym, seq in ckpt_cursor.get("seqs", {}).items():
+        if int(seq) > int(final_cursor.get("seqs", {}).get(sym, -1)):
+            raise ValueError(f"checkpoint ahead of report on {sym}")
     opening = _toml_value(cell["toml"], "paper_capital_usdt")
     closing = float(final["booked"]["equity_close"])
     fills = _extract_fills(ckpt_dir / "work" / "engine_journal.jsonl")
