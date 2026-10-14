@@ -3,14 +3,25 @@
 No network, no keys. The stub engine/quote stand in for the venue;
 every kill path must FAIL + abort with no further phases.
 """
+import copy
 import sys
 import time
 from pathlib import Path
 
 import pytest
 
+import venue_fixtures as venues
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools" / "audit"))
 import demo_drill  # noqa: E402
+
+
+def _rigged(drill, monkeypatch, script, orders, **kw):
+    """Session-path rig (REV2): shared strict script + sync stream hook."""
+    transport = venues.ReplayTransport(script)
+    rig = venues.patch_drill_offline(monkeypatch, drill, transport, orders,
+                                     **kw)
+    return transport, rig
 
 
 class _Status:
@@ -139,9 +150,39 @@ def test_unknowns_at_gate_kill(drill, creds, monkeypatch):
 
 def test_protection_miss_aborts_before_later_phases(drill, creds,
                                                     monkeypatch):
-    eng = FakeEngine(stop_state="cancelled")
-    monkeypatch.setattr(drill, "engine", lambda transport=None: eng)
-    assert demo_drill.cmd_drill(drill) == 1
+    from test_rev2_demo_drill import (_algo_cancelled, _algo_working,
+                                      _cancelled, _listen_close,
+                                      _listen_open, _ready)
+    ready, orders = venues.ready_fixture(), venues.orders_fixture()
+    acct = venues.drill_account(ready)
+    script = _ready(acct) + [
+        _listen_open(),
+        ("GET", "/fapi/v2/account", None, ("ok", acct)),
+        ("GET", "/fapi/v1/openOrders", None, ("ok", [])),
+        ("GET", "/fapi/v1/openAlgoOrders", None, ("ok", [])),
+        ("GET", "/fapi/v2/account", None, ("ok", acct)),
+        ("POST", "/fapi/v1/order", {"type": "LIMIT"},
+         ("ok", orders["orderAck"])),
+        # Legs never cover (venue-side attach failure, raised before
+        # any lookup/POST); the drill's emergency close flattens the
+        # naked exposure.
+        ("POST", "/fapi/v1/order", {"type": "MARKET"},
+         ("ok", orders["orderAck"])),
+        _listen_close(),
+    ]
+    from cryptobot.adapters.binance_live import BinanceLiveEngine
+
+    def _no_legs(self, entry_client_id, stop_price, target_price=None):
+        raise ValueError("venue rejected legs")
+
+    monkeypatch.setattr(BinanceLiveEngine, "attach_protection", _no_legs)
+    transport, rig = _rigged(drill, monkeypatch, script, orders)
+    drill.flat_wait_s = 0.5
+    try:
+        assert demo_drill.cmd_drill(drill) == 1
+    finally:
+        rig["stop"]()
+    transport.assert_empty()
     phases = "\n".join(_phases(drill))
     assert "drill/protection" in phases and "KILL" in phases
     assert "ambiguous-submit" not in phases
@@ -149,27 +190,122 @@ def test_protection_miss_aborts_before_later_phases(drill, creds,
 
 
 def test_exit_mismatch_aborts(drill, creds, monkeypatch):
-    eng = FakeEngine(out_mult=0.5)
-    monkeypatch.setattr(drill, "engine", lambda transport=None: eng)
-    assert demo_drill.cmd_drill(drill) == 1
-    assert "reduce-only-exit" in "\n".join(_phases(drill))
+    """Session path: the exit half-fills => KILL (emergency completes)."""
+    from test_rev2_demo_drill import (_algo_cancelled, _algo_working,
+                                      _cancelled, _listen_close,
+                                      _listen_open, _ready)
+    ready, orders = venues.ready_fixture(), venues.orders_fixture()
+    acct = venues.drill_account(ready)
+    script = _ready(acct) + [
+        _listen_open(),
+        ("GET", "/fapi/v2/account", None, ("ok", acct)),
+        ("GET", "/fapi/v1/openOrders", None, ("ok", [])),
+        ("GET", "/fapi/v1/openAlgoOrders", None, ("ok", [])),
+        ("GET", "/fapi/v2/account", None, ("ok", acct)),
+        ("POST", "/fapi/v1/order", {"type": "LIMIT"},
+         ("ok", orders["orderAck"])),
+        ("GET", "/fapi/v1/order", None, ("ok", _cancelled())),
+        ("POST", "/fapi/v1/algoOrder", {"type": "STOP_MARKET"},
+         ("ok", _algo_working(101))),
+        ("POST", "/fapi/v1/algoOrder", {"type": "TAKE_PROFIT_MARKET"},
+         ("ok", _algo_working(102))),
+        ("DELETE", "/fapi/v1/algoOrder", None,
+         ("ok", _algo_cancelled())),
+        ("DELETE", "/fapi/v1/algoOrder", None,
+         ("ok", _algo_cancelled())),
+        ("POST", "/fapi/v1/order", {"type": "MARKET"},
+         ("ok", orders["orderAck"])),
+        ("POST", "/fapi/v1/order", {"type": "MARKET"},
+         ("ok", orders["orderAck"])),
+        _listen_close(),
+    ]
+    closes = []
+
+    def _on_post(kind, params, append, trade):
+        if kind != "order":
+            return
+        trade["o"]["c"] = params.get("newClientOrderId")
+        trade["o"]["S"] = params.get("side", "BUY")
+        qty = float(params.get("quantity"))
+        if params.get("side") == "SELL" and not closes:
+            # First close half-fills: exit mismatch.
+            closes.append(qty)
+            trade["o"]["l"] = trade["o"]["z"] = f"{qty / 2:.8f}"
+        else:
+            trade["o"]["l"] = trade["o"]["z"] = params.get("quantity")
+        trade["o"]["L"] = trade["o"]["ap"] = "100.00"
+        append(trade)
+
+    transport, rig = _rigged(drill, monkeypatch, script, orders,
+                             on_post=_on_post)
+    drill.flat_wait_s = 0.5
+    try:
+        assert demo_drill.cmd_drill(drill) == 1
+    finally:
+        rig["stop"]()
+    transport.assert_empty()
+    phases = "\n".join(_phases(drill))
+    assert "reduce-only-exit" in phases and "KILL" in phases
+    assert "ambiguous-submit" not in phases
 
 
 def test_honest_no_trade_blocks_protection(drill, creds, monkeypatch):
-    eng = FakeEngine(entry_state="cancelled", entry_fill=0.0)
-    monkeypatch.setattr(drill, "engine", lambda transport=None: eng)
+    """Session path: IOC cancels with no fill => BLOCKED, no KILL, rc 0."""
+    from test_rev2_demo_drill import (_cancelled, _listen_close,
+                                      _listen_open, _ready)
+    ready, orders = venues.ready_fixture(), venues.orders_fixture()
+    acct = venues.drill_account(ready)
+    script = _ready(acct) + [
+        _listen_open(),
+        ("GET", "/fapi/v2/account", None, ("ok", acct)),
+        ("GET", "/fapi/v1/openOrders", None, ("ok", [])),
+        ("GET", "/fapi/v1/openAlgoOrders", None, ("ok", [])),
+        ("GET", "/fapi/v2/account", None, ("ok", acct)),
+        ("POST", "/fapi/v1/order", {"type": "LIMIT"},
+         ("ok", orders["orderAck"])),
+        # _tiny_qty re-fetches account for balance sizing before the
+        # ambiguous-submit engine's own readiness sequence.
+        ("GET", "/fapi/v2/account", None, ("ok", acct)),
+    ] + _ready(acct) + [
+        ("POST", "/fapi/v1/order", {"type": "LIMIT"},
+         ("ok", orders["orderAck"])),
+        ("GET", "/fapi/v1/order", None, ("ok", _cancelled())),
+        ("GET", "/fapi/v1/openOrders", None, ("ok", [])),
+        ("GET", "/fapi/v1/openAlgoOrders", None, ("ok", [])),
+        _listen_close(),
+    ]
+    seen = []
 
-    class _Done:
-        returncode = 0
-        stdout = "adopted journal=x unknowns=0 open=0"
+    def _on_post(kind, params, append, trade):
+        if kind != "order":
+            return
+        seen.append(params.get("newClientOrderId"))
+        if len(seen) == 1:
+            # The entry IOC-cancels with zero fill: honest no-trade.
+            trade["o"]["c"] = params.get("newClientOrderId")
+            trade["o"]["S"] = params.get("side", "BUY")
+            trade["o"]["x"] = trade["o"]["X"] = "CANCELED"
+            trade["o"]["l"] = trade["o"]["z"] = "0"
+            trade["o"]["L"] = trade["o"]["ap"] = "100.00"
+            append(trade)
+        else:
+            trade["o"]["c"] = params.get("newClientOrderId")
+            trade["o"]["S"] = params.get("side", "BUY")
+            qty = params.get("quantity")
+            trade["o"]["l"] = trade["o"]["z"] = qty
+            trade["o"]["L"] = trade["o"]["ap"] = "100.00"
+            append(trade)
 
-    monkeypatch.setattr(demo_drill.subprocess, "run", lambda *a, **k: _Done())
-    rc = demo_drill.cmd_drill(drill)
+    transport, rig = _rigged(drill, monkeypatch, script, orders,
+                             on_post=_on_post)
+    try:
+        assert demo_drill.cmd_drill(drill) == 0
+    finally:
+        rig["stop"]()
+    transport.assert_empty()
     phases = "\n".join(_phases(drill))
     assert "protection-exit" in phases
     assert "KILL" not in phases
-    # rc==1 here is a stub artifact: FakeEngine.submit never raises the
-    # UNKNOWN phase 3 injects (covered against the real adapter by the
-    # credentialed drill + W5's adapter tests). This test pins no-KILL.
-    assert rc == 1
     assert "ambiguous-submit" in phases
+    assert [r for r in transport.requests
+            if r[1] == "/fapi/v1/algoOrder"] == []
