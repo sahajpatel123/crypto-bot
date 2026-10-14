@@ -1,6 +1,7 @@
 """REL-W3-DATA (5): suitability table coarse screen."""
 import importlib.util
 import json
+from datetime import datetime
 from pathlib import Path
 
 TOOL = Path(__file__).resolve().parents[2] / "tools" / "suitability_table.py"
@@ -38,6 +39,7 @@ def _capture(root, name, *, malformed=0, injected=0, drop_trades=()):
         "duplicates": 0, "out_of_order": 0,
         "depth_applied": 17, "depth_resyncs": 0,
         "gaps": {"natural": 0, "injected": injected}}), encoding="utf-8")
+    (cap / "events.jsonl").write_text("{}\n", encoding="utf-8")
     return cap
 
 
@@ -55,6 +57,10 @@ def test_ok_row_and_markdown(tmp_path):
     row = next(line for line in text.splitlines()
                if line.startswith("| cap-ok |"))
     assert row.endswith("| OK |")
+    cells = [c.strip() for c in row.split("|")]
+    available = cells[5]  # available UTC column
+    assert available.endswith("+00:00")
+    datetime.fromisoformat(available)  # parses as a real timestamp
 
 
 def test_deficient_capture_fails_loud_with_reasons(tmp_path):
