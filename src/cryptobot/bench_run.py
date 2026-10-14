@@ -143,7 +143,10 @@ class BenchRunner:
             rest_get=rest_get)
         session = Session(config, store, self.workdir, run_id,
                           pid=os.getpid(), clock=clock, engine=engine)
-        engine.bind_sink(session.policy)
+        # Contract v1: push fills through the Session event entry (the
+        # same method the poll drain uses). W1 swaps this for the
+        # durable _apply_engine_event handler at Checkpoint A.
+        engine.bind_sink(session._on_engine_event)
         return session
 
     # -- flat-boundary checkpoints ------------------------------------

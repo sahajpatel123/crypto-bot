@@ -6,12 +6,12 @@ recorded-shape — hand-built, NOT actual captures.
 """
 import copy
 import json
-from collections import deque
 from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
 
+import venue_fixtures as venues
 from cryptobot.adapters.binance_live import (
     BinanceLiveEngine,
     UnknownOutcomeError,
@@ -20,9 +20,12 @@ from cryptobot.adapters.binance_live import (
 )
 from cryptobot.app.engine import EngineOrder
 
-FIX = Path(__file__).resolve().parent.parent / "fixtures" / "binance_live"
-T0MS = 1728720000000
-NOW = datetime.fromtimestamp(T0MS / 1000, tz=timezone.utc)
+FIX = venues.FIX
+T0MS = venues.T0MS
+NOW = venues.NOW
+ReplayTransport = venues.ReplayTransport
+_live = venues.make_engine
+_ready_script = venues.ready_script
 
 
 @pytest.fixture()
@@ -35,32 +38,6 @@ def orders():
     return json.loads((FIX / "orders.json").read_text())
 
 
-class ReplayTransport:
-    """Ordered request script: (method, path, match-subset, result)."""
-
-    def __init__(self, script):
-        self.script = deque(script)
-        self.requests = []
-
-    def append(self, *expectations):
-        self.script.extend(expectations)
-
-    def request(self, method, path, params, headers):
-        assert self.script, f"unexpected request {method} {path}"
-        exp = self.script.popleft()
-        assert (method, path) == (exp[0], exp[1]), (method, path, exp)
-        for key, value in (exp[2] or {}).items():
-            assert params.get(key) == value, (key, params.get(key), value)
-        self.requests.append((method, path, dict(params), dict(headers)))
-        kind, *rest = exp[3]
-        if kind == "ok":
-            return copy.deepcopy(rest[0])
-        raise VenueHttpError(rest[0], rest[1], rest[2])
-
-    def assert_empty(self):
-        assert not self.script, [s[:2] for s in self.script]
-
-
 def _signed_shape(request):
     _, _, params, headers = request
     assert headers.get("X-MBX-APIKEY") == "TESTKEY"
@@ -68,28 +45,6 @@ def _signed_shape(request):
     sig = params.get("signature", "")
     assert len(sig) == 64 and all(c in "0123456789abcdef" for c in sig)
     assert abs(params.get("timestamp", 0) - T0MS) < 60_000
-
-
-def _live(tmp_path, script, **kw):
-    transport = ReplayTransport(script)
-    kw.setdefault("now_utc", lambda: NOW)
-    engine = BinanceLiveEngine(
-        api_key="TESTKEY", api_secret="TESTSECRET",
-        journal_path=tmp_path / "live.jsonl", expected_leverage=3,
-        run_tag="bl", live_enable=True, transport=transport, **kw)
-    return engine, transport
-
-
-def _ready_script(ready):
-    return [
-        ("GET", "/fapi/v1/time", None, ("ok", ready["time"])),
-        ("GET", "/fapi/v1/exchangeInfo", None, ("ok", ready["exchangeInfo"])),
-        ("GET", "/fapi/v1/commissionRate", {"symbol": "BTCUSDT"},
-         ("ok", ready["commissionRate"])),
-        ("GET", "/fapi/v2/account", None, ("ok", ready["account"])),
-        ("POST", "/fapi/v1/leverage", {"symbol": "BTCUSDT", "leverage": 3},
-         ("ok", ready["leverage"])),
-    ]
 
 
 def _journal_events(tmp_path):
@@ -282,7 +237,7 @@ def test_user_stream_trade_feeds_poll_fill(tmp_path, ready, orders):
     assert len(fills) == 1
     fill = fills[0].payload
     assert (fill.qty, fill.price, fill.fee) == (0.001, 60000.0, 0.03)
-    assert fill.execution_id == "binance-usdm/9f3b2fc5de52/BTCUSDT/777001"
+    assert fill.execution_id == "binanceusdm/9f3b2fc5de52/BTCUSDT/777001"
     assert transport.requests == []
     transport.assert_empty()
 
@@ -308,7 +263,7 @@ def test_user_stream_dup_trade_after_lookup_single_fill(tmp_path, ready, orders)
     fills = [e for e in engine.poll() if e.kind == "fill"]
     assert len(fills) == 2
     assert {f.payload.execution_id for f in fills} == {
-        "binance-usdm/9f3b2fc5de52/BTCUSDT/999001", "binance-usdm/9f3b2fc5de52/BTCUSDT/999002"}
+        "binanceusdm/9f3b2fc5de52/BTCUSDT/999001", "binanceusdm/9f3b2fc5de52/BTCUSDT/999002"}
     transport.assert_empty()
 
 
@@ -433,9 +388,13 @@ def test_recover_looks_up_journaled_open_orders(tmp_path, ready, orders):
          ("ok", orders["orderQueryFilled"])),
         ("GET", "/fapi/v1/userTrades", {"orderId": 12345},
          ("ok", orders["userTrades"])))
-    engine.recover(object())
+    pushed: list = []
+    engine.recover(pushed.append)
     assert engine._states[cid] == "filled"
-    assert len([e for e in engine.poll() if e.kind == "fill"]) == 2
+    # Recovery-adopted fills flow through the bound handler (contract
+    # v1 §2); poll() holds only pre-binding leftovers (none here).
+    assert len([e for e in pushed if e.kind == "fill"]) == 2
+    assert engine.poll() == []
     transport.assert_empty()
 
 
@@ -452,8 +411,8 @@ def test_cross_symbol_same_trade_id_yields_distinct_fills(tmp_path):
     fills = [e.payload for e in engine.poll() if e.kind == "fill"]
     assert len(fills) == 2  # ID-777: no silent drop, no key collision.
     ids = {f.execution_id for f in fills}
-    assert ids == {"binance-usdm/9f3b2fc5de52/BTCUSDT/777",
-                   "binance-usdm/9f3b2fc5de52/ETHUSDT/777"}
+    assert ids == {"binanceusdm/9f3b2fc5de52/BTCUSDT/777",
+                   "binanceusdm/9f3b2fc5de52/ETHUSDT/777"}
     ledger = Ledger(10000.0)
     for f in fills:
         assert ledger.record_fill(f.side, f.qty, f.price, f.fee, f.ts_utc,
@@ -498,13 +457,17 @@ def test_recover_is_idempotent_across_restarts(tmp_path, ready, orders):
         ("GET", "/fapi/v1/userTrades", {"orderId": 12345},
          ("ok", orders["userTrades"]))]
     transport.append(*script)
-    engine.recover(object())
-    assert len([e for e in engine.poll() if e.kind == "fill"]) == 2
+    pushed: list = []
+    engine.recover(pushed.append)
+    assert len([e for e in pushed if e.kind == "fill"]) == 2
+    assert engine.poll() == []
     # Restart + recover again: terminal state rebuilt from the journal,
     # so no request is even sent (empty script would raise) and no fills.
     engine2, transport2 = _live(tmp_path, [])
-    engine2.recover(object())
-    assert [e for e in engine2.poll() if e.kind == "fill"] == []
+    pushed2: list = []
+    engine2.recover(pushed2.append)
+    assert pushed2 == []
+    assert engine2.poll() == []
     assert transport2.requests == []
     transport.assert_empty()
     transport2.assert_empty()
@@ -533,7 +496,9 @@ def test_restart_dedups_tape_against_stream_booked_trades(tmp_path, ready, order
         ("GET", "/fapi/v1/order", {"origClientOrderId": cid},
          ("ok", orders["orderQueryFilled"])),
         ("GET", "/fapi/v1/userTrades", {"orderId": 12345}, ("ok", tape)))
-    engine2.recover(object())
+    pushed2: list = []
+    engine2.recover(pushed2.append)
+    assert pushed2 == []
     assert [e for e in engine2.poll() if e.kind == "fill"] == []
     transport2.assert_empty()
 
@@ -576,7 +541,11 @@ def test_algo_lookup_triggered_adopts_triggered_tape(tmp_path, ready, orders):
         ("GET", "/fapi/v1/userTrades", {"orderId": 12345},
          ("ok", orders["userTrades"])))
     status = engine.lookup(cid)
-    assert status is not None and status.state == "triggered"
+    # Seam state: a triggered algo is live ("open"); the internal
+    # triggered truth stays journaled for fill routing.
+    assert status is not None and status.state == "open"
+    assert engine._states[cid] == "triggered"
+    assert status.version >= 2
     assert engine._triggered[cid] == "12345"
     fills = [e for e in engine.poll() if e.kind == "fill"]
     assert [f.payload.qty for f in fills] == [0.001, 0.001]
@@ -729,12 +698,45 @@ def test_stream_reconnected_heals_gap_via_lookup(tmp_path, ready, orders):
     transport.assert_empty()
 
 
-def test_account_update_snapshot_recorded(tmp_path):
-    engine, transport = _live(tmp_path, [])
+def test_account_snapshot_reads_venue_account(tmp_path, ready):
+    account = copy.deepcopy(ready["account"])
+    account.update({"totalWalletBalance": "100.00000000",
+                    "totalMarginBalance": "101.50000000"})
+    account["positions"] = [
+        {"symbol": "BTCUSDT", "positionAmt": "0.002",
+         "entryPrice": "60000.00", "markPrice": "60750.00"},
+        {"symbol": "ETHUSDT", "positionAmt": "0",
+         "entryPrice": "0", "markPrice": "0"}]
+    engine, transport = _live(
+        tmp_path, [("GET", "/fapi/v2/account", None, ("ok", account))])
+    snap = engine.account_snapshot()
+    assert snap is not None and snap.complete is True
+    assert snap.wallet_equity_usdt == 100.0
+    assert snap.available_margin_usdt == 95.5
+    assert snap.margin_balance_usdt == 101.5
+    assert [(p.instrument, p.qty, p.entry_price, p.mark_price)
+            for p in snap.positions] == [
+                ("BTCUSDT", 0.002, 60000.00, 60750.00)]
+    transport.assert_empty()
+
+
+def test_account_snapshot_none_when_unreachable(tmp_path):
+    engine, transport = _live(
+        tmp_path, [("GET", "/fapi/v2/account", None,
+                    ("err", 503, None, "unavailable"))])
     assert engine.account_snapshot() is None
-    engine.note_user_event({"e": "ACCOUNT_UPDATE", "E": T0MS,
-                            "a": {"B": [{"a": "USDT", "wb": "100"}]}})
-    assert engine.account_snapshot()["E"] == T0MS
+    transport.assert_empty()
+
+
+def test_account_snapshot_incomplete_when_leg_missing(tmp_path):
+    engine, transport = _live(
+        tmp_path, [("GET", "/fapi/v2/account", None,
+                    ("ok", {"totalWalletBalance": "100.0",
+                            "availableBalance": "95.5",
+                            "positions": []}))])
+    snap = engine.account_snapshot()
+    assert snap is not None and snap.complete is False
+    assert snap.margin_balance_usdt is None
     transport.assert_empty()
 
 

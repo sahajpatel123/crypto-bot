@@ -96,6 +96,8 @@ from nautilus_trader.model.position import Position
 from nautilus_trader.portfolio.portfolio import Portfolio
 
 from cryptobot.app.engine import (
+    AccountPosition,
+    AccountSnapshot,
     EngineCancel,
     EngineEvent,
     EngineExpire,
@@ -164,6 +166,7 @@ class NautilusPaperEngine:
         default_leverage: int = 1,
         max_queued_submits: int = 1000,
         max_pending_events: int = 10000,
+        run_tag: str | None = None,
     ) -> None:
         if taker_bps <= 0:
             raise ValueError("taker_bps must be > 0 (run-mode fees are never zero)")
@@ -177,7 +180,12 @@ class NautilusPaperEngine:
             raise ValueError("default_leverage must be > 0 (aligns with risk cap)")
         if max_queued_submits <= 0 or max_pending_events <= 0:
             raise ValueError("queue bounds must be > 0 (B10 bounded ingestion)")
-        self._sink = outcome_sink
+        # Contract v1: the constructor sink is the event handler when
+        # callable. A legacy note_fill_delta object is tolerated but
+        # NEVER invoked (direct booking removed; W1 renames this param).
+        self._event_handler = outcome_sink if callable(outcome_sink) else None
+        self._legacy_sink_ignored = (
+            outcome_sink is not None and not callable(outcome_sink))
         self.taker_bps = float(taker_bps)
         self.maker_bps = float(taker_bps if maker_bps is None else maker_bps)
         self._now_utc = now_utc or (lambda: datetime.now(timezone.utc))
@@ -250,6 +258,12 @@ class NautilusPaperEngine:
         self._lost: dict[str, dict[str, Any]] = {}  # recover(): journaled but not in sim.
         self._recovered_fills: dict[str, float] = {}  # recover(): client id -> filled qty.
         self._seq = 0
+        self._run_tag = run_tag or trader_id
+        self._fill_seq = 0  # paper/{run}/{sym}/{seq} execution ids.
+        self._versions: dict[str, int] = {}  # client id -> transition count.
+        # Terminal-without-sim orders (arrival-cancelled IOC, queued-past-
+        # window): tracked truth for order_status(), never in _orders.
+        self._dead: dict[str, dict[str, Any]] = {}
         self._closed = False
         self._exit_only = False
         # IOC no-rest enforcement (30MIN §4): causally-available book per
@@ -276,10 +290,27 @@ class NautilusPaperEngine:
         self._msgbus.register(endpoint="ExecEngine.process", handler=self._on_order_event)
 
     # -- sink ------------------------------------------------------------------
-    def bind_sink(self, outcome_sink: Any) -> None:
-        """Bind the risk outcome sink; replays any unpropagated journaled fills."""
-        self._sink = outcome_sink
-        self._replay_unpropagated(outcome_sink)
+    def bind_sink(self, handler: Any) -> None:
+        """Bind the Session execution-event handler (contract v1 §2).
+
+        The callable takes one EngineEvent and is invoked on EVERY
+        emission (fills, terminals, funding, recovery-adopted fills);
+        poll() then drains only pre-binding leftovers. Direct
+        note_fill_delta booking is removed: Session books through the
+        handler (W1 owns the handler side).
+        """
+        if not callable(handler):
+            raise TypeError("bind_sink needs an EngineEvent callable; "
+                            "direct note_fill_delta booking is removed")
+        self._event_handler = handler
+        self._journal("sink-bound", {"mode": "event-handler"})
+
+    def _emit(self, event: EngineEvent) -> None:
+        """Route one emission: push when bound, else queue for poll()."""
+        if self._event_handler is not None:
+            self._event_handler(event)
+            return
+        self._enqueue(event)
 
     # -- instruments -----------------------------------------------------------
     def add_instrument(
@@ -458,6 +489,11 @@ class NautilusPaperEngine:
         if kind not in ("MARKET", "LIMIT", "STOP_MARKET", "TAKE_PROFIT_MARKET"):
             raise ValueError(f"unsupported order kind {cmd.kind!r}")
 
+    def _bump(self, client_id: str) -> int:
+        """Bump one order's transition version (contract v1 §2)."""
+        self._versions[client_id] = self._versions.get(client_id, 0) + 1
+        return self._versions[client_id]
+
     def _submit_now(self, cmd: EngineOrder, client_id: str,
                     immediate: bool = False,
                     arrival_ns: int | None = None,
@@ -516,7 +552,14 @@ class NautilusPaperEngine:
                     "client_id": client_id, "kind": "cancel",
                     "reason": "nonmarketable-at-arrival", "cap": cap,
                     "ref_touch": ref[1] if side == OrderSide.BUY else ref[0]})
-                self._enqueue(EngineEvent(
+                # Two observable transitions: submitted + terminal.
+                self._bump(client_id)
+                self._bump(client_id)
+                self._dead[client_id] = {
+                    "state": "cancelled", "symbol": symbol, "qty": qty,
+                    "filled_qty": 0.0, "reservation_id": cmd.reservation_id,
+                    "role": cmd.role, "version": self._versions[client_id]}
+                self._emit(EngineEvent(
                     "cancel", EngineCancel(client_id, symbol,
                                            "nonmarketable-at-arrival", ts_utc),
                     ts_utc))
@@ -581,6 +624,7 @@ class NautilusPaperEngine:
         if immediate:
             submitted["immediate_exit"] = True  # diagnostic: zero latency.
         self._journal("submitted", submitted)
+        self._bump(client_id)
         return client_id
 
     def _drain_pending(self, venue_now_ns: int | None = None) -> None:
@@ -598,9 +642,23 @@ class NautilusPaperEngine:
                     and now_ns > dt_to_unix_nanos(cmd.expire_at_utc)):
                 # Window passed while queued: expire, never submit late.
                 ts_utc = unix_nanos_to_dt(now_ns).replace(tzinfo=timezone.utc)
+                self._journal("submitted", {
+                    "client_id": client_id,
+                    "instrument": cmd.instrument.upper(),
+                    "side": cmd.side, "qty": cmd.qty, "kind": cmd.kind.upper(),
+                    "role": cmd.role, "reservation_id": cmd.reservation_id,
+                    "expired_queued": True})
                 self._journal("terminal", {"client_id": client_id, "kind": "expire",
                                           "reason": "queued-past-window"})
-                self._enqueue(EngineEvent(
+                # Two observable transitions: submitted-intent + terminal.
+                self._bump(client_id)
+                self._bump(client_id)
+                self._dead[client_id] = {
+                    "state": "expired", "symbol": cmd.instrument.upper(),
+                    "qty": cmd.qty, "filled_qty": 0.0,
+                    "reservation_id": cmd.reservation_id, "role": cmd.role,
+                    "version": self._versions[client_id]}
+                self._emit(EngineEvent(
                     "expire", EngineExpire(client_id, cmd.instrument.upper(),
                                            "queued-past-window", ts_utc), ts_utc))
                 continue
@@ -659,10 +717,29 @@ class NautilusPaperEngine:
             raise RuntimeError("engine is closed")
         queued = [item for item in self._submit_queue if item[2] == client_order_id]
         if queued:
+            _, cmd, _ = queued[0]
             self._submit_queue = [item for item in self._submit_queue
                                   if item[2] != client_order_id]
             self._journal("cancel-request", {"client_id": client_order_id,
                                             "reason": reason, "dropped": "queued"})
+            # Tracked terminal truth (no EngineEvent: the submit never
+            # materialized; Session's entry_dropped path covers release).
+            self._journal("submitted", {
+                "client_id": client_order_id,
+                "instrument": cmd.instrument.upper(),
+                "side": cmd.side, "qty": cmd.qty, "kind": cmd.kind.upper(),
+                "role": cmd.role, "reservation_id": cmd.reservation_id,
+                "dropped_queued": True})
+            self._journal("terminal", {"client_id": client_order_id,
+                                      "kind": "cancel",
+                                      "reason": "dropped-queued"})
+            self._bump(client_order_id)
+            self._bump(client_order_id)
+            self._dead[client_order_id] = {
+                "state": "cancelled", "symbol": cmd.instrument.upper(),
+                "qty": cmd.qty, "filled_qty": 0.0,
+                "reservation_id": cmd.reservation_id, "role": cmd.role,
+                "version": self._versions[client_order_id]}
             return
         order = self._orders.get(client_order_id)
         if order is None:
@@ -695,22 +772,88 @@ class NautilusPaperEngine:
         return drained
 
     def open_orders(self) -> list[EngineOrderStatus]:
-        """Point-in-time order snapshot for flat inference (no venue reads)."""
+        """Currently-open/partial bot orders ONLY (contract v1 §2).
+
+        A missing order here proves nothing about cancellation, fills,
+        or flatness — use order_status() for tracked truth.
+        """
         out = []
         for client_id, order in self._orders.items():
             state = self._status_of(order)
+            if state not in ("open", "partial"):
+                continue
             out.append(EngineOrderStatus(
                 client_order_id=client_id, instrument=self._symbols[client_id],
                 state=state, qty=float(order.quantity),
                 filled_qty=float(order.filled_qty),
                 reservation_id=self._reservations.get(client_id),
-                role=self._roles.get(client_id, "entry")))
+                role=self._roles.get(client_id, "entry"),
+                version=self._versions.get(client_id, 0)))
         return out
+
+    def order_status(self, client_order_id: str) -> EngineOrderStatus | None:
+        """Tracked order truth incl. terminal + unknown (contract v1 §2).
+
+        None ONLY when the id was never seen. Queued (not yet
+        submitted) ids report open/version 0; restart-lost ids report
+        unknown (see also lost_orders()).
+        """
+        order = self._orders.get(client_order_id)
+        if order is not None:
+            return EngineOrderStatus(
+                client_order_id=client_order_id,
+                instrument=self._symbols[client_order_id],
+                state=self._status_of(order), qty=float(order.quantity),
+                filled_qty=float(order.filled_qty),
+                reservation_id=self._reservations.get(client_order_id),
+                role=self._roles.get(client_order_id, "entry"),
+                version=self._versions.get(client_order_id, 0))
+        for _, cmd, queued_id in self._submit_queue:
+            if queued_id == client_order_id:
+                return EngineOrderStatus(
+                    client_order_id=client_order_id,
+                    instrument=cmd.instrument.upper(), state="open",
+                    qty=float(cmd.qty), filled_qty=0.0,
+                    reservation_id=cmd.reservation_id, role=cmd.role,
+                    version=0)
+        dead = self._dead.get(client_order_id)
+        if dead is not None:
+            return EngineOrderStatus(
+                client_order_id=client_order_id,
+                instrument=dead["symbol"], state=dead["state"],
+                qty=float(dead["qty"]),
+                filled_qty=float(dead["filled_qty"]),
+                reservation_id=dead["reservation_id"], role=dead["role"],
+                version=int(dead["version"]))
+        if client_order_id in self._lost:
+            detail = self._lost[client_order_id]
+            return EngineOrderStatus(
+                client_order_id=client_order_id,
+                instrument=str(detail.get("instrument",
+                                          detail.get("symbol", "?"))),
+                state="unknown",
+                qty=float(detail.get("qty", 0.0) or 0.0),
+                filled_qty=self._recovered_fills.get(client_order_id, 0.0),
+                reservation_id=detail.get("reservation_id"),
+                role=str(detail.get("role", "entry")),
+                version=self._versions.get(client_order_id, 0))
+        return None
+
+    def unknown_ids(self) -> tuple[str, ...]:
+        """No venue lookup exists on paper: always empty (contract v1 §2).
+
+        Restart-lost orders surface as order_status() "unknown" plus
+        lost_orders(); there is no lookup that could resolve them.
+        """
+        return ()
 
     def filled_qty(self, client_order_id: str) -> float:
         order = self._orders.get(client_order_id)
         if order is not None:
             return float(order.filled_qty)
+        dead = self._dead.get(client_order_id)
+        if dead is not None:
+            return float(dead["filled_qty"])
         return self._recovered_fills.get(client_order_id, 0.0)
 
     def set_exit_only(self, halted: bool, reason: str = "") -> None:
@@ -768,6 +911,62 @@ class NautilusPaperEngine:
         free = float(account.balance_free(USDT))
         maint = float(account.total_margin_maint(USDT))
         return free, free - maint
+
+    def account_snapshot(self) -> AccountSnapshot:
+        """Authoritative sim positions/account/margin (contract v1 §2).
+
+        Wallet/available come from the simulated margin account; positions
+        from the netting cache with entry averages and marks. complete is
+        False when an open position has no mark (margin balance unknown);
+        consumers must treat incomplete snapshots as unknown, never flat.
+        """
+        account = self._portfolio.account(VENUE)
+        if account is None:
+            account = self._exchange.get_account()
+        wallet = float(account.balance_total(USDT))
+        available = float(account.balance_free(USDT))
+        positions: list[AccountPosition] = []
+        unrealized = 0.0
+        complete = True
+        for position in self._cache.positions_open():
+            try:
+                symbol = position.instrument_id.symbol.value
+            except AttributeError:
+                symbol = str(position.instrument_id).split(".")[0]
+            symbol = symbol.upper()
+            qty = float(position.signed_decimal_qty())
+            entry = float(position.avg_px_open)
+            mark = self._marks.get(symbol)
+            if mark is None:
+                bbo = self._bbo.get(symbol)
+                if bbo is not None:
+                    mark = (bbo[0] + bbo[1]) / 2.0
+            if mark is None:
+                prt = self._last_print.get(symbol)
+                if prt is not None:
+                    mark = prt[0]
+            if mark is None:
+                complete = False
+            else:
+                instrument = self._instruments.get(symbol)
+                precision = (instrument.price_precision
+                             if instrument is not None else 8)
+                try:
+                    unrealized += float(position.unrealized_pnl(
+                        Price(mark, precision)))
+                except Exception:
+                    complete = False
+                    mark = None
+            positions.append(AccountPosition(
+                instrument=symbol, qty=qty, entry_price=entry,
+                mark_price=mark))
+        return AccountSnapshot(
+            wallet_equity_usdt=wallet,
+            available_margin_usdt=available,
+            margin_balance_usdt=(wallet + unrealized) if complete else None,
+            positions=tuple(positions),
+            asof_utc=self.now_utc,
+            complete=complete)
 
     def note_event(self, event: dict[str, Any]) -> None:
         """Feed one NORMALIZED market-data event to the simulator.
@@ -843,7 +1042,7 @@ class NautilusPaperEngine:
         ts_utc = datetime.fromtimestamp(funding_ms / 1000, tz=timezone.utc)
         self._settled_funding[symbol] = \
             self._settled_funding.get(symbol, 0.0) + amount
-        self._enqueue(EngineEvent(
+        self._emit(EngineEvent(
             "funding",
             EngineFunding(event_id=f"funding:{symbol}:{funding_ms}",
                           instrument=symbol, amount=amount, ts_utc=ts_utc),
@@ -851,19 +1050,26 @@ class NautilusPaperEngine:
         self.stats["funding_events"] += 1
         self.stats["engine_events_total"] += 1
 
-    def recover(self, outcome_sink: Any) -> None:
-        """Rebuild tracking from the durable journal; replay fills to the sink."""
+    def recover(self, handler: Any) -> None:
+        """Rebuild tracking from the durable journal; adopt fills via _emit.
+
+        Recovery-adopted fills (reservation or not — W1 item 7) flow
+        through the bound handler as EngineEvents. Session applies
+        idempotently by execution_id, so re-adoption is safe. Versions
+        rebuild deterministically from journaled transitions; the fill
+        seq resumes past journaled paper ids so post-restart
+        execution_ids never collide.
+        """
         if self.journal_path is None:
             raise RuntimeError("recover needs journal_path (no durable journal)")
-        self._sink = outcome_sink
+        self.bind_sink(handler)
         path = self.journal_path
         if not path.exists():
             self._journal("recovered", {"fills_replayed": 0, "lost": []})
             return
         submitted: dict[str, dict[str, Any]] = {}
-        terminal: set[str] = set()
+        terminal: dict[str, str] = {}
         fills: list[dict[str, Any]] = []
-        propagated: set[str] = set()
         halted: bool | None = None
         for line in path.read_text(encoding="utf-8").splitlines():
             if not line.strip():
@@ -881,30 +1087,65 @@ class NautilusPaperEngine:
                 self._recovered_fills[detail["client_id"]] = (
                     self._recovered_fills.get(detail["client_id"], 0.0) + detail["qty"])
             elif event == "terminal":
-                terminal.add(detail["client_id"])
-            elif event == "delta-propagated":
-                propagated.add(detail["exec_id"])
+                terminal[detail["client_id"]] = str(detail.get("kind", "cancel"))
             elif event == "exit-only":
                 halted = bool(detail.get("halted"))
         for client_id, detail in submitted.items():
             if client_id not in terminal:
                 self._lost[client_id] = detail  # sim orders never survive restart.
+            else:
+                # Terminal-without-sim: tracked truth survives the restart.
+                kind = terminal[client_id]
+                state = {"cancel": "cancelled", "reject": "rejected",
+                         "expire": "expired"}.get(kind, "cancelled")
+                self._dead[client_id] = {
+                    "state": state, "symbol": detail.get("instrument",
+                                                         detail.get("symbol", "?")),
+                    "qty": detail.get("qty", 0.0), "filled_qty":
+                        self._recovered_fills.get(client_id, 0.0),
+                    "reservation_id": detail.get("reservation_id"),
+                    "role": detail.get("role", "entry"), "version": 0}
+        # Deterministic version rebuild: submitted + one per fill + terminal.
+        for client_id in submitted:
+            version = 1
+            version += sum(1 for record in fills
+                           if record["client_id"] == client_id)
+            if client_id in terminal:
+                version += 1
+            self._versions[client_id] = version
+            if client_id in self._dead:
+                self._dead[client_id]["version"] = version
+        # Fill-seq resync: never reuse a journaled paper execution id.
+        for record in fills:
+            exec_id = str(record.get("exec_id", ""))
+            parts = exec_id.split("/")
+            if len(parts) == 4 and parts[0] == "paper" and parts[1] == self._run_tag:
+                try:
+                    self._fill_seq = max(self._fill_seq, int(parts[3]))
+                except ValueError:
+                    pass
         for _ in range(self._seq):  # advance seeded RNG past journaled ids.
             self._rng.getrandbits(64)
         if halted is not None:
             self._exit_only = halted
         replayed = 0
-        if hasattr(outcome_sink, "note_fill_delta"):
-            for record in fills:
-                if record["exec_id"] in propagated or not record["reservation_id"]:
-                    continue
-                outcome_sink.note_fill_delta(
-                    record["reservation_id"], record["exec_id"], record["symbol"],
-                    record["venue_side"], record["qty"], record["price"],
-                    record["fee"], record["ts_utc"])
-                propagated.add(record["exec_id"])
-                self._journal("delta-propagated", {"exec_id": record["exec_id"]})
-                replayed += 1
+        for record in fills:
+            # At-least-once: re-push every journaled fill (reservation
+            # or not); Session dedups by execution_id (contract v1 §3).
+            moment = datetime.fromisoformat(record["ts_utc"])
+            if moment.tzinfo is None:
+                moment = moment.replace(tzinfo=timezone.utc)
+            self._emit(EngineEvent(
+                "fill",
+                EngineFill(
+                    execution_id=record["exec_id"],
+                    client_order_id=record["client_id"],
+                    instrument=record["symbol"], side=record["venue_side"],
+                    qty=record["qty"], price=record["price"],
+                    fee=record["fee"], ts_utc=moment,
+                    liquidity="taker"),
+                moment))
+            replayed += 1
         self._journal("recovered", {"fills_replayed": replayed,
                                     "lost": sorted(self._lost)})
 
@@ -916,17 +1157,6 @@ class NautilusPaperEngine:
         self._closed = True
 
     # -- order visibility --------------------------------------------------
-    def order_status(self, client_order_id: str) -> str:
-        """Local applied nautilus state name of a tracked order (runtime use)."""
-        order = self._orders.get(client_order_id)
-        if order is None:
-            if client_order_id in self._ioc_done:
-                # 30MIN §4: arrival/remainder-cancelled IOC is terminally
-                # CANCELED even though it never rests in the simulator.
-                return "CANCELED"
-            raise KeyError(f"unknown client_order_id: {client_order_id!r}")
-        return OrderStatus(int(order.status)).name
-
     def _status_of(self, order: Order) -> str:
         return _SEAM_STATE.get(int(order.status), "open")
 
@@ -1180,9 +1410,15 @@ class NautilusPaperEngine:
             "independent orders (support_contingent_orders=False; no OCO assumption)",
             "stops/targets reject when the trigger is already in the market "
             "(reject_stop_orders=True); attach_protection legs verify via poll, never assumed",
-            "fills propagate to the bound outcome sink exactly-once-accounted "
-            "(journaled delta-propagated; at-least-once replay on bind/recover, sink dedups); "
+            "fills reach Session exactly-once-accounted (at-least-once "
+            "push/replay, Session dedups by namespaced execution_id); "
             "forecast costs and booked fill costs are never double-charged",
+            "contract v1: open_orders is open/partial only (tracked truth via "
+            "order_status incl. terminal/unknown + monotonic versions); "
+            "execution ids are paper/{run}/{sym}/{seq} (venue trade id kept "
+            "in the journal); bind_sink(handler) pushes EVERY emission to a "
+            "callable Session handler, poll() drains pre-binding leftovers; "
+            "account_snapshot() is authoritative positions/margin",
             "restart: sim orders never survive; recover() rebuilds tracking from the "
             "journal, replays unpropagated fills, marks the rest lost-on-restart (never "
             "assumed filled/cancelled/flat)",
@@ -1246,52 +1482,21 @@ class NautilusPaperEngine:
                     "symbol": payload.instrument, "venue_side": payload.side,
                     "qty": payload.qty, "price": payload.price, "fee": payload.fee,
                     "ts_utc": payload.ts_utc.isoformat(),
+                    "venue_trade_id": event.trade_id.value,
                     # Execution vs report delivery stay separate (30MIN §4):
                     # ts_event is venue execution, ts_utc is report arrival.
                     "exec_ts_utc": unix_nanos_to_dt(
                         event.ts_event).replace(
                             tzinfo=timezone.utc).isoformat()})
-                self._enqueue(mapped)
-                self._propagate_live(payload)
+                self._bump(payload.client_order_id)
+                self._emit(mapped)
             else:
                 self._journal("terminal", {"client_id": getattr(payload, "client_order_id", ""),
                                           "kind": kind,
                                           "reason": getattr(payload, "reason", "")})
-                self._enqueue(mapped)
+                self._bump(getattr(payload, "client_order_id", ""))
+                self._emit(mapped)
             self.stats["engine_events_total"] += 1
-
-    def _propagate_live(self, fill: EngineFill) -> None:
-        """Propagate a live fill to the bound sink (exactly-once-accounted)."""
-        sink, reservation = self._sink, self._reservations.get(fill.client_order_id)
-        if sink is None or not hasattr(sink, "note_fill_delta") or not reservation:
-            return  # unbound or reservation-less: recover()/bind_sink() replays later.
-        sink.note_fill_delta(reservation, fill.execution_id, fill.instrument,
-                             fill.side, fill.qty, fill.price, fill.fee,
-                             fill.ts_utc.isoformat())
-        self._journal("delta-propagated", {"exec_id": fill.execution_id})
-
-    def _replay_unpropagated(self, sink: Any) -> None:
-        """Replay journaled fills the sink never acknowledged (bind-time catch-up)."""
-        if (sink is None or not hasattr(sink, "note_fill_delta")
-                or self.journal_path is None or not self.journal_path.exists()):
-            return
-        fills: list[dict[str, Any]] = []
-        propagated: set[str] = set()
-        for line in self.journal_path.read_text(encoding="utf-8").splitlines():
-            if not line.strip():
-                continue
-            entry = json.loads(line)
-            if entry.get("event") == "fill":
-                fills.append(entry["detail"])
-            elif entry.get("event") == "delta-propagated":
-                propagated.add(entry["detail"]["exec_id"])
-        for record in fills:
-            if record["exec_id"] in propagated or not record["reservation_id"]:
-                continue
-            sink.note_fill_delta(record["reservation_id"], record["exec_id"],
-                                 record["symbol"], record["venue_side"], record["qty"],
-                                 record["price"], record["fee"], record["ts_utc"])
-            self._journal("delta-propagated", {"exec_id": record["exec_id"]})
 
     def _file_fill(self, fill: OrderFilled) -> None:
         # ExecutionEngine-equivalent margin-account filing (netting OMS), same
@@ -1391,8 +1596,9 @@ class NautilusPaperEngine:
                     raise RuntimeError(
                         f"non-taker fill for {coid}: {event.liquidity_side} "
                         f"(taker-only model; refusing to book mislabeled costs)")
+            self._fill_seq += 1
             return EngineEvent("fill", EngineFill(
-                execution_id=event.trade_id.value,
+                execution_id=f"paper/{self._run_tag}/{symbol}/{self._fill_seq:06d}",
                 client_order_id=coid,
                 instrument=symbol,
                 side="BUY" if event.order_side == OrderSide.BUY else "SELL",

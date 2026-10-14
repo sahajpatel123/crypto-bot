@@ -73,7 +73,7 @@ def test_nonmarketable_buy_ioc_dead_at_arrival_no_late_revival():
     _qt(engine, 0, 99.0, 101.0)
     cid = engine.submit(_order("BUY", 0.1, price=100.50))
     engine.advance_to(T0 + timedelta(milliseconds=200))
-    assert engine.order_status(cid) == "CANCELED", (
+    assert engine.order_status(cid).state == "cancelled", (
         "nonmarketable IOC still alive after arrival")
     assert engine.filled_qty(cid) == 0.0
     _qt(engine, 1000, 99.0, 100.0)
@@ -89,7 +89,7 @@ def test_nonmarketable_sell_ioc_dead_at_arrival_no_late_revival():
     _qt(engine, 0, 99.0, 101.0)
     cid = engine.submit(_order("SELL", 0.1, price=99.50))
     engine.advance_to(T0 + timedelta(milliseconds=200))
-    assert engine.order_status(cid) == "CANCELED", (
+    assert engine.order_status(cid).state == "cancelled", (
         "nonmarketable IOC still alive after arrival")
     assert engine.filled_qty(cid) == 0.0
     _qt(engine, 1000, 100.0, 101.0)
@@ -139,7 +139,7 @@ def test_partial_fill_cancels_remainder_without_resting():
     cid = engine.submit(_order("BUY", 0.1, price=101.50))
     _qt(engine, 100, 99.0, 101.0, ask_size=0.05)
     assert engine.filled_qty(cid) == 0.05
-    assert engine.order_status(cid) == "CANCELED"
+    assert engine.order_status(cid).state == "cancelled"
     _qt(engine, 1000, 99.0, 101.0, ask_size=1.0)
     assert engine.filled_qty(cid) == 0.05, "remainder rested into next tick"
 
@@ -157,7 +157,7 @@ def test_queued_expiry_kills_order_past_window():
     _qt(engine, 1000, 99.0, 101.0)
     engine.advance_to(T0 + timedelta(seconds=6))
     _qt(engine, 6000, 99.0, 101.0)
-    assert engine.order_status(cid) == "EXPIRED"
+    assert engine.order_status(cid).state == "expired"
     assert engine.filled_qty(cid) == 0.0
     kinds = [e.kind for e in engine.poll()
              if getattr(e.payload, "client_order_id", None) == cid]
@@ -171,7 +171,7 @@ def test_price_band_bounds_the_cross_at_arrival():
     _qt(engine, 0, 99.0, 101.0)
     cid = engine.submit_protected(_order("BUY", 0.1), 100.50)
     engine.advance_to(T0 + timedelta(milliseconds=200))
-    assert engine.order_status(cid) == "CANCELED", (
+    assert engine.order_status(cid).state == "cancelled", (
         "out-of-band protected order alive after arrival")
     assert engine.filled_qty(cid) == 0.0
     _qt(engine, 1000, 99.0, 100.0)
@@ -190,8 +190,8 @@ def test_queued_cancel_wins_deterministically_no_phantom_fill():
     _qt(engine, 900, 99.0, 100.0)
     assert engine.filled_qty(cid) == 0.0
     assert _fills_for(engine, cid) == []
-    with pytest.raises(KeyError):
-        engine.order_status(cid)
+    dropped = engine.order_status(cid)
+    assert dropped is not None and dropped.state == "cancelled"
 
 
 def test_late_but_valid_fill_reports_exactly_once():

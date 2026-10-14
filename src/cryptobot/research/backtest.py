@@ -745,9 +745,10 @@ def run_cell(base_config_path, capture_dir, strategies: tuple[str, ...],
         {s: (known.get(s) or FROZEN_FILTERS.get(s.upper(), {}))
          for s in symbols}, filter_origin, asof_utc=filters_asof_utc)
     now_cell["now"] = session.now_utc
-    # Fills must reach risk/ledger or positions never exist economically
-    # (E-007 runtime binds the same sink on the live path).
-    engine.bind_sink(session.policy)
+    # Fills must reach risk/ledger or positions never exist economically.
+    # Contract v1: push through the Session event entry (W1 swaps this
+    # for the durable _apply_engine_event handler at Checkpoint A).
+    engine.bind_sink(session._on_engine_event)
     capture = Path(capture_dir)
     with open(capture / "events.jsonl", encoding="utf-8") as _fh:
         input_class = json.loads(_fh.readline())["input_class"]
