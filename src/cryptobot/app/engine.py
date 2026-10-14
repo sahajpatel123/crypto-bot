@@ -12,7 +12,7 @@ from typing import Any, Protocol
 
 __all__ = ["EngineOrder", "EngineFill", "EngineCancel", "EngineReject",
            "EngineExpire", "EngineFunding", "EngineEvent", "EngineOrderStatus",
-           "PaperEngine"]
+           "AccountPosition", "AccountSnapshot", "PaperEngine"]
 
 
 @dataclass(frozen=True)
@@ -86,11 +86,39 @@ class EngineEvent:
 class EngineOrderStatus:
     client_order_id: str
     instrument: str
-    state: str             # open | partial | filled | rejected | cancelled | expired
+    # open | partial | filled | rejected | cancelled | expired | unknown.
+    # "unknown" = tracked but outcome unresolved (needs lookup); None
+    # from order_status() (not this state) means never seen.
+    state: str
     qty: float
     filled_qty: float
     reservation_id: str | None = None
     role: str = "entry"    # entry | stop | target
+    # Per-order monotonic transition counter (contract v1 §2): adapters
+    # bump on every transition; Session applies only strictly newer
+    # versions so out-of-order updates cannot roll state backwards.
+    version: int = 0
+
+
+@dataclass(frozen=True)
+class AccountPosition:
+    instrument: str
+    qty: float             # signed base quantity (long > 0)
+    entry_price: float | None = None
+    mark_price: float | None = None
+
+
+@dataclass(frozen=True)
+class AccountSnapshot:
+    """Authoritative positions/account/margin with timestamp+completeness."""
+    wallet_equity_usdt: float
+    available_margin_usdt: float
+    margin_balance_usdt: float | None = None
+    positions: tuple[AccountPosition, ...] = ()
+    asof_utc: datetime | None = None
+    # False when any leg of the snapshot is missing/failed: consumers
+    # must treat incomplete snapshots as unknown, never as flat.
+    complete: bool = True
 
 
 class PaperEngine(Protocol):
@@ -133,7 +161,39 @@ class PaperEngine(Protocol):
         ...
 
     def open_orders(self) -> list[EngineOrderStatus]:
-        """Point-in-time order snapshot for flat inference (no venue reads)."""
+        """Currently-open/partial bot orders ONLY, every adapter.
+
+        A missing order here proves nothing about cancellation, fills,
+        or flatness — use order_status() for tracked truth.
+        """
+        ...
+
+    def order_status(self, client_order_id: str) -> EngineOrderStatus | None:
+        """Tracked order truth incl. terminal + unknown states.
+
+        None ONLY when the id was never seen. Versions rise
+        monotonically per order (see EngineOrderStatus.version).
+        """
+        ...
+
+    def unknown_ids(self) -> tuple[str, ...]:
+        """Tracked ids whose outcome is unresolved (need lookup)."""
+        ...
+
+    def bind_sink(self, handler: Any) -> None:
+        """Register the Session execution-event handler (contract v1 §2).
+
+        The adapter invokes it on EVERY emission (stream, lookup-adopt,
+        recovery-adopt, simulated callbacks). poll() drains only
+        pre-binding emissions.
+        """
+        ...
+
+    def account_snapshot(self) -> AccountSnapshot | None:
+        """Authoritative positions/account/margin, timestamped + complete.
+
+        None (or complete=False) means unknown — never flat.
+        """
         ...
 
     def filled_qty(self, client_order_id: str) -> float:
