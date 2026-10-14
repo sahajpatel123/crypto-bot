@@ -27,7 +27,7 @@ import argparse
 import json
 import subprocess
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -92,6 +92,13 @@ def assess_capture(path: Path) -> dict:
     row["period_utc"] = (f"{manifest.get('started_utc', '?')}.."
                          f"{manifest.get('ended_utc', '?')}")
     row["ist_day"] = _ist_day(str(manifest.get("started_utc", "")))
+    try:
+        landed = datetime.fromtimestamp(
+            (path / "events.jsonl").stat().st_mtime,
+            tz=timezone.utc).isoformat(timespec="seconds")
+    except OSError:
+        landed = "?"
+    row["available_utc"] = landed
     rule = str(manifest.get("capture_set_rule", ""))
     row["provenance"] = (f"{manifest.get('input_class', '?')}"
                          + (f"; {rule[:60]}…" if len(rule) > 60 else
@@ -141,20 +148,21 @@ def assess_capture(path: Path) -> dict:
 def to_markdown(rows: list[dict]) -> str:
     lines = ["# Data-suitability table (REL-W3-DATA §5, coarse screen)",
              "",
-             ("| capture | symbols | period UTC | IST day | provenance | "
-              "events | trades | book | mark | depth | funding | gaps | "
-              "disorder | prior use | flag |"),
-             ("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"),
+             ("| capture | symbols | period UTC | IST day | available UTC | "
+              "provenance | events | trades | book | mark | depth | funding | "
+              "gaps | disorder | prior use | flag |"),
+             ("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"),
              ]
     for row in rows:
         if row.get("flag") == "UNUSABLE":
             lines.append(f"| {row['capture']} | ? | ? | ? | ? | ? | ? | ? "
-                         f"| ? | ? | ? | ? | ? | {row['prior_use']} | "
+                         f"| ? | ? | ? | ? | ? | ? | {row['prior_use']} | "
                          f"UNUSABLE ({'; '.join(row['reasons'])}) |")
             continue
         lines.append(
             f"| {row['capture']} | {row['symbols']} | {row['period_utc']} "
-            f"| {row['ist_day']} | {row['provenance']} | {row['events_total']} "
+            f"| {row['ist_day']} | {row['available_utc']} "
+            f"| {row['provenance']} | {row['events_total']} "
             f"| {row['trades']} | {row['book']} | {row['mark']} "
             f"| {row['depth']} | {row['funding']} | {row['gaps']} "
             f"| {row['disorder']} | {row['prior_use']} | {row['flag']}"
@@ -163,7 +171,9 @@ def to_markdown(rows: list[dict]) -> str:
     lines += ["",
               "Limits: coarse screen only; not a live-readiness claim; "
               "tools/audit_dataset.py SCORABLE verdict still required "
-              "before scoring; funding absent on all rows."]
+              "before scoring; funding absent on all rows. Available UTC "
+              "= events.jsonl mtime (first availability on disk), which "
+              "is distinct from the capture period."]
     return "\n".join(lines) + "\n"
 
 
