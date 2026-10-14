@@ -82,6 +82,8 @@ Production submission DISABLED. No credentials requested at this stage.
   local context, not a new order. Owner in manager session confirmed no
   stop. Manager ruled RESUME under existing authorizations; interruption
   disclosed in W4's stopped.json record.
+  Resume acked with one disclosed mechanical redo (dev j1 rerun, journals
+  pruned pre-fix-bridge, MATCH-verified vs backup — allowed by freeze).
 
 ## Unresolved / risks
 - Linux reviewer-side proof needs a live Linux run (this host macOS); code-inspected only.
