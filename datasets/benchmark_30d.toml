@@ -9,7 +9,7 @@ kind = "vision-archive"
 manifest_version = 1
 transform_version = 2
 transform_notes = "v2 causal: minute closes publish at close availability (open/close/availability preserved); absent funding is NULL + status, never zero; v1 (close-at-open lookahead) refused by the reader."
-created_utc = "2026-10-12T13:57:44.099702+00:00"
+created_utc = "2026-10-14T13:51:46.152333+00:00"
 window_utc = ["2026-09-11", "2026-10-11"]
 window_ist = ["2026-09-12", "2026-10-11"]
 tz_accounting = "Asia/Kolkata"
@@ -634,7 +634,7 @@ channel = "markPrice"
 url = "https://data.binance.vision/data/futures/um/daily/markPriceKlines/BTCUSDT/1m/BTCUSDT-1m-2026-09-30.zip"
 sha256 = "789fdde08869eaf772f02c0a900452c9faea36c5d9ff924a57b6f132a463f598"
 local = "cache/symbol=BTCUSDT/date=2026-09-30/channel=markPrice/part.parquet"
-derived_sha256 = "54f2201be9f8b45673047720bd73baa35fd0dcd6aead09fb9270ff82cb11f82d"
+derived_sha256 = "7c41490443648352109aec6aaef78b793da156d1a90bbdfe5b7d5316e5ea2b10"
 rows = 1440
 bytes = 34823
 ts_min_ms = 1790726459999
@@ -660,7 +660,7 @@ channel = "markPrice"
 url = "https://data.binance.vision/data/futures/um/daily/markPriceKlines/BTCUSDT/1m/BTCUSDT-1m-2026-10-01.zip"
 sha256 = "1ff7d6387617412697298cc628f6bd1b7c9e8ea8359af99992ce80de6209f102"
 local = "cache/symbol=BTCUSDT/date=2026-10-01/channel=markPrice/part.parquet"
-derived_sha256 = "ebdf42bd8947f75758c40b6b6a1f5a4f5acd118a87572256f6b1556c54419ce6"
+derived_sha256 = "bd9737e90f52b7112f26513a4ae290b354f4ae28cfad9938716b07b68ab289eb"
 rows = 1440
 bytes = 34859
 ts_min_ms = 1790812859999
@@ -686,7 +686,7 @@ channel = "markPrice"
 url = "https://data.binance.vision/data/futures/um/daily/markPriceKlines/BTCUSDT/1m/BTCUSDT-1m-2026-10-02.zip"
 sha256 = "867256c3e8c0501ed8a4c51b9e287d52e4d19538e9af9c836edf7dc27a949906"
 local = "cache/symbol=BTCUSDT/date=2026-10-02/channel=markPrice/part.parquet"
-derived_sha256 = "fdead4588483c07ce2595252f58a05b4a61e72a506be679079b33184cef9a717"
+derived_sha256 = "cc901e3ebeaa1c8aebe1d1a70a57bb81db8dcb82878bcd1546c1054e10217949"
 rows = 1440
 bytes = 34782
 ts_min_ms = 1790899259999
@@ -712,7 +712,7 @@ channel = "markPrice"
 url = "https://data.binance.vision/data/futures/um/daily/markPriceKlines/BTCUSDT/1m/BTCUSDT-1m-2026-10-03.zip"
 sha256 = "246ec1a3f263b8ba8416f7d8e54289f09ac54731a8a5f91b5aa96a90bd9fefde"
 local = "cache/symbol=BTCUSDT/date=2026-10-03/channel=markPrice/part.parquet"
-derived_sha256 = "5281e94f88f8b6f680216ac718f4c3b54def0bf6da1051d16413b6ed5cf4fa08"
+derived_sha256 = "7c2a8645b09160e1e7f873e4bac501a966c14b5c642dcabc75970fb52c34988c"
 rows = 1440
 bytes = 31334
 ts_min_ms = 1790985659999
@@ -738,7 +738,7 @@ channel = "markPrice"
 url = "https://data.binance.vision/data/futures/um/daily/markPriceKlines/BTCUSDT/1m/BTCUSDT-1m-2026-10-04.zip"
 sha256 = "bb01dffb06891186344e99eac8f0f7f0b52784d86c326764dcfb88927a33aefa"
 local = "cache/symbol=BTCUSDT/date=2026-10-04/channel=markPrice/part.parquet"
-derived_sha256 = "0a9615da6fd8d7065406774e4bf947319578736a2b7834e951a9e004924e29ba"
+derived_sha256 = "1ba0b78973830860e6b94177191cca13033a978402929661ee1fa8b81a8d5caa"
 rows = 1440
 bytes = 31842
 ts_min_ms = 1791072059999
@@ -764,7 +764,7 @@ channel = "markPrice"
 url = "https://data.binance.vision/data/futures/um/daily/markPriceKlines/BTCUSDT/1m/BTCUSDT-1m-2026-10-05.zip"
 sha256 = "d8f96e59ec61bf5efcbfb5475cf1f19ec28440cfe10469205852f0afe1b9f9b3"
 local = "cache/symbol=BTCUSDT/date=2026-10-05/channel=markPrice/part.parquet"
-derived_sha256 = "32d2debcbb4cb162b16a1679ea68e41a75032096fb2c0ce904c2fb0825a01151"
+derived_sha256 = "963cb6d0e89e75c42e0b41a1f2791be88d0f3397a7b850a9da65021ef1a858e7"
 rows = 1440
 bytes = 34421
 ts_min_ms = 1791158459999
@@ -790,7 +790,7 @@ channel = "markPrice"
 url = "https://data.binance.vision/data/futures/um/daily/markPriceKlines/BTCUSDT/1m/BTCUSDT-1m-2026-10-06.zip"
 sha256 = "4a98d1410c26134fe0bc751065028cbd5f93020541240887342e950f628ef98c"
 local = "cache/symbol=BTCUSDT/date=2026-10-06/channel=markPrice/part.parquet"
-derived_sha256 = "518f1869fe362acc5f93ee5c6a7e9e95eb20315fa96c2a45249544e77f856935"
+derived_sha256 = "1b79ba73073059b67fcb906fa351c1718c9f8a39794a7226046d9c060c86a2f3"
 rows = 1440
 bytes = 33356
 ts_min_ms = 1791244859999
@@ -816,7 +816,7 @@ channel = "markPrice"
 url = "https://data.binance.vision/data/futures/um/daily/markPriceKlines/BTCUSDT/1m/BTCUSDT-1m-2026-10-07.zip"
 sha256 = "3b8c18af18b910c7c2f1341171a805198bad8be35666cad8f20efca9f9ccf6b4"
 local = "cache/symbol=BTCUSDT/date=2026-10-07/channel=markPrice/part.parquet"
-derived_sha256 = "8280d2e0ddcb66021b9ed8eacaf792c2612763f922b1eef15cc7028e6ade1d54"
+derived_sha256 = "713f0df428a9ea2698e08b1974c09d13535fe54926649d42d27ac60e206c4e9b"
 rows = 1440
 bytes = 34039
 ts_min_ms = 1791331259999
@@ -842,7 +842,7 @@ channel = "markPrice"
 url = "https://data.binance.vision/data/futures/um/daily/markPriceKlines/BTCUSDT/1m/BTCUSDT-1m-2026-10-08.zip"
 sha256 = "66757018ca6a98e8fefcae9472eff657d2a2ce147563bbb5331100b9a24e43e2"
 local = "cache/symbol=BTCUSDT/date=2026-10-08/channel=markPrice/part.parquet"
-derived_sha256 = "f8a909ea40c31dfa026f1e5f067b843826426e44c149d92ec3d03503022b9563"
+derived_sha256 = "6163a6f5a516641e46e3513597188bf6757947c9f73a76978ad28a4c1652066d"
 rows = 1440
 bytes = 34500
 ts_min_ms = 1791417659999
@@ -868,7 +868,7 @@ channel = "markPrice"
 url = "https://data.binance.vision/data/futures/um/daily/markPriceKlines/BTCUSDT/1m/BTCUSDT-1m-2026-10-09.zip"
 sha256 = "283d8ce52afebbe671b03d6bd4cee2ac7c930002196b5efc42b236b8ee232733"
 local = "cache/symbol=BTCUSDT/date=2026-10-09/channel=markPrice/part.parquet"
-derived_sha256 = "cce9d6b95e73af0dd63b683e4bcd64996a26354f77a3b14621d348cac748ce69"
+derived_sha256 = "e43631e1d0ba7a5c1624ffdad396c9260eb2b0589147216c7690febbc87ea0d9"
 rows = 1440
 bytes = 33531
 ts_min_ms = 1791504059999
@@ -894,7 +894,7 @@ channel = "markPrice"
 url = "https://data.binance.vision/data/futures/um/daily/markPriceKlines/BTCUSDT/1m/BTCUSDT-1m-2026-10-10.zip"
 sha256 = "5e3ec69e3845e61b32d75d8d0d12dc74ca554212a5416d7db75c252476eeb7db"
 local = "cache/symbol=BTCUSDT/date=2026-10-10/channel=markPrice/part.parquet"
-derived_sha256 = "dbfe6e06b47ef3d6c3b1237fc5c12c6ad58ceaeff9ac795b1883875bf7f82a5a"
+derived_sha256 = "a1d1e3f58623a2e318d93a64960e2d69ddc249a8b0674fad8c1224c880cca63f"
 rows = 1440
 bytes = 29935
 ts_min_ms = 1791590459999
@@ -920,7 +920,7 @@ channel = "markPrice"
 url = "https://data.binance.vision/data/futures/um/daily/markPriceKlines/BTCUSDT/1m/BTCUSDT-1m-2026-10-11.zip"
 sha256 = "4bb9a2541880fdbb47270f3c9b9476e8574c640690dbe788d0bf92192a9a3d40"
 local = "cache/symbol=BTCUSDT/date=2026-10-11/channel=markPrice/part.parquet"
-derived_sha256 = "0e54f172148bca92b336ed5432764d9469d3c5500308ba025a1aa9b064a5baf7"
+derived_sha256 = "50d6b7cc9ff961b32ab24a1a4e38bec755c0651d952bcc10d68bd31eb5031136"
 rows = 1440
 bytes = 31236
 ts_min_ms = 1791676859999
@@ -1440,7 +1440,7 @@ channel = "markPrice"
 url = "https://data.binance.vision/data/futures/um/daily/markPriceKlines/ETHUSDT/1m/ETHUSDT-1m-2026-09-30.zip"
 sha256 = "72bda28f0819328feb8e1586a5cc55d0da18892ad3cf68459791129cc367f9f4"
 local = "cache/symbol=ETHUSDT/date=2026-09-30/channel=markPrice/part.parquet"
-derived_sha256 = "49cc9946ec5f72f9c2b389cb0172297275c2aba324db8ac5a221343df16431ec"
+derived_sha256 = "de178c167925d4c06766ea923b8f53ac14c901fede558e728716c1e14a61dcec"
 rows = 1440
 bytes = 31877
 ts_min_ms = 1790726459999
@@ -1466,7 +1466,7 @@ channel = "markPrice"
 url = "https://data.binance.vision/data/futures/um/daily/markPriceKlines/ETHUSDT/1m/ETHUSDT-1m-2026-10-01.zip"
 sha256 = "8377b646f2d17052f2325be96629e17ea89c23b54a351de1d0230f7f3146ed03"
 local = "cache/symbol=ETHUSDT/date=2026-10-01/channel=markPrice/part.parquet"
-derived_sha256 = "9a54e44fd1329826d5e5ec578f1b9d5225d5bbfc0da1348da20a2d7c2cfd19d6"
+derived_sha256 = "cd9e78fe64a9162462404045aa3f65e0b18ac56e829099efc0cc74f895ea74ea"
 rows = 1440
 bytes = 32050
 ts_min_ms = 1790812859999
@@ -1492,7 +1492,7 @@ channel = "markPrice"
 url = "https://data.binance.vision/data/futures/um/daily/markPriceKlines/ETHUSDT/1m/ETHUSDT-1m-2026-10-02.zip"
 sha256 = "693361a7b604a6f4abf67fd13eacda0ddf3a644c614c91660e7f6854aed6e41f"
 local = "cache/symbol=ETHUSDT/date=2026-10-02/channel=markPrice/part.parquet"
-derived_sha256 = "c14785df27e9cf050204ecfac0a3fe5a39cef6ecf3abb46f372c7914a8618041"
+derived_sha256 = "4acfe55e8a93d33f68500c64245df3402a81acea4edecbdc0da4e6cdec57114f"
 rows = 1440
 bytes = 32028
 ts_min_ms = 1790899259999
@@ -1518,7 +1518,7 @@ channel = "markPrice"
 url = "https://data.binance.vision/data/futures/um/daily/markPriceKlines/ETHUSDT/1m/ETHUSDT-1m-2026-10-03.zip"
 sha256 = "b68051f4ee785f10af6622228aef5b0a750fc8aabd228a3ac105236bdf802c81"
 local = "cache/symbol=ETHUSDT/date=2026-10-03/channel=markPrice/part.parquet"
-derived_sha256 = "842bb19f6b97747def9c934093120c98695aa9bf027ffcd0c723945806ee549e"
+derived_sha256 = "f8c334b0d6e82ac5f8126dead551a1d6fb9ff567bcaa34ddcb0e1e3b1e730cf7"
 rows = 1440
 bytes = 28952
 ts_min_ms = 1790985659999
@@ -1544,7 +1544,7 @@ channel = "markPrice"
 url = "https://data.binance.vision/data/futures/um/daily/markPriceKlines/ETHUSDT/1m/ETHUSDT-1m-2026-10-04.zip"
 sha256 = "dd92c6f66a72d675a20b20f5121f74b6098d1653895e89506566274cd9da4084"
 local = "cache/symbol=ETHUSDT/date=2026-10-04/channel=markPrice/part.parquet"
-derived_sha256 = "794d49563c58e7a7bda4041cd101c66cc10d44337cae91eb52ce28ab1ceb01b4"
+derived_sha256 = "ad534db690a96a6a257731ed9c042ea0962d9d25c5d2cf1bb3aefe918da2ccc1"
 rows = 1440
 bytes = 29223
 ts_min_ms = 1791072059999
@@ -1570,7 +1570,7 @@ channel = "markPrice"
 url = "https://data.binance.vision/data/futures/um/daily/markPriceKlines/ETHUSDT/1m/ETHUSDT-1m-2026-10-05.zip"
 sha256 = "be0418dd61f45e6e0e597236b5a38adb3b611a0d1c4f1f40468e37459a937fb5"
 local = "cache/symbol=ETHUSDT/date=2026-10-05/channel=markPrice/part.parquet"
-derived_sha256 = "ef520e5944036d7663d3954ac424fb1e539886c20f633e94c87a38cfaf86419a"
+derived_sha256 = "66315f54dc17d058d099d4e21c8bd0512d36556a95b6e4d498022fb252dfb391"
 rows = 1440
 bytes = 31211
 ts_min_ms = 1791158459999
@@ -1596,7 +1596,7 @@ channel = "markPrice"
 url = "https://data.binance.vision/data/futures/um/daily/markPriceKlines/ETHUSDT/1m/ETHUSDT-1m-2026-10-06.zip"
 sha256 = "ce12dcbf68aec135167a00e2bb887304a3048415cd663b3bfa74bfd1fac76482"
 local = "cache/symbol=ETHUSDT/date=2026-10-06/channel=markPrice/part.parquet"
-derived_sha256 = "48c47dd5344d0d5673f0a185367e198e915e96862eb86204caabc37177362216"
+derived_sha256 = "64c532a0d6815f55976371e674a49e1932237950d7cae56df4983a823b1e69da"
 rows = 1440
 bytes = 30337
 ts_min_ms = 1791244859999
@@ -1622,7 +1622,7 @@ channel = "markPrice"
 url = "https://data.binance.vision/data/futures/um/daily/markPriceKlines/ETHUSDT/1m/ETHUSDT-1m-2026-10-07.zip"
 sha256 = "80a5bbd0a5c68d2c2c914c45394a296f7461946fc8d9b742176c4dd36ddfab4e"
 local = "cache/symbol=ETHUSDT/date=2026-10-07/channel=markPrice/part.parquet"
-derived_sha256 = "632abf74ce106f264878cc057af72b6ff8b0bf7e388ff413637ebb26b6b3ed4e"
+derived_sha256 = "dc795dd43a1a3d6eecd1cb85c812e8a6894244ca359daf8c3f2b51bb5aebf237"
 rows = 1440
 bytes = 31436
 ts_min_ms = 1791331259999
@@ -1648,7 +1648,7 @@ channel = "markPrice"
 url = "https://data.binance.vision/data/futures/um/daily/markPriceKlines/ETHUSDT/1m/ETHUSDT-1m-2026-10-08.zip"
 sha256 = "6f324ae1e511bbe9bf31937b81f6dd39917730df2244890cd12afe99edf2c98a"
 local = "cache/symbol=ETHUSDT/date=2026-10-08/channel=markPrice/part.parquet"
-derived_sha256 = "bdb2b1c057bc7addb2755a77d945c9e7815a15dc32f53425bcf09e29ea736811"
+derived_sha256 = "0690b93f810b86783924fb8f72dd8861d373c760411e89a031fdc3cf54b3eafb"
 rows = 1440
 bytes = 31986
 ts_min_ms = 1791417659999
@@ -1674,7 +1674,7 @@ channel = "markPrice"
 url = "https://data.binance.vision/data/futures/um/daily/markPriceKlines/ETHUSDT/1m/ETHUSDT-1m-2026-10-09.zip"
 sha256 = "fdcd193f546ca8441771c37002b610343b7324fe9fb2b6d7c7f6ee3f17438a58"
 local = "cache/symbol=ETHUSDT/date=2026-10-09/channel=markPrice/part.parquet"
-derived_sha256 = "8e8ece889092bd5c62798ca294051eb9e7c570bf1f286fa6242518db1273a6d5"
+derived_sha256 = "f150577c7caa15915a812f7681409dd773d5749d62724e6c96e3bcc7c8adfc32"
 rows = 1440
 bytes = 30557
 ts_min_ms = 1791504059999
@@ -1700,7 +1700,7 @@ channel = "markPrice"
 url = "https://data.binance.vision/data/futures/um/daily/markPriceKlines/ETHUSDT/1m/ETHUSDT-1m-2026-10-10.zip"
 sha256 = "2a9b36c17d4a2dc4bfa0a625f918585748fce2bedb2dace6f3d6d06729e9cdbb"
 local = "cache/symbol=ETHUSDT/date=2026-10-10/channel=markPrice/part.parquet"
-derived_sha256 = "f23f52a9629f00a565c44dc538c2a50d85361b4f59cbbffd17ee60e1da9ae5d0"
+derived_sha256 = "e44614ae26ea3c7589b0824629cc8e199cabb4902cde898d90b822fc35d9c727"
 rows = 1440
 bytes = 28459
 ts_min_ms = 1791590459999
@@ -1726,7 +1726,7 @@ channel = "markPrice"
 url = "https://data.binance.vision/data/futures/um/daily/markPriceKlines/ETHUSDT/1m/ETHUSDT-1m-2026-10-11.zip"
 sha256 = "c8d68430a5e496958e39faeb41a0795c5e4b22d953edcf290829d821afddce00"
 local = "cache/symbol=ETHUSDT/date=2026-10-11/channel=markPrice/part.parquet"
-derived_sha256 = "df61ef9931b5c2c2d569e05ade783feb86498fab74bd7ee879194a19c3003bd2"
+derived_sha256 = "39cd961cd84cc49fd888833d963b1a808edcb492195519d3fc12f9e8fe936595"
 rows = 1440
 bytes = 29315
 ts_min_ms = 1791676859999
@@ -6568,159 +6568,33 @@ bytes = 26051
 ts_min_ms = 1791676859999
 ts_max_ms = 1791763199999
 
-[[gap]]
+[[source]]
 symbol = "BTCUSDT"
-day = "2026-10-01"
-start_ms = 1790812800000
-end_ms = 1790899200000
-reason = "funding-terms-absent"
+month = "2026-10"
+channel = "fundingRate"
+url = "rest-staged:fapi/v1/fundingRate:BTCUSDT:2026-10"
+sha256 = "eab25dfd3cb055983a60c32d5f603b2164618c0abe399dfb57df0158fd95ded4"
+local = "cache/symbol=BTCUSDT/funding/2026-10.parquet"
+derived_sha256 = "af18021381aa78e3e177dbd4a348188939b540955e3494fb8fdf21d040432183"
+rows = 35
+bytes = 496
+ts_min_ms = 1790812800001
+ts_max_ms = 1791792000002
+notes = "REST backfill staged 2026-10-12T15:57:25.418590+00:00; reconcile clean; see funding_backfill/BTCUSDT/funding/*.provenance.json"
 
-[[gap]]
-symbol = "BTCUSDT"
-day = "2026-10-02"
-start_ms = 1790899200000
-end_ms = 1790985600000
-reason = "funding-terms-absent"
-
-[[gap]]
-symbol = "BTCUSDT"
-day = "2026-10-03"
-start_ms = 1790985600000
-end_ms = 1791072000000
-reason = "funding-terms-absent"
-
-[[gap]]
-symbol = "BTCUSDT"
-day = "2026-10-04"
-start_ms = 1791072000000
-end_ms = 1791158400000
-reason = "funding-terms-absent"
-
-[[gap]]
-symbol = "BTCUSDT"
-day = "2026-10-05"
-start_ms = 1791158400000
-end_ms = 1791244800000
-reason = "funding-terms-absent"
-
-[[gap]]
-symbol = "BTCUSDT"
-day = "2026-10-06"
-start_ms = 1791244800000
-end_ms = 1791331200000
-reason = "funding-terms-absent"
-
-[[gap]]
-symbol = "BTCUSDT"
-day = "2026-10-07"
-start_ms = 1791331200000
-end_ms = 1791417600000
-reason = "funding-terms-absent"
-
-[[gap]]
-symbol = "BTCUSDT"
-day = "2026-10-08"
-start_ms = 1791417600000
-end_ms = 1791504000000
-reason = "funding-terms-absent"
-
-[[gap]]
-symbol = "BTCUSDT"
-day = "2026-10-09"
-start_ms = 1791504000000
-end_ms = 1791590400000
-reason = "funding-terms-absent"
-
-[[gap]]
-symbol = "BTCUSDT"
-day = "2026-10-10"
-start_ms = 1791590400000
-end_ms = 1791676800000
-reason = "funding-terms-absent"
-
-[[gap]]
-symbol = "BTCUSDT"
-day = "2026-10-11"
-start_ms = 1791676800000
-end_ms = 1791763200000
-reason = "funding-terms-absent"
-
-[[gap]]
+[[source]]
 symbol = "ETHUSDT"
-day = "2026-10-01"
-start_ms = 1790812800000
-end_ms = 1790899200000
-reason = "funding-terms-absent"
-
-[[gap]]
-symbol = "ETHUSDT"
-day = "2026-10-02"
-start_ms = 1790899200000
-end_ms = 1790985600000
-reason = "funding-terms-absent"
-
-[[gap]]
-symbol = "ETHUSDT"
-day = "2026-10-03"
-start_ms = 1790985600000
-end_ms = 1791072000000
-reason = "funding-terms-absent"
-
-[[gap]]
-symbol = "ETHUSDT"
-day = "2026-10-04"
-start_ms = 1791072000000
-end_ms = 1791158400000
-reason = "funding-terms-absent"
-
-[[gap]]
-symbol = "ETHUSDT"
-day = "2026-10-05"
-start_ms = 1791158400000
-end_ms = 1791244800000
-reason = "funding-terms-absent"
-
-[[gap]]
-symbol = "ETHUSDT"
-day = "2026-10-06"
-start_ms = 1791244800000
-end_ms = 1791331200000
-reason = "funding-terms-absent"
-
-[[gap]]
-symbol = "ETHUSDT"
-day = "2026-10-07"
-start_ms = 1791331200000
-end_ms = 1791417600000
-reason = "funding-terms-absent"
-
-[[gap]]
-symbol = "ETHUSDT"
-day = "2026-10-08"
-start_ms = 1791417600000
-end_ms = 1791504000000
-reason = "funding-terms-absent"
-
-[[gap]]
-symbol = "ETHUSDT"
-day = "2026-10-09"
-start_ms = 1791504000000
-end_ms = 1791590400000
-reason = "funding-terms-absent"
-
-[[gap]]
-symbol = "ETHUSDT"
-day = "2026-10-10"
-start_ms = 1791590400000
-end_ms = 1791676800000
-reason = "funding-terms-absent"
-
-[[gap]]
-symbol = "ETHUSDT"
-day = "2026-10-11"
-start_ms = 1791676800000
-end_ms = 1791763200000
-reason = "funding-terms-absent"
+month = "2026-10"
+channel = "fundingRate"
+url = "rest-staged:fapi/v1/fundingRate:ETHUSDT:2026-10"
+sha256 = "b2520608897f9b9cd0514fa25569773cc9eb883a65b68b75cb505da2823dfc8e"
+local = "cache/symbol=ETHUSDT/funding/2026-10.parquet"
+derived_sha256 = "fabd98bf049aae04b3df916bea80dcca2e3163ef97253a17aa9c83564402d743"
+rows = 35
+bytes = 497
+ts_min_ms = 1790812800001
+ts_max_ms = 1791792000002
+notes = "REST backfill staged 2026-10-12T15:57:25.418590+00:00; reconcile clean; see funding_backfill/ETHUSDT/funding/*.provenance.json"
 
 [[gap]]
 symbol = "SOLUSDT"
@@ -7186,7 +7060,7 @@ reason = "funding-terms-absent"
 
 [filters]
 profile = "frozen-assumed"
-fetched_utc = "2026-10-12T13:57:44.108372+00:00"
+fetched_utc = "2026-10-14T13:51:19.538711+00:00"  # carried (merge does not re-fetch filters)
 source = "https://fapi.binance.com/fapi/v1/exchangeInfo?symbols=BTCUSDT&symbols=ETHUSDT&symbols=SOLUSDT&symbols=ZECUSDT&symbols=NEARUSDT&symbols=STRKUSDT&symbols=XRPUSDT&symbols=WUSDT"
 notes = "Current venue filters frozen at manifest build; the archive carries no historical filters."
 
