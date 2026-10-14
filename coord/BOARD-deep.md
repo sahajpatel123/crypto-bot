@@ -49,6 +49,16 @@ Production submission DISABLED. No credentials requested at this stage.
 - Untouched tick eval DATA BLOCKED until Tardis buy or fresh self-capture (owner decision).
 - Workflow bodies for workstream-1/4 + critic arrived truncated; packages above carry the content.
 
+## Completion-filing contract (integration input, 2026-10-14)
+Each worker files on its branch: `coord/outbox/DEEP-<W>-<D>.done.json` shaped
+`{"sha": "<commit>", "commands": [{"cmd": [...], "cwd": null, "expect_rc": 0,
+"artifacts": ["repo/relative/paths"], "note": "..."}]}`.
+`tools/deep_accept.py` (deep/integration) RE-RUNS every command, checks rcs +
+artifact existence/non-empty; missing filing = BLOCKED. Nothing quoted counts
+unless re-runnable. (Also sent by peer message; this board copy is authoritative.)
+Transport lesson: original peer dispatches were lost; heartbeats got through.
+Branch filings carry the record; peer messaging is the standby channel.
+
 ## Next actions
 - Manager: dispatch all five, integrate on branches deep/w1..w5, one acceptance command, one final report.
 - Owner (later): demo creds → Binance demo check; EVAL/source decision; launch decision.
