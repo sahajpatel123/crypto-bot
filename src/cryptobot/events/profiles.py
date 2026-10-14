@@ -106,11 +106,19 @@ def load_profile(path: str | Path) -> OperationalProfile | ResearchProfile:
     try:
         cache_days = int(events.get("cache_ttl_days", 7))
         refresh_s = int(events.get("refresh_interval_s", 6 * 3600))
+        raw_sources = events.get("required_sources", ("fomc", "cpi"))
+        if isinstance(raw_sources, str) or not isinstance(
+                raw_sources, (list, tuple)):
+            raise ValueError(f"profile {path}: required_sources must be "
+                             f"a list of source names")
         gate = GateConfig(
             pre_buffer_s=int(events.get("pre_buffer_s", 900)),
             post_buffer_s=int(events.get("post_buffer_s", 900)),
             press_duration_s=int(events.get("press_duration_s", 3600)),
-            resume_cooldown_s=int(events.get("resume_cooldown_s", 0)))
+            resume_cooldown_s=int(events.get("resume_cooldown_s", 0)),
+            max_hold_s=int(events.get("max_hold_s", 300)),
+            exit_budget_s=int(events.get("exit_budget_s", 120)),
+            required_sources=tuple(str(s) for s in raw_sources))
         anomaly = AnomalyConfig(
             spread_widen_bps=float(events.get("spread_widen_bps", 25.0)),
             book_thin_ratio=float(events.get("book_thin_ratio", 0.3)),

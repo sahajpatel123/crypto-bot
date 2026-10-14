@@ -51,6 +51,7 @@ allow_live_submission = false  # §9: default-off at every layer.
 [data]
 symbols = ["BTCUSDT"]
 max_symbols = 8
+max_hf_subscriptions = 2  # REL-W3: prior data did not support eight.
 warmup_bars = 130
 
 [runtime]

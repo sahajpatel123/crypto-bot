@@ -42,13 +42,38 @@ MONTHS = ("January", "February", "March", "April", "May", "June", "July",
 _MONTH_NO = {name: num + 1 for num, name in enumerate(MONTHS)}
 
 _FOMC_SECTION = re.compile(r"####\s+(\d{4})\s+FOMC Meetings")
+_FOMC_HTML_SECTION = re.compile(r"(\d{4})\s+FOMC Meetings")
 _FOMC_MONTH_BLOCK = re.compile(
     r"\*\*(January|February|March|April|May|June|July|August|September|"
     r"October|November|December)\*\*\s*\n+\s*(\d{1,2})-(\d{1,2})")
+# Real Fed layout (verified live 2026-10-14): month + day-range divs.
+# Decision day = range end; trailing "*" (projection meetings) tolerated.
+_FOMC_HTML_BLOCK = re.compile(
+    r"fomc-meeting__month[^>]*><strong>("
+    r"January|February|March|April|May|June|July|August|September|"
+    r"October|November|December)</strong>.*?fomc-meeting__date[^>]*>"
+    r"(\d{1,2})-(\d{1,2})\*?", re.DOTALL)
 _FOMC_STATEMENT = re.compile(r"monetary(\d{4})(\d{2})(\d{2})")
 _LONG_DATE = re.compile(
     r"(January|February|March|April|May|June|July|August|September|"
     r"October|November|December)\s+(\d{1,2}),\s+(20\d{2})")
+# Real BLS release-list layout (verified live 2026-10-14): abbreviated
+# months with a dot, except May (no dot); observed Sep. (not Sept.).
+_ABBR_NO = {"Jan": 1, "Feb": 2, "Mar": 3, "Apr": 4, "May": 5, "Jun": 6,
+            "Jul": 7, "Aug": 8, "Sep": 9, "Sept": 9, "Oct": 10, "Nov": 11,
+            "Dec": 12}
+_RELEASE_LIST_ROW = re.compile(
+    r"<td>(Jan\.|Feb\.|Mar\.|Apr\.|May|Jun\.|Jul\.|Aug\.|Sept?\.|Oct\.|"
+    r"Nov\.|Dec\.)\s+(\d{1,2}),\s+(20\d{2})</td>\s*"
+    r"<td>(\d{2}:\d{2}\s+[AP]M)</td>")
+
+
+def _release_list_dates(body_text: str) -> set[date]:
+    """Dates from BLS release-list table rows (date cell + time cell)."""
+    found: set[date] = set()
+    for month, day, year, _clock in _RELEASE_LIST_ROW.findall(body_text):
+        found.add(date(int(year), _ABBR_NO[month.rstrip(".")], int(day)))
+    return found
 
 STATE_FORMAT = "cryptobot-source-state/1"
 
@@ -84,35 +109,67 @@ def parse_fomc_decision_dates(body_text: str) -> set[date]:
     for year, month, day in _FOMC_STATEMENT.findall(body_text):
         found.add(date(int(year), int(month), int(day)))
     sections = list(_FOMC_SECTION.finditer(body_text))
+    if not sections:
+        sections = list(_FOMC_HTML_SECTION.finditer(body_text))
     bounds = [m.start() for m in sections] + [len(body_text)]
     years = [int(m.group(1)) for m in sections]
-    for block in _FOMC_MONTH_BLOCK.finditer(body_text):
-        pos = block.start()
-        year = next((y for y, start, end in
+
+    def year_at(pos: int) -> int | None:
+        return next((y for y, start, end in
                      zip(years, bounds, bounds[1:])
                      if start <= pos < end), None)
+
+    for block in _FOMC_MONTH_BLOCK.finditer(body_text):
+        year = year_at(block.start())
         if year is None:
             continue
         found.add(date(year, _MONTH_NO[block.group(1)],
                        int(block.group(3))))
+    for block in _FOMC_HTML_BLOCK.finditer(body_text):
+        year = year_at(block.start())
+        if year is None:
+            continue
+        try:
+            found.add(date(year, _MONTH_NO[block.group(1)],
+                           int(block.group(3))))
+        except ValueError:
+            continue  # month-boundary ranges: statement links cover them.
     if not found:
         raise ValueError("no FOMC decision dates parsed")
     return found
 
 
 def parse_cpi_release_dates(body_text: str) -> set[date]:
-    """Release dates from a BLS CPI schedule page body (long-form dates).
+    """Release dates from a BLS CPI schedule page body.
 
-    Raises when the CPI marker is absent or no dates are found. The real
-    BLS layout was unreachable at fixture time (HTTP 403); the first live
-    fetch confirms it, and any mismatch fails closed (unverified).
+    Union of the release-list table (real layout, verified live
+    2026-10-14) and long-form dates (canned-page compatibility).
+    Raises when the CPI marker is absent or no dates are found.
     """
     if "Consumer Price Index" not in body_text:
         raise ValueError("BLS page marker 'Consumer Price Index' absent")
     found = {date(int(year), _MONTH_NO[month], int(day))
              for month, day, year in _LONG_DATE.findall(body_text)}
+    found |= _release_list_dates(body_text)
     if not found:
         raise ValueError("no CPI release dates parsed")
+    return found
+
+
+def parse_employment_dates(body_text: str) -> set[date]:
+    """Release dates from a BLS Employment Situation schedule page body.
+
+    Same release-list layout as CPI (verified live 2026-10-14), plus
+    long-form union for robustness. Raises when the marker is absent
+    or no dates are found.
+    """
+    if "Employment Situation" not in body_text:
+        raise ValueError("BLS page marker 'Employment Situation' absent")
+    found = {date(int(year), _MONTH_NO[month], int(day))
+             for month, day, year in _LONG_DATE.findall(body_text)}
+    found |= _release_list_dates(body_text)
+    if not found:
+        raise ValueError("no Employment Situation dates parsed")
     return found
 
 
@@ -222,11 +279,13 @@ class RefreshResult:
 _PARSERS: dict[str, Callable[[str], set[date]]] = {
     "fomc": parse_fomc_decision_dates,
     "cpi": parse_cpi_release_dates,
+    "employment": parse_employment_dates,
 }
 
 
 def _cached_dates(store: EventStore, source: str) -> set[date]:
-    kinds = {"fomc": ("decision",), "cpi": ("release",)}.get(source, ())
+    kinds = {"fomc": ("decision",), "cpi": ("release",),
+             "employment": ("release",)}.get(source, ())
     return {e.scheduled_utc.date() for e in store.by_source(source)
             if not kinds or e.kind in kinds}
 
@@ -337,9 +396,20 @@ class FreshnessTracker:
                         verified_utc=state.verified_utc,
                         http_status=None, error=state.last_error)
                     continue
-                cached = _cached_dates(store, source)
+                # REL-W3: drift is judged on UPCOMING cached dates only.
+                # Official pages scroll past releases off (BLS shows ~12
+                # upcoming); treating scrolled-off past dates as drift
+                # would outage every refresh a week after each release.
+                # Past dates already happened and cannot drift.
+                today = now_utc.date()
+                cached = {day for day in _cached_dates(store, source)
+                          if day >= today}
+                # NOTE: an empty upcoming set (elapsed horizon) yields
+                # empty drift and stays "verified" here; coverage_status
+                # reports "expired-horizon" separately -> no-entry.
                 years = {day.year for day in cached}
-                in_scope = {day for day in page_dates if day.year in years}
+                in_scope = {day for day in page_dates
+                            if day.year in years and day >= today}
                 missing = sorted(day.isoformat() for day in cached - in_scope)
                 extra = sorted(day.isoformat() for day in in_scope - cached)
                 payload_hash = hashlib.sha256(reply.body).hexdigest()[:16]

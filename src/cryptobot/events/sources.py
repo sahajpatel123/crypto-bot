@@ -27,8 +27,11 @@ FIXTURE_FORMAT = "cryptobot-event-fixture/1"
 COVERAGE_TTL = timedelta(hours=24)
 EVENT_RETENTION = timedelta(days=7)
 
+# REL-W3: the BLS schedule index no longer carries per-program schedules
+# (verified live 2026-10-14: index shows one date); the program pages do.
 FOMC_URL = "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm"
-CPI_URL = "https://www.bls.gov/schedule/"
+CPI_URL = "https://www.bls.gov/schedule/news_release/cpi.htm"
+EMPLOYMENT_URL = "https://www.bls.gov/schedule/news_release/empsit.htm"
 
 
 @dataclass(frozen=True)
@@ -171,6 +174,41 @@ class FomcSource(FixtureAdapter):
 class CpiSource(FixtureAdapter):
     def __init__(self) -> None:
         super().__init__("cpi", CPI_URL, "cpi_2026.json")
+
+
+class EmploymentSource(FixtureAdapter):
+    def __init__(self) -> None:
+        super().__init__("employment", EMPLOYMENT_URL,
+                         "employment_2026_2027.json")
+
+
+# REL-W3-DATA fix (W5 review): single registry mapping required-source
+# names to their adapters. Session must construct adapters from the
+# profile's required_sources via adapters_for() — a hardcoded adapter
+# list skews from the required set and blocks every entry with
+# event:stale-source:<missing>:unknown.
+_ADAPTERS = {"fomc": FomcSource,
+             "cpi": CpiSource,
+             "employment": EmploymentSource}
+
+
+def adapters_for(names) -> list:
+    """Construct one adapter per required-source name (fail-closed).
+
+    Unknown names raise ValueError: silently skipping a required
+    source would forge "no events" coverage. Callers pass the
+    profile gate's required_sources; optional sources without
+    adapters stay unconstructed (coverage unknown -> ignored).
+    """
+    adapters = []
+    for name in names:
+        try:
+            adapters.append(_ADAPTERS[name]())
+        except KeyError:
+            raise ValueError(
+                f"unknown event source: {name!r} "
+                f"(known: {', '.join(sorted(_ADAPTERS))})") from None
+    return adapters
 
 
 class StubAdapter:

@@ -57,7 +57,9 @@ def test_cpi_fixture_dates_and_release_time():
     snap = CpiSource().load(T0)
     # W4-24H: a local load is cached, never a verified fetch.
     assert snap.status == "cached"
-    assert snap.source_url == "https://www.bls.gov/schedule/"
+    # REL-W3: program page; the BLS index no longer carries schedules
+    # (verified live 2026-10-14).
+    assert snap.source_url == "https://www.bls.gov/schedule/news_release/cpi.htm"
     assert len(snap.events) == 12
     days = [e.scheduled_local_iso[:10] for e in snap.events]
     assert days == ["2026-01-13", "2026-02-13", "2026-03-11",

@@ -1,1 +1,184 @@
-{"events": [{"event_id": "FOMC-2026-01-28-decision", "kind": "decision", "note": "Statement + implementation note; press conference same day", "scheduled_local_iso": "2026-01-28T14:00:00", "scheduled_utc": "2026-01-28T19:00:00+00:00", "sep": false, "title": "FOMC decision (Jan 27-28 meeting)"}, {"event_id": "FOMC-2026-01-28-press", "kind": "press-conference", "note": "Chair press conference; end is a 60-min conservative assumption", "press_end_local_iso": "2026-01-28T15:30:00", "press_end_utc": "2026-01-28T20:30:00+00:00", "scheduled_local_iso": "2026-01-28T14:30:00", "scheduled_utc": "2026-01-28T19:30:00+00:00", "sep": false, "title": "FOMC press conference (Jan 28)"}, {"event_id": "FOMC-2026-03-18-decision", "kind": "decision", "note": "Statement + SEP/projections", "scheduled_local_iso": "2026-03-18T14:00:00", "scheduled_utc": "2026-03-18T18:00:00+00:00", "sep": true, "title": "FOMC decision (Mar 17-18 meeting)"}, {"event_id": "FOMC-2026-03-18-press", "kind": "press-conference", "note": "Chair press conference; end is a 60-min conservative assumption", "press_end_local_iso": "2026-03-18T15:30:00", "press_end_utc": "2026-03-18T19:30:00+00:00", "scheduled_local_iso": "2026-03-18T14:30:00", "scheduled_utc": "2026-03-18T18:30:00+00:00", "sep": true, "title": "FOMC press conference (Mar 18)"}, {"event_id": "FOMC-2026-04-29-decision", "kind": "decision", "note": "Statement + implementation note; press conference same day", "scheduled_local_iso": "2026-04-29T14:00:00", "scheduled_utc": "2026-04-29T18:00:00+00:00", "sep": false, "title": "FOMC decision (Apr 28-29 meeting)"}, {"event_id": "FOMC-2026-04-29-press", "kind": "press-conference", "note": "Chair press conference; end is a 60-min conservative assumption", "press_end_local_iso": "2026-04-29T15:30:00", "press_end_utc": "2026-04-29T19:30:00+00:00", "scheduled_local_iso": "2026-04-29T14:30:00", "scheduled_utc": "2026-04-29T18:30:00+00:00", "sep": false, "title": "FOMC press conference (Apr 29)"}, {"event_id": "FOMC-2026-06-17-decision", "kind": "decision", "note": "Statement + SEP/projections", "scheduled_local_iso": "2026-06-17T14:00:00", "scheduled_utc": "2026-06-17T18:00:00+00:00", "sep": true, "title": "FOMC decision (Jun 16-17 meeting)"}, {"event_id": "FOMC-2026-06-17-press", "kind": "press-conference", "note": "Chair press conference; end is a 60-min conservative assumption", "press_end_local_iso": "2026-06-17T15:30:00", "press_end_utc": "2026-06-17T19:30:00+00:00", "scheduled_local_iso": "2026-06-17T14:30:00", "scheduled_utc": "2026-06-17T18:30:00+00:00", "sep": true, "title": "FOMC press conference (Jun 17)"}, {"event_id": "FOMC-2026-07-29-decision", "kind": "decision", "note": "Statement + implementation note; press conference same day", "scheduled_local_iso": "2026-07-29T14:00:00", "scheduled_utc": "2026-07-29T18:00:00+00:00", "sep": false, "title": "FOMC decision (Jul 28-29 meeting)"}, {"event_id": "FOMC-2026-07-29-press", "kind": "press-conference", "note": "Chair press conference; end is a 60-min conservative assumption", "press_end_local_iso": "2026-07-29T15:30:00", "press_end_utc": "2026-07-29T19:30:00+00:00", "scheduled_local_iso": "2026-07-29T14:30:00", "scheduled_utc": "2026-07-29T18:30:00+00:00", "sep": false, "title": "FOMC press conference (Jul 29)"}, {"event_id": "FOMC-2026-09-16-decision", "kind": "decision", "note": "Statement + SEP/projections", "scheduled_local_iso": "2026-09-16T14:00:00", "scheduled_utc": "2026-09-16T18:00:00+00:00", "sep": true, "title": "FOMC decision (Sep 15-16 meeting)"}, {"event_id": "FOMC-2026-09-16-press", "kind": "press-conference", "note": "Chair press conference; end is a 60-min conservative assumption", "press_end_local_iso": "2026-09-16T15:30:00", "press_end_utc": "2026-09-16T19:30:00+00:00", "scheduled_local_iso": "2026-09-16T14:30:00", "scheduled_utc": "2026-09-16T18:30:00+00:00", "sep": true, "title": "FOMC press conference (Sep 16)"}, {"event_id": "FOMC-2026-10-28-decision", "kind": "decision", "note": "Scheduled (not yet released at fixture fetch); re-verify at runtime", "scheduled_local_iso": "2026-10-28T14:00:00", "scheduled_utc": "2026-10-28T18:00:00+00:00", "sep": false, "title": "FOMC decision (Oct 27-28 meeting)"}, {"event_id": "FOMC-2026-10-28-press", "kind": "press-conference", "note": "Scheduled per post-2019 every-meeting policy; end is a 60-min conservative assumption", "press_end_local_iso": "2026-10-28T15:30:00", "press_end_utc": "2026-10-28T19:30:00+00:00", "scheduled_local_iso": "2026-10-28T14:30:00", "scheduled_utc": "2026-10-28T18:30:00+00:00", "sep": false, "title": "FOMC press conference (Oct 28)"}, {"event_id": "FOMC-2026-12-09-decision", "kind": "decision", "note": "Scheduled (not yet released at fixture fetch); re-verify at runtime", "scheduled_local_iso": "2026-12-09T14:00:00", "scheduled_utc": "2026-12-09T19:00:00+00:00", "sep": true, "title": "FOMC decision (Dec 8-9 meeting)"}, {"event_id": "FOMC-2026-12-09-press", "kind": "press-conference", "note": "Scheduled per post-2019 every-meeting policy; end is a 60-min conservative assumption", "press_end_local_iso": "2026-12-09T15:30:00", "press_end_utc": "2026-12-09T20:30:00+00:00", "scheduled_local_iso": "2026-12-09T14:30:00", "scheduled_utc": "2026-12-09T19:30:00+00:00", "sep": true, "title": "FOMC press conference (Dec 9)"}], "fetched_utc": "2026-10-12T13:10:00+00:00", "first_seen_utc": "2026-10-12T13:10:00+00:00", "format": "cryptobot-event-fixture/1", "horizon_end_utc": "2026-12-09T20:30:00+00:00", "notes": ["Meeting dates from the official Federal Reserve FOMC calendar page (source_url), fetched 2026-10-12; Jan-Sep entries show released statements, Oct/Dec are scheduled.", "Statement 2:00 PM ET / press conference 2:30 PM ET on the meeting's second day (post-2019 every-meeting policy; corroborated by CME and Fed calendar practice).", "Press-conference end is a 60-minute conservative assumption, recorded per event; replace with the verified end when known.", "US DST 2026: EDT Mar 8 - Nov 1; EST otherwise. Jan/Dec instants are UTC-5, Mar-Oct are UTC-4.", "scheduled_utc values are verified against wall-time + zone at load; any mismatch fails loudly."], "press_local_time": "14:30", "revision": 0, "source": "fomc", "source_url": "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm", "statement_local_time": "14:00", "tz_name": "America/New_York"}
+{
+ "events": [
+  {
+   "event_id": "FOMC-2026-01-28-decision",
+   "kind": "decision",
+   "note": "Statement + implementation note; press conference same day",
+   "scheduled_local_iso": "2026-01-28T14:00:00",
+   "scheduled_utc": "2026-01-28T19:00:00+00:00",
+   "sep": false,
+   "title": "FOMC decision (Jan 27-28 meeting)"
+  },
+  {
+   "event_id": "FOMC-2026-01-28-press",
+   "kind": "press-conference",
+   "note": "Chair press conference; end is a 60-min conservative assumption",
+   "press_end_local_iso": "2026-01-28T15:30:00",
+   "press_end_utc": "2026-01-28T20:30:00+00:00",
+   "scheduled_local_iso": "2026-01-28T14:30:00",
+   "scheduled_utc": "2026-01-28T19:30:00+00:00",
+   "sep": false,
+   "title": "FOMC press conference (Jan 28)"
+  },
+  {
+   "event_id": "FOMC-2026-03-18-decision",
+   "kind": "decision",
+   "note": "Statement + SEP/projections",
+   "scheduled_local_iso": "2026-03-18T14:00:00",
+   "scheduled_utc": "2026-03-18T18:00:00+00:00",
+   "sep": true,
+   "title": "FOMC decision (Mar 17-18 meeting)"
+  },
+  {
+   "event_id": "FOMC-2026-03-18-press",
+   "kind": "press-conference",
+   "note": "Chair press conference; end is a 60-min conservative assumption",
+   "press_end_local_iso": "2026-03-18T15:30:00",
+   "press_end_utc": "2026-03-18T19:30:00+00:00",
+   "scheduled_local_iso": "2026-03-18T14:30:00",
+   "scheduled_utc": "2026-03-18T18:30:00+00:00",
+   "sep": true,
+   "title": "FOMC press conference (Mar 18)"
+  },
+  {
+   "event_id": "FOMC-2026-04-29-decision",
+   "kind": "decision",
+   "note": "Statement + implementation note; press conference same day",
+   "scheduled_local_iso": "2026-04-29T14:00:00",
+   "scheduled_utc": "2026-04-29T18:00:00+00:00",
+   "sep": false,
+   "title": "FOMC decision (Apr 28-29 meeting)"
+  },
+  {
+   "event_id": "FOMC-2026-04-29-press",
+   "kind": "press-conference",
+   "note": "Chair press conference; end is a 60-min conservative assumption",
+   "press_end_local_iso": "2026-04-29T15:30:00",
+   "press_end_utc": "2026-04-29T19:30:00+00:00",
+   "scheduled_local_iso": "2026-04-29T14:30:00",
+   "scheduled_utc": "2026-04-29T18:30:00+00:00",
+   "sep": false,
+   "title": "FOMC press conference (Apr 29)"
+  },
+  {
+   "event_id": "FOMC-2026-06-17-decision",
+   "kind": "decision",
+   "note": "Statement + SEP/projections",
+   "scheduled_local_iso": "2026-06-17T14:00:00",
+   "scheduled_utc": "2026-06-17T18:00:00+00:00",
+   "sep": true,
+   "title": "FOMC decision (Jun 16-17 meeting)"
+  },
+  {
+   "event_id": "FOMC-2026-06-17-press",
+   "kind": "press-conference",
+   "note": "Chair press conference; end is a 60-min conservative assumption",
+   "press_end_local_iso": "2026-06-17T15:30:00",
+   "press_end_utc": "2026-06-17T19:30:00+00:00",
+   "scheduled_local_iso": "2026-06-17T14:30:00",
+   "scheduled_utc": "2026-06-17T18:30:00+00:00",
+   "sep": true,
+   "title": "FOMC press conference (Jun 17)"
+  },
+  {
+   "event_id": "FOMC-2026-07-29-decision",
+   "kind": "decision",
+   "note": "Statement + implementation note; press conference same day",
+   "scheduled_local_iso": "2026-07-29T14:00:00",
+   "scheduled_utc": "2026-07-29T18:00:00+00:00",
+   "sep": false,
+   "title": "FOMC decision (Jul 28-29 meeting)"
+  },
+  {
+   "event_id": "FOMC-2026-07-29-press",
+   "kind": "press-conference",
+   "note": "Chair press conference; end is a 60-min conservative assumption",
+   "press_end_local_iso": "2026-07-29T15:30:00",
+   "press_end_utc": "2026-07-29T19:30:00+00:00",
+   "scheduled_local_iso": "2026-07-29T14:30:00",
+   "scheduled_utc": "2026-07-29T18:30:00+00:00",
+   "sep": false,
+   "title": "FOMC press conference (Jul 29)"
+  },
+  {
+   "event_id": "FOMC-2026-09-16-decision",
+   "kind": "decision",
+   "note": "Statement + SEP/projections",
+   "scheduled_local_iso": "2026-09-16T14:00:00",
+   "scheduled_utc": "2026-09-16T18:00:00+00:00",
+   "sep": true,
+   "title": "FOMC decision (Sep 15-16 meeting)"
+  },
+  {
+   "event_id": "FOMC-2026-09-16-press",
+   "kind": "press-conference",
+   "note": "Chair press conference; end is a 60-min conservative assumption",
+   "press_end_local_iso": "2026-09-16T15:30:00",
+   "press_end_utc": "2026-09-16T19:30:00+00:00",
+   "scheduled_local_iso": "2026-09-16T14:30:00",
+   "scheduled_utc": "2026-09-16T18:30:00+00:00",
+   "sep": true,
+   "title": "FOMC press conference (Sep 16)"
+  },
+  {
+   "event_id": "FOMC-2026-10-28-decision",
+   "kind": "decision",
+   "note": "Scheduled (not yet released at fixture fetch); re-verify at runtime",
+   "scheduled_local_iso": "2026-10-28T14:00:00",
+   "scheduled_utc": "2026-10-28T18:00:00+00:00",
+   "sep": false,
+   "title": "FOMC decision (Oct 27-28 meeting)"
+  },
+  {
+   "event_id": "FOMC-2026-10-28-press",
+   "kind": "press-conference",
+   "note": "Scheduled per post-2019 every-meeting policy; end is a 60-min conservative assumption",
+   "press_end_local_iso": "2026-10-28T15:30:00",
+   "press_end_utc": "2026-10-28T19:30:00+00:00",
+   "scheduled_local_iso": "2026-10-28T14:30:00",
+   "scheduled_utc": "2026-10-28T18:30:00+00:00",
+   "sep": false,
+   "title": "FOMC press conference (Oct 28)"
+  },
+  {
+   "event_id": "FOMC-2026-12-09-decision",
+   "kind": "decision",
+   "note": "Scheduled (not yet released at fixture fetch); re-verify at runtime",
+   "scheduled_local_iso": "2026-12-09T14:00:00",
+   "scheduled_utc": "2026-12-09T19:00:00+00:00",
+   "sep": true,
+   "title": "FOMC decision (Dec 8-9 meeting)"
+  },
+  {
+   "event_id": "FOMC-2026-12-09-press",
+   "kind": "press-conference",
+   "note": "Scheduled per post-2019 every-meeting policy; end is a 60-min conservative assumption",
+   "press_end_local_iso": "2026-12-09T15:30:00",
+   "press_end_utc": "2026-12-09T20:30:00+00:00",
+   "scheduled_local_iso": "2026-12-09T14:30:00",
+   "scheduled_utc": "2026-12-09T19:30:00+00:00",
+   "sep": true,
+   "title": "FOMC press conference (Dec 9)"
+  }
+ ],
+ "fetched_utc": "2026-10-12T13:10:00+00:00",
+ "first_seen_utc": "2026-10-12T13:10:00+00:00",
+ "format": "cryptobot-event-fixture/1",
+ "horizon_end_utc": "2026-12-09T20:30:00+00:00",
+ "notes": [
+  "Meeting dates from the official Federal Reserve FOMC calendar page (source_url), fetched 2026-10-12; Jan-Sep entries show released statements, Oct/Dec are scheduled.",
+  "Statement 2:00 PM ET / press conference 2:30 PM ET on the meeting's second day (post-2019 every-meeting policy; corroborated by CME and Fed calendar practice).",
+  "Press-conference end is a 60-minute conservative assumption, recorded per event; replace with the verified end when known.",
+  "US DST 2026: EDT Mar 8 - Nov 1; EST otherwise. Jan/Dec instants are UTC-5, Mar-Oct are UTC-4.",
+  "scheduled_utc values are verified against wall-time + zone at load; any mismatch fails loudly.",
+  "REL-W3 2026-10-14: all eight 2026 decision dates verified live against the official Fed calendar page (past via statement links, Oct 28 + Dec 09 via meeting blocks)."
+ ],
+ "press_local_time": "14:30",
+ "revision": 0,
+ "source": "fomc",
+ "source_url": "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm",
+ "statement_local_time": "14:00",
+ "tz_name": "America/New_York",
+ "last_verified_utc": "2026-10-14T04:02:00+00:00",
+ "last_verified_page_sha256": "2e8c6faa32b18173ebe27cb205150061d75f5062a7028662e63c3bfd6f004b18"
+}

@@ -54,9 +54,15 @@ def test_quiet_day_is_clear(tmp_path):
 
 
 def test_cpi_pre_window_edges(tmp_path):
+    # REL-W3: admission cutoff = window start (12:15) - max_hold (300s)
+    # - exit budget (120s) = 12:08:00. Entries stop there, not at the
+    # window, so the full hold + orderly exit fit before the window.
     now = _utc(2026, 10, 14, 12, 0)
     gate = EventGate(_live_store(now, tmp_path))
-    assert gate.check(_utc(2026, 10, 14, 12, 14, 59)).reason == "event:clear"
+    assert gate.check(_utc(2026, 10, 14, 12, 7, 59)).reason == "event:clear"
+    cutoff = gate.check(_utc(2026, 10, 14, 12, 8))
+    assert cutoff.blocked is True
+    assert cutoff.reason == "event:pre-window:CPI-2026-10-14"
     pre = gate.check(_utc(2026, 10, 14, 12, 15))
     assert pre.blocked is True
     assert pre.reason == "event:pre-window:CPI-2026-10-14"
@@ -87,7 +93,10 @@ def test_fomc_decision_to_press_is_continuous(tmp_path):
     # 18:15-19:45. No gap an entry can slip through.
     now = _utc(2026, 9, 16, 18, 0)
     gate = EventGate(_live_store(now, tmp_path))
-    assert gate.check(_utc(2026, 9, 16, 17, 44, 59)).reason == "event:clear"
+    # REL-W3: cutoff = 17:45 window start - 420s = 17:38:00.
+    assert gate.check(_utc(2026, 9, 16, 17, 37, 59)).reason == "event:clear"
+    assert gate.check(_utc(2026, 9, 16, 17, 38)).reason == \
+        "event:pre-window:FOMC-2026-09-16-decision"
     assert gate.check(_utc(2026, 9, 16, 17, 50)).reason == \
         "event:pre-window:FOMC-2026-09-16-decision"
     assert gate.check(_utc(2026, 9, 16, 18, 5)).reason == \
