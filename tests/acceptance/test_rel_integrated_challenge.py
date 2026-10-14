@@ -451,7 +451,9 @@ def test_rel_stream_gap_halts_entries_exits_work(tmp_path):
 # --------------------------------------- 7. preflight/keys refusal
 def test_rel_preflight_keys_refusal(tmp_path):
     """Missing keys: readiness BLOCKED (never READY/PASS); prod route
-    REFUSED-disabled with no entry phase (CLI, offline)."""
+    BLOCKED with no entry phase (CLI, offline). Section 4: missing
+    credentials are an explicit BLOCKED state; refusal-at-submission
+    is a separate path proven with injected credentials."""
     repo = Path(__file__).resolve().parent.parent.parent
     env = dict(os.environ)
     env["PYTHONPATH"] = str(repo / "src") + os.pathsep + env.get("PYTHONPATH", "")
@@ -473,9 +475,9 @@ def test_rel_preflight_keys_refusal(tmp_path):
     assert d.returncode == 3, f"demo readiness rc={d.returncode}\n{d.stdout}"
     assert "BLOCKED" in d.stdout, d.stdout
     p = cli("run", "--mode", "prod", "--config", "configs/prod.toml")
-    assert p.returncode == 2, f"prod rc={p.returncode}\n{p.stdout}\n{p.stderr}"
-    assert "REFUSED" in (p.stdout + p.stderr), p.stdout + p.stderr
-    assert "disabled" in (p.stdout + p.stderr).lower(), p.stdout + p.stderr
+    assert p.returncode == 3, f"prod rc={p.returncode}\n{p.stdout}\n{p.stderr}"
+    assert "BLOCKED" in p.stdout, p.stdout
+    assert "READY" not in (p.stdout + p.stderr), p.stdout + p.stderr
 
 
 # --------------------------------- 8. unresolved restart non-success
