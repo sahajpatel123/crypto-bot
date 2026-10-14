@@ -405,7 +405,11 @@ def test_resume_adopt_open_exposure_books_closes_flat(tmp_path,
             # Legs verify (pre-resume, cover still in place).
             ("GET", "/fapi/v1/algoOrder", None, ("ok", dict(working))),
             ("GET", "/fapi/v1/algoOrder", None, ("ok", dict(working))),
-            # Resume recover: entry terminal-skipped, legs re-resolved.
+            # Resume recover (R2): terminal entry revisited so
+            # unacked fills are found (trade 903 redelivered here
+            # dedupes against the booked exec id), legs re-resolved.
+            ("GET", "/fapi/v1/order", None, ("ok", dict(filled))),
+            ("GET", "/fapi/v1/userTrades", None, ("ok", tape)),
             ("GET", "/fapi/v1/algoOrder", None, ("ok", dict(working))),
             ("GET", "/fapi/v1/algoOrder", None, ("ok", dict(working))),
             ("POST", "/fapi/v1/order", {"type": "MARKET"},

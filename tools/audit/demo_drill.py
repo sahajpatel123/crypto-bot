@@ -73,7 +73,9 @@ class Drill:
         # thread (same reader/socket/booking path, deterministic).
         # Threaded Session booking awaits the R1 ownership fix (W1);
         # threaded pumping stays covered by the attach unit tests.
-        self.stream_kwargs = {"start_thread": False}
+        # Default threading (R1): the pump owns the socket; the drill
+        # (owner) applies via drain_owner in pump_wait. No sync bypass.
+        self.stream_kwargs = {}
 
     def log(self, phase, verdict, detail=""):
         rec = {"ts_utc": _utcnow().isoformat(), "phase": phase,
@@ -279,11 +281,11 @@ class Drill:
             time.sleep(self.poll_s)
 
     def pump_wait(self, stream, predicate, timeout_s, label):
-        """wait_until that also pumps the (synchronous) stream reader."""
+        """wait_until with the owner drain (threaded default, R1)."""
         start = time.monotonic()
         while True:
             try:
-                stream.poll_once()
+                stream.drain_owner()
             except Exception:
                 pass
             if predicate():
