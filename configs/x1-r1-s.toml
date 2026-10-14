@@ -59,3 +59,4 @@ arms_allowlist = ["X1-S"]
 cooldown_s = 300
 min_reward_multiple = 1.0
 allow_legacy_exit_rules = false
+x1_beta = 1.254028

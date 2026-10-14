@@ -391,6 +391,43 @@ def test_beta_tool_pure_functions():
     assert ys[0] == pytest.approx(math.log(1.01))
 
 
+def test_beta_tool_ist_windowing_matches_harness(tmp_path):
+    import datetime as dt
+
+    from cryptobot.research.backtest import _ist_window_ms
+
+    beta_tool = _load_tool("x1_beta")
+    lo, hi = _ist_window_ms("2026-09-12")
+
+    def trade(ts_ms, price):
+        return {"channel": "aggTrade", "exchange_ts_ms": ts_ms,
+                "payload": {"price": price}}
+
+    # UTC-day streams straddling the IST window edges (IST 09-12
+    # spans UTC 09-11/09-12).
+    utc11 = [trade(lo - 1000, 1.0), trade(lo, 100.0),
+             trade(lo + 60_000, 101.0)]
+    utc12 = [trade(hi - 60_000, 102.0), trade(hi - 1000, 103.0),
+             trade(hi, 999.0)]
+
+    class StubDataset:
+        def manifest_sha(self):
+            return "stub"
+
+        def events(self, symbol, day):
+            if day == "2026-09-11":
+                return iter(utc11)
+            if day == "2026-09-12":
+                return iter(utc12)
+            return iter([])
+
+    got = list(beta_tool.ist_day_events(StubDataset(), "BTCUSDT",
+                                       "2026-09-12"))
+    # Boundary-exact: lo included, hi excluded, outside dropped.
+    assert [e["exchange_ts_ms"] for e in got] == [
+        lo, lo + 60_000, hi - 60_000, hi - 1000]
+
+
 def _comparison_cell(tmp_path, name, armset, split, opening, closing,
                      fills=(), n_fills=None):
     run_dir = tmp_path / name

@@ -75,6 +75,59 @@ def ols_beta(xs: list[float], ys: list[float]) -> dict:
             "var_btc": var_x / n}
 
 
+def ist_day_events(dataset, symbol: str, ist_day: str):
+    """Events for one IST day, mirroring the harness windowing exactly.
+
+    The reader serves UTC days; the harness spans the UTC days under
+    the IST window and filters to [lo, hi). Same code path, same
+    slice (X1.md section 9: DEV indices are IST days).
+    """
+    from cryptobot.research.backtest import _ist_window_ms, _utc_range
+
+    lo, hi = _ist_window_ms(ist_day)
+    for utc_day in sorted(_utc_range(lo, hi - 1)):
+        for event in dataset.events(symbol, utc_day):
+            if event is None:
+                continue
+            ts = int(event["exchange_ts_ms"])
+            if lo <= ts < hi:
+                yield event
+
+
+def estimate_beta(dataset, day_ids: list[str], out_path: str) -> dict:
+    """Run the frozen estimation on explicit IST day ids; write record."""
+    all_x, all_y = [], []
+    per_day = []
+    for day in day_ids:
+        btc = closes_from_events(ist_day_events(dataset, LEADER, day))
+        eth = closes_from_events(ist_day_events(dataset, LAGGARD, day))
+        xs, ys, paired = paired_returns(btc, eth)
+        all_x.extend(xs)
+        all_y.extend(ys)
+        per_day.append({"day": day, "btc_seconds": len(btc),
+                        "eth_seconds": len(eth), "paired": len(paired)})
+    fit = ols_beta(all_x, all_y)  # raises ValueError when degenerate.
+    blob = json.dumps({"x": all_x, "y": all_y}, sort_keys=True)
+    digest = hashlib.sha256(blob.encode("utf-8")).hexdigest()
+    record = {
+        "tool": "tools/x1_beta.py", "algo": ALGO_ID,
+        "dataset_manifest_sha": dataset.manifest_sha(),
+        "calibration_idx": list(CALIBRATION_IDX),
+        "day_ids": list(day_ids),
+        "beta": round(fit["beta"], 6),
+        "intercept": fit["intercept"],
+        "n": fit["n"],
+        "var_btc": fit["var_btc"],
+        "returns_sha256": digest,
+        "per_day": per_day,
+    }
+    out = Path(out_path)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(record, indent=1, sort_keys=True) + "\n",
+                   encoding="utf-8")
+    return record
+
+
 def cmd_estimate(args) -> int:
     from cryptobot.market_data.datasets import open_dataset
     from cryptobot.research.backtest import day_ids_for
@@ -86,41 +139,13 @@ def cmd_estimate(args) -> int:
               f"calibration needs idx {max(CALIBRATION_IDX)}")
         return 3
     days = [day_ids[i - 1] for i in CALIBRATION_IDX]
-    all_x, all_y = [], []
-    per_day = []
-    for day in days:
-        btc = closes_from_events(dataset.events(LEADER, day))
-        eth = closes_from_events(dataset.events(LAGGARD, day))
-        xs, ys, paired = paired_returns(btc, eth)
-        all_x.extend(xs)
-        all_y.extend(ys)
-        per_day.append({"day": day, "btc_seconds": len(btc),
-                        "eth_seconds": len(eth), "paired": len(paired)})
     try:
-        fit = ols_beta(all_x, all_y)
+        record = estimate_beta(dataset, days, args.out)
     except ValueError as exc:
         print(f"BLOCKED: beta estimation failed: {exc}")
         return 3
-    blob = json.dumps({"x": all_x, "y": all_y}, sort_keys=True)
-    digest = hashlib.sha256(blob.encode("utf-8")).hexdigest()
-    record = {
-        "tool": "tools/x1_beta.py", "algo": ALGO_ID,
-        "dataset_manifest_sha": dataset.manifest_sha(),
-        "calibration_idx": list(CALIBRATION_IDX),
-        "day_ids": days,
-        "beta": round(fit["beta"], 6),
-        "intercept": fit["intercept"],
-        "n": fit["n"],
-        "var_btc": fit["var_btc"],
-        "returns_sha256": digest,
-        "per_day": per_day,
-    }
-    out = Path(args.out)
-    out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps(record, indent=1, sort_keys=True) + "\n",
-                   encoding="utf-8")
-    print(f"beta={record['beta']:.6f} n={fit['n']} "
-          f"sha={dataset.manifest_sha()[:12]} -> {out}")
+    print(f"beta={record['beta']:.6f} n={record['n']} "
+          f"sha={record['dataset_manifest_sha'][:12]} -> {args.out}")
     return 0
 
 
