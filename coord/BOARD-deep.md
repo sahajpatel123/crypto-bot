@@ -75,6 +75,14 @@ Production submission DISABLED. No credentials requested at this stage.
   in resume identity). Premises verified: spreadless bars convert to
   None, cache lacks bookTicker, §8 already assumes the profile.
 
+## Stop-order incident (resolved)
+- W4 stopped round-1 at jobs 1–4 citing "owner order" (1cc77dd, evidence
+  preserved). Provenance: stale Oct 12–13 local-session stops, superseded
+  by Oct-14 "Continue" + the acked deep dispatch; re-surfaced by W4's
+  local context, not a new order. Owner in manager session confirmed no
+  stop. Manager ruled RESUME under existing authorizations; interruption
+  disclosed in W4's stopped.json record.
+
 ## Unresolved / risks
 - Linux reviewer-side proof needs a live Linux run (this host macOS); code-inspected only.
 - Sandbox fee/funding numbers must be re-recorded on testnet (fixtures hand-built).
