@@ -727,7 +727,108 @@ def test_rel_invalid_calendar_blocks_entry_exit_works(tmp_path):
         store.close()
 
 
-# --------------------------------------- 12. deadline with reparent
+# --------------------------------------- 12. protected posture admits
+def test_rel_protected_posture_admits_on_clear_day(tmp_path, monkeypatch):
+    """Protected posture end to end (profile -> Session -> tracker ->
+    runtime -> admit): on a clear calendar day with verified sources,
+    entries admit (offline canned HTTP). Guards the W3 employment gap:
+    every profile-required source must be constructed by the Session."""
+    h = _w1()
+    import cryptobot.events as _evpkg
+    import cryptobot.events.freshness as _fresh
+    from cryptobot.adapters.paper_engine import NautilusPaperEngine
+    from cryptobot.app.config import load_config
+    from cryptobot.app.session import Session
+    from cryptobot.app.store import RunStore
+    from cryptobot.events.freshness import HttpResponse
+    canned = Path(_evpkg.__file__).parent / "fixtures" / "canned"
+
+    def _canned(url, timeout_s=20):
+        if "federalreserve" in url:
+            name = "fomc_page_2026.txt"
+        elif "empsit" in url:
+            name = "bls_empsit_page_2026.txt"
+        else:
+            name = "bls_cpi_page_2026.txt"
+        page = canned / name
+        if not page.exists():
+            return HttpResponse(status=404, body=b"", url=url)
+        return HttpResponse(status=200, body=page.read_bytes(), url=url)
+    monkeypatch.setattr(_fresh, "default_http_get", _canned)
+    text = open("configs/paper-protected.toml").read()
+    text = text.replace('dir = "runs"', f'dir = "{tmp_path / "runs"}"', 1)
+    cfg_path = tmp_path / "protected.toml"
+    cfg_path.write_text(text)
+    cfg = load_config(cfg_path)
+    assert cfg.mode == "paper", "setup: protected config must be paper mode"
+    engine = NautilusPaperEngine(
+        taker_bps=5.0, now_utc=lambda: h["_RT0"], submit_delay_ms=0,
+        fill_delay_ms=1)
+    engine.add_instrument("BTCUSDT", price_precision=2, size_precision=3,
+                          tick_size=0.01, step_size=0.001, ts_utc=h["_RT0"])
+    store = RunStore(tmp_path / "runs" / "cryptobot.db")
+    session = Session(cfg, store, tmp_path / "runs" / "relprot", "relprot",
+                      engine=engine)
+    try:
+        store.create_run("relprot", "paper", "fp", str(session.workdir),
+                         None)
+        engine.bind_sink(session.policy)
+        session.clock.set_ms(int(h["_RT0"].timestamp() * 1000))
+        session.policy.reconcile_day(120.0, 0.0)
+        assert session.protection is not None, "setup: no runtime"
+        from nautilus_trader.model.data import QuoteTick
+        from nautilus_trader.model.objects import Price, Quantity
+
+        def _tick_at(when):
+            ns = int(when.timestamp() * 1e9)
+            engine.feed(QuoteTick(
+                engine.instrument_id("BTCUSDT"), Price(100.0, 2),
+                Price(100.2, 2), Quantity(1.0, 3), Quantity(1.0, 3),
+                ts_event=ns, ts_init=ns))
+
+        # Clear day: the protected posture must admit.
+        h["_seed_paper_mark"](session)
+        h["_pquote"](engine, 0, 100.0, 100.2)
+        session._maybe_admit(h["_rintent"](session.now_utc()))
+        assert session._position is not None, (
+            "protected posture blocked a clear-day entry; rejections: "
+            + (session.workdir / "rejections.jsonl").read_text())
+        h["_pquote"](engine, 1000, 100.0, 100.2)
+        session._drain_engine()
+        # Inside the CPI window: the protected posture must block.
+        cpi = datetime(2026, 10, 14, 12, 30, tzinfo=timezone.utc)
+        session.clock.set_ms(int(cpi.timestamp() * 1000))
+        session.policy.reconcile_day(
+            session.ledger.marked_equity(100.2), session.ledger.total_flows())
+        _seed_mark(session, 100.2)
+        _tick_at(cpi)
+        session._flatten("w5rel-protected-window-exit")
+        _tick_at(cpi + timedelta(seconds=1))
+        session._drain_engine()
+        _tick_at(cpi + timedelta(seconds=2))
+        session._drain_engine()
+        assert session._position is None, "setup: position record stuck"
+        # Re-arm filters (completed-refresh simulation, as in the
+        # calendar test) so the calendar is the only possible blocker.
+        from dataclasses import replace as _dc_replace
+        session.policy.config = _dc_replace(
+            session.policy.config, filters_asof_utc=session.now_utc())
+        _seed_mark(session, 100.2)
+        _tick_at(cpi + timedelta(seconds=3))
+        session._maybe_admit(h["_rintent"](session.now_utc()))
+        assert session._position is None, (
+            "FAIL-OPEN: protected posture admitted inside the CPI window")
+        assert session.protection.advisory_only is False, (
+            "protected posture came up advisory (posture wiring)")
+    finally:
+        try:
+            session._freshness.stop()
+        except Exception:
+            pass
+        store.close()
+
+
+# --------------------------------------- 13. deadline with reparent
 def test_rel_deadline_reparent_contained_or_refused(tmp_path):
     """A descendant that reparents before the deadline cannot block the
     capturing caller; the report either verifies containment (subreaper
