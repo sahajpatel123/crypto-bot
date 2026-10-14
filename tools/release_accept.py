@@ -103,11 +103,22 @@ def check_economic():
         d = json.loads((ROOT / "outputs/hr2/diagnostics.json").read_text())
         import statistics
         nets = [r["net_bps"] for r in d if r.get("net_bps") is not None]
+        from datetime import datetime as _dt
+        cs = {x["evidence_ref"]: x for x in json.loads(
+            (ROOT / "outputs/ready-phasea/candidates.json").read_text())}
+        early = 0
+        for r in d:
+            if "fill_ts_utc" not in r:
+                continue
+            gap = (_dt.fromisoformat(cs[r["ref"]]["evaluated_now_utc"])
+                   - _dt.fromisoformat(r["fill_ts_utc"])).total_seconds()
+            if gap > 0:
+                early += 1
         evidence["hr2"] = {
             "rows": len(d), "n_net": len(nets),
             "mean_net_bps": round(statistics.mean(nets), 2),
             "wins": sum(1 for n in nets if n > 0),
-            "fills_before_decision": "see W4 CAUSAL audit",
+            "fills_before_decision": early,
         }
     except (OSError, ValueError, KeyError) as exc:
         return {"status": "FAIL", "reason": f"hr2 unreadable: {exc}"}
