@@ -53,6 +53,11 @@ Production submission DISABLED. No credentials requested at this stage.
 - W3 part 1 verified (1be3f33, manifest 9008ba92); relayed to W4.
 - W4 freeze verified outcome-free (a96ed72); beta calibration overlaps DEV
   idx1-5 (disclosed, trigger-neutral); W5 footnote.
+- W4 feasibility ruling (manager): full-split replay infeasible (6.3h+54GB
+  per cell vs 1500s/~6GB). Execute freeze literally: dev 30 wall-min and
+  val 2 wall-h caps per config, via chained bounded bench_run + resume
+  within caps; coverage reported honestly; screen descriptive/DATA BLOCKED
+  if unmet. No amendment, no dataset swap.
 
 ## Unresolved / risks
 - Linux reviewer-side proof needs a live Linux run (this host macOS); code-inspected only.
