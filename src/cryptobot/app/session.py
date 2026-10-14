@@ -249,6 +249,9 @@ class Session:
         # always re-reads fresh truth before acting.
         self._in_ensure = False
         self._in_flatten = False
+        # Session-owned exit-only reasons (R3 halt independence).
+        self._exit_only_reasons: set[str] = set()
+        self._user_stream_attachment: Any | None = None
         self._known_reservations: set[str] = set()
         self._cmd_seq = 0
         # Bind the ONE booking handler (contract v1 §1/§2). Adapters
@@ -363,7 +366,7 @@ class Session:
         try:
             self.arm_run_mode([symbol])
         except (FilterError, ValueError, OSError) as exc:
-            self.engine.set_exit_only(True, f"filters:{exc}")
+            self._halt_entries(f"filters:{exc}")
             self._set_state("halted", f"filters:unavailable:{symbol}")
             self.store.checkpoint(self.run_id, "filters-blocked",
                                   {"symbol": symbol, "reason": str(exc)})
@@ -752,6 +755,9 @@ class Session:
             return "reconcile:restart-pending"
         if self._booking_blocked is not None:
             return f"booking:{self._booking_blocked}"
+        stream = self._user_stream_attachment
+        if stream is not None and stream.halted:
+            return "stream:{}".format(",".join(stream.halt_reasons()))
         try:
             pending_cmds = self.store.open_commands(self.run_id)
         except (ValueError, KeyError):
@@ -881,7 +887,7 @@ class Session:
                 intent.instrument, intent.side.value, "rejected",
                 f"risk:{verdict.reason}", self.now_utc().isoformat())
             if verdict.reason.startswith("halt:"):
-                self.engine.set_exit_only(True, verdict.reason)
+                self._halt_entries(verdict.reason)
                 self._set_state("halted", verdict.reason)
             return
         # READY-§5 inv 1: snap the approved qty to the venue step BEFORE
@@ -1218,11 +1224,11 @@ class Session:
             if not path.exists():
                 path.write_text("", encoding="utf-8")
 
-    def _on_engine_event(self, event: EngineEvent) -> None:
+    def _on_engine_event(self, event: EngineEvent) -> Any:
         """Legacy entry point: every engine event lands in the ONE handler."""
-        self._apply_engine_event(event)
+        return self._apply_engine_event(event)
 
-    def _apply_engine_event(self, event: EngineEvent) -> None:
+    def _apply_engine_event(self, event: EngineEvent) -> str:
         """THE one idempotent booking handler (contract v1 §1, name fixed).
 
         Every adapter emission — user-stream fills, lookup-adopted and
@@ -1231,8 +1237,15 @@ class Session:
         first (durable anchor), then book; stale/duplicate events are
         no-ops. Unknown event kinds fall through to position
         supervision only.
+
+        Returns the application outcome (R2 ack): applied | duplicate |
+        unbooked | rejected | recorded | ignored. Adapters ACK a fill
+        (drop it from the recoverable set) on every outcome EXCEPT
+        unbooked/rejected — and on handler exceptions, which propagate
+        and therefore never ack.
         """
         payload = event.payload
+        outcome = "ignored"
         if event.kind == "fill":
             submitted = self._submit_ts.pop(payload.client_order_id, None)
             if submitted is None:
@@ -1252,7 +1265,7 @@ class Session:
                         (payload.ts_utc - submitted).total_seconds() * 1000)
                 except (TypeError, AttributeError):
                     pass
-            self._apply_fill(
+            outcome = self._apply_fill(
                 client_order_id=payload.client_order_id,
                 execution_id=payload.execution_id,
                 instrument=payload.instrument, side=payload.side,
@@ -1265,8 +1278,10 @@ class Session:
                      "reason": payload.reason},
                     payload.ts_utc.isoformat()):
                 self._resolve_command_by_engine_id(payload.client_order_id)
+                outcome = "recorded"
             else:
                 self._dup_events += 1
+                outcome = "duplicate"
         elif event.kind == "funding":
             # Engine-settled funding reaches the ledger (idempotent by
             # event_id); without this backtests silently book funding 0.
@@ -1276,17 +1291,21 @@ class Session:
                      "amount": payload.amount},
                     payload.ts_utc.isoformat()):
                 self._dup_events += 1
+                outcome = "duplicate"
             else:
                 try:
                     self.policy.note_funding(payload.event_id, payload.amount,
                                              payload.ts_utc.isoformat())
                 except ValueError as exc:
                     self._block_booking(f"funding-rejected:{exc}")
+                    outcome = "rejected"
                 else:
                     self._equity_dirty = True
                     self._reconcile_funding()
+                    outcome = "applied"
         self._update_position(event)
         self._reconcile_commands()
+        return outcome
 
     def _stage_sink_delta(self, reservation_id: str, exec_id: str,
                           symbol: str, venue_side: str, qty: float,
@@ -1423,6 +1442,42 @@ class Session:
         """Latch a fail-closed booking block (new entries stop)."""
         if self._booking_blocked is None:
             self._booking_blocked = reason
+
+    # -- exit-only halts (R3: Session owns its reasons) --------------------
+    def _halt_entries(self, reason: str) -> None:
+        """Halt entries under a Session-owned reason (R3).
+
+        Mirrored to the engine's reason-keyed exit-only (adapter
+        refuses entry submits); other subsystems' reasons survive.
+        Engines without the seam (doubles) keep the Session record.
+        """
+        if not reason:
+            return
+        self._exit_only_reasons.add(reason)
+        setter = getattr(self.engine, "set_exit_only", None)
+        if callable(setter):
+            setter(True, reason)
+
+    def _release_exit_only(self, reason: str) -> None:
+        """Lift one Session-owned reason (R3: others survive)."""
+        self._exit_only_reasons.discard(reason)
+        setter = getattr(self.engine, "set_exit_only", None)
+        if callable(setter):
+            setter(False, reason)
+
+    def _release_all_exit_only(self, why: str) -> None:
+        """Lift every Session-owned reason (recovery points only).
+
+        Stream/adapter reasons are never touched (R3); level-evaluated
+        Session reasons re-assert on their next tick if still true.
+        """
+        for reason in sorted(self._exit_only_reasons):
+            setter = getattr(self.engine, "set_exit_only", None)
+            if callable(setter):
+                setter(False, reason)
+        self._exit_only_reasons.clear()
+        self.store.checkpoint(self.run_id, "exit-only-released",
+                              {"why": why})
 
     # -- command intentions (contract v1 §4) -------------------------------
     def _new_command(self, kind: str, payload: dict[str, Any]) -> str:
@@ -2617,7 +2672,7 @@ class Session:
                     pass
         health = self.policy.check_health(self._snapshot_account())
         if not health.ok:
-            self.engine.set_exit_only(True, ";".join(health.reasons))
+            self._halt_entries(";".join(health.reasons))
             self._set_state("halted", ";".join(health.reasons))
         self._run_stop_actions()
 
@@ -2696,7 +2751,7 @@ class Session:
                 if self.policy.recover_from_emergency(
                         self._snapshot_account()):
                     self._stop_alerted = False
-                    self.engine.set_exit_only(False, "emergency-recovered")
+                    self._release_all_exit_only("emergency-recovered")
                     self._set_state("ready", "emergency-recovered")
 
     def _stop_refresh(self) -> None:
@@ -2909,7 +2964,7 @@ class Session:
         self.store.checkpoint(
             self.run_id, "funding-mismatch",
             {"engine_total": engine_total, "ledger_total": ledger_total})
-        self.engine.set_exit_only(True, "funding-mismatch")
+        self._halt_entries("funding-mismatch")
         self._set_state("halted", "funding-mismatch")
 
     def _roll_day_if_needed(self) -> None:
@@ -2917,7 +2972,7 @@ class Session:
         if self._day is not None and today != self._day:
             marked = self.ledger.marked_equity(self._reference_mark())
             self.policy.reconcile_day(marked, self.ledger.total_flows())
-            self.engine.set_exit_only(False, "day-reconciled")
+            self._release_all_exit_only("day-reconciled")
             self._set_state("ready", "day-reconciled")
             self._sample_equity("day-roll", force=True)
             self.store.checkpoint(self.run_id, "day-roll",
@@ -2941,7 +2996,7 @@ class Session:
                     raise result
                 self._apply_run_filters(*result)
             except (FilterError, ValueError, OSError) as exc:
-                self.engine.set_exit_only(True, f"filters-refresh:{exc}")
+                self._halt_entries(f"filters-refresh:{exc}")
                 self._set_state("halted", "filters:refresh-failed")
             return
         if self.config.mode != "paper" or not self.policy.config.run_mode:
@@ -3278,7 +3333,7 @@ class Session:
         """Position + risk supervision shared by the loop and control_tick."""
         tick = self.policy.monitor_tick(account=None)
         if not tick.ok:
-            self.engine.set_exit_only(True, ";".join(tick.reasons))
+            self._halt_entries(";".join(tick.reasons))
             self._set_state("halted", ";".join(tick.reasons))
         self._run_stop_actions()
         self._drain_unknown_outcomes()
@@ -3353,6 +3408,11 @@ class Session:
         try:
             while True:
                 event = producer.poll(tick_s)
+                # R1: owner-thread drain of the attached private user
+                # stream (if any): pump-thread input applies here on
+                # the owner, never on the pump thread itself.
+                if self._user_stream_attachment is not None:
+                    self._user_stream_attachment.drain_owner()
                 # Control-step latency is decision work, not the poll
                 # wait: the timer starts after the tick wake fires.
                 step_start = time.perf_counter()

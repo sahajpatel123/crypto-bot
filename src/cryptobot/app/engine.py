@@ -200,7 +200,11 @@ class PaperEngine(Protocol):
         ...
 
     def set_exit_only(self, halted: bool, reason: str = "") -> None:
-        ...
+        """Reason-keyed halt (R3): entries refuse while any reason held.
+
+        Lifting clears ONLY the named reason; subsystems never clear
+        each other's halts. Empty reason on lift clears all (escape).
+        """
 
     def note_mark(self, instrument: str, price: float) -> None:
         """Reference-model mark feed (drives fill simulation)."""
