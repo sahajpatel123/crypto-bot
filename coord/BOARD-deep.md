@@ -43,6 +43,17 @@ Production submission DISABLED. No credentials requested at this stage.
 - EVAL options prepared without spend; owner decides purchase later.
 - X1 beta: pre-round estimation step, frozen in X1.md before round.
 
+## Integration log
+- W1 D1 ACCEPTED (cd42146 → 04c0bee): 6/6 proofs re-run green. Shared-tree
+  probe deletions broke units re-run; restored (tests require them).
+- W2 D3 ACCEPTED (b72865a → c0e211f): A2 PASS, 6/6 phases, SANDBOX VALIDATED.
+  Caveat: drill works around two session resume defects driver-side
+  (reservation-None flatten fill unbookable; _position not rebuilt across
+  restart); relayed to W1 for D2 ownership. W5 must note the caveat.
+- W3 part 1 verified (1be3f33, manifest 9008ba92); relayed to W4.
+- W4 freeze verified outcome-free (a96ed72); beta calibration overlaps DEV
+  idx1-5 (disclosed, trigger-neutral); W5 footnote.
+
 ## Unresolved / risks
 - Linux reviewer-side proof needs a live Linux run (this host macOS); code-inspected only.
 - Sandbox fee/funding numbers must be re-recorded on testnet (fixtures hand-built).
