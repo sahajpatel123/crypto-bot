@@ -117,6 +117,7 @@ STRATEGY_ARMS = {
     "S2": ("S2", ("S2", "S2-V", "S2-F")),
     "S3": ("S3", ("S3", "S3-R", "S3-C")),
     "S4": ("S4", ("S4", "S4-S")),
+    "X1": ("X1", ("X1", "X1-S", "X1-T", "X1-F")),
 }
 
 
@@ -591,10 +592,31 @@ class Session:
                 reasons = list(reasons) + [f"gap:id-jump:{jumps}"]
             if quiets:
                 reasons = list(reasons) + [f"gap:quiet-window:{quiets}"]
+        # Dual-symbol reference leg (X1.md §4): when an enabled
+        # family declares DUAL_REF_SYMBOL and the leader feed exists,
+        # attach its aligned slots + the frozen beta for EVERY
+        # evaluated symbol; the evaluator's symbol gate attributes
+        # non-laggard evaluations (other families ignore the fields).
+        ref_bars: tuple | None = None
+        ref_instrument: str | None = None
+        ref_beta: float | None = None
+        for _module in modules.values():
+            _ref_sym = getattr(_module, "DUAL_REF_SYMBOL", None)
+            if _ref_sym is None:
+                continue
+            _ref_feed = self._feeds.get(_ref_sym)
+            if _ref_feed is None:
+                continue
+            ref_bars = tuple(_ref_feed.bars)
+            ref_instrument = _ref_sym
+            ref_beta = self.config.x1_beta
+            break
         view = MarketView(
             instrument=symbol, bars=tuple(bars), now_utc=self.now_utc(),
             depth=depth, flow=flow_view, quality=quality,
-            quality_reason=";".join(reasons))
+            quality_reason=";".join(reasons),
+            ref_bars=ref_bars, ref_instrument=ref_instrument,
+            ref_beta=ref_beta)
         for name, adapter in adapters.items():
             start = time.perf_counter()
             try:
@@ -634,7 +656,14 @@ class Session:
                         continue  # W4-CORR: allowlisted out.
                     start = time.perf_counter()
                     try:
-                        decisions = module.evaluate_bar(bars, t, arm, symbol)
+                        if getattr(module, "DUAL_REF_SYMBOL", None) is not None:
+                            decisions = module.evaluate_bar(
+                                bars, t, arm, symbol,
+                                ref_bars=list(ref_bars)
+                                if ref_bars is not None else None,
+                                beta=ref_beta)
+                        else:
+                            decisions = module.evaluate_bar(bars, t, arm, symbol)
                     except Exception as exc:
                         out.append(Candidate(
                             f"{arm}:LONG", None,

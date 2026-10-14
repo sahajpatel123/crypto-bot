@@ -1,0 +1,61 @@
+# X1 round-1 frozen cell config (x1-r1-f-adv).
+# Derived from configs/paper.toml: only [fees] taker_bps (10.0) and
+# [strategies] differ. Part of the X1.md v0.1.0 freeze; beta transcribed
+# by the frozen §9 addendum before any round execution.
+# Bot v0.1 paper-session configuration (manager-owned sample).
+# Ledger currency is USDT. INR display conversions are dated and labeled
+# wherever they appear; nothing here is a live balance.
+
+[run]
+mode = "replay"              # replay | paper (paper requires engine.kind = "nautilus")
+paper_capital_usdt = 120.0   # synthetic paper capital (~Rs.10k pilot scale, labeled)
+accounting_tz = "Asia/Kolkata"
+duration = "24h"             # paper session wall-clock budget (replay ignores)
+
+[risk]
+max_loss_budget_pct = 0.00125
+leverage_cap = 3.0
+min_notional_usdt = 5.0
+stress_multiplier = 1.5
+operating_stop_pct = 0.005
+emergency_stop_pct = 0.01
+profile_version = "24h-1"
+max_mark_age_ms = 1000  # §4: 1s maximum quote/valuation age (W3-30MIN)
+daily_target_pct = 0.02
+profit_arm_pct = 0.01
+profit_retain_pct = 0.70
+max_evidence_age_s = 120.0
+max_clock_skew_s = 5.0
+filters_max_age_s = 3600.0
+# Operator notional cap per position (the venue publishes no max-notional
+# filter; this cap also satisfies filter completeness for run mode).
+max_notional_cap_usdt = 500.0
+
+[fees]
+# Labeled SIMULATION rates. Not the owner's actual account rates.
+label = "simulation-labeled"
+taker_bps = 10.0
+funding_bps_per_8h = 1.0
+
+[engine]
+kind = "reference"           # reference (replay/tests only) | nautilus (E-007) | live (demo only)
+submit_delay_ms = 50
+fill_delay_ms = 50
+
+[data]
+symbols = []                 # empty = dynamic discovery (paper) / capture symbols (replay)
+max_symbols = 8
+max_hf_subscriptions = 2  # REL-W3: prior data did not support eight.
+warmup_bars = 130
+
+[storage]
+dir = "runs"
+budget_mb = 2048
+
+[strategies]
+enabled = ["X1"]
+arms = "all"
+arms_allowlist = ["X1-F"]
+cooldown_s = 300
+min_reward_multiple = 1.0
+allow_legacy_exit_rules = false

@@ -30,9 +30,10 @@ def test_arm_ids_and_versions():
     assert C.ARM_IDS_S3 == ("S3", "S3-R", "S3-C")
     assert C.ARM_IDS_S4 == ("S4", "S4-S")
     assert C.ARM_IDS_S5 == ("S5",)
+    assert C.ARM_IDS_X1 == ("X1", "X1-S", "X1-T", "X1-F")
     assert C.ARM_IDS == (C.ARM_IDS_S1 + C.ARM_IDS_S2 + C.ARM_IDS_S3 +
-                         C.ARM_IDS_S4 + C.ARM_IDS_S5)
-    assert len(C.ARM_IDS) == 12
+                         C.ARM_IDS_S4 + C.ARM_IDS_S5 + C.ARM_IDS_X1)
+    assert len(C.ARM_IDS) == 16
     assert C.STRATEGY_VERSION == "0.1.0"
     assert C.CONTRACT_VERSION == "v0.2.0"
 
