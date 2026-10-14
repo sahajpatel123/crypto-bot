@@ -40,6 +40,33 @@ __all__ = ["Session", "ReplayClock", "WallClock", "STRATEGY_ARMS"]
 
 _EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
 
+
+class _SessionEngineHandler:
+    """bind_sink target routing every adapter emission into the Session.
+
+    Contract v1 §2/§3 (W1): push-style EngineEvents (__call__) AND the
+    legacy risk-sink call (note_fill_delta, used by pre-migration
+    adapters during continuous integration) both land in the ONE
+    idempotent Session booking path. The legacy call carries no client
+    id, so its delta is staged for the matching poll event (which
+    carries the client id); deltas with no matching event flush at
+    drain end with an adopted marker. Same execution_id on both paths
+    books exactly once.
+    """
+
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def __call__(self, event: EngineEvent) -> None:
+        return self._session._apply_engine_event(event)
+
+    def note_fill_delta(self, reservation_id: str, exec_id: str,
+                        symbol: str, venue_side: str, qty: float,
+                        price: float, fee: float, ts_utc: str) -> None:
+        self._session._stage_sink_delta(
+            reservation_id, exec_id, symbol, venue_side, qty, price,
+            fee, ts_utc)
+
 def _map_b4_views(book: Any, flow: Any, reason: str) -> tuple[Any, Any, list[str]]:
     """Map E-008 views onto MarketView depth/flow (S5 card B4 contract).
 
@@ -173,7 +200,7 @@ class Session:
                                  "engine (reference engine is replay-only)")
             self.engine = ReferenceEngine(
                 log_path=self.workdir / "order_manager.jsonl",
-                outcome_sink=self.policy, taker_bps=config.taker_bps,
+                outcome_sink=None, taker_bps=config.taker_bps,
                 now_utc=self.now_utc, submit_delay_ms=config.submit_delay_ms)
         self._feeds: dict[str, _SymbolFeed] = {}
         self._depth_store = DepthStore()
@@ -198,6 +225,31 @@ class Session:
         self._events_seen = 0
         self._flatten_pending = False
         self._orphan_close_ids: list[str] = []  # pos-less flatten closes.
+        # Contract v1 §3 (W1): idempotent booking state. Applied
+        # execution ids (durable in execution_events; rebuilt on
+        # resume), max-applied cumulative qty per order (never rolls
+        # back), staged legacy sink deltas awaiting their poll event.
+        self._applied_exec: set[str] = set()
+        self._order_cum: dict[str, float] = {}
+        self._staged_deltas: dict[str, dict[str, Any]] = {}
+        self._dup_events = 0
+        self._stale_status = 0
+        # Contract v1 §2 (W1): last-applied order-status version per
+        # order + cached status. Version 0 reads bypass the cache (no
+        # observed transition yet, or a legacy double: nothing to roll
+        # back from, so always current).
+        self._status_version: dict[str, int] = {}
+        self._status_cache: dict[str, Any] = {}
+        # Fail-closed booking blocks (surfaced via _admission_hold).
+        self._booking_blocked: str | None = None
+        self._known_reservations: set[str] = set()
+        self._cmd_seq = 0
+        # Bind the ONE booking handler (contract v1 §1/§2). Adapters
+        # without bind_sink stay drain-driven into the same handler.
+        self._engine_handler = _SessionEngineHandler(self)
+        bind_sink = getattr(self.engine, "bind_sink", None)
+        if callable(bind_sink):
+            bind_sink(self._engine_handler)
         # W3-P2: native replay milestones (export_warmup probes, made
         # native): first-event/bar/ready/eval/intent/gate per symbol.
         self._milestones: dict[str, Any] = {
@@ -691,6 +743,14 @@ class Session:
             return "config:prod-submission-disabled"
         if not self._reconciled or self._flatten_pending:
             return "reconcile:restart-pending"
+        if self._booking_blocked is not None:
+            return f"booking:{self._booking_blocked}"
+        try:
+            pending_cmds = self.store.open_commands(self.run_id)
+        except (ValueError, KeyError):
+            pending_cmds = []
+        if any(c.get("status") == "unknown" for c in pending_cmds):
+            return "reconcile:unknown-commands"
         unknown = getattr(self.engine, "unknown_ids", lambda: ())()
         if unknown:
             return "reconcile:unknown-outcomes"
@@ -858,6 +918,11 @@ class Session:
             kind="MARKET", reservation_id=verdict.reservation_id,
             expire_at_utc=intent.entry_expiry_utc)
         submit_protected = getattr(self.engine, "submit_protected", None)
+        cmd_id = self._new_command("submit", {
+            "role": "entry", "instrument": intent.instrument,
+            "side": side, "qty": executable,
+            "reservation_id": verdict.reservation_id,
+            "evidence_ref": intent.evidence_ref})
         try:
             if submit_protected is None:
                 pre_id = self.engine.submit(order)
@@ -870,6 +935,10 @@ class Session:
             # B2/F3: an unsubmittable opportunity (dust below the venue
             # step, full queue, exit-only race) is rejected, never fatal.
             # The risk hold is freed (zero booked: actually freed).
+            try:
+                self.store.update_command(cmd_id, "failed")
+            except (ValueError, KeyError):
+                pass
             self.policy.release(verdict.reservation_id)
             reason = f"execution:submit-rejected:{type(exc).__name__}"
             self._note_reject(reason, intent.strategy, intent.instrument,
@@ -880,6 +949,12 @@ class Session:
                 reason, self.now_utc().isoformat())
             return
         self._submit_ts[pre_id] = self.now_utc()
+        try:
+            self.store.update_command(cmd_id, "submitted",
+                                      engine_client_id=pre_id)
+        except (ValueError, KeyError):
+            pass
+        self._known_reservations.add(verdict.reservation_id)
         self._position = {"reservation_id": verdict.reservation_id,
                           "instrument": intent.instrument,
                           "side": intent.side.value,
@@ -1026,7 +1101,7 @@ class Session:
                                  statuses: dict[str, Any]) -> None:
         """Narrow the reservation to the engine-recorded qty (READY-§5).
 
-        Runs when the entry first appears in open_orders (covers queued
+        Runs when the entry first appears in tracked order truth (covers queued
         submits): the recorded order qty is the authoritative submitted
         quantity after venue flooring. Rechecks minimums/risk/margin on
         the recorded qty; on failure cancels the entry, frees the hold
@@ -1092,7 +1167,10 @@ class Session:
         else:
             events = self.engine.poll()
         for event in events:
-            self._on_engine_event(event)
+            self._apply_engine_event(event)
+        # Staged legacy sink deltas with no matching poll event flush
+        # here (recovery-adopted; the live ones were consumed above).
+        self._flush_staged_deltas()
         return len(events)
 
     def _advance_engine_clock(self) -> None:
@@ -1134,6 +1212,19 @@ class Session:
                 path.write_text("", encoding="utf-8")
 
     def _on_engine_event(self, event: EngineEvent) -> None:
+        """Legacy entry point: every engine event lands in the ONE handler."""
+        self._apply_engine_event(event)
+
+    def _apply_engine_event(self, event: EngineEvent) -> None:
+        """THE one idempotent booking handler (contract v1 §1, name fixed).
+
+        Every adapter emission — user-stream fills, lookup-adopted and
+        recovery-adopted fills, simulated callbacks, push or drained —
+        is applied here, keyed by namespaced execution_id. Persist
+        first (durable anchor), then book; stale/duplicate events are
+        no-ops. Unknown event kinds fall through to position
+        supervision only.
+        """
         payload = event.payload
         if event.kind == "fill":
             submitted = self._submit_ts.pop(payload.client_order_id, None)
@@ -1141,83 +1232,309 @@ class Session:
                 # Fill arrived before the submit-time id resolved; match
                 # via the engine's own mapping (protocol-only).
                 for key in list(self._submit_ts):
-                    if self.engine.resolve(key) == payload.client_order_id:
+                    try:
+                        resolved = self.engine.resolve(key)
+                    except (ValueError, KeyError, AttributeError):
+                        continue
+                    if resolved == payload.client_order_id:
                         submitted = self._submit_ts.pop(key)
                         break
             if submitted is not None:
-                self._dispatch_ms.append(
-                    (payload.ts_utc - submitted).total_seconds() * 1000)
-            self._append_run_file("fills.jsonl", {
-                "execution_id": payload.execution_id,
-                "client_order_id": payload.client_order_id,
-                "instrument": payload.instrument, "side": payload.side,
-                "qty": payload.qty, "price": payload.price, "fee": payload.fee,
-                "liquidity": payload.liquidity,
-                "ts_utc": payload.ts_utc.isoformat()})
-            self._equity_dirty = True
-            self.store.record_event(
-                self.run_id, payload.execution_id, "fill",
-                {"client_order_id": payload.client_order_id,
-                 "instrument": payload.instrument, "side": payload.side,
-                 "qty": payload.qty, "price": payload.price, "fee": payload.fee,
-                 "liquidity": payload.liquidity},
-                payload.ts_utc.isoformat())
-            self._note_fill_exposure(payload.client_order_id,
-                                     payload.execution_id)
+                try:
+                    self._dispatch_ms.append(
+                        (payload.ts_utc - submitted).total_seconds() * 1000)
+                except (TypeError, AttributeError):
+                    pass
+            self._apply_fill(
+                client_order_id=payload.client_order_id,
+                execution_id=payload.execution_id,
+                instrument=payload.instrument, side=payload.side,
+                qty=payload.qty, price=payload.price, fee=payload.fee,
+                ts_utc=payload.ts_utc, liquidity=payload.liquidity)
         elif event.kind in ("cancel", "reject", "expire"):
-            self.store.record_event(
-                self.run_id, payload.client_order_id, event.kind,
-                {"instrument": payload.instrument, "reason": payload.reason},
-                payload.ts_utc.isoformat())
+            if self.store.record_event(
+                    self.run_id, payload.client_order_id, event.kind,
+                    {"instrument": payload.instrument,
+                     "reason": payload.reason},
+                    payload.ts_utc.isoformat()):
+                self._resolve_command_by_engine_id(payload.client_order_id)
+            else:
+                self._dup_events += 1
         elif event.kind == "funding":
             # Engine-settled funding reaches the ledger (idempotent by
             # event_id); without this backtests silently book funding 0.
-            self.policy.note_funding(payload.event_id, payload.amount,
-                                     payload.ts_utc.isoformat())
-            self._equity_dirty = True
-            self.store.record_event(
-                self.run_id, payload.event_id, "funding",
-                {"instrument": payload.instrument,
-                 "amount": payload.amount},
-                payload.ts_utc.isoformat())
-            self._reconcile_funding()
+            if not self.store.record_event(
+                    self.run_id, payload.event_id, "funding",
+                    {"instrument": payload.instrument,
+                     "amount": payload.amount},
+                    payload.ts_utc.isoformat()):
+                self._dup_events += 1
+            else:
+                try:
+                    self.policy.note_funding(payload.event_id, payload.amount,
+                                             payload.ts_utc.isoformat())
+                except ValueError as exc:
+                    self._block_booking(f"funding-rejected:{exc}")
+                else:
+                    self._equity_dirty = True
+                    self._reconcile_funding()
         self._update_position(event)
+        self._reconcile_commands()
 
-    def _note_fill_exposure(self, client_order_id: str,
-                             execution_id: str) -> None:
-        """First-nonzero-fill reservation→exposure transition (READY-§5).
+    def _stage_sink_delta(self, reservation_id: str, exec_id: str,
+                          symbol: str, venue_side: str, qty: float,
+                          price: float, fee: float, ts_utc: str) -> None:
+        """Stage a legacy sink delta for its poll event (contract v1 §3).
 
-        Exactly once per position: narrows executable from the recorded
-        entry first (authoritative submitted qty), then converts the
-        reservation via policy.note_fill (idempotent; duplicates/late
-        fills never double-book — deltas are exec_id-gated in the sink).
-        Only fills belonging to this position convert it; unknown fills
-        keep blocking through booked/exposure state, never convert.
+        Pre-migration adapters call note_fill_delta without a client
+        id; the matching poll EngineEvent (same execution_id, with the
+        client id) performs the booking. Deltas with no matching event
+        flush at drain end as recovery-adopted. Persist-first: a
+        redelivered delta is a duplicate no-op, never double-staged.
+        """
+        if exec_id in self._applied_exec or exec_id in self._staged_deltas:
+            self._dup_events += 1
+            return
+        # Distinct kind from the event row: the matching poll event
+        # persists its own "fill" anchor; a crash between the two
+        # replays the staged row as adopted (same execution_id).
+        if not self.store.record_event(
+                self.run_id, exec_id, "fill-staged",
+                {"client_order_id": "", "reservation_id": reservation_id,
+                 "instrument": symbol, "side": venue_side, "qty": qty,
+                 "price": price, "fee": fee, "liquidity": "taker"}, ts_utc):
+            self._dup_events += 1
+            return
+        self._staged_deltas[exec_id] = {
+            "reservation_id": reservation_id, "symbol": symbol,
+            "side": venue_side, "qty": qty, "price": price, "fee": fee,
+            "ts_utc": ts_utc}
+
+    def _apply_fill(self, *, client_order_id: str, execution_id: str,
+                    instrument: str, side: str, qty: float, price: float,
+                    fee: float, ts_utc: Any, liquidity: str) -> str:
+        """Book one fill increment exactly once (contract v1 §3).
+
+        Returns applied|duplicate|unbooked|rejected. A staged legacy
+        sink delta for the same execution_id is consumed (its client
+        id comes from this event). Max-applied cumulative qty per
+        order never rolls back.
+        """
+        self._staged_deltas.pop(execution_id, None)
+        ts_iso = ts_utc.isoformat() if hasattr(ts_utc, "isoformat") else str(ts_utc)
+        if execution_id in self._applied_exec:
+            self._dup_events += 1
+            return "duplicate"
+        reservation_id = self._fill_reservation(client_order_id)
+        if not self.store.record_event(
+                self.run_id, execution_id, "fill",
+                {"client_order_id": client_order_id,
+                 "reservation_id": reservation_id or "",
+                 "instrument": instrument, "side": side,
+                 "qty": qty, "price": price, "fee": fee,
+                 "liquidity": liquidity}, ts_iso):
+            self._dup_events += 1
+            return "duplicate"
+        if reservation_id is None:
+            self.store.checkpoint(self.run_id, "fill-unbooked", {
+                "exec_id": execution_id, "client_order_id": client_order_id,
+                "instrument": instrument, "qty": qty})
+            self._block_booking(f"unknown-fill:{client_order_id}")
+            return "unbooked"
+        try:
+            self.policy.note_fill_delta(
+                reservation_id, execution_id, instrument, side, qty,
+                price, fee, ts_iso)
+        except ValueError as exc:
+            self.store.checkpoint(self.run_id, "booking-rejected", {
+                "exec_id": execution_id, "reason": str(exc)})
+            self._block_booking(f"booking-rejected:{execution_id}")
+            return "rejected"
+        self._applied_exec.add(execution_id)
+        self._order_cum[client_order_id] = self._order_cum.get(
+            client_order_id, 0.0) + float(qty or 0.0)
+        self._append_run_file("fills.jsonl", {
+            "execution_id": execution_id,
+            "client_order_id": client_order_id,
+            "instrument": instrument, "side": side,
+            "qty": qty, "price": price, "fee": fee,
+            "liquidity": liquidity, "ts_utc": ts_iso})
+        self._equity_dirty = True
+        self._note_fill_exposure(client_order_id, execution_id)
+        status = self._tracked_status(client_order_id)
+        if status is not None and getattr(status, "state", "") in (
+                "filled", "rejected", "cancelled", "expired"):
+            self._resolve_command_by_engine_id(client_order_id)
+        return "applied"
+
+    def _flush_staged_deltas(self) -> None:
+        """Book staged deltas with no matching poll event (adopted).
+
+        Recovery-adopted fills arrive only via the legacy sink call,
+        without a client id; they book under their reservation with an
+        adopted marker so fills.jsonl stays strictly valid.
+        """
+        for exec_id, delta in list(self._staged_deltas.items()):
+            self._staged_deltas.pop(exec_id)
+            if exec_id in self._applied_exec:
+                self._dup_events += 1
+                continue
+            reservation_id = delta["reservation_id"]
+            if reservation_id not in self._known_reservations:
+                self.store.checkpoint(self.run_id, "fill-unbooked", {
+                    "exec_id": exec_id, "adopted": True,
+                    "instrument": delta["instrument"], "qty": delta["qty"]})
+                self._block_booking(f"unknown-fill:{exec_id}")
+                continue
+            try:
+                self.policy.note_fill_delta(
+                    reservation_id, exec_id, delta["symbol"],
+                    delta["side"], delta["qty"], delta["price"],
+                    delta["fee"], delta["ts_utc"])
+            except ValueError as exc:
+                self.store.checkpoint(self.run_id, "booking-rejected", {
+                    "exec_id": exec_id, "reason": str(exc)})
+                self._block_booking(f"booking-rejected:{exec_id}")
+                continue
+            self._applied_exec.add(exec_id)
+            self._order_cum[f"adopted:{reservation_id}"] = \
+                self._order_cum.get(f"adopted:{reservation_id}", 0.0) + float(
+                    delta["qty"] or 0.0)
+            self._append_run_file("fills.jsonl", {
+                "execution_id": exec_id,
+                "client_order_id": f"adopted:{reservation_id}",
+                "instrument": delta["symbol"], "side": delta["side"],
+                "qty": delta["qty"], "price": delta["price"],
+                "fee": delta["fee"], "liquidity": "taker",
+                "ts_utc": delta["ts_utc"]})
+            self._equity_dirty = True
+            pos = self._position
+            if pos is not None and pos.get("reservation_id") == reservation_id:
+                self._convert_reservation(pos, exec_id)
+
+    def _block_booking(self, reason: str) -> None:
+        """Latch a fail-closed booking block (new entries stop)."""
+        if self._booking_blocked is None:
+            self._booking_blocked = reason
+
+    # -- command intentions (contract v1 §4) -------------------------------
+    def _new_command(self, kind: str, payload: dict[str, Any]) -> str:
+        """Persist a command intention BEFORE it is issued."""
+        cmd_id = f"{self.run_id}:cmd:{self._cmd_seq:06d}"
+        self._cmd_seq += 1
+        self.store.record_command(self.run_id, cmd_id, kind, payload)
+        return cmd_id
+
+    def _resolve_command_by_engine_id(self, engine_id: str) -> None:
+        """Mark submitted commands terminally resolved by engine outcome."""
+        if not engine_id:
+            return
+        try:
+            pending = self.store.open_commands(self.run_id)
+        except (ValueError, KeyError):
+            return
+        for cmd in pending:
+            eid = cmd.get("engine_client_id")
+            if not eid:
+                continue
+            match = eid == engine_id
+            if not match:
+                try:
+                    match = self.engine.resolve(eid) == engine_id
+                except (ValueError, KeyError, AttributeError):
+                    continue
+            if match:
+                try:
+                    self.store.update_command(cmd["cmd_id"], "resolved")
+                except (ValueError, KeyError):
+                    pass
+
+    def _reconcile_commands(self) -> None:
+        """Reconcile open commands against tracked order truth (v1 §4).
+
+        Terminal orders resolve their commands; live ones stay
+        submitted (adopted-known); commands with no engine id (crash
+        inside submit: possibly executed) go unknown and block new
+        entries until their outcome is proven by id.
+        """
+        try:
+            pending = self.store.open_commands(self.run_id)
+        except (ValueError, KeyError):
+            return
+        for cmd in pending:
+            eid = cmd.get("engine_client_id")
+            if not eid:
+                if cmd.get("status") != "unknown":
+                    try:
+                        self.store.update_command(cmd["cmd_id"], "unknown")
+                    except (ValueError, KeyError):
+                        pass
+                continue
+            real = eid
+            try:
+                resolved = self.engine.resolve(eid)
+            except (ValueError, KeyError, AttributeError):
+                resolved = None
+            if resolved:
+                real = resolved
+            status = self._tracked_status(real)
+            if status is None:
+                status = self._tracked_status(eid)
+            if status is not None and getattr(status, "state", "") in (
+                    "filled", "rejected", "cancelled", "expired"):
+                try:
+                    self.store.update_command(cmd["cmd_id"], "resolved")
+                except (ValueError, KeyError):
+                    pass
+
+    def _fill_reservation(self, client_order_id: str) -> str | None:
+        """Reservation a fill books under, or None when foreign/unknown.
+
+        Tracked orders (entry, legs, closes, orphan closes, incl.
+        submit-time aliases) book under the live position reservation
+        — or, for orphan closes, the order's own recorded reservation.
+        Anything else is foreign exposure: never booked, always
+        flagged (contract v1 §3: no touching foreign exposure).
         """
         pos = self._position
-        if pos is None or pos.get("exposure_noted"):
-            return
-        tracked = [pos.get("entry_pre_id"), pos.get("entry_id")]
-        tracked += list(pos.get("legs") or [])
-        tracked += list(pos.get("close_ids") or [])
-        ours = client_order_id in tracked
-        if not ours:
+        if pos is not None:
+            tracked = [pos.get("entry_pre_id"), pos.get("entry_id")]
+            tracked += list(pos.get("legs") or [])
+            tracked += list(pos.get("close_ids") or [])
+            if client_order_id in tracked:
+                return pos["reservation_id"]
             for tid in tracked:
                 if not tid:
                     continue
                 try:
                     if self.engine.resolve(tid) == client_order_id:
-                        ours = True
-                        break
+                        return pos["reservation_id"]
                 except (ValueError, KeyError, AttributeError):
                     continue
-        if not ours:
+            return None
+        if client_order_id in self._orphan_close_ids:
+            return self._order_recorded_reservation(client_order_id)
+        return None
+
+    def _order_recorded_reservation(self, client_order_id: str) -> str | None:
+        """Read back the reservation an order was submitted under."""
+        status = self._tracked_status(client_order_id)
+        rid = getattr(status, "reservation_id", None) if status else None
+        if rid and rid in self._known_reservations:
+            return rid
+        return None
+
+    def _convert_reservation(self, pos: dict[str, Any],
+                             execution_id: str) -> None:
+        """First-nonzero-fill reservation→exposure conversion (READY-§5).
+
+        Exactly once per position: narrows executable from the recorded
+        entry first (authoritative submitted qty), then converts via
+        policy.note_fill (idempotent).
+        """
+        if pos.get("exposure_noted"):
             return
-        try:
-            statuses = {s.client_order_id: s
-                        for s in self.engine.open_orders()}
-        except (ValueError, KeyError, AttributeError):
-            statuses = {}
+        statuses = self._tracked_statuses_for(pos)
         self._narrow_entry_executable(pos, statuses)
         if self._position is None:
             return  # narrow failed closed (recheck): hold freed, cleared.
@@ -1226,6 +1543,89 @@ class Session:
         self.store.checkpoint(self.run_id, "exposure-noted", {
             "reservation_id": pos["reservation_id"],
             "exec_id": execution_id})
+
+    def _note_fill_exposure(self, client_order_id: str,
+                             execution_id: str) -> None:
+        """First-nonzero-fill reservation→exposure transition (READY-§5).
+
+        Called only for fills already booked under this position's
+        reservation (foreign fills never reach here); converts exactly
+        once via _convert_reservation.
+        """
+        del client_order_id
+        pos = self._position
+        if pos is None:
+            return
+        self._convert_reservation(pos, execution_id)
+
+    def _tracked_status(self, client_id: str) -> Any | None:
+        """Tracked truth for one id: order_status, version-gated.
+
+        None when never seen. Reads with a version strictly newer
+        than last applied win; stale versions keep the cached status
+        (cumulative filled quantity never rolls back). Version 0
+        bypasses the cache (no transition observed yet: always
+        current). Pre-migration adapters without order_status fall
+        back to the open_orders snapshot (compat; declared in
+        W1-REL: no terminal inference beyond what it carries).
+        """
+        if not client_id:
+            return None
+        query = getattr(self.engine, "order_status", None)
+        if callable(query):
+            try:
+                status = query(client_id)
+            except (ValueError, KeyError, AttributeError, TypeError):
+                return None
+            if status is None:
+                return None
+            if hasattr(status, "state") and hasattr(status, "filled_qty"):
+                return self._gate_status_version(client_id, status)
+            # Non-contract shape (e.g. pre-migration str): snapshot.
+        try:
+            for status in self.engine.open_orders():
+                if status.client_order_id == client_id:
+                    return status
+        except (ValueError, KeyError, AttributeError):
+            pass
+        return None
+
+    def _gate_status_version(self, client_id: str, status: Any) -> Any:
+        """Apply version gating to one contract status read."""
+        version = getattr(status, "version", 0) or 0
+        version = getattr(status, "version", 0) or 0
+        if version <= 0:
+            return status
+        last = self._status_version.get(client_id, -1)
+        if version > last:
+            self._status_version[client_id] = version
+            self._status_cache[client_id] = status
+            return status
+        self._stale_status += 1
+        return self._status_cache.get(client_id, status)
+
+    def _tracked_statuses_for(self, pos: dict[str, Any] | None) -> dict[str, Any]:
+        """Tracked truth for every id the Session follows (v1 §2).
+
+        Entry handles, legs, retired, in-flight closes and orphan
+        closes resolve via order_status (never via open_orders
+        absence). Missing ids are simply absent: unknown, never
+        terminal-by-absence.
+        """
+        ids: list[str] = list(self._orphan_close_ids)
+        if pos is not None:
+            ids += [pos.get("entry_pre_id") or "", pos.get("entry_id") or ""]
+            ids += list(pos.get("legs") or [])
+            ids += list(pos.get("retired") or [])
+            ids += list(pos.get("close_ids") or [])
+        out: dict[str, Any] = {}
+        for cid in ids:
+            if not cid:
+                continue
+            status = self._tracked_status(cid)
+            if status is not None:
+                out[cid] = status
+        return out
 
     def _update_position(self, event: EngineEvent) -> None:
         pos = self._position
@@ -1237,7 +1637,7 @@ class Session:
                 pos["entry_id"] = real
                 if pos["entry_pre_id"] in self._submit_ts:
                     self._submit_ts[real] = self._submit_ts[pos["entry_pre_id"]]
-        statuses = {s.client_order_id: s for s in self.engine.open_orders()}
+        statuses = self._tracked_statuses_for(pos)
         self._mark_seen(pos, statuses)
         self._narrow_entry_executable(pos, statuses)
         if self._position is None:
@@ -1411,7 +1811,7 @@ class Session:
         latched emergency close converges via idempotent flatten.
         Never falsely protected.
         """
-        statuses = {s.client_order_id: s for s in self.engine.open_orders()}
+        statuses = self._tracked_statuses_for(pos)
         self._mark_seen(pos, statuses)
         self._settle_leg_terminals(pos, statuses)
         need = self._protection_need(pos, statuses)
@@ -1481,8 +1881,8 @@ class Session:
         if any(rid is None for rid in resolved):
             return
         pos["legs"] = resolved
-        # Verify the fresh pair against a FRESH snapshot.
-        statuses = {s.client_order_id: s for s in self.engine.open_orders()}
+        # Verify the fresh pair against FRESH tracked truth.
+        statuses = self._tracked_statuses_for(pos)
         need = self._protection_need(pos, statuses)
         stop = statuses.get((pos.get("legs") or [None])[0] or "")
         if stop is None or stop.state not in ("open", "partial"):
@@ -1568,20 +1968,15 @@ class Session:
             if st.state in ("open", "partial"):
                 return False
         for st in statuses.values():
-            if st.reservation_id == pos["reservation_id"] \
+            if getattr(st, "reservation_id", None) == pos["reservation_id"] \
                     and st.state in ("open", "partial"):
                 return False  # live reservation-linked order (any role).
         if getattr(self.engine, "_submit_queue", []):
             return False  # pending commands not yet submitted.
         if getattr(self.engine, "_pending", []):
             return False  # unconsumed execution events.
-        cache = getattr(self.engine, "_cache", None)
-        if cache is not None:
-            try:
-                if cache.positions_open():
-                    return False
-            except Exception:
-                return False  # unreadable venue position: not agreed.
+        if not self._venue_positions_agree(pos):
+            return False
         unknown = getattr(self.engine, "unknown_ids", None)
         if callable(unknown):
             try:
@@ -1589,6 +1984,54 @@ class Session:
                     return False
             except Exception:
                 return False
+        return True
+
+    def _venue_positions_agree(self, pos: dict[str, Any]) -> bool:
+        """Venue-position leg of flat agreement (contract v1 §2, W1).
+
+        A complete AccountSnapshot must agree with the flat ledger:
+        any nonzero reported position blocks (foreign exposure is
+        never touched, only disagreed-with). An attempted snapshot
+        with complete=False/None is unknown: never flat. A None
+        snapshot (adapter models no venue account) or a
+        pre-migration shape (raw dict) leaves the leg to order truth
+        plus the legacy simulator-cache read below.
+        """
+        snap_fn = getattr(self.engine, "account_snapshot", None)
+        if callable(snap_fn):
+            try:
+                snap = snap_fn()
+            except Exception:
+                return False  # unreadable venue position: not agreed.
+            if snap is not None and hasattr(snap, "complete") \
+                    and hasattr(snap, "positions"):
+                if snap.complete is False or snap.complete is None:
+                    self.store.checkpoint(
+                        self.run_id, "flat-blocked",
+                        {"reason": "venue-snapshot-incomplete"})
+                    return False
+                try:
+                    positions = list(snap.positions or ())
+                except TypeError:
+                    return False
+                for position in positions:
+                    qty = getattr(position, "qty", 0.0) or 0.0
+                    if abs(float(qty)) > 1e-9:
+                        self.store.checkpoint(
+                            self.run_id, "flat-blocked",
+                            {"reason": "venue-position-divergence",
+                             "instrument": getattr(
+                                 position, "instrument", "?"),
+                             "qty": float(qty)})
+                        return False
+                return True
+        cache = getattr(self.engine, "_cache", None)
+        if cache is not None:
+            try:
+                if cache.positions_open():
+                    return False
+            except Exception:
+                return False  # unreadable venue position: not agreed.
         return True
 
     def _retry_pending_flatten(self, reason: str) -> None:
@@ -1631,8 +2074,7 @@ class Session:
         # are read fresh from engine state regardless.
         pos = self._position
         try:
-            statuses = {s.client_order_id: s
-                        for s in self.engine.open_orders()}
+            statuses = self._tracked_statuses_for(pos)
         except (ValueError, KeyError, AttributeError):
             statuses = {}
         acted = False
@@ -1677,12 +2119,29 @@ class Session:
             if symbol is None:
                 raise ValueError("cannot flatten: exposure without instrument")
             side = "SELL" if net > 0 else "BUY"
+            if pos is not None:
+                close_rid = pos["reservation_id"]
+            else:
+                # Orphan close: attribute to the single surviving
+                # unresolved reservation when unambiguous, so its
+                # fills book and net out (else reservation-less,
+                # adapter-skipped as before).
+                unresolved = self.policy.unresolved_ids()
+                close_rid = unresolved[0] if len(unresolved) == 1 else None
             # Reduce-only + exact-net sizing: never opens or reverses.
+            close_cmd = self._new_command("submit", {
+                "role": "close", "instrument": symbol, "side": side,
+                "qty": abs(net), "reservation_id": close_rid,
+                "reason": reason})
             pre_id = self.engine.submit_immediate(EngineOrder(
                 instrument=symbol, side=side, qty=abs(net),
                 kind="MARKET", reduce_only=True,
-                reservation_id=pos["reservation_id"] if pos is not None else None,
-                role="target"))
+                reservation_id=close_rid, role="target"))
+            try:
+                self.store.update_command(close_cmd, "submitted",
+                                          engine_client_id=pre_id)
+            except (ValueError, KeyError):
+                pass
             if pos is not None:
                 pos.setdefault("close_ids", []).append(pre_id)
             else:
@@ -1836,6 +2295,8 @@ class Session:
         # keeps this shared-file-queue patch inside this method.
         from cryptobot.market_data.replayer import RollingEventHash, stream_events
 
+        # Single-instance lock (contract v1 §4): held until close().
+        self.store.acquire_lock()
         capture_dir = Path(capture_dir)
         events_path = capture_dir / "events.jsonl"
         if not events_path.exists():
@@ -2268,8 +2729,16 @@ class Session:
             profile = load_profile(self.config.source_path)
         except (ValueError, OSError):
             profile = None
+        # W5 blocking fix (release): honor advisory_only, never the
+        # posture string. profile.posture is "protected-operational"
+        # vs "research-only", so the old == "protected" compare never
+        # matched and every Session ran advisory (fail-open). Unknown
+        # profile shapes default advisory: nothing is force-blocked on
+        # an unreadable profile (availability), while the protected
+        # profile now genuinely enforces.
         protected = (
-            profile is not None and profile.posture == "protected"
+            profile is not None
+            and not getattr(profile, "advisory_only", True)
             and self.config.mode == "paper")
         tracker = FreshnessTracker(
             self.workdir / "event_source_state.json",
@@ -2354,9 +2823,7 @@ class Session:
         entry_id = pos.get("entry_id") or pos.get("entry_pre_id")
         if entry_id is None:
             return
-        statuses = {s.client_order_id: s
-                    for s in self.engine.open_orders()}
-        entry = statuses.get(entry_id)
+        entry = self._tracked_status(entry_id)
         if entry is not None and entry.filled_qty > 1e-12:
             return  # filled: protection stays on.
         try:
@@ -2509,6 +2976,104 @@ class Session:
                                "intents_admitted": self._admitted,
                                "reject_counts": dict(self._reject_counts)})
 
+    def _rebuild_booking_state(self) -> None:
+        """Rebuild idempotency + replay unbooked anchors (v1 §4).
+
+        Applied execution ids and per-order cumulative quantities come
+        from persisted execution events (immutable anchor). Rows the
+        crash left persisted-but-unbooked replay now through the same
+        exec-gated booking (policy + ledger converge; fills.jsonl rows
+        append only when absent). Command seq continues past existing
+        rows; known reservations seed from policy recovery state.
+        """
+        for rid in self.policy.live_reservations():
+            self._known_reservations.add(rid)
+        for rid in self.policy.unresolved_ids():
+            self._known_reservations.add(rid)
+        for rid in self.policy.booked_reservations():
+            self._known_reservations.add(rid)
+        try:
+            for cmd in self.store.open_commands(self.run_id):
+                rid = (cmd.get("payload") or {}).get("reservation_id")
+                if rid:
+                    self._known_reservations.add(rid)
+        except (ValueError, KeyError):
+            pass
+        try:
+            rows = self.store.read_events(self.run_id)
+        except (ValueError, KeyError):
+            rows = []
+        fills_have: set[str] = set()
+        fills_path = self.workdir / "fills.jsonl"
+        if fills_path.exists():
+            try:
+                for line in fills_path.read_text(
+                        encoding="utf-8").splitlines():
+                    if line.strip():
+                        fills_have.add(json.loads(line).get("execution_id"))
+            except (OSError, ValueError):
+                pass
+        for row in rows:
+            payload = row.get("payload") or {}
+            if row.get("kind") in ("fill", "fill-staged"):
+                exec_id = row.get("execution_id")
+                rid = payload.get("reservation_id") or ""
+                self._applied_exec.add(exec_id)
+                cid = payload.get("client_order_id") or ""
+                try:
+                    qty = float(payload.get("qty") or 0.0)
+                except (TypeError, ValueError):
+                    qty = 0.0
+                if cid:
+                    self._order_cum[cid] = self._order_cum.get(cid, 0.0) + qty
+                if rid and rid in self._known_reservations:
+                    try:
+                        self.policy.note_fill_delta(
+                            rid, exec_id, payload.get("instrument", ""),
+                            payload.get("side", ""), payload.get("qty", 0.0),
+                            payload.get("price", 0.0), payload.get("fee", 0.0),
+                            row.get("ts_utc", ""))
+                    except ValueError:
+                        pass  # already booked, or invalid row: gates decide.
+                    try:
+                        # The policy gate returns before the ledger when
+                        # policy already booked: heal the ledger
+                        # explicitly (exec-gated: no double-book).
+                        self.ledger.note_fill(
+                            exec_id, payload.get("instrument", ""),
+                            payload.get("side", ""), payload.get("qty", 0.0),
+                            payload.get("price", 0.0), payload.get("fee", 0.0),
+                            row.get("ts_utc", ""))
+                    except ValueError:
+                        pass
+                    if exec_id not in fills_have:
+                        self._append_run_file("fills.jsonl", {
+                            "execution_id": exec_id,
+                            "client_order_id": cid or f"adopted:{rid}",
+                            "instrument": payload.get("instrument", ""),
+                            "side": payload.get("side", ""),
+                            "qty": payload.get("qty", 0.0),
+                            "price": payload.get("price", 0.0),
+                            "fee": payload.get("fee", 0.0),
+                            "liquidity": payload.get("liquidity", "taker"),
+                            "ts_utc": row.get("ts_utc", "")})
+                        fills_have.add(exec_id)
+                elif cid:
+                    # Persisted-but-never-booked foreign fill: the
+                    # pre-crash block restarts with the session.
+                    self._block_booking(f"unknown-fill:{cid}")
+            elif row.get("kind") == "funding":
+                try:
+                    self.policy.note_funding(
+                        row.get("execution_id"), payload.get("amount", 0.0),
+                        row.get("ts_utc", ""))
+                except ValueError:
+                    pass  # already booked, or invalid row: gates decide.
+        try:
+            self._cmd_seq = self.store.command_count(self.run_id)
+        except (ValueError, KeyError):
+            pass
+
     def _resume_state(self) -> None:
         run = self.store.get_run(self.run_id)
         if run is None:
@@ -2524,8 +3089,12 @@ class Session:
             " ORDER BY id DESC LIMIT 1", (self.run_id,)).fetchone()
         if rows is not None:
             self._last_seq = int(json.loads(rows[0]).get("last_seq", 0))
-        # Recover the engine from its own journal (durable source).
-        self.engine.recover(self.policy)
+        self._rebuild_booking_state()
+        # Recover the engine from its own journal (durable source);
+        # adopted fills route through the ONE handler (bound above).
+        self.engine.recover(self._engine_handler)
+        self._flush_staged_deltas()
+        self._reconcile_commands()
         self._set_state("recovering", f"resume-from-seq:{self._last_seq}")
         self.store.checkpoint(self.run_id, "resume",
                               {"last_seq": self._last_seq})
@@ -2546,8 +3115,19 @@ class Session:
             self.ledger = Ledger.from_dict(
                 json.loads(ledger_path.read_text(encoding="utf-8")))
             self.policy.bind_ledger(self.ledger)
-        self.engine.recover(self.policy)
-        self._reconciled = True
+        self._rebuild_booking_state()
+        self.engine.recover(self._engine_handler)
+        self._flush_staged_deltas()
+        self._reconcile_commands()
+        try:
+            pending = self.store.open_commands(self.run_id)
+        except (ValueError, KeyError):
+            pending = []
+        self._reconciled = not any(
+            c.get("status") == "unknown" for c in pending)
+        if not self._reconciled:
+            self.store.checkpoint(self.run_id, "resume-blocked", {
+                "reason": "unknown-commands"})
         self._day = accounting_date(self.now_utc()).isoformat()
         try:
             self._run_start_utc = datetime.fromisoformat(
@@ -2697,6 +3277,8 @@ class Session:
         """
         if self.config.mode not in ("paper", "prod"):
             raise ValueError("run_live needs a paper/prod-mode config")
+        # Single-instance lock (contract v1 §4): held until close().
+        self.store.acquire_lock()
         if resume:
             self._resume_live()
         else:

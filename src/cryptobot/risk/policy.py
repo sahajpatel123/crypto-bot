@@ -403,6 +403,15 @@ class RiskPolicy:
     def booked_net(self, reservation_id: str) -> float:
         return self._booked_net(reservation_id)
 
+    def booked_reservations(self) -> tuple[str, ...]:
+        """Reservation ids with any booked fill history (v1 §4).
+
+        Seeds resume-time known-reservation sets: converted and
+        released reservations leave the live/unresolved maps but
+        their fills must still replay-heal the ledger.
+        """
+        return tuple(self._state.booked)
+
     def booked_total_qty(self) -> float:
         """Sum of booked nets across reservations (V-008 one-budget input).
 
