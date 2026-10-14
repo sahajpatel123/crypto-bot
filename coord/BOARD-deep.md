@@ -51,6 +51,11 @@ Production submission DISABLED. No credentials requested at this stage.
   (reservation-None flatten fill unbookable; _position not rebuilt across
   restart); relayed to W1 for D2 ownership. W5 must note the caveat.
 - W3 part 1 verified (1be3f33, manifest 9008ba92); relayed to W4.
+- W3 D5 ACCEPTED (0cdf1e4 → f28bb81): 5/5 proofs re-run green (cache
+  rebuilt rc3/518s as predicted; EVAL SCORABLE reproduced). Caveats:
+  merge script rewrites build timestamps (sha drift on fresh re-run;
+  restored frozen TOML after timestamps-only diff); audit --out needs
+  pre-existing dir. Both filed to W3 as follow-ups.
 - W4 freeze verified outcome-free (a96ed72); beta calibration overlaps DEV
   idx1-5 (disclosed, trigger-neutral); W5 footnote.
 - W4 feasibility ruling (manager): full-split replay infeasible (6.3h+54GB
