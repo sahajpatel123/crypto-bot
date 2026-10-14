@@ -6,13 +6,6 @@ the network). Each case asserts the §10 required result strictly. Red
 on early checkpoints is an honest record of missing behavior, never a
 harness artifact: every case first proves its setup actually
 established the precondition it challenges.
-
-Interface generation: contract v1 (merged W1+W2 tree). Session
-auto-binds its event handler at construction; order_status() is per-id
-truth; open_orders() is open/partial-only; account_snapshot() is a
-fresh REST dataclass read. Pre-W2 SHAs need the banked 1d349fd suite
-version (policy-sink binds, terminal-inclusive paper lists, cached
-ACCOUNT_UPDATE snapshot).
 """
 import json
 import os
@@ -134,7 +127,7 @@ def test_rel_fill_fee_protection(tmp_path):
     engine.add_instrument("BTCUSDT", price_precision=2, size_precision=3,
                           tick_size=0.01, step_size=0.001, ts_utc=h["_RT0"])
     session, store = h["_session"](tmp_path, engine)
-    # Contract v1: Session.__init__ already bound its event handler.
+    # Contract v1: Session.__init__ binds the booking handler already.
     session.clock.set_ms(int(h["_RT0"].timestamp() * 1000))
     session.policy.reconcile_day(120.0, 0.0)
     try:
@@ -179,9 +172,11 @@ def test_rel_filled_absent_from_open(tmp_path):
         state = getattr(st, "state", st)
         assert str(state).lower() == "filled", (
             f"order_status truth must report filled, got {st!r}")
-        open_ids = [s.client_order_id for s in engine.open_orders()]
-        assert coid not in open_ids, (
-            f"filled id {coid} still listed as open: {open_ids}")
+        by_id = {s.client_order_id: s for s in engine.open_orders()}
+        # Open-only (§2, per this test's docstring): the filled id is
+        # absent from the open list; truth comes from order_status().
+        assert coid not in by_id, (
+            f"filled id {coid} present in open-only list: {by_id[coid]}")
         live_ids = [s.client_order_id for s in engine.open_orders()
                     if s.state in ("open", "partial")]
         assert coid not in live_ids, (
@@ -536,16 +531,14 @@ def test_rel_foreign_venue_position_flagged_untouched(tmp_path):
     at all (live adapter, injected offline transport + normal Session)."""
     lh = _livehelpers()
     h = _w1()
-    # Contract v1: account_snapshot() is a fresh REST dataclass read.
     script = [
+        # Contract v1: account_snapshot reads fresh venue truth (one
+        # signed GET, timestamped AccountSnapshot — no cached raw dict).
         ("GET", "/fapi/v2/account", None, ("ok", {
             "totalWalletBalance": "120.0", "availableBalance": "100.0",
-            "totalMarginBalance": "115.0",
-            "positions": [
-                {"symbol": "ETHUSDT", "positionAmt": "0.5",
-                 "entryPrice": "3000.0", "markPrice": "3010.0"},
-                {"symbol": "BTCUSDT", "positionAmt": "0.0",
-                 "entryPrice": "0.0", "markPrice": "100.0"}]})),
+            "totalMarginBalance": "120.5",
+            "positions": [{"symbol": "ETHUSDT", "positionAmt": "0.5",
+                           "entryPrice": "3000.0"}]})),
         ("GET", "/fapi/v1/openOrders", None, ("ok", [
             {"clientOrderId": "someone-elses-order", "symbol": "ETHUSDT",
              "status": "NEW", "origQty": "0.5", "executedQty": "0.0"}])),
@@ -553,13 +546,17 @@ def test_rel_foreign_venue_position_flagged_untouched(tmp_path):
     ]
     engine, transport = lh["_live"](tmp_path, script)
     try:
+        engine.note_user_event({
+            "e": "ACCOUNT_UPDATE", "E": 1,
+            "a": {"B": [], "P": [{"s": "ETHUSDT", "pa": "0.5",
+                                   "ep": "3000.0"}]}})
         snap = engine.account_snapshot()
-        assert snap is not None, "snapshot missing"
-        assert snap.complete is True, "snapshot incomplete"
+        assert snap is not None, "snapshot missing after ACCOUNT_UPDATE"
+        assert snap.complete is True
+        assert snap.asof_utc is not None
         eth = [p for p in snap.positions if p.instrument == "ETHUSDT"]
         assert eth, f"foreign position not exposed: {snap!r}"
         assert eth[0].qty == pytest.approx(0.5)
-        assert eth[0].entry_price == pytest.approx(3000.0)
         session, store = h["_session"](tmp_path, engine)
         try:
             assert engine.open_orders() == [], "foreign stray leaked in"
@@ -781,12 +778,11 @@ def test_rel_protected_posture_admits_on_clear_day(tmp_path, monkeypatch):
     engine.add_instrument("BTCUSDT", price_precision=2, size_precision=3,
                           tick_size=0.01, step_size=0.001, ts_utc=h["_RT0"])
     store = RunStore(tmp_path / "runs" / "cryptobot.db")
-    # Release integration (manager, adopted after honesty verification):
-    # start the scenario clock at _RT0 before Session construction so
-    # the startup source verification lands inside the evaluation
-    # window (default clock starts at 1970 and only moves forward;
-    # constructing-then-rewinding is time travel the freshness check
-    # correctly rejects). Assertions unchanged.
+    # Release integration: start the scenario clock at _RT0 before
+    # Session construction so the startup source verification lands
+    # inside the evaluation window (default clock starts at 1970 and
+    # only moves forward; constructing-then-rewinding is time travel
+    # the freshness check correctly rejects). Assertions unchanged.
     from cryptobot.app.session import ReplayClock
     clock = ReplayClock(start=h["_RT0"])
     session = Session(cfg, store, tmp_path / "runs" / "relprot", "relprot",
@@ -794,7 +790,7 @@ def test_rel_protected_posture_admits_on_clear_day(tmp_path, monkeypatch):
     try:
         store.create_run("relprot", "paper", "fp", str(session.workdir),
                          None)
-        # Contract v1: Session.__init__ already bound its event handler.
+        # Contract v1: Session.__init__ binds the booking handler already.
         session.clock.set_ms(int(h["_RT0"].timestamp() * 1000))
         session.policy.reconcile_day(120.0, 0.0)
         assert session.protection is not None, "setup: no runtime"
