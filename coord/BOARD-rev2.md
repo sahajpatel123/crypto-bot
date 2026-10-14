@@ -7,9 +7,9 @@ Probes reproduced 1:1 at start (`/tmp/rev2/probes.out`, exit 1).
 
 | # | Requirement | Owner | State | Acceptance command | Evidence | SHA |
 |---|---|---|---|---|---|---|
-| R1 | Thread-owned event handoff: pump thread never touches Session/SQLite; bounded supervised queue; overflow/apply-failure/lag halt entries, keep evidence | W1 | W1 acked, implementing | new regression tests + probe case green | — | — |
-| R2 | Fill recoverable until booking acked; no premature transport dedup; recovery finds terminal-order fills; crash boundaries (pre-receipt/pre-booking/pre-protection) without dupes/resubmits | W1 | W1 acked, implementing | same | — | — |
-| R3 | Halt independence: stream heal clears only its own reason | W1 | W1 acked, implementing | same | — | — |
+| R1 | Thread-owned event handoff: pump thread never touches Session/SQLite; bounded supervised queue; overflow/apply-failure/lag halt entries, keep evidence | W1 | INTEGRATED (26/26; THREAD-DRAIN-OK) | new regression tests + probe case green | — | — |
+| R2 | Fill recoverable until booking acked; no premature transport dedup; recovery finds terminal-order fills; crash boundaries (pre-receipt/pre-booking/pre-protection) without dupes/resubmits | W1 | INTEGRATED (26/26; THREAD-DRAIN-OK) | same | — | — |
+| R3 | Halt independence: stream heal clears only its own reason | W1 | INTEGRATED (26/26; THREAD-DRAIN-OK) | same | — | — |
 | R4 | Demo `full` truthful: nonzero unless all pass; failed/blocked preflight prevents entry; normal Session entry/protection/exit + stream interruption + restart/adoption + authoritative reconcile | W2 | W2 acked, implementing | `demo_drill.py full` offline BLOCKED; fault-injection suite | — | — |
 | R5 | H-R2 causal correction: no fill before decision; trigger≠executable exit; quote-age/coverage rules; unscorable horizons; funding unknown-not-zero; recompute once, archive old | W4→? | INTEGRATED 0b9856f (0 early, v1 exact, manager audit CAUSAL) | corrected diagnostics + audit | — | — |
 | R6 | Finite investigation: 1 hypothesis + ≤4 new versioned configs + CASH + baseline, ≤12 dev/val cells, frozen selection, honest NO/INSUFFICIENT if applicable | W4→? | INTEGRATED: NO QUALIFYING STRATEGY, 0 cells | registry + report | — | — |
