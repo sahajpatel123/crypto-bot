@@ -63,3 +63,6 @@
   display is unavoidable job output; executor does not seek booked blocks,
   views only mechanics + bridge coverage audit fields. No downstream
   discretion exists (filed jobs, frozen selection); disclosed in final filing.
+## Jobs 6-8: X1-R1-S validation bridged (rc=0), chain pruned
+- j1: 3,589,507 ingested, cursor 09-28; j2: 3,567,842, replayed 1507;
+  j3: 1,357,874, replayed 1842, cursor 09-30. Total 8.52M. All INCOMPLETE.
