@@ -297,7 +297,7 @@ class BinanceLiveEngine:
         self._offset_ms = 0
         self._ready = False
         self._closed = False
-        self._exit_only = False
+        self._exit_only_reasons: set[str] = set()
         self._seq = 0
         self._filters: dict[str, dict[str, float]] = {}
         self._fee_bps: dict[str, float] = {}
@@ -306,7 +306,15 @@ class BinanceLiveEngine:
         self._states: dict[str, str] = {}  # client id -> local state/UNKNOWN.
         self._algo: set[str] = set()  # client ids on the algoOrder rail.
         self._triggered: dict[str, str] = {}  # algo cid -> triggered order id.
-        self._trades_booked: set[str] = set()  # venue trade ids adopted.
+        # R2 durable booking: fills are ADOPTED (journaled, emitted,
+        # recoverable) before they are ACKED (durably booked by the
+        # Session). Dedup keys are namespaced execution ids. Transport
+        # dedup never consumes an unbooked execution: redelivery
+        # re-emits (the Session exec-gate makes it a safe no-op).
+        self._acked_exec: set[str] = set()  # booking-acked exec ids.
+        self._adopted_exec: set[str] = set()  # exec ids ever adopted.
+        self._unacked: dict[str, str] = {}  # exec id -> client id.
+        self._gap_orders: set[str] = set()  # executedQty > adopted tape.
         self._pending: list[EngineEvent] = []
         self._marks: dict[str, float] = {}
         self._mark_ts: dict[str, datetime] = {}
@@ -398,13 +406,34 @@ class BinanceLiveEngine:
                 tid = str(record.get("trade_id", ""))
                 symbol = (str(record.get("symbol", ""))
                           or self._symbols.get(str(cid), ""))
-                if tid and symbol:
-                    self._trades_booked.add(f"{symbol}/{tid}")
-                try:
-                    self._adopted_qty[str(cid)] = self._adopted_qty.get(
-                        str(cid), 0.0) + float(record.get("qty", 0.0))
-                except (TypeError, ValueError):
-                    pass
+                exec_id = str(record.get("exec_id", ""))
+                if not exec_id and tid and symbol:
+                    exec_id = self._fill_exec_id(symbol, tid)
+                if not exec_id and symbol and cid:
+                    # Legacy notrade record: deterministic reconstruction.
+                    try:
+                        _q = float(record.get("qty", 0.0))
+                    except (TypeError, ValueError):
+                        _q = 0.0
+                    exec_id = (f"{self._venue}/{self._account_tag}/"
+                               f"{symbol}/notrade:{cid}:{_q:.12f}")
+                if exec_id and exec_id not in self._adopted_exec:
+                    self._adopted_exec.add(exec_id)
+                    self._unacked[exec_id] = str(cid)
+                    try:
+                        self._adopted_qty[str(cid)] = self._adopted_qty.get(
+                            str(cid), 0.0) + float(record.get("qty", 0.0))
+                    except (TypeError, ValueError):
+                        pass
+            elif event == "fill-acked" and cid:
+                exec_id = str(record.get("exec_id", ""))
+                if exec_id:
+                    self._acked_exec.add(exec_id)
+                    self._unacked.pop(exec_id, None)
+            elif event == "fill-gap" and cid:
+                self._gap_orders.add(str(cid))
+            elif event == "fill-gap-closed" and cid:
+                self._gap_orders.discard(str(cid))
             elif event == "terminal-emitted" and cid:
                 self._terminal_emitted.add(str(cid))
             if event in self._VERSIONED_EVENTS and cid:
@@ -426,12 +455,36 @@ class BinanceLiveEngine:
         self._journal(event, {"client_id": client_id, **payload})
         self._versions[client_id] = self._versions.get(client_id, 0) + 1
 
+    #: Handler outcomes that mean the fill was NOT durably booked.
+    _NOACK_OUTCOMES = frozenset({"unbooked", "rejected"})
+
     def _emit(self, event: EngineEvent) -> None:
-        """Route one emission: push when bound, else queue for poll()."""
-        if self._event_handler is not None:
-            self._event_handler(event)
+        """Route one emission: push when bound, else queue for poll().
+
+        R2: a pushed fill is ACKED (removed from the recoverable set)
+        only when the handler confirms durable booking. Explicit
+        unbooked/rejected outcomes — and handler exceptions, which
+        propagate — leave the execution recoverable: redelivery
+        re-emits and the Session exec-gate keeps accounting exact.
+        Handlers returning None (doubles, legacy callables) are
+        treated as consumed, preserving pre-R2 behavior.
+        """
+        if self._event_handler is None:
+            self._pending.append(event)
             return
-        self._pending.append(event)
+        outcome = self._event_handler(event)
+        if event.kind == "fill" and outcome not in self._NOACK_OUTCOMES:
+            self._ack_fill(event.payload.execution_id,
+                           event.payload.client_order_id)
+
+    def _ack_fill(self, exec_id: str, client_id: str) -> None:
+        """Mark one execution durably booked (R2 ack). Idempotent."""
+        if not exec_id or exec_id in self._acked_exec:
+            return
+        self._acked_exec.add(exec_id)
+        self._unacked.pop(exec_id, None)
+        self._journal("fill-acked", {"client_id": client_id,
+                                     "exec_id": exec_id})
 
     @staticmethod
     def _seam_state(internal: str) -> str:
@@ -784,6 +837,7 @@ class BinanceLiveEngine:
         self._states[client_id] = state
         exec_qty = float(view.get("executedQty", 0.0) or 0.0)
         self._adopt_user_trades(client_id, symbol, trades_id, exec_qty)
+        self._reconcile_fill_gap(client_id, exec_qty)
         self._journal_transition("lookup", client_id,
                                  {"state": state, "executed_qty": exec_qty})
         self._orders_cache = None
@@ -854,11 +908,6 @@ class BinanceLiveEngine:
             tid = str(trade.get("id", ""))
             qty = float(trade.get("qty", 0.0) or 0.0)
             booked += qty
-            key = f"{symbol}/{tid}"
-            if tid and key in self._trades_booked:
-                continue
-            if tid:
-                self._trades_booked.add(key)
             asset = str(trade.get("commissionAsset", "USDT"))
             if asset != "USDT":
                 raise ValueError(
@@ -868,11 +917,16 @@ class BinanceLiveEngine:
             exec_id = (self._fill_exec_id(symbol, tid) if tid
                        else f"{self._venue}/{self._account_tag}/{symbol}/"
                             f"notrade:{client_id}:{qty:.12f}")
-            self._journal_transition("fill-adopted", client_id,
-                                     {"symbol": symbol, "trade_id": tid,
-                                      "qty": qty})
-            self._adopted_qty[client_id] = self._adopted_qty.get(
-                client_id, 0.0) + qty
+            if exec_id in self._acked_exec:
+                continue  # durably booked: never re-emit.
+            if exec_id not in self._adopted_exec:
+                self._journal_transition("fill-adopted", client_id,
+                                         {"symbol": symbol, "trade_id": tid,
+                                          "qty": qty, "exec_id": exec_id})
+                self._adopted_exec.add(exec_id)
+                self._unacked[exec_id] = client_id
+                self._adopted_qty[client_id] = self._adopted_qty.get(
+                    client_id, 0.0) + qty
             self._emit(EngineEvent(
                 "fill",
                 EngineFill(execution_id=exec_id,
@@ -886,6 +940,29 @@ class BinanceLiveEngine:
             self._journal("fills-unreconciled",
                           {"client_id": client_id, "executed_qty": exec_qty,
                            "tape_qty": booked})
+
+    def _reconcile_fill_gap(self, client_id: str, exec_qty: float) -> None:
+        """Track cumulative-vs-tape fills still missing (R2).
+
+        A lookup that leaves executedQty above the adopted tape
+        records a gap: recovery revisits the order even when
+        terminal, until the tape catches up. Transitions journal
+        once each (never per-lookup spam).
+        """
+        adopted = self._adopted_qty.get(client_id, 0.0)
+        if exec_qty > adopted + 1e-9:
+            if client_id not in self._gap_orders:
+                self._gap_orders.add(client_id)
+                self._journal("fill-gap", {"client_id": client_id,
+                                           "executed_qty": exec_qty,
+                                           "adopted_qty": adopted})
+        elif client_id in self._gap_orders:
+            self._gap_orders.discard(client_id)
+            self._journal("fill-gap-closed", {"client_id": client_id})
+
+    def _recovery_watch(self) -> set[str]:
+        """Orders recovery must revisit despite terminal state (R2)."""
+        return set(self._gap_orders) | set(self._unacked.values())
 
     def _symbol_of(self, client_id: str) -> str:
         for record in self._read_journal():
@@ -1022,8 +1099,19 @@ class BinanceLiveEngine:
         return client_id
 
     def poll(self) -> list[EngineEvent]:
-        """Drain user-stream-fed + lookup-adopted events (never blocks)."""
+        """Drain user-stream-fed + lookup-adopted events (never blocks).
+
+        R2: a polled fill is ACKED at handoff — the poll consumer
+        takes custody when it pulls (pre-R2 behavior: a consumed
+        emission never replays after restart). Consumers that need
+        outcome-gated durability bind a sink instead: the push path
+        acks only on confirmed durable booking.
+        """
         due, self._pending = self._pending, []
+        for event in due:
+            if event.kind == "fill":
+                self._ack_fill(event.payload.execution_id,
+                               event.payload.client_order_id)
         return due
 
     def filled_qty(self, client_order_id: str) -> float:
@@ -1096,21 +1184,22 @@ class BinanceLiveEngine:
                 f"need explicit support")
         tid = str(order.get("t", ""))
         symbol = str(order["s"])
-        key = f"{symbol}/{tid}"
-        if tid and key in self._trades_booked:
-            return  # lookup() already adopted this trade.
-        if tid:
-            self._trades_booked.add(key)
         ts = envelope.get("E")
         now = (datetime.fromtimestamp(ts / 1000, tz=timezone.utc)
                if isinstance(ts, (int, float)) else self._now_utc())
         exec_id = (self._fill_exec_id(symbol, tid) if tid
                    else f"{self._venue}/{self._account_tag}/{symbol}/"
                         f"notrade:{cid}:{last_qty:.12f}")
-        self._journal_transition("fill-adopted", cid,
-                                 {"symbol": symbol, "trade_id": tid,
-                                  "qty": last_qty, "via": "user-stream"})
-        self._adopted_qty[cid] = self._adopted_qty.get(cid, 0.0) + last_qty
+        if exec_id in self._acked_exec:
+            return  # durably booked: never re-emit.
+        if exec_id not in self._adopted_exec:
+            self._journal_transition("fill-adopted", cid,
+                                     {"symbol": symbol, "trade_id": tid,
+                                      "qty": last_qty, "via": "user-stream",
+                                      "exec_id": exec_id})
+            self._adopted_exec.add(exec_id)
+            self._unacked[exec_id] = cid
+            self._adopted_qty[cid] = self._adopted_qty.get(cid, 0.0) + last_qty
         self._emit(EngineEvent(
             "fill",
             EngineFill(execution_id=exec_id,
@@ -1179,8 +1268,10 @@ class BinanceLiveEngine:
 
     def stream_reconnected(self) -> None:
         """Heal a user-stream gap: look up every journaled non-terminal
-        order (a dropped socket may have lost TRADE events)."""
+        order (a dropped socket may have lost TRADE events), plus any
+        terminal order with unacked executions or a fill gap (R2)."""
         self._journal("stream-reconnected", {})
+        watch = self._recovery_watch()
         seen: set[str] = set()
         for record in self._read_journal():
             if record.get("event") != "submit-intent":
@@ -1190,7 +1281,8 @@ class BinanceLiveEngine:
                 continue
             seen.add(cid)
             if self._states.get(cid, "open") in (
-                    "filled", "cancelled", "rejected", "expired", "void"):
+                    "filled", "cancelled", "rejected", "expired", "void") \
+                    and cid not in watch:
                 continue
             self.lookup(cid)
 
@@ -1398,9 +1490,34 @@ class BinanceLiveEngine:
                 role="target")))
         return legs
 
+    @property
+    def _exit_only(self) -> bool:
+        """Entries refuse while ANY halt reason is held (R3)."""
+        return bool(self._exit_only_reasons)
+
+    def exit_only_reasons(self) -> tuple[str, ...]:
+        """Held halt reasons, sorted (R3 halt independence)."""
+        return tuple(sorted(self._exit_only_reasons))
+
     def set_exit_only(self, halted: bool, reason: str = "") -> None:
-        self._exit_only = halted
-        self._journal("exit-only", {"halted": halted, "reason": reason})
+        """Reason-keyed halt (R3): lifting clears ONLY that reason.
+
+        A heal (stream, emergency, day-reconcile) must never clear
+        another subsystem's halt. An empty reason on lift clears all
+        (documented escape hatch; no steady-state caller uses it).
+        """
+        if halted:
+            if reason:
+                self._exit_only_reasons.add(reason)
+            else:
+                self._exit_only_reasons.add("unspecified")
+        elif reason:
+            self._exit_only_reasons.discard(reason)
+        else:
+            self._exit_only_reasons.clear()
+        self._journal("exit-only", {"halted": halted, "reason": reason,
+                                    "reasons": sorted(
+                                        self._exit_only_reasons)})
 
     def bind_sink(self, handler: Any) -> None:
         """Bind the Session execution-event handler (contract v1 §2).
@@ -1425,6 +1542,7 @@ class BinanceLiveEngine:
         idempotently by execution_id, so re-adoption is safe.
         """
         self.bind_sink(handler)
+        watch = self._recovery_watch()
         seen: set[str] = set()
         for record in self._read_journal():
             if record.get("event") != "submit-intent":
@@ -1434,7 +1552,8 @@ class BinanceLiveEngine:
                 continue
             seen.add(cid)
             if self._states.get(cid, "open") in (
-                    "filled", "cancelled", "rejected", "expired", "void"):
+                    "filled", "cancelled", "rejected", "expired", "void") \
+                    and cid not in watch:
                 continue
             try:
                 self.lookup(cid)
