@@ -27,8 +27,11 @@ FIXTURE_FORMAT = "cryptobot-event-fixture/1"
 COVERAGE_TTL = timedelta(hours=24)
 EVENT_RETENTION = timedelta(days=7)
 
+# REL-W3: the BLS schedule index no longer carries per-program schedules
+# (verified live 2026-10-14: index shows one date); the program pages do.
 FOMC_URL = "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm"
-CPI_URL = "https://www.bls.gov/schedule/"
+CPI_URL = "https://www.bls.gov/schedule/news_release/cpi.htm"
+EMPLOYMENT_URL = "https://www.bls.gov/schedule/news_release/empsit.htm"
 
 
 @dataclass(frozen=True)
@@ -171,6 +174,12 @@ class FomcSource(FixtureAdapter):
 class CpiSource(FixtureAdapter):
     def __init__(self) -> None:
         super().__init__("cpi", CPI_URL, "cpi_2026.json")
+
+
+class EmploymentSource(FixtureAdapter):
+    def __init__(self) -> None:
+        super().__init__("employment", EMPLOYMENT_URL,
+                         "employment_2026_2027.json")
 
 
 class StubAdapter:

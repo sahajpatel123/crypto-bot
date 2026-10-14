@@ -82,6 +82,7 @@ class AppConfig:
     symbols: tuple[str, ...] = ()
     max_symbols: int = 8
     warmup_bars: int = 130
+    max_hf_subscriptions: int = 2  # REL-W3: at most two HF subs to start.
     storage_dir: str = "runs"
     storage_budget_mb: int = 2048
     equity_sample_s: int = 60
@@ -262,6 +263,8 @@ def load_config(path: str | Path) -> AppConfig:
         symbols=symbols,
         max_symbols=int(_positive(data.get("max_symbols", 8), "data.max_symbols")),
         warmup_bars=int(_positive(data.get("warmup_bars", 130), "data.warmup_bars")),
+        max_hf_subscriptions=int(_positive(data.get("max_hf_subscriptions", 2),
+                                           "data.max_hf_subscriptions")),
         storage_dir=str(storage.get("dir", "runs")),
         storage_budget_mb=int(_positive(storage.get("budget_mb", 2048), "storage.budget_mb")),
         equity_sample_s=int(_positive(storage.get("equity_sample_s", 60),

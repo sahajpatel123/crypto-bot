@@ -41,6 +41,7 @@ fill_delay_ms = 50
 [data]
 symbols = []                 # empty = dynamic discovery (paper) / capture symbols (replay)
 max_symbols = 8
+max_hf_subscriptions = 2  # REL-W3: prior data did not support eight.
 warmup_bars = 130
 
 [storage]

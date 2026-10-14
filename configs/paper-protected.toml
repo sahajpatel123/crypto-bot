@@ -63,7 +63,8 @@ allow_legacy_exit_rules = false
 # require_verified_freshness or enable_anomaly demotes the run to explicit
 # research-only (fail-closed at profile load).
 [events]
-require_verified_freshness = true  # block entries unless FOMC+CPI verified in TTL
+require_verified_freshness = true  # block entries unless required sources verified in TTL
+required_sources = ["fomc", "cpi", "employment"]  # REL-W3: missing/unverified any -> no-entry
 enable_anomaly = true              # wire measured anomaly inputs to entry actions
 advisory_only = false              # false = enforce; true = log would-block only
 cache_ttl_days = 7                 # verified schedule cache lifetime
@@ -72,6 +73,8 @@ pre_buffer_s = 900                 # frozen 15-min paper hypothesis (do not tune
 post_buffer_s = 900
 press_duration_s = 3600            # conservative press-conference cover
 resume_cooldown_s = 0
+max_hold_s = 300                   # REL-W3: longest hold; entries stop max_hold+exit before windows
+exit_budget_s = 120                # REL-W3: orderly-exit budget after max hold
 spread_widen_bps = 25.0            # anomaly starting thresholds (dev/val tuned)
 book_thin_ratio = 0.3
 abs_return_bps = 50.0

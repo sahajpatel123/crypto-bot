@@ -1,0 +1,24 @@
+CANNED TEST DOUBLE — SYNTHETIC representative BLS Employment Situation
+schedule page body, in the real release-list row layout (abbreviated
+month + time cell; May without a dot). Row layout verified live against
+https://www.bls.gov/schedule/news_release/empsit.htm on 2026-10-14
+(REL-W3). Exercises the transport/parser/verification seam only.
+
+Schedule of Selected Releases — Employment Situation
+
+<table>
+<tr><td>Employment Situation</td><td>Nov. 6, 2026</td><td>08:30 AM</td></tr>
+<tr><td>Employment Situation</td><td>Dec. 4, 2026</td><td>08:30 AM</td></tr>
+<tr><td>Employment Situation</td><td>Jan. 8, 2027</td><td>08:30 AM</td></tr>
+<tr><td>Employment Situation</td><td>Feb. 5, 2027</td><td>08:30 AM</td></tr>
+<tr><td>Employment Situation</td><td>Mar. 5, 2027</td><td>08:30 AM</td></tr>
+<tr><td>Employment Situation</td><td>Apr. 2, 2027</td><td>08:30 AM</td></tr>
+<tr><td>Employment Situation</td><td>May 7, 2027</td><td>08:30 AM</td></tr>
+<tr><td>Employment Situation</td><td>Jun. 4, 2027</td><td>08:30 AM</td></tr>
+<tr><td>Employment Situation</td><td>Jul. 2, 2027</td><td>08:30 AM</td></tr>
+<tr><td>Employment Situation</td><td>Aug. 6, 2027</td><td>08:30 AM</td></tr>
+<tr><td>Employment Situation</td><td>Sep. 3, 2027</td><td>08:30 AM</td></tr>
+<tr><td>Employment Situation</td><td>Oct. 8, 2027</td><td>08:30 AM</td></tr>
+<tr><td>Employment Situation</td><td>Nov. 5, 2027</td><td>08:30 AM</td></tr>
+<tr><td>Employment Situation</td><td>Dec. 3, 2027</td><td>08:30 AM</td></tr>
+</table>

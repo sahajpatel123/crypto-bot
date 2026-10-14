@@ -4,6 +4,9 @@ Paper hypothesis (frozen, directive section 6): block entries from 15
 minutes before a designated event until 15 minutes after it. Press
 conferences are separate events covering their verified end (or the
 fixture's explicit conservative duration) plus the post buffer.
+REL-W3 admission cutoff: entries stop earlier, at window_start minus
+max-hold minus the orderly-exit budget, so an admitted position's full
+hold and exit fit before the window (pre-buffer absorbs abnormal exits).
 
 The gate answers ONE question: may Session admit a new entry right now?
 It never touches exits: there is deliberately no exit-blocking API, so
@@ -29,6 +32,8 @@ PRE_BUFFER_S = 900
 POST_BUFFER_S = 900
 PRESS_DURATION_S = 3600  # fallback when a press event lacks press_end_utc
 RESUME_COOLDOWN_S = 0
+MAX_HOLD_S = 300  # REL-W3: longest position hold the cutoff fits
+EXIT_BUDGET_S = 120  # REL-W3: orderly-exit budget after max hold
 REQUIRED_SOURCES = ("fomc", "cpi")
 OPTIONAL_SOURCES = ("employment", "bea-pce", "bea-gdp",
                     "exchange-notices")
@@ -40,12 +45,14 @@ class GateConfig:
     post_buffer_s: int = POST_BUFFER_S
     press_duration_s: int = PRESS_DURATION_S
     resume_cooldown_s: int = RESUME_COOLDOWN_S
+    max_hold_s: int = MAX_HOLD_S
+    exit_budget_s: int = EXIT_BUDGET_S
     required_sources: tuple[str, ...] = REQUIRED_SOURCES
     optional_sources: tuple[str, ...] = OPTIONAL_SOURCES
 
     def __post_init__(self) -> None:
         for name in ("pre_buffer_s", "post_buffer_s", "press_duration_s",
-                     "resume_cooldown_s"):
+                     "resume_cooldown_s", "max_hold_s", "exit_budget_s"):
             if getattr(self, name) < 0:
                 raise ValueError(f"{name} must be >= 0")
         object.__setattr__(self, "required_sources",
@@ -101,6 +108,17 @@ class EventGate:
         end += timedelta(seconds=self.config.resume_cooldown_s)
         return start, end
 
+    def admission_cutoff(self, event: Event) -> datetime:
+        """Latest instant a new entry may be admitted before this window.
+
+        REL-W3: cutoff = window_start - max_hold - exit_budget, so a
+        position opened at the cutoff is flat by window start under
+        normal closes; the pre-buffer then absorbs abnormal exits.
+        """
+        start, _ = self.window(event)
+        return start - timedelta(seconds=self.config.max_hold_s
+                                 + self.config.exit_budget_s)
+
     def coverage_report(self, now_utc: datetime) -> dict[str, str]:
         report: dict[str, str] = {}
         for source in (self.config.required_sources
@@ -125,7 +143,9 @@ class EventGate:
             if event.status == "cancelled":
                 continue
             start, end = self.window(event)
-            if start <= now_utc <= end:
+            # REL-W3: entries stop at the admission cutoff (hold + exit
+            # fit before the window), not at window start.
+            if self.admission_cutoff(event) <= now_utc <= end:
                 if now_utc < event.scheduled_utc:
                     label = "pre-window"
                 elif (event.kind == "press-conference"
