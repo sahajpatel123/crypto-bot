@@ -56,3 +56,10 @@
   outputs/x1/meta/orig_X1-R1_dev_j1.json + git history. Manifest still valid
   (paths frozen, not contents). Dev bridge rc=0; chain pruned post-bridge.
   Pruned-orig ckpt dir (84K) kept on disk only at .../X1-R1_dev_pruned_orig/.
+## Job 5: X1-R1-S dev bridged (rc=0), chain pruned
+- j1: INCOMPLETE_BUDGET, 900s, 2,099,095 ingested, replayed 0, cursor 09-13.
+- Honesty note (applies to all jobs): bench stdout's completion line prints
+  closing equity (all cells 120.00 = paper capital so far). This outcome
+  display is unavoidable job output; executor does not seek booked blocks,
+  views only mechanics + bridge coverage audit fields. No downstream
+  discretion exists (filed jobs, frozen selection); disclosed in final filing.
