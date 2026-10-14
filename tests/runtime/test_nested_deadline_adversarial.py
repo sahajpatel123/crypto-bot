@@ -14,7 +14,9 @@ from pathlib import Path
 
 import pytest
 
-WRAPPER = [sys.executable, "tools/run_budget.py"]
+# Enforce-or-refuse contract: this battery proves legacy containment
+# behavior, so every wrapper level opts into best-effort explicitly.
+WRAPPER = [sys.executable, "tools/run_budget.py", "--allow-best-effort"]
 TOKEN = "w5corr-deadline-battery"
 DRAIN_ALLOW = 5.0  # relay drain bound + generous scheduling slack.
 
@@ -85,7 +87,8 @@ def test_handoff_nested_case_repeated(tmp_path):
     root = _repo_root()
     for i in range(2):
         marker = tmp_path / f"sleepdone-{i}.txt"
-        inner = [sys.executable, "tools/run_budget.py", "--budget-s", "30",
+        inner = [sys.executable, "tools/run_budget.py",
+                 "--allow-best-effort", "--budget-s", "30",
                  "--checkpoint-dir", str(tmp_path / f"inner-{i}"),
                  "--report-out", str(tmp_path / f"inner-{i}.json"), "--",
                  sys.executable, "-c",
@@ -272,7 +275,8 @@ def test_enumeration_failure_must_not_fail_open(tmp_path):
     marker = tmp_path / "nops-done.txt"
     emptybin = tmp_path / "emptybin"
     emptybin.mkdir()
-    inner = [sys.executable, "tools/run_budget.py", "--budget-s", "30",
+    inner = [sys.executable, "tools/run_budget.py", "--allow-best-effort",
+             "--budget-s", "30",
              "--checkpoint-dir", str(tmp_path / "inner"), "--report-out",
              str(tmp_path / "inner.json"), "--", sys.executable, "-c",
              f"import time; time.sleep(8); "  # {TOKEN}
@@ -358,7 +362,8 @@ def test_enumeration_hook_fail_closed(tmp_path):
     """
     root = _repo_root()
     marker = tmp_path / "hookenum-done.txt"
-    inner = [sys.executable, "tools/run_budget.py", "--budget-s", "30",
+    inner = [sys.executable, "tools/run_budget.py", "--allow-best-effort",
+             "--budget-s", "30",
              "--checkpoint-dir", str(tmp_path / "inner"), "--report-out",
              str(tmp_path / "inner.json"), "--", sys.executable, "-c",
              f"import time; time.sleep(8); "  # {TOKEN}
