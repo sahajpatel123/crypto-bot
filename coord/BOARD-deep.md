@@ -58,6 +58,10 @@ Production submission DISABLED. No credentials requested at this stage.
   val 2 wall-h caps per config, via chained bounded bench_run + resume
   within caps; coverage reported honestly; screen descriptive/DATA BLOCKED
   if unmet. No amendment, no dataset swap.
+- W4 vehicle authorization (manager): bench_run.py may gain --symbols
+  plural (heap merge, per-symbol cursors, ckpt v3 auto-migrate v2) +
+  --start-ms/--end-ms window filters. Backward compat + new tests green
+  before any round cell; freeze untouched; separate commit for review.
 
 ## Unresolved / risks
 - Linux reviewer-side proof needs a live Linux run (this host macOS); code-inspected only.
