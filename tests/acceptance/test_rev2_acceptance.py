@@ -26,17 +26,22 @@ from pathlib import Path
 
 import pytest
 
-sys.path.insert(0, "tests")
-sys.path.insert(0, "tests/unit")
-# Repo root for `import tools.*` under console-script pytest (which,
-# unlike `python -m pytest`, does not put CWD on sys.path).
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
+ROOT = Path(__file__).resolve().parent.parent.parent
+sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / "tests"))
+sys.path.insert(0, str(ROOT / "tests" / "unit"))
+
+
+@pytest.fixture(autouse=True)
+def _w5rev2_cwd(monkeypatch):
+    """Joint-test helpers open repo-relative configs: run this file's
+    tests from the repo root whatever the pytest invocation."""
+    monkeypatch.chdir(ROOT)
 
 from cryptobot.adapters.user_stream import attach_user_stream
 from cryptobot.app.engine import EngineOrder
 from cryptobot.coordination.selector import Candidate
 
-ROOT = Path(__file__).resolve().parent.parent.parent
 _CA = None
 _FAKESOCK = None
 
