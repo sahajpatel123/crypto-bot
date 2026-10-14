@@ -419,7 +419,8 @@ def test_ioc_no_subsequent_tick_resolves_at_due_time():
     assert [e.kind for e in early].count("fill") == 1
     assert engine.filled_qty(coid) == pytest.approx(0.001)
     states = {s.client_order_id: s.state for s in engine.open_orders()}
-    assert states[coid] == "filled"  # terminal, not resting.
+    assert coid not in states  # terminal: excluded from open-only view.
+    assert engine.order_status(coid).state == "filled"  # terminal truth.
 
 
 def test_ioc_partial_remainder_cancels_same_opportunity():

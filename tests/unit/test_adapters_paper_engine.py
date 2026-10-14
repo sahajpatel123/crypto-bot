@@ -62,16 +62,6 @@ def _ticker_record(seq, recv_ms, bid, ask):
     }
 
 
-class _Sink:
-    def __init__(self):
-        self.deltas = []
-
-    def note_fill_delta(self, reservation_id, exec_id, symbol, venue_side,
-                        qty, price, fee, ts_utc):
-        self.deltas.append((reservation_id, exec_id, symbol, venue_side,
-                            qty, price, fee, ts_utc))
-
-
 def test_implements_canonical_protocol_with_canonical_types():
     # Protocol is not runtime_checkable: verify the seam surface structurally.
     for name in ("submit", "submit_immediate", "resolve", "cancel", "poll",
@@ -159,8 +149,12 @@ def test_submit_immediate_bypasses_delays_exits_only():
     assert engine.resolve(rushed) == rushed  # no queue wait.
     assert engine.resolve(queued) is None
     engine.advance_to(T0)  # same-ts drain: immediate delivers, queued does not.
-    states = {s.client_order_id: s.state for s in engine.open_orders()}
-    assert states[rushed] == "filled"  # crossed the standing book, no delay.
+    # Contract v1: terminal orders leave open_orders; tracked truth stays
+    # in order_status (filled + queued-open both visible there).
+    assert [s.client_order_id for s in engine.open_orders()] == []
+    assert engine.order_status(rushed).state == "filled"  # crossed, no delay.
+    assert engine.order_status(rushed).version >= 2
+    assert engine.order_status(queued).state == "open"
     assert engine.resolve(queued) is None
     _quote(engine, 1, 60001.00, 60001.50)
     fills = [e for e in engine.poll() if e.kind == "fill"]
@@ -216,8 +210,12 @@ def test_open_orders_snapshot_shape():
     assert status.state == "open"
     _quote(engine, 1, 60001.00, 60001.50)
     assert engine.poll()
-    (status,) = engine.open_orders()
+    # Contract v1: filled orders leave open_orders (tracked via
+    # order_status with a monotonic version instead).
+    assert engine.open_orders() == []
+    status = engine.order_status(cid)
     assert status.state == "filled" and status.filled_qty == pytest.approx(0.002)
+    assert status.version >= 2
 
 
 def test_stop_and_target_legs_fill_independently():
@@ -473,38 +471,51 @@ def test_note_event_mark_price_only_records():
     assert engine.poll() == []
 
 
-def test_sink_propagation_and_bind_replay(tmp_path):
+def test_sink_pushes_live_and_recover_replays(tmp_path):
     journal = tmp_path / "journal.jsonl"
     engine = _engine(journal_path=journal)
+    pushed: list = []
+    engine.bind_sink(pushed.append)
     _quote(engine, 0, 60000.00, 60000.50)
     cid = engine.submit(EngineOrder("BTCUSDT", "BUY", 0.001, "MARKET",
                                     reservation_id="res-1"))
     _quote(engine, 1, 60001.00, 60001.50)
-    assert [e for e in engine.poll() if e.kind == "fill"]
-    sink = _Sink()
-    engine.bind_sink(sink)  # unbound at fill time: bind replays the backlog.
-    assert len(sink.deltas) == 1
-    res, exec_id, sym, side, qty, price, fee, ts = sink.deltas[0]
-    assert (res, sym, side) == ("res-1", "BTCUSDT", "BUY")
-    assert qty == pytest.approx(0.001) and fee > 0
-    assert ts.endswith("+00:00")
-    # Second bind does not double-propagate (journaled delta-propagated).
-    engine.bind_sink(sink)
-    assert len(sink.deltas) == 1
+    fills = [e for e in pushed if e.kind == "fill"]
+    assert len(fills) == 1  # pushed live, not queued.
+    assert engine.poll() == []
+    fill = fills[0].payload
+    assert fill.client_order_id == cid and fill.instrument == "BTCUSDT"
+    assert fill.side == "BUY" and fill.qty == pytest.approx(0.001)
+    assert fill.fee > 0 and fill.ts_utc.isoformat().endswith("+00:00")
+    assert fill.execution_id.startswith("paper/")
+    # Recover re-pushes the journaled fill (Session dedups by exec id).
+    fresh = _engine(journal_path=journal)
+    replayed: list = []
+    fresh.recover(replayed.append)
+    assert [e.payload.execution_id for e in replayed
+            if e.kind == "fill"] == [fill.execution_id]
     text = journal.read_text()
     assert '"event": "submitted"' in text and '"event": "fill"' in text
-    assert '"event": "delta-propagated"' in text
+    assert "delta-propagated" not in text  # direct booking removed.
 
 
-def test_live_propagate_skips_unreserved_fills(tmp_path):
+def test_reservation_less_fills_still_emit(tmp_path):
     journal = tmp_path / "journal.jsonl"
-    sink = _Sink()
-    engine = _engine(outcome_sink=sink, journal_path=journal)
+    pushed: list = []
+    engine = _engine(journal_path=journal)
+    engine.bind_sink(pushed.append)
     _quote(engine, 0, 60000.00, 60000.50)
     engine.submit(EngineOrder("BTCUSDT", "BUY", 0.001, "MARKET"))  # no reservation.
     _quote(engine, 1, 60001.00, 60001.50)
-    assert [e for e in engine.poll() if e.kind == "fill"]
-    assert sink.deltas == []  # reservation-less fills never hit the sink.
+    # W1 item (7): no reservation gate on emission — the fill pushes
+    # and would queue for poll() when unbound.
+    assert len([e for e in pushed if e.kind == "fill"]) == 1
+    assert engine.poll() == []
+    unbound = _engine(journal_path=tmp_path / "j2.jsonl")
+    _quote(unbound, 0, 60000.00, 60000.50)
+    unbound.submit(EngineOrder("BTCUSDT", "BUY", 0.001, "MARKET"))
+    _quote(unbound, 1, 60001.00, 60001.50)
+    assert len([e for e in unbound.poll() if e.kind == "fill"]) == 1
 
 
 def test_recover_rebuilds_and_marks_lost(tmp_path):
@@ -518,9 +529,10 @@ def test_recover_rebuilds_and_marks_lost(tmp_path):
     legs = engine.attach_protection(entry, 59990.00, 60010.00)
     engine.set_exit_only(True, "halt:test")
     fresh = _engine(journal_path=journal)
-    sink = _Sink()
-    fresh.recover(sink)
-    assert len(sink.deltas) == 1  # the entry fill replayed to the new sink.
+    replayed: list = []
+    fresh.recover(replayed.append)
+    got = [e for e in replayed if e.kind == "fill"]
+    assert len(got) == 1  # the entry fill replayed to the new handler.
     assert fresh.lost_orders() == sorted([entry] + legs)  # sim orders never survive.
     assert fresh.filled_qty(entry) == pytest.approx(0.002)  # logged fills stand.
     assert fresh.filled_qty("pe-999999-nope") == 0.0
@@ -535,7 +547,7 @@ def test_recover_rebuilds_and_marks_lost(tmp_path):
 def test_recover_needs_journal():
     engine = _engine()
     with pytest.raises(RuntimeError, match="journal_path"):
-        engine.recover(_Sink())
+        engine.recover(lambda event: None)
 
 
 def test_auto_instrument_from_venue_filters():
@@ -705,8 +717,12 @@ def test_queued_submit_past_window_expires_never_submitted():
     assert [x.payload.client_order_id for x in expires] == [cid]
     assert expires[0].payload.reason == "queued-past-window"
     assert isinstance(expires[0].payload, EngineExpire)
-    with pytest.raises(KeyError):
-        engine.order_status(cid)  # never reached the simulator.
+    # Contract v1: seen ids never raise — the queued expiry is tracked
+    # terminal truth (it never reached the simulator).
+    status = engine.order_status(cid)
+    assert status.state == "expired"
+    assert status.version >= 2
+    assert engine.order_status("pe-999999-unknown") is None
 
 
 def test_queued_submit_within_window_fills_normally():
@@ -895,7 +911,7 @@ def test_recover_advances_seeded_ids(tmp_path):
     fresh_first = fresh.submit(EngineOrder("BTCUSDT", "BUY", 0.001, "MARKET"))
     assert fresh_first == journaled[0]
     second = _engine(journal_path=journal, random_seed=7)
-    second.recover(_Sink())
+    second.recover(lambda event: None)
     resumed = second.submit(EngineOrder("BTCUSDT", "BUY", 0.001, "MARKET"))
     assert resumed not in journaled  # RNG advanced past journaled ids.
     assert resumed.split("-")[1] == "000003"  # sequence continues.

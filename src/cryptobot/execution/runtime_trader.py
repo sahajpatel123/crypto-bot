@@ -26,12 +26,10 @@ from cryptobot.coordination import RiskOutcomeSink
 
 __all__ = ["RuntimeTrader"]
 
-# Nautilus order states that can still fill or change (all other applied
-# states are terminal for our purposes: FILLED/CANCELED/REJECTED/EXPIRED/DENIED).
-LIVE_STATUSES = frozenset({
-    "INITIALIZED", "EMULATED", "RELEASED", "SUBMITTED", "ACCEPTED",
-    "TRIGGERED", "PENDING_UPDATE", "PENDING_CANCEL", "PARTIALLY_FILLED",
-})
+# Contract-v1 seam states that can still fill or change (filled /
+# rejected / cancelled / expired are terminal; unknown is conservatively
+# live: an unresolved order may still fill).
+LIVE_STATUSES = frozenset({"open", "partial", "unknown"})
 
 _EPS = 1e-12
 _TOPUP_BOUND = 5
@@ -458,9 +456,15 @@ class RuntimeTrader:
         if client_id in self._terminal:
             return False
         try:
-            return self.engine.order_status(client_id) in LIVE_STATUSES
+            status = self.engine.order_status(client_id)
         except (KeyError, AttributeError):
             return False  # unknown to this engine: nothing left to resolve here.
+        if status is None:
+            return False
+        # Contract shape is EngineOrderStatus; tolerate a bare state
+        # string from pre-contract engines/doubles (same live set).
+        state = status if isinstance(status, str) else status.state
+        return str(state).lower() in LIVE_STATUSES
 
     def _reservation_resolved(self, reservation_id: str) -> bool:
         return (("release", reservation_id) in self._fired
@@ -615,8 +619,10 @@ class RuntimeTrader:
             if client_id in trader._terminal:
                 continue
             try:
-                engine.order_status(client_id)
+                seen = engine.order_status(client_id)
             except KeyError:
+                seen = None
+            if seen is None:
                 trader._terminal[client_id] = "lost-on-restart"
                 lost.append(client_id)
         if lost:
