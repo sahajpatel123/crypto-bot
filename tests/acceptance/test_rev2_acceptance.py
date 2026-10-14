@@ -28,6 +28,9 @@ import pytest
 
 sys.path.insert(0, "tests")
 sys.path.insert(0, "tests/unit")
+# Repo root for `import tools.*` under console-script pytest (which,
+# unlike `python -m pytest`, does not put CWD on sys.path).
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 from cryptobot.adapters.user_stream import attach_user_stream
 from cryptobot.app.engine import EngineOrder
