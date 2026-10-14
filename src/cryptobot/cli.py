@@ -8,6 +8,8 @@ Commands:
   cryptobot status --run-id ID
   cryptobot stop --run-id ID [--flatten]
   cryptobot readiness --config C   (read-only venue checks; never submits)
+  cryptobot reconcile --config C [--expect-flat]   (read-only venue
+      position/order/equity check; never submits or cancels)
   cryptobot run --mode prod --config C   (verifies guards, refuses: disabled)
 """
 from __future__ import annotations
@@ -377,6 +379,76 @@ def cmd_readiness(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_reconcile(args: argparse.Namespace) -> int:
+    """Read-only venue position/order/equity check (never acts)."""
+    try:
+        config = load_config(args.config)
+    except ConfigError as exc:
+        print(f"config error: {exc}", file=sys.stderr)
+        return 2
+    if config.engine_kind != "live":
+        print("reconcile needs a live-engine config (demo.toml or "
+              f"prod.toml); kind={config.engine_kind}", file=sys.stderr)
+        return 2
+    if config.engine_demo:
+        key_env, secret_env = "BINANCE_DEMO_KEY", "BINANCE_DEMO_SECRET"
+    else:
+        key_env, secret_env = "CRYPTOBOT_API_KEY", "CRYPTOBOT_API_SECRET"
+    key = os.environ.get(key_env, "")
+    secret = os.environ.get(secret_env, "")
+    if not key or not secret:
+        print(f"reconcile {args.config}: BLOCKED on {key_env}/"
+              f"{secret_env} in the owner's environment.")
+        return 3
+    from cryptobot.adapters import binance_live as _live
+    journal = Path(config.storage_dir) / "reconcile_journal.jsonl"
+    try:
+        engine = _live.BinanceLiveEngine(
+            api_key=key, api_secret=secret, journal_path=journal,
+            expected_leverage=int(config.leverage_cap),
+            run_tag="reconcile", live_enable=True,
+            demo=config.engine_demo, base_url=config.engine_base_url)
+    except (ValueError, OSError) as exc:
+        print(f"reconcile {args.config}: FAIL ({exc})", file=sys.stderr)
+        return 2
+    try:
+        try:
+            status = engine.venue_status(list(config.symbols or []))
+        except _live.VenueHttpError as exc:
+            print(f"reconcile {args.config}: FAIL "
+                  f"({type(exc).__name__}: {exc.msg})", file=sys.stderr)
+            return 2
+        positions = status["positions"]
+        orders = status["open_orders"]
+        print(f"reconcile {args.config} (host={status['base_url']} "
+              f"account={status['account_tag']}):")
+        print(f"  wallet={status['total_wallet_usdt']:.2f} "
+              f"available={status['available_usdt']:.2f} USDT")
+        print(f"  positions: {len(positions)} open")
+        for p in positions:
+            print(f"    {p.get('symbol')} amt={p.get('positionAmt')} "
+                  f"entry={p.get('entryPrice')} "
+                  f"upnl={p.get('unRealizedProfit')}")
+        print(f"  open orders: {len(orders)}")
+        for o in orders[:20]:
+            print(f"    {o.get('symbol')} {o.get('type')} "
+                  f"{o.get('side')} qty={o.get('origQty')} "
+                  f"cid={o.get('origClientOrderId')}")
+        if len(orders) > 20:
+            print(f"    ... +{len(orders) - 20} more")
+        if status["available_usdt"] > status["total_wallet_usdt"] + 1e-9:
+            print("  WARN: available exceeds wallet (venue says so; "
+                  "investigate, never auto-correct).")
+        if args.expect_flat and (positions or orders):
+            print("reconcile: FAIL (expected flat)", file=sys.stderr)
+            return 2
+        state = "FLAT" if not positions and not orders else "EXPOSED"
+        print(f"reconcile: {state} (read-only; nothing submitted)")
+        return 0
+    finally:
+        engine.close()
+
+
 def _run_prod(args: argparse.Namespace) -> int:
     """Production route: verifies guards, then refuses (disabled).
 
@@ -528,6 +600,11 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("readiness")
     p.add_argument("--config", required=True)
     p.set_defaults(func=cmd_readiness)
+    p = sub.add_parser("reconcile")
+    p.add_argument("--config", required=True)
+    p.add_argument("--expect-flat", action="store_true",
+                   help="fail unless zero positions and zero open orders")
+    p.set_defaults(func=cmd_reconcile)
     p = sub.add_parser("report")
     p.add_argument("--run-dir", required=True)
     p.add_argument("--out", default=None)

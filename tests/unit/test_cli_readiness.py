@@ -150,3 +150,74 @@ def test_run_mode_choices_include_prod():
     args = parser.parse_args(
         ["run", "--mode", "prod", "--config", "configs/prod.toml"])
     assert args.mode == "prod"
+
+
+def _stub_status(**kw):
+    base = {"base_url": "https://demo-fapi.binance.com",
+            "account_tag": "abc123",
+            "total_wallet_usdt": 100.0, "available_usdt": 99.0,
+            "positions": [], "open_orders": []}
+    base.update(kw)
+    return base
+
+
+class _StubEngine:
+    status = None
+
+    def __init__(self, **kw):
+        pass
+
+    def venue_status(self, symbols):
+        return _StubEngine.status
+
+    def close(self):
+        pass
+
+
+def test_reconcile_no_creds_blocked(monkeypatch, capsys):
+    _scrub(monkeypatch, "BINANCE_DEMO_KEY", "BINANCE_DEMO_SECRET")
+    rc = cli.cmd_reconcile(argparse.Namespace(config="configs/demo.toml",
+                                              expect_flat=False))
+    assert rc == 3
+    assert "BLOCKED" in capsys.readouterr().out
+
+
+def test_reconcile_rejects_non_live_engine(capsys):
+    rc = cli.cmd_reconcile(argparse.Namespace(config="configs/r2.toml",
+                                              expect_flat=False))
+    assert rc == 2
+
+
+def test_reconcile_flat_pass(monkeypatch, capsys):
+    monkeypatch.setenv("BINANCE_DEMO_KEY", "k")
+    monkeypatch.setenv("BINANCE_DEMO_SECRET", "s")
+    _StubEngine.status = _stub_status()
+    import cryptobot.adapters.binance_live as live_mod
+    monkeypatch.setattr(live_mod, "BinanceLiveEngine", _StubEngine)
+    rc = cli.cmd_reconcile(argparse.Namespace(config="configs/demo.toml",
+                                              expect_flat=True))
+    out = capsys.readouterr().out
+    assert rc == 0, out
+    assert "reconcile: FLAT" in out
+
+
+def test_reconcile_exposed_expect_flat_fails(monkeypatch, capsys):
+    monkeypatch.setenv("BINANCE_DEMO_KEY", "k")
+    monkeypatch.setenv("BINANCE_DEMO_SECRET", "s")
+    _StubEngine.status = _stub_status(
+        positions=[{"symbol": "BTCUSDT", "positionAmt": "0.001",
+                    "entryPrice": "100.0", "unRealizedProfit": "0.01"}],
+        open_orders=[{"symbol": "BTCUSDT", "type": "STOP_MARKET",
+                      "side": "SELL", "origQty": "0.001",
+                      "origClientOrderId": "c1"}])
+    import cryptobot.adapters.binance_live as live_mod
+    monkeypatch.setattr(live_mod, "BinanceLiveEngine", _StubEngine)
+    rc = cli.cmd_reconcile(argparse.Namespace(config="configs/demo.toml",
+                                              expect_flat=True))
+    assert rc == 2
+    rc = cli.cmd_reconcile(argparse.Namespace(config="configs/demo.toml",
+                                              expect_flat=False))
+    out = capsys.readouterr().out
+    assert rc == 0, out
+    assert "reconcile: EXPOSED" in out
+    assert "0.001" in out and "c1" in out
