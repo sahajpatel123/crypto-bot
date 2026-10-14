@@ -292,35 +292,16 @@ def _readiness_unsigned(config, config_path: str,
     return rows
 
 
-def _readiness_signed(config, key_env: str, secret_env: str,
-                      ) -> list[tuple[str, str, str]]:
-    """Signed read-only venue checks. GET requests only, never submits."""
+def _signed_rows(engine, config) -> list[tuple[str, str, str]]:
+    """Signed read-only venue checks over a built engine (GETs only)."""
     from cryptobot.adapters import binance_live as _live
-    key = os.environ.get(key_env, "")
-    secret = os.environ.get(secret_env, "")
-    if not key or not secret:
-        return [(f"signed-checks({key_env}/{secret_env})", "BLOCKED",
-                 "credentials absent from environment (declared blocker; "
-                 "unsigned checks above still stand)")]
-    rows: list[tuple[str, str, str]] = [
-        ("creds-from-env", "PASS",
-         f"{key_env}=set {secret_env}=set (values never shown)")]
-    journal = Path(config.storage_dir) / "readiness_journal.jsonl"
+    rows: list[tuple[str, str, str]] = []
     try:
-        engine = _live.BinanceLiveEngine(
-            api_key=key, api_secret=secret,
-            journal_path=journal,
-            expected_leverage=int(config.leverage_cap),
-            run_tag="readiness", live_enable=True,
-            demo=config.engine_demo, base_url=config.engine_base_url)
-    except (ValueError, OSError) as exc:
-        return rows + [("venue-connect", "FAIL", str(exc))]
+        status = engine.venue_status(list(config.symbols or []))
+    except _live.VenueHttpError as exc:
+        return [("venue-connect", "FAIL",
+                  f"{type(exc).__name__}: {exc.msg}")]
     try:
-        try:
-            status = engine.venue_status(list(config.symbols or []))
-        except _live.VenueHttpError as exc:
-            return rows + [("venue-connect", "FAIL",
-                             f"{type(exc).__name__}: {exc.msg}")]
         rows.append(("venue-connect", "PASS",
                      f"host={status['base_url']} "
                      f"account={status['account_tag']}"))
@@ -347,9 +328,88 @@ def _readiness_signed(config, key_env: str, secret_env: str,
         rows.append(("balances", "PASS",
                      f"wallet={status['total_wallet_usdt']:.2f} "
                      f"available={status['available_usdt']:.2f} USDT"))
+    except _live.VenueHttpError as exc:
+        rows.append(("venue-read", "FAIL",
+                     f"{type(exc).__name__}: {exc.msg}"))
+    return rows
+
+
+def _readiness_signed(config, key_env: str, secret_env: str,
+                      ) -> list[tuple[str, str, str]]:
+    """Signed read-only venue checks. GET requests only, never submits."""
+    from cryptobot.adapters import binance_live as _live
+    key = os.environ.get(key_env, "")
+    secret = os.environ.get(secret_env, "")
+    if not key or not secret:
+        return [(f"signed-checks({key_env}/{secret_env})", "BLOCKED",
+                 "credentials absent from environment (declared blocker; "
+                 "unsigned checks above still stand)")]
+    rows: list[tuple[str, str, str]] = [
+        ("creds-from-env", "PASS",
+         f"{key_env}=set {secret_env}=set (values never shown)")]
+    journal = Path(config.storage_dir) / "readiness_journal.jsonl"
+    try:
+        engine = _live.BinanceLiveEngine(
+            api_key=key, api_secret=secret,
+            journal_path=journal,
+            expected_leverage=int(config.leverage_cap),
+            run_tag="readiness", live_enable=True,
+            demo=config.engine_demo, base_url=config.engine_base_url)
+    except (ValueError, OSError) as exc:
+        return rows + [("venue-connect", "FAIL", str(exc))]
+    try:
+        rows += _signed_rows(engine, config)
     finally:
         engine.close()
     return rows
+
+
+def _risk_bounds_rows(config) -> list[tuple[str, str, str]]:
+    """Release §7 capital-policy bounds on the loaded config."""
+    rows = []
+    rows.append(("risk-per-trade",
+                 "PASS" if config.max_loss_budget_pct <= 0.00125 + 1e-12
+                 else "FAIL",
+                 f"max_loss_budget_pct={config.max_loss_budget_pct} "
+                 f"(cap 0.125%)"))
+    rows.append(("leverage-cap",
+                 "PASS" if config.leverage_cap <= 3.0 + 1e-12 else "FAIL",
+                 f"leverage_cap={config.leverage_cap} (cap 3x)"))
+    rows.append(("halt-ladder",
+                 "PASS" if config.operating_stop_pct == 0.005
+                 and config.emergency_stop_pct == 0.01 else "FAIL",
+                 f"operating={config.operating_stop_pct} "
+                 f"emergency={config.emergency_stop_pct} "
+                 f"(must be 0.5%/1%)"))
+    rows.append(("one-position",
+                 "PASS",
+                 "single global pending/open/unresolved position "
+                 "(Session-enforced)"))
+    return rows
+
+
+def _reconcile_state_rows(engine) -> list[tuple[str, str, str]]:
+    """Current venue exposure state (contract reads; never acts)."""
+    try:
+        snap = engine.account_snapshot()
+    except Exception as exc:  # noqa: BLE001 — venue read, report honestly.
+        return [("venue-state", "FAIL",
+                 f"account_snapshot raised {type(exc).__name__}: {exc}")]
+    if snap is None:
+        return [("venue-state", "FAIL", "venue unreachable (None)")]
+    n_pos = len(getattr(snap, "positions", ()) or ())
+    try:
+        orders = engine.open_orders()
+    except Exception as exc:  # noqa: BLE001 — venue read, report honestly.
+        return [("venue-state", "FAIL",
+                 f"open_orders raised {type(exc).__name__}: {exc}")]
+    state = "FLAT" if n_pos == 0 and len(orders) == 0 else "EXPOSED"
+    return [("venue-state", "PASS",
+             f"{state}: {n_pos} positions, {len(orders)} open orders, "
+             f"wallet={snap.wallet_equity_usdt:.2f} "
+             f"available={snap.available_margin_usdt:.2f} USDT "
+             f"(complete={snap.complete}, "
+             f"asof={snap.asof_utc.isoformat() if snap.asof_utc else '?'})")]
 
 
 def cmd_readiness(args: argparse.Namespace) -> int:
@@ -450,13 +510,38 @@ def cmd_reconcile(args: argparse.Namespace) -> int:
         engine.close()
 
 
-def _run_prod(args: argparse.Namespace) -> int:
-    """Production route: verifies guards, then refuses (disabled).
+def _prod_cred_env(config) -> tuple[str, str]:
+    if config.engine_demo:
+        return "BINANCE_DEMO_KEY", "BINANCE_DEMO_SECRET"
+    return "CRYPTOBOT_API_KEY", "CRYPTOBOT_API_SECRET"
 
-    The route, host pinning, and default-off guards are implemented and
-    exercised here; actual order submission stays disabled during this
-    assignment. Enabling submission later requires an explicit code +
-    owner-authorization step — never a config flip alone.
+
+def _build_live_engine(config, key: str, secret: str, journal: Path,
+                       run_tag: str, transport=None):
+    """Construct the venue engine (transport injectable for offline tests)."""
+    from cryptobot.adapters import binance_live as _live
+    kw: dict = {}
+    if transport is not None:
+        kw["transport"] = transport
+    return _live.BinanceLiveEngine(
+        api_key=key, api_secret=secret, journal_path=journal,
+        expected_leverage=int(config.leverage_cap),
+        run_tag=run_tag, live_enable=True,
+        demo=config.engine_demo, base_url=config.engine_base_url, **kw)
+
+
+def _run_prod(args: argparse.Namespace, _engine_factory=None) -> int:
+    """Production route: full driver, submission switch OFF (refuses).
+
+    Release §4: production is wired to the SAME driver (live engine +
+    normal Session, resume-capable) with host pinning, env-only secrets,
+    live equity/positions/fees, §7 risk bounds and venue-state
+    reconciliation. The ONLY unwired step is order submission itself,
+    which stays disabled during this assignment: a later qualified
+    launch flips that explicit switch (code + owner authorization),
+    never another coding assignment. Missing credentials, failed
+    guards or unreachable venue produce explicit non-success states.
+    Never submits, cancels or amends during this assignment.
     """
     try:
         config = load_config(args.config)
@@ -468,16 +553,123 @@ def _run_prod(args: argparse.Namespace) -> int:
               file=sys.stderr)
         return 2
     rows = _readiness_unsigned(config, args.config)
+    rows += _risk_bounds_rows(config)
     print(f"prod guards for {args.config}:")
     for name, state, detail in rows:
         print(f"  [{state}] {name}: {detail}")
     if any(state == "FAIL" for _, state, _ in rows):
         print("prod: REFUSED (guard failures above)", file=sys.stderr)
         return 2
-    print("prod: REFUSED — production order submission is disabled for "
-          "this assignment (route + guards verified, enablement is a "
-          "future explicit step).", file=sys.stderr)
+    key_env, secret_env = _prod_cred_env(config)
+    key = os.environ.get(key_env, "")
+    secret = os.environ.get(secret_env, "")
+    if not key or not secret:
+        print(f"prod: BLOCKED on {key_env}/{secret_env} in the owner's "
+              f"environment.")
+        return 3
+    print(f"  [PASS] creds-from-env: {key_env}=set {secret_env}=set "
+          f"(values never shown)")
+    storage = Path(config.storage_dir)
+    journal = storage / "prod_engine_journal.jsonl"
+    factory = _engine_factory or _build_live_engine
+    try:
+        engine = factory(config, key, secret, journal, "prod")
+    except (ValueError, OSError) as exc:
+        print(f"prod: REFUSED (engine build: {exc})", file=sys.stderr)
+        return 2
+    try:
+        signed = _signed_rows(engine, config)
+        print("prod signed reads:")
+        for name, state, detail in signed:
+            print(f"  [{state}] {name}: {detail}")
+        if any(state == "FAIL" for _, state, _ in signed):
+            print("prod: REFUSED (signed-check failures above)",
+                  file=sys.stderr)
+            return 2
+        state_rows = _reconcile_state_rows(engine)
+        print("prod venue state:")
+        for name, state, detail in state_rows:
+            print(f"  [{state}] {name}: {detail}")
+        if any(state == "FAIL" for _, state, _ in state_rows):
+            print("prod: REFUSED (venue state unreadable)",
+                  file=sys.stderr)
+            return 2
+        # Full driver construction: the normal Session over the live
+        # engine (resume-capable; no event loop is started here).
+        from cryptobot.app.session import Session, WallClock
+        store = RunStore(_store_path(config.storage_dir))
+        try:
+            run_id = args.run_id or _new_run_id("prod")
+            workdir = Path(config.storage_dir) / run_id
+            session = Session(config, store, workdir, run_id,
+                              pid=os.getpid(), clock=WallClock(),
+                              engine=engine)
+            print(f"prod driver: Session {run_id} constructed over "
+                  f"live engine (workdir={workdir}); submission switch "
+                  f"is OFF so no event loop starts.")
+            session.close() if hasattr(session, "close") else None
+        finally:
+            store.close()
+    finally:
+        engine.close()
+    venue_state = state_rows[0][2] if state_rows else "?"
+    print(f"prod: REFUSED — submission disabled for this assignment "
+          f"(route + guards + signed reads + driver verified; "
+          f"venue {venue_state}).", file=sys.stderr)
     return 2
+
+
+def cmd_preflight(args: argparse.Namespace) -> int:
+    """Read-only production/demo preflight (never submits, never builds
+    the order path). Exit 0 only when every check passes; the
+    submission switch is reported as ARMED-OFF, never a failure."""
+    try:
+        config = load_config(args.config)
+    except ConfigError as exc:
+        print(f"config error: {exc}", file=sys.stderr)
+        return 2
+    if config.engine_kind != "live":
+        print(f"preflight needs a live-engine config; kind="
+              f"{config.engine_kind}", file=sys.stderr)
+        return 2
+    rows = _readiness_unsigned(config, args.config)
+    rows += _risk_bounds_rows(config)
+    key_env, secret_env = _prod_cred_env(config)
+    key = os.environ.get(key_env, "")
+    secret = os.environ.get(secret_env, "")
+    factory = getattr(args, "_engine_factory", None) or _build_live_engine
+    if not key or not secret:
+        rows.append((f"signed-checks({key_env}/{secret_env})", "BLOCKED",
+                     "credentials absent from environment"))
+    else:
+        rows.append(("creds-from-env", "PASS",
+                     f"{key_env}=set {secret_env}=set (values never shown)"))
+        journal = Path(config.storage_dir) / "preflight_journal.jsonl"
+        try:
+            engine = factory(config, key, secret, journal, "preflight")
+        except (ValueError, OSError) as exc:
+            rows.append(("venue-connect", "FAIL", str(exc)))
+            engine = None
+        if engine is not None:
+            try:
+                rows += _signed_rows(engine, config)
+                rows += _reconcile_state_rows(engine)
+            finally:
+                engine.close()
+    rows.append(("submission-switch", "ARMED-OFF",
+                 "default-off; enablement is code + owner authorization"))
+    print(f"preflight {args.config}:")
+    for name, state, detail in rows:
+        print(f"  [{state}] {name}: {detail}")
+    states = {state for _, state, _ in rows}
+    if "FAIL" in states:
+        return 2
+    if "BLOCKED" in states:
+        print("preflight: BLOCKED on owner credentials.")
+        return 3
+    print("preflight: READY-EXCEPT-SUBMISSION (all checks passed; "
+          "submission stays disabled).")
+    return 0
 
 
 def cmd_status(args: argparse.Namespace) -> int:
@@ -601,6 +793,9 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("readiness")
     p.add_argument("--config", required=True)
     p.set_defaults(func=cmd_readiness)
+    p = sub.add_parser("preflight")
+    p.add_argument("--config", required=True)
+    p.set_defaults(func=cmd_preflight)
     p = sub.add_parser("reconcile")
     p.add_argument("--config", required=True)
     p.add_argument("--expect-flat", action="store_true",

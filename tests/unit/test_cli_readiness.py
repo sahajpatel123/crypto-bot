@@ -133,11 +133,14 @@ def test_readiness_never_echoes_values(monkeypatch, tmp_path, capsys):
     assert "shh-sentinel" not in out
 
 
-def test_run_prod_refuses_even_when_guards_pass(capsys):
+def test_run_prod_blocked_without_owner_creds(monkeypatch, capsys):
+    # Release §4: missing credentials are an explicit BLOCKED state
+    # (refusal-at-submission is proven with injected creds below).
+    _scrub(monkeypatch, "CRYPTOBOT_API_KEY", "CRYPTOBOT_API_SECRET")
     rc = cli.main(["run", "--mode", "prod", "--config", "configs/prod.toml"])
-    err = capsys.readouterr().err
-    assert rc == 2
-    assert "disabled for this assignment" in err
+    out = capsys.readouterr().out
+    assert rc == 3
+    assert "BLOCKED" in out
 
 
 def test_run_prod_rejects_wrong_mode_config(capsys):
@@ -174,6 +177,59 @@ class _StubEngine:
         pass
 
 
+def _prod_config(tmp_path):
+    text = open("configs/prod.toml").read()
+    text = text.replace('dir = "runs"', f'dir = "{tmp_path / "runs"}"', 1)
+    path = tmp_path / "prod.toml"
+    path.write_text(text)
+    return str(path)
+
+
+def _stub_venue_status(**kw):
+    from cryptobot.adapters.binance_live import PROD_FAPI_URL
+    base = {"base_url": PROD_FAPI_URL, "account_tag": "cafe01",
+            "clock_skew_ms": 120, "can_trade": True, "fee_tier": "vip0",
+            "position_mode": "one-way",
+            "fees_bps": {"BTCUSDT": {"taker_bps": 5.0, "maker_bps": 2.0}},
+            "filters": {"BTCUSDT": {"status": "TRADING"}},
+            "positions": [], "open_orders": [],
+            "total_wallet_usdt": 120.0, "available_usdt": 119.0}
+    base.update(kw)
+    return base
+
+
+class _StubLiveEngine:
+    status = None
+
+    def __init__(self, **kw):
+        pass
+
+    def venue_status(self, symbols):
+        return _StubLiveEngine.status
+
+    def account_snapshot(self):
+        from datetime import datetime, timezone
+        from cryptobot.app.engine import AccountSnapshot
+        st = _StubLiveEngine.status
+        return AccountSnapshot(
+            wallet_equity_usdt=st["total_wallet_usdt"],
+            available_margin_usdt=st["available_usdt"],
+            margin_balance_usdt=st["total_wallet_usdt"],
+            positions=(), asof_utc=datetime(2026, 10, 14, tzinfo=timezone.utc),
+            complete=True)
+
+    def open_orders(self):
+        return []
+
+    def close(self):
+        pass
+
+
+def _stub_factory(config, key, secret, journal, run_tag, transport=None):
+    assert key == "k" and secret == "s"
+    return _StubLiveEngine()
+
+
 def test_reconcile_no_creds_blocked(monkeypatch, capsys):
     _scrub(monkeypatch, "BINANCE_DEMO_KEY", "BINANCE_DEMO_SECRET")
     rc = cli.cmd_reconcile(argparse.Namespace(config="configs/demo.toml",
@@ -199,6 +255,72 @@ def test_reconcile_flat_pass(monkeypatch, capsys):
     out = capsys.readouterr().out
     assert rc == 0, out
     assert "reconcile: FLAT" in out
+
+
+def test_preflight_no_creds_blocked(monkeypatch, tmp_path, capsys):
+    _scrub(monkeypatch, "CRYPTOBOT_API_KEY", "CRYPTOBOT_API_SECRET")
+    rc = cli.cmd_preflight(argparse.Namespace(
+        config=_prod_config(tmp_path), _engine_factory=_stub_factory))
+    out = capsys.readouterr().out
+    assert rc == 3, out
+    assert "BLOCKED" in out
+
+
+def test_preflight_all_green_offline(monkeypatch, tmp_path, capsys):
+    monkeypatch.setenv("CRYPTOBOT_API_KEY", "k")
+    monkeypatch.setenv("CRYPTOBOT_API_SECRET", "s")
+    _StubLiveEngine.status = _stub_venue_status()
+    rc = cli.cmd_preflight(argparse.Namespace(
+        config=_prod_config(tmp_path), _engine_factory=_stub_factory))
+    out = capsys.readouterr().out
+    assert rc == 0, out
+    assert "READY-EXCEPT-SUBMISSION" in out
+    assert "ARMED-OFF" in out
+    assert "FLAT" in out
+
+
+def test_preflight_rejects_non_live_engine(tmp_path, capsys):
+    rc = cli.cmd_preflight(argparse.Namespace(config="configs/r2.toml"))
+    assert rc == 2
+
+
+def test_prod_no_creds_blocked_before_build(monkeypatch, tmp_path, capsys):
+    _scrub(monkeypatch, "CRYPTOBOT_API_KEY", "CRYPTOBOT_API_SECRET")
+    called = []
+
+    def _factory(*a, **k):
+        called.append(True)
+        raise AssertionError("must not build before creds")
+    rc = cli._run_prod(argparse.Namespace(config=_prod_config(tmp_path),
+                                          run_id=None), _factory)
+    assert rc == 3
+    assert called == []
+
+
+def test_prod_full_driver_refuses_only_at_submission(monkeypatch, tmp_path,
+                                                     capsys):
+    monkeypatch.setenv("CRYPTOBOT_API_KEY", "k")
+    monkeypatch.setenv("CRYPTOBOT_API_SECRET", "s")
+    _StubLiveEngine.status = _stub_venue_status()
+    rc = cli._run_prod(argparse.Namespace(config=_prod_config(tmp_path),
+                                          run_id="prod-probe-1"),
+                       _stub_factory)
+    captured = capsys.readouterr()
+    out, err = captured.out, captured.err
+    assert rc == 2, out
+    assert "prod driver: Session prod-probe-1 constructed" in out
+    assert "FLAT" in out
+    assert "submission disabled" in err
+
+
+def test_prod_signed_failure_refuses(monkeypatch, tmp_path, capsys):
+    monkeypatch.setenv("CRYPTOBOT_API_KEY", "k")
+    monkeypatch.setenv("CRYPTOBOT_API_SECRET", "s")
+    _StubLiveEngine.status = _stub_venue_status(position_mode="hedge")
+    rc = cli._run_prod(argparse.Namespace(config=_prod_config(tmp_path),
+                                          run_id=None), _stub_factory)
+    assert rc == 2
+    assert "signed-check failures" in capsys.readouterr().err
 
 
 def test_reconcile_exposed_expect_flat_fails(monkeypatch, capsys):
