@@ -533,6 +533,42 @@ def test_crash_before_first_drain_adopts_via_alias(tmp_path):
         store2.close()
 
 
+# --- push reentrancy: one attach despite mid-attach emission ------------
+
+def test_reentrant_emit_inside_attach_attaches_once(tmp_path):
+    """An adapter may emit synchronously inside attach_protection
+    (sizing lookup adopting a fill). The nested supervision pass
+    must not attach a second pair; the outer pass verifies fresh.
+    """
+    engine = _ContractEngine()
+    session, store = _session(tmp_path, engine)
+    try:
+        session._position = _position()
+        session.policy._state.reservations["r-1"] = _reservation(session)
+        session._known_reservations.add("r-1")
+        engine.states["e"] = EngineOrderStatus(
+            "e", "BTCUSDT", "filled", 1.0, 1.0, "r-1", "entry")
+        attaches = []
+
+        def _reentrant_attach(entry, stop, target):
+            attaches.append((entry, stop, target))
+            if len(attaches) == 1:
+                engine.bound(_fill(session, exec_id="x-nested",
+                                   qty=0.001))
+            engine.states["stop-1"] = EngineOrderStatus(
+                "stop-1", "BTCUSDT", "open", 1.001, 0.0, "r-1", "stop")
+            return ["stop-1"]
+
+        engine.attach_protection = _reentrant_attach
+        session._apply_engine_event(_fill(session))
+        assert len(attaches) == 1  # nested pass did not re-attach.
+        assert session._position["protected"] is True
+        assert session._position["legs"] == ["stop-1"]
+        assert session._in_ensure is False
+    finally:
+        store.close()
+
+
 # --- W5 blocking fix: protected posture engages --------------------------
 
 def test_protected_posture_honors_advisory_only(tmp_path, monkeypatch):

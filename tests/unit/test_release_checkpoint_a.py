@@ -25,34 +25,6 @@ from cryptobot.coordination.selector import Candidate
 MECHANICS = "synthetic-mechanics"
 
 
-def _bind_booking_sink(session, engine):
-    """Bound handler + W1-item-(5) stand-in: book fills idempotently.
-
-    Contract v1 removed direct note_fill_delta booking from adapters;
-    Session._on_engine_event books post-migration (W1-owned). Until the
-    merge, this shim books through the policy sink (exec_id-gated, so a
-    duplicate post-merge booking is a harmless no-op) and forwards every
-    emission to the normal Session handler. DELETE after W1 migrates.
-    """
-    normal = session._on_engine_event
-
-    def _sink(event):
-        if event.kind == "fill":
-            pos = session._position
-            fill = event.payload
-            tracked = [] if pos is None else [
-                pos.get("entry_pre_id"), pos.get("entry_id"),
-                *(pos.get("legs") or []), *(pos.get("close_ids") or [])]
-            if pos is not None and fill.client_order_id in tracked:
-                session.policy.note_fill_delta(
-                    pos["reservation_id"], fill.execution_id,
-                    fill.instrument, fill.side, fill.qty, fill.price,
-                    fill.fee, fill.ts_utc.isoformat())
-        normal(event)
-
-    engine.bind_sink(_sink)
-
-
 def _config(tmp_path: Path) -> Path:
     text = open("configs/paper.toml").read()
     text = text.replace('dir = "runs"', f'dir = "{tmp_path / "runs"}"', 1)
@@ -119,16 +91,25 @@ def test_live_fill_to_ledger_to_protection(tmp_path):
              ("ok", orders["orderAck"]))])
     session, store = _session(tmp_path, engine, "ca-fill")
     try:
-        _bind_booking_sink(session, engine)
         session._maybe_admit([Candidate("S1", _intent(session.now_utc()))])
         assert session._position is not None
         qty = _submitted_qty(transport)
         assert qty * 100.0 >= 5.0  # venue min-notional respected.
-        # Venue streams the full fill; the bound handler books it.
+        # Venue streams the full fill; the bound handler books it, and
+        # Session attaches protection synchronously inside the stream
+        # handler (lookup + tape + reduce-only algo pair), so the whole
+        # dialogue is scripted before the stream event. Drain-phase
+        # presence reads stay last.
         entry = session._position["entry_pre_id"]
         transport.append(
-            ("GET", "/fapi/v1/openOrders", None, ("ok", [])),
-            ("GET", "/fapi/v1/openAlgoOrders", None, ("ok", [])))
+            ("GET", "/fapi/v1/order", {"origClientOrderId": entry},
+             ("ok", {"orderId": 7, "status": "FILLED",
+                     "executedQty": f"{qty:.3f}"})),
+            ("GET", "/fapi/v1/userTrades", {"orderId": 7}, ("ok", [])),
+            ("POST", "/fapi/v1/algoOrder", {"reduceOnly": "true"},
+             ("ok", {"algoId": 11, "algoStatus": "WORKING"})),
+            ("POST", "/fapi/v1/algoOrder", {"reduceOnly": "true"},
+             ("ok", {"algoId": 12, "algoStatus": "WORKING"})))
         stream = copy.deepcopy(orders["userStreamTrade"])
         stream["o"]["c"] = entry
         stream["o"]["l"] = stream["o"]["z"] = f"{qty:.3f}"
@@ -140,15 +121,9 @@ def test_live_fill_to_ledger_to_protection(tmp_path):
             " AND kind='fill'").fetchall()
         assert len(rows) == 1  # fill→ledger exactly once.
         assert rows[0][0].startswith("binanceusdm/")
-        # Protection attach hits the venue as reduce-only algos.
-        transport.append(
-            ("POST", "/fapi/v1/algoOrder", {"reduceOnly": "true"},
-             ("ok", {"algoId": 11, "algoStatus": "WORKING"})),
-            ("POST", "/fapi/v1/algoOrder", {"reduceOnly": "true"},
-             ("ok", {"algoId": 12, "algoStatus": "WORKING"})),
-            ("GET", "/fapi/v1/openOrders", None, ("ok", [])),
-            ("GET", "/fapi/v1/openAlgoOrders", None, ("ok", [])))
-        session._drain_engine()  # protection attach + verify.
+        # Protection attached synchronously inside the stream handler;
+        # the drain only runs presence verification reads.
+        session._drain_engine()
         algos = [r for r in transport.requests
                  if r[1] == "/fapi/v1/algoOrder"]
         assert len(algos) == 2
@@ -169,7 +144,6 @@ def test_unknown_blocks_duplicate_entry_until_lookup(tmp_path):
              ("err", 503, None, "gateway"))])
     session, store = _session(tmp_path, engine, "ca-unknown")
     try:
-        _bind_booking_sink(session, engine)
         import pytest
         from cryptobot.adapters.binance_live import UnknownOutcomeError
         # W1-CATCH: Session retains the unknown cid and reconciles by
@@ -228,7 +202,6 @@ def test_restart_readopts_same_keys_without_resubmit(tmp_path):
              ("ok", orders["orderAck"]))])
     session, store = _session(tmp_path, engine, "ca-restart")
     try:
-        _bind_booking_sink(session, engine)
         session._maybe_admit([Candidate("S1", _intent(session.now_utc()))])
         entry_id = session._position["entry_pre_id"]
         qty = _submitted_qty(transport)
@@ -252,10 +225,25 @@ def test_restart_readopts_same_keys_without_resubmit(tmp_path):
             adopted.append(event)
             session._on_engine_event(event)
 
-        # Session reads run against the original engine on forward.
+        # Session still points at the original engine, so the
+        # recovery-adopted fill drives its synchronous protection
+        # attach there: the original engine replays the tape via its
+        # own lookup and adopts trade 777001 (same execution_id, so
+        # the Session books it once and the re-adopt is a no-op).
         transport.append(
-            ("GET", "/fapi/v1/openOrders", None, ("ok", [])),
-            ("GET", "/fapi/v1/openAlgoOrders", None, ("ok", [])))
+            ("GET", "/fapi/v1/order",
+             {"origClientOrderId": entry_id},
+             ("ok", {"orderId": 12345, "status": "FILLED",
+                     "executedQty": f"{qty:.3f}",
+                     "origQty": f"{qty:.3f}"})),
+            ("GET", "/fapi/v1/userTrades", {"orderId": 12345},
+             ("ok", [{"id": 777001, "qty": f"{qty:.3f}",
+                      "price": "100.50", "commission": "0.03",
+                      "commissionAsset": "USDT"}])),
+            ("POST", "/fapi/v1/algoOrder", {"reduceOnly": "true"},
+             ("ok", {"algoId": 21, "algoStatus": "WORKING"})),
+            ("POST", "/fapi/v1/algoOrder", {"reduceOnly": "true"},
+             ("ok", {"algoId": 22, "algoStatus": "WORKING"})))
         engine2.recover(_tee)  # rebinds the sink to the recovery handler.
         fills = [e for e in adopted if e.kind == "fill"]
         assert len(fills) == 1
@@ -266,6 +254,12 @@ def test_restart_readopts_same_keys_without_resubmit(tmp_path):
                  if r[0] == "POST" and r[1] == "/fapi/v1/order"]
         assert posts == []  # reconciled, never resubmitted.
         assert engine2.order_status(entry_id).state == "filled"
+        # Single attach: the lookup-adopted fill must not nest a second
+        # stop/target pair (reentrancy guard regression).
+        algos = [r for r in transport.requests
+                 if r[1] == "/fapi/v1/algoOrder"]
+        assert len(algos) == 2
+        transport.assert_empty()
         transport2.assert_empty()
     finally:
         store.close()

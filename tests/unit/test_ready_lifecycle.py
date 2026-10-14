@@ -309,7 +309,7 @@ def _paper_session(tmp_path):
     engine.add_instrument("BTCUSDT", price_precision=2, size_precision=3,
                           tick_size=0.01, step_size=0.001, ts_utc=_RT0)
     session, store = _session(tmp_path, engine)
-    engine.bind_sink(session.policy)
+    # Contract v1: Session.__init__ binds the booking handler already.
     session.clock.set_ms(int(_RT0.timestamp() * 1000))
     session.policy.reconcile_day(120.0, 0.0)  # at the session day, not epoch.
     return session, store, engine

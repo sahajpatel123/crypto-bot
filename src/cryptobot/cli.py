@@ -214,7 +214,8 @@ def _run_paper(args: argparse.Namespace) -> int:
             starting_balance_usdt=config.paper_capital_usdt)
     session = Session(config, store, workdir, run_id, pid=os.getpid(),
                       clock=clock, engine=engine)
-    engine.bind_sink(session.policy)
+    # Contract v1: Session.__init__ binds the ONE booking handler;
+    # no rebind here (a policy is not an EngineEvent callable).
     _install_stop_handler(session)
     duration = _parse_cli_duration(args.duration) or config.duration_s
     print(f"run: {run_id} workdir={workdir} duration={duration}s")

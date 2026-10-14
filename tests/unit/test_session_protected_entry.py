@@ -206,7 +206,7 @@ def test_protected_ioc_fills_at_or_better_through_session(tmp_path):
 
     quote(0, 100.10, 100.20)
     session, store = _ready_session(tmp_path, engine)
-    engine.bind_sink(session.policy)  # run_cell/cli always bind the sink.
+    # Contract v1: Session.__init__ binds the booking handler already.
     try:
         session._maybe_admit([Candidate("S1", _intent(session.now_utc()))])
         assert session._position is not None

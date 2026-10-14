@@ -77,7 +77,9 @@ def _run(tmp_path, tag):
                         now_utc=lambda: now[0])
     policy.bind_ledger(ledger)
     policy.reconcile_day(EQUITY, 0.0)
-    engine.bind_sink(policy)
+    # Contract v1: engine stays unbound; fills flow poll -> pump ->
+    # trader.ingest -> policy.note_fill_delta (a policy is not an
+    # EngineEvent callable).
     trader = RuntimeTrader(engine, log_path=tmp_path / f"rt-{tag}.jsonl",
                            ledger=ledger, outcome_sink=policy,
                            now_utc=lambda: now[0])
