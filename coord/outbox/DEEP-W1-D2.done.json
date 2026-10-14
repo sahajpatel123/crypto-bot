@@ -1,1 +1,97 @@
-{"commands":[{"artifacts":["coord/evidence/deep-w1-d2/matrix-report.json","coord/evidence/deep-w1-d2/matrix-ckpt/budget_checkpoint.json"],"cmd":["/Users/sahajpatel/Code/cryto-bot/.venv/bin/python","tools/run_budget.py","--budget-s","600","--checkpoint-dir","coord/evidence/deep-w1-d2/matrix-ckpt","--report-out","coord/evidence/deep-w1-d2/matrix-report.json","--","env","PYTHONPATH=src","/Users/sahajpatel/Code/cryto-bot/.venv/bin/python","-m","pytest","tests/unit/test_lifecycle_matrix.py","-q","-p","no:cacheprovider"],"cwd":null,"expect_rc":0,"note":"14 passed in ~190s: 13 lifecycle rows + 06b on the real run_live loop (3 consecutive full-file greens + this artifact run)"},{"artifacts":["coord/evidence/deep-w1-d2/units-report.json","coord/evidence/deep-w1-d2/units-ckpt/budget_checkpoint.json"],"cmd":["/Users/sahajpatel/Code/cryto-bot/.venv/bin/python","tools/run_budget.py","--budget-s","1500","--checkpoint-dir","coord/evidence/deep-w1-d2/units-ckpt","--report-out","coord/evidence/deep-w1-d2/units-report.json","--","env","PYTHONPATH=src","/Users/sahajpatel/Code/cryto-bot/.venv/bin/python","-m","pytest","tests/unit","-q","-p","no:cacheprovider"],"cwd":null,"expect_rc":0,"note":"1071 passed, 1 skipped in ~482s (incl. 14 matrix)"},{"artifacts":["coord/evidence/deep-w1-d2/rest-report.json","coord/evidence/deep-w1-d2/rest-ckpt/budget_checkpoint.json"],"cmd":["/Users/sahajpatel/Code/cryto-bot/.venv/bin/python","tools/run_budget.py","--budget-s","300","--checkpoint-dir","coord/evidence/deep-w1-d2/rest-ckpt","--report-out","coord/evidence/deep-w1-d2/rest-report.json","--","env","PYTHONPATH=src","/Users/sahajpatel/Code/cryto-bot/.venv/bin/python","-m","pytest","tests","-q","-p","no:cacheprovider","--ignore=tests/unit"],"cwd":null,"expect_rc":0,"note":"261 passed in ~106s. Branch predates D1 preflight merge: run_budget CLI here has no --allow-best-effort; commands match this branch."}],"sha":"2780d92bbcd17d02681b14057ed18c57d6c687b1"}
+{
+ "commands": [
+  {
+   "artifacts": [
+    "coord/evidence/deep-w1-d2/matrix-report.json",
+    "coord/evidence/deep-w1-d2/matrix-ckpt/budget_checkpoint.json"
+   ],
+   "cmd": [
+    "/Users/sahajpatel/Code/cryto-bot/.venv/bin/python",
+    "tools/run_budget.py",
+    "--allow-best-effort",
+    "--budget-s",
+    "600",
+    "--checkpoint-dir",
+    "coord/evidence/deep-w1-d2/matrix-ckpt",
+    "--report-out",
+    "coord/evidence/deep-w1-d2/matrix-report.json",
+    "--",
+    "env",
+    "PYTHONPATH=src",
+    "/Users/sahajpatel/Code/cryto-bot/.venv/bin/python",
+    "-m",
+    "pytest",
+    "tests/unit/test_lifecycle_matrix.py",
+    "-q",
+    "-p",
+    "no:cacheprovider"
+   ],
+   "cwd": null,
+   "expect_rc": 0,
+   "note": "14 passed in ~190s: 13 lifecycle rows + 06b on the real run_live loop (3 consecutive full-file greens + this artifact run)"
+  },
+  {
+   "artifacts": [
+    "coord/evidence/deep-w1-d2/units-report.json",
+    "coord/evidence/deep-w1-d2/units-ckpt/budget_checkpoint.json"
+   ],
+   "cmd": [
+    "/Users/sahajpatel/Code/cryto-bot/.venv/bin/python",
+    "tools/run_budget.py",
+    "--allow-best-effort",
+    "--budget-s",
+    "1500",
+    "--checkpoint-dir",
+    "coord/evidence/deep-w1-d2/units-ckpt",
+    "--report-out",
+    "coord/evidence/deep-w1-d2/units-report.json",
+    "--",
+    "env",
+    "PYTHONPATH=src",
+    "/Users/sahajpatel/Code/cryto-bot/.venv/bin/python",
+    "-m",
+    "pytest",
+    "tests/unit",
+    "-q",
+    "-p",
+    "no:cacheprovider"
+   ],
+   "cwd": null,
+   "expect_rc": 0,
+   "note": "1071 passed, 1 skipped in ~482s (incl. 14 matrix)"
+  },
+  {
+   "artifacts": [
+    "coord/evidence/deep-w1-d2/rest-report.json",
+    "coord/evidence/deep-w1-d2/rest-ckpt/budget_checkpoint.json"
+   ],
+   "cmd": [
+    "/Users/sahajpatel/Code/cryto-bot/.venv/bin/python",
+    "tools/run_budget.py",
+    "--allow-best-effort",
+    "--budget-s",
+    "300",
+    "--checkpoint-dir",
+    "coord/evidence/deep-w1-d2/rest-ckpt",
+    "--report-out",
+    "coord/evidence/deep-w1-d2/rest-report.json",
+    "--",
+    "env",
+    "PYTHONPATH=src",
+    "/Users/sahajpatel/Code/cryto-bot/.venv/bin/python",
+    "-m",
+    "pytest",
+    "tests",
+    "-q",
+    "-p",
+    "no:cacheprovider",
+    "--ignore=tests/unit"
+   ],
+   "cwd": null,
+   "expect_rc": 0,
+   "note": "261 passed in ~106s. Branch predates D1 preflight merge: run_budget CLI here has no --allow-best-effort; commands match this branch."
+  }
+ ],
+ "sha": "2780d92bbcd17d02681b14057ed18c57d6c687b1",
+ "integration_note": "manager 47a8c8c: added --allow-best-effort to the 3 wrapper argv (W1 base predates strict preflight; without it strict refuses 125 on macOS). No other change."
+}
