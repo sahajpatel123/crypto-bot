@@ -769,7 +769,11 @@ def test_rev2_deadline_descendant_fix_or_refuse(tmp_path):
         "time.sleep(10)\n"
         "open(MARK, 'w').write('daemon-survived')\n"
     )
-    cmd = [sys.executable, "tools/run_budget.py", "--budget-s", "2",
+    # Enforce-or-refuse contract: strict (default) refuses outright on
+    # hosts without a verified subreaper+scan. This test explicitly opts
+    # into best-effort to prove the legacy containment semantics below.
+    cmd = [sys.executable, "tools/run_budget.py", "--allow-best-effort",
+           "--budget-s", "2",
            "--checkpoint-dir", str(tmp_path / "ckpt"), "--report-out",
            str(tmp_path / "rep.json"), "--term-grace-s", "1",
            "--", sys.executable, "-c", child]
@@ -791,8 +795,10 @@ def test_rev2_deadline_descendant_fix_or_refuse(tmp_path):
             assert not marker.exists(), (
                 "daemon survived on a subreaper platform")
         else:
-            # Designed best-effort semantics off-Linux: the report must
-            # disclose the subreaper gap explicitly (refuse by note).
+            # Enforce-or-refuse contract: strict mode would refuse this
+            # host outright (exit 125, child never spawned); under the
+            # explicit --allow-best-effort opt-in above, the report must
+            # still disclose the subreaper gap explicitly.
             assert "subreaper" in (rep.get("platform_note") or ""), rep
             assert rep.get("enforcement") in ("verified",
                                               "UNVERIFIED"), rep

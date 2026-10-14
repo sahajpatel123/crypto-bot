@@ -5,7 +5,11 @@ import sys
 import time
 from pathlib import Path
 
-WRAPPER = [sys.executable, "tools/run_budget.py"]
+# Enforce-or-refuse contract: strict (default) refuses on hosts without a
+# verified subreaper+scan (incl. macOS). These legacy-behavior tests opt
+# into best-effort explicitly; refusal itself is covered by
+# tests/unit/test_run_budget_refusal.py.
+WRAPPER = [sys.executable, "tools/run_budget.py", "--allow-best-effort"]
 
 
 def _run(tmp_path, *args):
@@ -51,7 +55,8 @@ def test_overrun_killed_and_incomplete(tmp_path):
 def test_nested_budget_cannot_extend_outer(tmp_path):
     ckpt = tmp_path / "ckpt"
     rep = tmp_path / "report.json"
-    inner = [sys.executable, "tools/run_budget.py", "--budget-s", "600",
+    inner = [sys.executable, "tools/run_budget.py", "--allow-best-effort",
+             "--budget-s", "600",
              "--checkpoint-dir", str(ckpt / "inner"), "--report-out",
              str(tmp_path / "inner.json"), "--", sys.executable,
              "-c", "import time; time.sleep(60)"]
