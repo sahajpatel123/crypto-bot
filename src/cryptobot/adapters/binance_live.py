@@ -984,6 +984,21 @@ class BinanceLiveEngine:
                 return str(record.get("side", "BUY"))
         return "BUY"
 
+    def journal_reservation(self, client_id: str) -> str | None:
+        """Reservation a cid was submitted under (durable journal read).
+
+        Lets Session attribute lookup-recovered fills whose submit
+        never returned (ambiguous submit): the open command row has
+        no engine id, but the journal links the cid to its
+        reservation. None when the cid was never ours.
+        """
+        for record in reversed(self._read_journal()):
+            if record.get("event") == "submit-intent" \
+                    and record.get("client_id") == client_id:
+                rid = record.get("reservation_id")
+                return str(rid) if rid else None
+        return None
+
     # -- cancel / orders / poll ---------------------------------------------------
     def cancel(self, client_order_id: str, reason: str) -> None:
         """Cancel one order, preserving unknown exposure (W3-24H).
