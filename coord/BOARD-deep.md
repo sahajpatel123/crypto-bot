@@ -67,6 +67,10 @@ Production submission DISABLED. No credentials requested at this stage.
   plural (heap merge, per-symbol cursors, ckpt v3 auto-migrate v2) +
   --start-ms/--end-ms window filters. Backward compat + new tests green
   before any round cell; freeze untouched; separate commit for review.
+- W4 vehicle authorization #2 (manager): --spread-bps in-stream modeled
+  spread (frozen iter_with_spread; default = frozen profile value; spec
+  in resume identity). Premises verified: spreadless bars convert to
+  None, cache lacks bookTicker, §8 already assumes the profile.
 
 ## Unresolved / risks
 - Linux reviewer-side proof needs a live Linux run (this host macOS); code-inspected only.
