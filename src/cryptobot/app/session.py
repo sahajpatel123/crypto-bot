@@ -2722,7 +2722,8 @@ class Session:
             FreshnessTracker, default_http_get)
         from cryptobot.events.profiles import load_profile
         from cryptobot.events.runtime import ProtectionRuntime
-        from cryptobot.events.sources import CpiSource, FomcSource
+        from cryptobot.events.sources import (
+            CpiSource, FomcSource, adapters_for)
         from cryptobot.events.store import EventStore
         now = self.now_utc()
         try:
@@ -2740,9 +2741,21 @@ class Session:
             profile is not None
             and not getattr(profile, "advisory_only", True)
             and self.config.mode == "paper")
+        # Release (W3 banked wiring, corrected): construct adapters from
+        # the profile gate's required_sources so the built set can never
+        # skew from the required set. adapters_for returns constructed
+        # adapters and raises ValueError on unknown names (fail-closed);
+        # the fallback preserves availability on unreadable profiles and
+        # the gate then blocks honestly with an explicit stale-source
+        # reason for the missing name.
+        required = getattr(getattr(profile, "gate", None),
+                           "required_sources", ("fomc", "cpi"))
+        try:
+            srcs = adapters_for(required)
+        except (TypeError, ValueError):
+            srcs = [FomcSource(), CpiSource()]
         tracker = FreshnessTracker(
-            self.workdir / "event_source_state.json",
-            [FomcSource(), CpiSource()])
+            self.workdir / "event_source_state.json", srcs)
         store = EventStore()
         tracker.local_load(store, now)
         results = None
@@ -2757,8 +2770,10 @@ class Session:
             self.workdir / "protection_evidence.jsonl",
             advisory_only=not protected)
         if results is not None:
-            runtime.log_refresh(now, {
-                k: {"ok": v.ok, "error": v.error} for k, v in results.items()})
+            # Release: pass RefreshResult objects through; log_refresh
+            # serializes them. (The old dict projection never fired while
+            # the posture fail-open kept results None.)
+            runtime.log_refresh(now, results)
         self.protection = runtime
         self.event_gate = runtime.gate  # pre-window sweep compat.
         self._freshness = tracker
@@ -2767,9 +2782,7 @@ class Session:
             tracker.start(store, default_http_get, interval_s=interval,
                           now_utc=self.now_utc,
                           on_result=lambda res: runtime.log_refresh(
-                              self.now_utc(), {
-                                  k: {"ok": v.ok, "error": v.error}
-                                  for k, v in res.items()}))
+                              self.now_utc(), res))
 
     def _protection_reading(self, symbol: str):
         """Measured anomaly inputs for one symbol (W4-24H §12).

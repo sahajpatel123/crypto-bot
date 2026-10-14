@@ -767,8 +767,15 @@ def test_rel_protected_posture_admits_on_clear_day(tmp_path, monkeypatch):
     engine.add_instrument("BTCUSDT", price_precision=2, size_precision=3,
                           tick_size=0.01, step_size=0.001, ts_utc=h["_RT0"])
     store = RunStore(tmp_path / "runs" / "cryptobot.db")
+    # Release integration: start the scenario clock at _RT0 before
+    # Session construction so the startup source verification lands
+    # inside the evaluation window (default clock starts at 1970 and
+    # only moves forward; constructing-then-rewinding is time travel
+    # the freshness check correctly rejects). Assertions unchanged.
+    from cryptobot.app.session import ReplayClock
+    clock = ReplayClock(start=h["_RT0"])
     session = Session(cfg, store, tmp_path / "runs" / "relprot", "relprot",
-                      engine=engine)
+                      engine=engine, clock=clock)
     try:
         store.create_run("relprot", "paper", "fp", str(session.workdir),
                          None)
