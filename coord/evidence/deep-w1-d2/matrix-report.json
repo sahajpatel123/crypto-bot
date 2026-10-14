@@ -1,0 +1,18 @@
+{
+ "status": "CHILD_EXIT",
+ "child_rc": 0,
+ "elapsed_s": 190.171,
+ "budget_s": 600.0,
+ "command": [
+  "env",
+  "PYTHONPATH=src",
+  "/Users/sahajpatel/Code/cryto-bot/.venv/bin/python",
+  "-m",
+  "pytest",
+  "tests/unit/test_lifecycle_matrix.py",
+  "-q",
+  "-p",
+  "no:cacheprovider"
+ ],
+ "subreaper": false
+}

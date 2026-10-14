@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+import os
 import time
 from collections import deque
 from datetime import datetime, timedelta, timezone
@@ -994,6 +995,9 @@ class Session:
             "notional": verdict.notional_usdt, "legacy_exit": legacy,
             "entry_cap": cap,
             "entry_band": [intent.entry_low, intent.entry_high]})
+        # Structural transition: a crash after this point must find
+        # the shell (the 30s beat is too coarse for crash windows).
+        self._save_position_shell()
 
     def _entry_cap(self, intent: Any) -> float:
         # Side-aware band cap with side-aware tick rounding: a BUY cap
@@ -1576,6 +1580,42 @@ class Session:
             return None
         if client_order_id in self._orphan_close_ids:
             return self._order_recorded_reservation(client_order_id)
+        # Durable fallback: the submit command row carries the
+        # reservation even when the in-memory shell is gone (crash
+        # between submit and shell persist). Only our own submitted
+        # ids resolve here — foreign fills still return None.
+        try:
+            pending = self.store.open_commands(self.run_id)
+        except (ValueError, KeyError):
+            return None
+        for cmd in pending:
+            eid = cmd.get("engine_client_id")
+            if not eid:
+                continue
+            try:
+                match = eid == client_order_id or \
+                    self.engine.resolve(eid) == client_order_id
+            except (ValueError, KeyError, AttributeError):
+                match = eid == client_order_id
+            if not match:
+                continue
+            rid = (cmd.get("payload") or {}).get("reservation_id")
+            if rid and rid in self._known_reservations:
+                return rid
+        # Ambiguous-submit fallback: the submit never returned, so no
+        # command row carries this cid — but the engine journal links
+        # it to its reservation. Without this, lookup-recovered
+        # exposure books foreign and is never flattened while the
+        # loop reports flat (fail-open). Capability-guarded: engines
+        # without the seam keep the old behavior.
+        journal_fn = getattr(self.engine, "journal_reservation", None)
+        if callable(journal_fn):
+            try:
+                journal_rid = journal_fn(client_order_id)
+            except (ValueError, KeyError, AttributeError, OSError):
+                journal_rid = None
+            if journal_rid and journal_rid in self._known_reservations:
+                return journal_rid
         return None
 
     def _order_recorded_reservation(self, client_order_id: str) -> str | None:
@@ -1884,6 +1924,8 @@ class Session:
             self._ensure_protection_inner(pos)
         finally:
             self._in_ensure = False
+        # Legs may have attached/retired: persist the structural change.
+        self._save_position_shell()
 
     def _ensure_protection_inner(self, pos: dict[str, Any]) -> None:
         """Attach + verify body (see _ensure_protection)."""
@@ -2211,9 +2253,20 @@ class Session:
                 # Orphan close: attribute to the single surviving
                 # unresolved reservation when unambiguous, so its
                 # fills book and net out (else reservation-less,
-                # adapter-skipped as before).
+                # adapter-skipped as before). Post-restart the entry
+                # reservation has usually converted (booked, no
+                # longer unresolved): fall back to the single
+                # nonzero-booked reservation, else stay None.
                 unresolved = self.policy.unresolved_ids()
                 close_rid = unresolved[0] if len(unresolved) == 1 else None
+                if close_rid is None:
+                    try:
+                        booked = self.policy.booked_reservations()
+                    except (ValueError, KeyError, AttributeError):
+                        booked = ()
+                    nonzero = [rid for rid in booked
+                               if self.policy.booked_net(rid) != 0.0]
+                    close_rid = nonzero[0] if len(nonzero) == 1 else None
             # Reduce-only + exact-net sizing: never opens or reverses.
             close_cmd = self._new_command("submit", {
                 "role": "close", "instrument": symbol, "side": side,
@@ -2236,6 +2289,8 @@ class Session:
         if acted:
             self.store.checkpoint(self.run_id, "flatten",
                                   {"reason": reason, "net": net})
+            # Close submitted (and/or cancels requested): persist.
+            self._save_position_shell()
 
     # -- replay --------------------------------------------------------------
     def _prime_replay_books(
@@ -3068,12 +3123,136 @@ class Session:
 
     def _persist_local_state(self) -> None:
         self.ledger.save(self.workdir / "ledger.json")
+        self._save_position_shell()
         self.store.checkpoint(self.run_id, "local-state",
                               {"last_seq": self._last_seq,
                                "position": self._position is not None,
                                "events_seen": self._events_seen,
                                "intents_admitted": self._admitted,
                                "reject_counts": dict(self._reject_counts)})
+
+    _SHELL_FIELDS = ("reservation_id", "instrument", "side",
+                     "entry_pre_id", "entry_id", "legs", "close_ids",
+                     "retired", "entry_dropped", "stop", "target",
+                     "legacy_exit", "protected", "protect_attempts",
+                     "attach_filled", "entry_cap", "approved_qty",
+                     "executable_qty", "exposure_noted",
+                     "executable_noted", "emergency_latched", "strategy")
+
+    def _save_position_shell(self) -> None:
+        """Durably persist the position shell (restart booking identity).
+
+        The shell is the ONLY link between venue order ids and the
+        risk reservation: without it, post-restart fills cannot book
+        and pending-flatten closes submit reservation-less. Saved on
+        the local-state beat AND at structural transitions (admit,
+        legs attached, close submitted). admit_* inputs are
+        deliberately omitted (consumers degrade honestly without
+        them); a missing shell file means no position, never an
+        error. Atomic write; failures propagate (persist must be
+        loud, or the resume story is a lie).
+        """
+        path = self.workdir / "position.json"
+        pos = self._position
+        if pos is None:
+            try:
+                path.unlink()
+            except FileNotFoundError:
+                pass
+            return
+        shell = {k: pos.get(k) for k in self._SHELL_FIELDS}
+        # Live code reads these with .get(key, default): a persisted
+        # null would defeat the default, so store the default.
+        shell["legs"] = list(shell.get("legs") or [])
+        shell["close_ids"] = list(shell.get("close_ids") or [])
+        shell["retired"] = list(shell.get("retired") or [])
+        if shell.get("protect_attempts") is None:
+            shell["protect_attempts"] = 0
+        if shell.get("attach_filled") is None:
+            shell["attach_filled"] = 0.0
+        shell["cancel_requested"] = sorted(
+            pos.get("cancel_requested") or [])
+        # seen_ids drives queue-dropped vs amnesia after cancels: without
+        # it, post-restart cancels misread never-seen ids as dropped.
+        shell["seen_ids"] = sorted(pos.get("seen_ids") or [])
+        time_exit = pos.get("time_exit")
+        shell["time_exit"] = time_exit.isoformat() \
+            if hasattr(time_exit, "isoformat") else None
+        payload = json.dumps(shell, sort_keys=True, default=str) + "\n"
+        tmp = path.with_suffix(".json.tmp")
+        tmp.write_text(payload, encoding="utf-8")
+        os.replace(tmp, path)
+
+    def _restore_position_shell(self) -> bool:
+        """Rebuild _position from the persisted shell (live resume).
+
+        Returns True when a shell was restored. Restores only a shell
+        that still tracks something live (ledger exposure, or a
+        tracked id open/partial/unknown): a fully-terminal shell on a
+        flat book is stale crash dust and stays cleared. Malformed
+        shells fail closed to the orphan path with a checkpoint.
+        """
+        path = self.workdir / "position.json"
+        if not path.exists():
+            return False
+        try:
+            shell = json.loads(path.read_text(encoding="utf-8"))
+            rid = shell.get("reservation_id")
+            instrument = shell.get("instrument")
+            time_exit = shell.get("time_exit")
+            if not rid or not instrument or not time_exit:
+                raise ValueError("missing identity fields")
+            time_exit_dt = datetime.fromisoformat(time_exit)
+            if time_exit_dt.tzinfo is None:
+                raise ValueError("naive time_exit")
+        except (OSError, ValueError) as exc:
+            self.store.checkpoint(self.run_id, "shell-unrestorable",
+                                  {"reason": str(exc)})
+            return False
+        live = self.ledger.has_position()
+        if not live:
+            try:
+                statuses = self._tracked_statuses_for(shell)
+            except (ValueError, KeyError, AttributeError):
+                statuses = {}
+            tracked = [shell.get("entry_pre_id"), shell.get("entry_id")]
+            tracked += list(shell.get("legs") or [])
+            tracked += list(shell.get("close_ids") or [])
+            tracked += list(shell.get("retired") or [])
+            for tid in tracked:
+                if not tid:
+                    continue
+                st = statuses.get(tid)
+                if st is None or getattr(st, "state", "") in (
+                        "open", "partial"):
+                    live = True  # unknown counts as in flight.
+                    break
+        if not live:
+            self.store.checkpoint(self.run_id, "shell-stale-skipped",
+                                  {"reservation_id": rid})
+            return False
+        pos = {k: shell.get(k) for k in self._SHELL_FIELDS}
+        pos["time_exit"] = time_exit_dt
+        pos["legs"] = list(pos.get("legs") or [])
+        pos["close_ids"] = list(pos.get("close_ids") or [])
+        pos["retired"] = list(pos.get("retired") or [])
+        if pos.get("protect_attempts") is None:
+            pos["protect_attempts"] = 0
+        if pos.get("attach_filled") is None:
+            pos["attach_filled"] = 0.0
+        pos["cancel_requested"] = set(shell.get("cancel_requested") or [])
+        pos["seen_ids"] = set(shell.get("seen_ids") or [])
+        pos["admit_snapshot"] = None
+        pos["admit_budget"] = None
+        pos["admit_intent"] = None
+        self._position = pos
+        self._known_reservations.add(rid)
+        self.store.checkpoint(self.run_id, "shell-restored",
+                              {"reservation_id": rid,
+                               "instrument": instrument,
+                               "legs": list(pos.get("legs") or []),
+                               "closes": list(pos.get("close_ids") or [])})
+        return True
 
     def _rebuild_booking_state(self) -> None:
         """Rebuild idempotency + replay unbooked anchors (v1 §4).
@@ -3218,6 +3397,10 @@ class Session:
         self.engine.recover(self._engine_handler)
         self._flush_staged_deltas()
         self._reconcile_commands()
+        # Booking identity must precede any flatten decision: the
+        # pending-flatten retry below submits tracked (attributed)
+        # only when the shell is back.
+        self._restore_position_shell()
         try:
             pending = self.store.open_commands(self.run_id)
         except (ValueError, KeyError):
