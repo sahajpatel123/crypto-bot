@@ -16,6 +16,9 @@ __all__ = [
     "VenueHttpError",
     "VenueRejectedError",
     "caller_action",
+    "UserStreamReader",
+    "UserStreamAttachment",
+    "attach_user_stream",
 ]
 
 
@@ -28,4 +31,8 @@ def __getattr__(name: str) -> Any:
                 "VenueRejectedError", "RateLimitedError", "caller_action"):
         from . import binance_live
         return getattr(binance_live, name)
+    if name in ("UserStreamReader", "UserStreamAttachment",
+                "attach_user_stream"):
+        from . import user_stream
+        return getattr(user_stream, name)
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
