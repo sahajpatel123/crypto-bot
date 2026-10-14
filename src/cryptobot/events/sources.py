@@ -182,6 +182,35 @@ class EmploymentSource(FixtureAdapter):
                          "employment_2026_2027.json")
 
 
+# REL-W3-DATA fix (W5 review): single registry mapping required-source
+# names to their adapters. Session must construct adapters from the
+# profile's required_sources via adapters_for() — a hardcoded adapter
+# list skews from the required set and blocks every entry with
+# event:stale-source:<missing>:unknown.
+_ADAPTERS = {"fomc": FomcSource,
+             "cpi": CpiSource,
+             "employment": EmploymentSource}
+
+
+def adapters_for(names) -> list:
+    """Construct one adapter per required-source name (fail-closed).
+
+    Unknown names raise ValueError: silently skipping a required
+    source would forge "no events" coverage. Callers pass the
+    profile gate's required_sources; optional sources without
+    adapters stay unconstructed (coverage unknown -> ignored).
+    """
+    adapters = []
+    for name in names:
+        try:
+            adapters.append(_ADAPTERS[name]())
+        except KeyError:
+            raise ValueError(
+                f"unknown event source: {name!r} "
+                f"(known: {', '.join(sorted(_ADAPTERS))})") from None
+    return adapters
+
+
 class StubAdapter:
     """Explicit placeholder for sources EV-001 does not schedule yet.
 

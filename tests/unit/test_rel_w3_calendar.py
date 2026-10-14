@@ -21,7 +21,7 @@ from cryptobot.events.gate import EventGate, GateConfig  # noqa: E402
 from cryptobot.events.profiles import (OperationalProfile,  # noqa: E402
                                        load_profile)
 from cryptobot.events.sources import (CpiSource, EmploymentSource,  # noqa: E402
-                                      FomcSource)
+                                      FomcSource, adapters_for)
 from cryptobot.events.store import EventStore  # noqa: E402
 
 CANNED = Path(_evpkg.__file__).parent / "fixtures" / "canned"
@@ -192,6 +192,65 @@ def test_protected_profile_requires_all_three_sources():
     assert profile.gate.required_sources == ("fomc", "cpi", "employment")
     assert profile.gate.max_hold_s == 300
     assert profile.gate.exit_budget_s == 120
+
+
+def _canned_all(http_url, timeout_s=20):
+    if "federalreserve" in http_url:
+        name = "fomc_page_2026.txt"
+    elif "empsit" in http_url:
+        name = "bls_empsit_page_2026.txt"
+    else:
+        name = "bls_cpi_page_2026.txt"
+    return HttpResponse(status=200, body=(CANNED / name).read_bytes(),
+                        url=http_url)
+
+
+def test_adapters_for_builds_required_sources():
+    adapters = adapters_for(("fomc", "cpi", "employment"))
+    assert [a.source_id for a in adapters] == ["fomc", "cpi", "employment"]
+    for adapter in adapters:
+        assert len(adapter.load(T0).events) > 0
+
+
+def test_adapters_for_rejects_unknown_source():
+    try:
+        adapters_for(("fomc", "bea-pce"))
+    except ValueError as exc:
+        assert "unknown event source" in str(exc)
+    else:  # pragma: no cover
+        raise AssertionError("unknown source silently accepted")
+
+
+def test_protected_required_sources_all_constructible():
+    """Contract pin (W5 review): every required source has an adapter.
+
+    A required source without a constructible adapter blocks every
+    entry with event:stale-source:<source>:unknown; this fails if the
+    profile and the registry ever skew again.
+    """
+    profile = load_profile(REPO / "configs" / "paper-protected.toml")
+    adapters = adapters_for(profile.gate.required_sources)
+    assert [a.source_id for a in adapters] == ["fomc", "cpi", "employment"]
+
+
+def test_fixed_wiring_quiet_day_is_clear(tmp_path):
+    """Post-fix Session wiring: adapters from profile required (W5 review).
+
+    Simulates what Session builds after the W1 fix (adapters_for over
+    the protected required set + verify): a quiet day is clear, so the
+    employment requirement no longer blocks entries by itself.
+    """
+    now = _utc(2026, 10, 12, 13, 10)
+    profile = load_profile(REPO / "configs" / "paper-protected.toml")
+    store = EventStore()
+    tracker = FreshnessTracker(tmp_path / "state.json",
+                               adapters_for(profile.gate.required_sources))
+    tracker.local_load(store, now)
+    results = tracker.refresh_once(store, _canned_all, now)
+    assert all(r.ok for r in results.values())
+    decision = EventGate(store, profile.gate).check(now)
+    assert decision.blocked is False
+    assert decision.reason == "event:clear"
 
 
 def test_profile_rejects_non_list_required_sources(tmp_path):

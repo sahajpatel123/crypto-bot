@@ -17,13 +17,15 @@ from .freshness import (CACHE_TTL, REFRESH_INTERVAL_S, FreshnessTracker,
                         HttpResponse, RefreshResult, SourceState,
                         SourceStateStore, default_http_get,
                         parse_cpi_release_dates,
+                        parse_employment_dates,
                         parse_fomc_decision_dates)
 from .gate import EventGate, GateConfig, GateDecision
 from .profiles import (OperationalProfile, ReplayCutoff, ResearchProfile,
                        load_profile)
 from .runtime import ProtectionDecision, ProtectionRuntime
-from .sources import (CpiSource, FomcSource, SourceAdapter, SourceSnapshot,
-                      StubAdapter, apply_snapshot, required_snapshots)
+from .sources import (CpiSource, EmploymentSource, FomcSource,
+                      SourceAdapter, SourceSnapshot, StubAdapter,
+                      adapters_for, apply_snapshot, required_snapshots)
 from .store import EventStore, coverage_status
 from .timezones import (ET_NAME, IST_NAME, et_local, format_ist, parse_iso_utc,
                         to_ist, to_utc)
@@ -38,6 +40,7 @@ __all__ = [
     "CACHE_TTL",
     "CpiSource",
     "ET_NAME",
+    "EmploymentSource",
     "Event",
     "EventGate",
     "EventStore",
@@ -62,6 +65,7 @@ __all__ = [
     "SourceState",
     "SourceStateStore",
     "StubAdapter",
+    "adapters_for",
     "apply_snapshot",
     "coverage_status",
     "default_http_get",
@@ -70,6 +74,7 @@ __all__ = [
     "format_ist",
     "load_profile",
     "parse_cpi_release_dates",
+    "parse_employment_dates",
     "parse_fomc_decision_dates",
     "parse_iso_utc",
     "read_evidence",
