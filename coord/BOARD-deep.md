@@ -46,6 +46,9 @@ Production submission DISABLED. No credentials requested at this stage.
 ## Integration log
 - W1 D1 ACCEPTED (cd42146 → 04c0bee): 6/6 proofs re-run green. Shared-tree
   probe deletions broke units re-run; restored (tests require them).
+- W1 D2 ACCEPTED (6bc5af6 → 47a8c8c + fixup 9be4fb1): 3/3 re-run green
+  (14/14 matrix, 1071+1, 261). F1 fix covers W2 resume findings; F2–F5
+  filed. A1 gate: PASS. Units closed 1080+1 after transient I/O retry.
 - W2 D3 ACCEPTED (b72865a → c0e211f): A2 PASS, 6/6 phases, SANDBOX VALIDATED.
   Caveat: drill works around two session resume defects driver-side
   (reservation-None flatten fill unbookable; _position not rebuilt across
