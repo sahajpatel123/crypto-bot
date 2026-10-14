@@ -55,7 +55,25 @@ class _ScriptEngine:
         self.fail_cancel_once = set()
 
     def open_orders(self):
+        # Legacy snapshot retained for direct helper-level assertions
+        # (some proofs script terminal states into open_orders()).
+        # Migrated Session paths read order_status() instead.
         return [s for s in self.states.values()]
+
+    def order_status(self, cid):
+        # Contract v1 order truth (release migration): scripted
+        # states incl. terminals; None only when never seen.
+        # Version 0: the Session treats v0 reads as always current.
+        return self.states.get(cid)
+
+    def unknown_ids(self):
+        return tuple(getattr(self, "unknown", ()))
+
+    def bind_sink(self, handler):
+        self.bound = handler
+
+    def account_snapshot(self):
+        return None
 
     def resolve(self, cid):
         return cid
@@ -324,6 +342,28 @@ def _seed_paper_mark(session):
     session._feeds["BTCUSDT"] = feed
 
 
+def _paper_status(engine, cid):
+    """Contract-tolerant order read (release migration rationale).
+
+    Prefers order_status() when it returns contract truth, else the
+    open_orders() snapshot (pre-migration paper keeps terminals
+    there). Keeps these proofs green on both sides of W2's paper
+    migration without weakening the asserted states.
+    """
+    query = getattr(engine, "order_status", None)
+    if callable(query):
+        try:
+            status = query(cid)
+        except (KeyError, ValueError):
+            status = None
+        if status is not None and hasattr(status, "state"):
+            return status
+    for status in engine.open_orders():
+        if status.client_order_id == cid:
+            return status
+    raise KeyError(f"no tracked truth for {cid}")
+
+
 def _pquote(engine, ms, bid, ask, bid_size=1.0, ask_size=1.0):
     from nautilus_trader.model.data import QuoteTick
     from nautilus_trader.model.objects import Price, Quantity
@@ -358,10 +398,10 @@ def test_paper_stop_exit_settles_sibling_and_clears(tmp_path):
         for ms, px in ((2000, 99.5), (3000, 98.9), (4000, 98.5)):
             _pquote(engine, ms, px - 0.1, px)
             session._drain_engine()
-        by_id = {s.client_order_id: s for s in engine.open_orders()}
-        assert by_id[stop_id].state == "filled"
-        assert by_id[stop_id].filled_qty == pytest.approx(qty)
-        assert by_id[tgt_id].state == "cancelled"  # sibling settled.
+        stop = _paper_status(engine, stop_id)
+        assert stop.state == "filled"
+        assert stop.filled_qty == pytest.approx(qty)
+        assert _paper_status(engine, tgt_id).state == "cancelled"  # settled.
         assert not session.ledger.has_position()
         assert session._position is None  # released on full agreement.
         assert session.policy._state.reservations == {}
@@ -384,10 +424,10 @@ def test_paper_target_exit_settles_stop_and_clears(tmp_path):
         for ms, px in ((2000, 101.5), (3000, 102.4), (4000, 102.8)):
             _pquote(engine, ms, px - 0.1, px)
             session._drain_engine()
-        by_id = {s.client_order_id: s for s in engine.open_orders()}
-        assert by_id[tgt_id].state == "filled"
-        assert by_id[tgt_id].filled_qty == pytest.approx(qty)
-        assert by_id[stop_id].state == "cancelled"  # sibling settled.
+        tgt = _paper_status(engine, tgt_id)
+        assert tgt.state == "filled"
+        assert tgt.filled_qty == pytest.approx(qty)
+        assert _paper_status(engine, stop_id).state == "cancelled"  # settled.
         assert not session.ledger.has_position()
         assert session._position is None
         assert session.policy._state.reservations == {}
@@ -440,10 +480,9 @@ def test_paper_partial_entry_protects_filled_only(tmp_path):
         assert 0.0 < filled < approved  # partial at arrival.
         assert pos["protected"] is True
         assert pos["executable_qty"] == pytest.approx(approved)
-        by_id = {s.client_order_id: s for s in engine.open_orders()}
-        entry = by_id[pos["entry_id"]]
+        entry = _paper_status(engine, pos["entry_id"])
         assert entry.state in ("filled", "cancelled")  # IOC remainder out.
-        stop = by_id[pos["legs"][0]]
+        stop = _paper_status(engine, pos["legs"][0])
         assert stop.state in ("open", "partial")
         assert stop.qty - stop.filled_qty + 1e-9 >= filled
         # Later size never revives the remainder or the legs.
