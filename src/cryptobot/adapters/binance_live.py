@@ -67,9 +67,11 @@ from cryptobot.app.engine import (
 from cryptobot.risk.rounding import floor_to_step, round_to_tick
 
 TESTNET_BASE_URL = "https://testnet.binancefuture.com"
+TESTNET_FSTREAM_URL = "wss://stream.binancefuture.com"  # testnet stream host.
 DEMO_FAPI_URL = "https://demo-fapi.binance.com"  # REST (manager-probed).
 DEMO_FSTREAM_URL = "wss://demo-fstream.binance.com"  # user-stream socket host.
 PROD_FAPI_URL = "https://fapi.binance.com"  # real-money host: explicit only.
+PROD_FSTREAM_URL = "wss://fstream.binance.com"  # prod stream host (fstream).
 UNKNOWN_HTTP_STATUSES = (0, 502, 503, 504)  # timeout + gateways: outcome unknown.
 RATE_LIMIT_HTTP_STATUSES = (429, 418)  # too many requests / IP ban.
 RATE_LIMIT_VENUE_CODES = (-1003,)  # TOO_MANY_REQUESTS.
@@ -83,7 +85,9 @@ __all__ = [
     "DEMO_FAPI_URL",
     "DEMO_FSTREAM_URL",
     "PROD_FAPI_URL",
+    "PROD_FSTREAM_URL",
     "TESTNET_BASE_URL",
+    "TESTNET_FSTREAM_URL",
     "BinanceLiveEngine",
     "UrllibTransport",
     "RateLimitedError",
@@ -1149,6 +1153,29 @@ class BinanceLiveEngine:
             raise ValueError("no listen key open")
         self._keyed("PUT", "/fapi/v1/listenKey")
         self._journal("listen-key-keepalive", {})
+
+    def user_stream_url(self, listen_key: str) -> str:
+        """Exact single-stream user-data URL for this engine's host.
+
+        Derived from the effective REST base so the socket always
+        matches the REST venue: demo-fapi→demo-fstream,
+        fapi→fstream (prod, note: fstream not fapi), testnet→its
+        stream host. Unrecognized custom hosts raise (no guessing).
+        """
+        if not listen_key or not isinstance(listen_key, str):
+            raise ValueError("listen_key must be a non-empty string")
+        host = self._base_url.rstrip("/")
+        if host == DEMO_FAPI_URL:
+            ws = DEMO_FSTREAM_URL
+        elif host == PROD_FAPI_URL:
+            ws = PROD_FSTREAM_URL
+        elif host == TESTNET_BASE_URL:
+            ws = TESTNET_FSTREAM_URL
+        else:
+            raise ValueError(
+                "no user-stream host mapped for base_url "
+                f"{self._base_url!r}")
+        return f"{ws}/ws/{listen_key}"
 
     def stream_reconnected(self) -> None:
         """Heal a user-stream gap: look up every journaled non-terminal

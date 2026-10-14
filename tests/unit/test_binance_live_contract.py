@@ -238,3 +238,21 @@ def test_stream_fill_pushes_through_bound_handler(tmp_path):
     assert len([e for e in pushed if e.kind == "fill"]) == 1
     assert engine.poll() == []
     transport.assert_empty()
+
+
+def test_user_stream_url_pinned_per_host(tmp_path):
+    from cryptobot.adapters.binance_live import PROD_FAPI_URL
+    demo, _ = _live(tmp_path, [], demo=True)
+    assert demo.user_stream_url("K1") == \
+        "wss://demo-fstream.binance.com/ws/K1"
+    prod, _ = _live(tmp_path, [], base_url=PROD_FAPI_URL)
+    assert prod.user_stream_url("K1") == \
+        "wss://fstream.binance.com/ws/K1"  # fstream, not fapi.
+    testnet, _ = _live(tmp_path, [])
+    assert testnet.user_stream_url("K1") == \
+        "wss://stream.binancefuture.com/ws/K1"
+    with pytest.raises(ValueError, match="non-empty"):
+        demo.user_stream_url("")
+    custom, _ = _live(tmp_path, [], base_url="https://example.com")
+    with pytest.raises(ValueError, match="no user-stream host"):
+        custom.user_stream_url("K1")
