@@ -85,3 +85,155 @@ def make_engine(tmp_path, script, **kw):
         journal_path=tmp_path / "live.jsonl", expected_leverage=3,
         run_tag="bl", live_enable=True, transport=transport, **kw)
     return engine, transport
+
+
+class FakeSocket:
+    """Scripted stream socket; None = timeout; 'die' kills (REV2 drill)."""
+
+    def __init__(self, script=()):
+        self.script = deque(script)
+        self.closed = False
+
+    def recv(self, timeout_s):
+        assert not self.closed
+        if not self.script:
+            return None
+        item = self.script.popleft()
+        if item == "die":
+            raise ConnectionError("socket died")
+        return item
+
+    def close(self):
+        self.closed = True
+
+
+def drill_account(ready):
+    """Account fixture with the wallet leg a complete snapshot needs."""
+    view = copy.deepcopy(ready["account"])
+    view.setdefault("totalWalletBalance", "10000.00")
+    return view
+
+
+def wall_time():
+    """Wall serverTime entry (the skew gate needs a live clock)."""
+    import time
+    return ("GET", "/fapi/v1/time", None,
+            ("ok", {"serverTime": int(time.time() * 1000)}))
+
+
+class _SyncHookTransport:
+    """ReplayTransport + synchronous per-POST stream hook (deterministic).
+
+    Fills queue to the live socket on the CALLING thread right after
+    the venue ack — no watcher thread, so the stream/drain interleave
+    is fixed and the strict script is stable. Delegates requests,
+    append, and assert_empty to the inner replay transport.
+    """
+
+    def __init__(self, inner, hook):
+        self._inner = inner
+        self._hook = hook
+
+    def request(self, method, path, params, headers):
+        resp = self._inner.request(method, path, params, headers)
+        if method == "POST" and path in ("/fapi/v1/order",
+                                         "/fapi/v1/algoOrder"):
+            self._hook(method, path, dict(params))
+        return resp
+
+    @property
+    def requests(self):
+        return self._inner.requests
+
+    @property
+    def script(self):
+        return self._inner.script
+
+    def append(self, *expectations):
+        self._inner.append(*expectations)
+
+    def assert_empty(self):
+        self._inner.assert_empty()
+
+
+def patch_drill_offline(monkeypatch, drill, transport, orders, *,
+                        mark=100.0, on_post=None, fail_redial=False):
+    """Wire a demo Drill fully offline (REV2 R4 rig).
+
+    Shared scripted transport for every phase engine, fresh sockets
+    per dial, wall clock quote, shrunk bounds. Each venue POST queues
+    stream envelopes SYNCHRONOUSLY per on_post(kind, params, append,
+    trade) — kind is 'order'/'algo', append(envelope) queues to the
+    live socket, trade is a fresh userStreamTrade copy. Default: full
+    fills, distinct trade ids. fail_redial drops the first redial per
+    attachment (gap window). Returns rig handles (no threads).
+    """
+    import time
+
+    engines = []
+    hooked = _SyncHookTransport(transport, lambda m, p, pr: _hooked(
+        m, p, pr))
+
+    def _engine(transport_override=None, **kw):
+        inner = kw.get("transport", transport_override) or hooked
+        eng = BinanceLiveEngine(
+            api_key="k", api_secret="s",
+            journal_path=drill.journal_path, expected_leverage=3,
+            run_tag="demo30", live_enable=True, demo=True,
+            base_url=None, transport=inner,
+            now_utc=lambda: datetime.now(timezone.utc))
+        engines.append(eng)
+        return eng
+
+    monkeypatch.setattr(drill, "engine", _engine)
+    monkeypatch.setattr(drill, "live_quote",
+                        lambda: (mark, int(time.time() * 1000)))
+    drill.poll_s = 0.001
+    drill.heal_wait_s = 5.0
+    drill.fill_wait_s = 5.0
+    drill.flat_wait_s = 5.0
+    drill.gap_wait_s = 5.0
+    drill.stream_kwargs = {"start_thread": False,
+                           "initial_backoff_s": 0.01}
+    current = {}
+    dials = [0]
+
+    def _ws_factory(engine):
+        per_attach = [0]
+
+        def _factory(key):
+            dials[0] += 1
+            per_attach[0] += 1
+            if fail_redial and per_attach[0] == 2:
+                raise ConnectionError("dial refused")
+            current["sock"] = FakeSocket([])
+            return current["sock"]
+        return _factory
+
+    monkeypatch.setattr(drill, "ws_factory", _ws_factory)
+    if on_post is None:
+        def on_post(kind, params, append, trade):
+            if kind == "order":
+                trade["o"]["c"] = params.get("newClientOrderId")
+                trade["o"]["S"] = params.get("side", "BUY")
+                qty = params.get("quantity")
+                trade["o"]["l"] = trade["o"]["z"] = qty
+                trade["o"]["L"] = trade["o"]["ap"] = f"{mark:.2f}"
+                append(trade)
+
+    trade_seq = [777001]
+
+    def _hooked(method, path, params):
+        if "sock" not in current:
+            return
+        trade = copy.deepcopy(orders["userStreamTrade"])
+        trade["o"]["t"] = trade_seq[0]
+        trade_seq[0] += 1
+        on_post("order" if path == "/fapi/v1/order" else "algo", params,
+                current["sock"].script.append, trade)
+
+    def _stop():
+        pass
+
+    return {"stop": _stop, "engines": engines, "dials": dials,
+            "current": current, "transport": hooked}
