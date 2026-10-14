@@ -1748,7 +1748,11 @@ class Session:
                                                  "sibling-settled")
                 if st.state in ("filled", "rejected", "cancelled",
                                 "expired"):
-                    pos[key].remove(lid)
+                    # Membership-guarded: a sibling cancel above can
+                    # push a terminal event synchronously, and the
+                    # nested supervision pass may prune first.
+                    if lid in pos[key]:
+                        pos[key].remove(lid)
 
     def _mark_seen(self, pos: dict[str, Any],
                    statuses: dict[str, Any]) -> None:
