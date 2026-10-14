@@ -9,6 +9,8 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
+import pytest
+
 from cryptobot.bench_run import main
 
 SYM_A = "BTCUSDT"
@@ -253,6 +255,130 @@ def test_single_symbol_flag_matches_plural(tmp_path):
     assert d1["events"]["ingested"] == d2["events"]["ingested"] == 16
     for key in ("equity_close", "realised", "commissions", "funding"):
         assert d1["booked"][key] == d2["booked"][key], key
+
+
+def _bbo(symbol, ts, bid, ask):
+    return {"v": 1, "format": "cryptobot-events/1",
+            "input_class": "observed-public", "source": "synthetic-test",
+            "route": "test", "run_id": "t", "seq": 0,
+            "channel": "bookTicker", "symbol": symbol,
+            "exchange_ts_ms": ts, "local_recv_ms": ts,
+            "local_mono_ns": 0, "gap_kind": None, "venue_seq": 0,
+            "payload": {"bid": bid, "ask": ask, "bid_qty": 1.0,
+                        "ask_qty": 1.0}}
+
+
+def _quoted_manifest(tmp_path: Path) -> Path:
+    # Six 1s windows per symbol; the 500ms lateness rule closes all
+    # but the trailing two once later trades arrive.
+    events = []
+    for i in range(6):
+        ts = T1 + 60_000 + i * 1000
+        events.append(_trade(SYM_A, i + 1, ts, 1000 + i, 100.0))
+        # Real 2.0bps BBO in the same window for the first two only.
+        if i < 2:
+            events.append(_bbo(SYM_A, ts + 100, 99.99, 100.01))
+    for i in range(6):
+        ts = T1 + 60_000 + i * 1000
+        events.append(_trade(SYM_B, i + 1, ts, 3000 + i, 50.0))
+    ev_path = tmp_path / "q-events.jsonl"
+    ev_path.write_text("\n".join(json.dumps(e) for e in events) + "\n")
+    toml = tmp_path / "q-cap.toml"
+    toml.write_text(
+        "[dataset]\nname = \"t\"\nkind = \"captured-runs\"\n"
+        "manifest_version = 1\n\n[[source]]\nrun_id = \"t\"\n"
+        "file = \"q-events.jsonl\"\n"
+        f"local = \"{ev_path}\"\nsymbols = [\"{SYM_A}\", \"{SYM_B}\"]\n")
+    return toml
+
+
+def _ckpt_bars(ckpt: Path, symbol: str):
+    commit = json.loads((ckpt / "bench_checkpoint.json").read_text())
+    return commit["feeds"][symbol]["bars"]
+
+
+def test_modeled_bars_carry_profile_spread(tmp_path):
+    from cryptobot.research.spread import SpreadProfile, profile_spread_bps
+
+    manifest = _manifest(tmp_path)
+    ckpt, report = tmp_path / "ck", tmp_path / "rep.json"
+    assert main(_args(tmp_path, manifest, ckpt, report,
+                      ["--run-id", "md", "--spread-bps"])) == 0
+    doc = json.loads(report.read_text())
+    expect = float(profile_spread_bps(SpreadProfile(), SYM_A))
+    assert doc["spread"]["bps"] == {SYM_A: expect, SYM_B: expect}
+    assert doc["spread"]["windows"][SYM_A]["modeled_windows"] > 0
+    bars = [b for b in _ckpt_bars(ckpt, SYM_A) if b is not None]
+    assert bars, "modeled run must build real bars"
+    for bar in bars:
+        assert bar["spread_bps"] == pytest.approx(expect)
+    # Unmodeled control: every bar converts to None (spreadless).
+    ckpt0, rep0 = tmp_path / "ck0", tmp_path / "rep0.json"
+    assert main(_args(tmp_path, manifest, ckpt0, rep0,
+                      ["--run-id", "md0"])) == 0
+    assert _ckpt_bars(ckpt0, SYM_A) == [None] * len(
+        _ckpt_bars(ckpt0, SYM_A))
+    assert json.loads(rep0.read_text())["spread"]["bps"] == {}
+
+
+def test_modeled_split_resume_matches_reference(tmp_path):
+    manifest = _manifest(tmp_path)
+    ref_ckpt, ref_rep = tmp_path / "ref-ck", tmp_path / "ref.json"
+    assert main(_args(tmp_path, manifest, ref_ckpt, ref_rep,
+                      ["--run-id", "ref", "--spread-bps"])) == 0
+    ref = json.loads(ref_rep.read_text())
+    sp_ckpt = tmp_path / "sp-ck"
+    rep1, rep2 = tmp_path / "sp1.json", tmp_path / "sp2.json"
+    assert main(_args(tmp_path, manifest, sp_ckpt, rep1,
+                      ["--run-id", "sp", "--max-events", "10",
+                       "--spread-bps"])) == 124
+    assert main(_args(tmp_path, manifest, sp_ckpt, rep2,
+                      ["--run-id", "sp", "--resume", "--spread-bps"])) == 0
+    split = json.loads(rep2.read_text())
+    assert split["status"] == "COMPLETE"
+    assert split["events"]["replayed_tail"] > 0
+    for key in ("equity_close", "realised", "commissions", "funding"):
+        assert split["booked"][key] == ref["booked"][key], key
+    assert split["estimated_costs"] == ref["estimated_costs"]
+    assert split["spread"]["windows"] == ref["spread"]["windows"]
+
+
+def test_modeled_deterministic_and_quoted_passthrough(tmp_path):
+    manifest = _quoted_manifest(tmp_path)
+    docs = []
+    for tag in ("a", "b"):
+        ckpt = tmp_path / f"ck-{tag}"
+        report = tmp_path / f"rep-{tag}.json"
+        assert main(_args(tmp_path, manifest, ckpt, report,
+                          ["--run-id", f"q-{tag}", "--spread-bps"])) == 0
+        docs.append(json.loads(report.read_text()))
+    for key in ("equity_close", "realised", "commissions", "funding"):
+        assert docs[0]["booked"][key] == docs[1]["booked"][key], key
+    stats_a = docs[0]["spread"]["windows"][SYM_A]
+    assert stats_a["observed_quote_windows"] == 2
+    assert stats_a["modeled_windows"] == 4  # quoteless windows only.
+    bars = [b for b in _ckpt_bars(tmp_path / "ck-a", SYM_A)
+            if b is not None]
+    spreads = sorted(b["spread_bps"] for b in bars)
+    # Windows 60,61 quoted-real; 62,63 modeled; 64,65 still open.
+    assert spreads == pytest.approx([1.0, 1.0, 2.0, 2.0])
+
+
+def test_spread_cross_resume_refused(tmp_path):
+    manifest = _manifest(tmp_path)
+    sp_ckpt, rep1 = tmp_path / "sp-ck", tmp_path / "sp1.json"
+    assert main(_args(tmp_path, manifest, sp_ckpt, rep1,
+                      ["--run-id", "sp", "--max-events", "5"])) == 124
+    # Unmodeled checkpoint + modeled resume: refused.
+    assert main(_args(tmp_path, manifest, sp_ckpt, tmp_path / "x.json",
+                      ["--run-id", "sp", "--resume", "--spread-bps"])) == 1
+    # Modeled checkpoint + unmodeled resume: refused.
+    sp2, rep2 = tmp_path / "sp2-ck", tmp_path / "sp2.json"
+    assert main(_args(tmp_path, manifest, sp2, rep2,
+                      ["--run-id", "sp2", "--max-events", "5",
+                       "--spread-bps"])) == 124
+    assert main(_args(tmp_path, manifest, sp2, tmp_path / "y.json",
+                      ["--run-id", "sp2", "--resume"])) == 1
 
 
 def test_cli_validation_rejects_shapes(tmp_path):

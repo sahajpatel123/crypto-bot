@@ -103,6 +103,8 @@ class BenchRunner:
         self._symbols: list[str] = []
         self._start_ms: int | None = None
         self._end_ms: int | None = None
+        self._spread: dict[str, float] = {}
+        self._spread_stats: dict[str, dict[str, int]] = {}
 
     # -- lifecycle ----------------------------------------------------
     def _install_signal_handlers(self) -> None:
@@ -149,59 +151,113 @@ class BenchRunner:
         return (int(event["exchange_ts_ms"]),
                 str(event.get("channel", "")), stream_idx)
 
+    def _prep_symbol_stream(self, handle: Any, symbol: str, day: str):
+        """Per-symbol stream: heartbeat policy + optional spread modeling.
+
+        Single-symbol UNMODELED streams pass through untouched
+        (heartbeats preserved, exactly v2 behavior). Otherwise Nones
+        are dropped (counted) and, when spread is configured, the
+        frozen iter_with_spread interleaves modeled quotes where BBO
+        is absent (same helper + profile the capture harness uses).
+        """
+        from cryptobot.research.spread import iter_with_spread
+
+        modeled = symbol in self._spread
+        raw = handle.events(symbol, day)
+        if len(self._symbols) == 1 and not modeled:
+            yield from raw
+            return
+
+        def _stripped():
+            for event in raw:
+                if event is None:
+                    self._n_heartbeats += 1
+                else:
+                    yield event
+
+        if modeled:
+            stats = self._spread_stats.setdefault(symbol, {})
+            yield from iter_with_spread(
+                _stripped(), symbol, self._spread[symbol], stats)
+        else:
+            yield from _stripped()
+
     def _stream_day(self, handle: Any, day: str):
         """Yield (symbol, event) merged across symbols for one day.
 
-        Single-symbol mode streams the dataset order untouched
-        (heartbeats preserved, exactly v2 behavior). Multi-symbol
-        mode heap-merges per-symbol streams; None heartbeats carry
-        no timestamp so they cannot merge — they are dropped
-        (counted) and the clock advances from merged event times,
-        which is deterministic across resume.
+        Single-symbol unmodeled mode streams the dataset order
+        untouched (exactly v2 behavior). Multi-symbol mode
+        heap-merges per-symbol streams. Modeled streams renumber
+        per-symbol dense seqs post-injection (mirroring capture
+        prep, which also renumbers injected quotes); unmodeled
+        streams keep dataset seqs byte-identically.
         """
         import heapq
 
         multi = len(self._symbols) > 1
+        modeled = bool(self._spread)
         if not multi:
-            stream = iter(handle.events(self._symbols[0], day))
+            stream = self._prep_symbol_stream(handle, self._symbols[0], day)
+            if not modeled:
+                for event in stream:
+                    yield self._symbols[0], event
+                return
+            seq = 0
+            for event in stream:
+                seq += 1
+                event["seq"] = seq
+                yield self._symbols[0], event
+            return
+        streams = [self._prep_symbol_stream(handle, sym, day)
+                   for sym in self._symbols]
+        seqs = [0] * len(streams)
+        heap: list[tuple] = []
+
+        def _push(idx: int, stream) -> None:
             while True:
                 try:
-                    event = next(stream)
+                    head = next(stream)
                 except StopIteration:
                     return
-                if event is None:
-                    yield self._symbols[0], None
-                else:
-                    yield self._symbols[0], event
-            return
-        streams = [iter(handle.events(sym, day)) for sym in self._symbols]
-        heap: list[tuple] = []
-        for idx, stream in enumerate(streams):
-            while True:
-                try:
-                    head = next(stream)
-                except StopIteration:
-                    break
-                if head is None:
-                    self._n_heartbeats += 1
-                    continue
+                if head is None:  # pragma: no cover (prepped streams
+                    continue  # strip Nones; single-raw never merges)
                 heapq.heappush(heap, (self._merge_key(head, idx), idx,
                                       head, stream))
-                break
+                return
+
+        for idx, stream in enumerate(streams):
+            _push(idx, stream)
         while heap:
             _, idx, event, stream = heapq.heappop(heap)
+            if modeled:
+                seqs[idx] += 1
+                event["seq"] = seqs[idx]
             yield self._symbols[idx], event
-            while True:
-                try:
-                    head = next(stream)
-                except StopIteration:
-                    break
-                if head is None:
-                    self._n_heartbeats += 1
-                    continue
-                heapq.heappush(heap, (self._merge_key(head, idx), idx,
-                                      head, stream))
-                break
+            _push(idx, stream)
+
+    def _resolve_spread(self) -> dict[str, float]:
+        """Per-symbol modeled spread; {} = unmodeled (default).
+
+        Bare --spread-bps resolves per symbol through the frozen
+        research profile (no hand-picked literal); an explicit value
+        overrides for every symbol.
+        """
+        from cryptobot.research.spread import (
+            SpreadProfile,
+            profile_spread_bps,
+        )
+
+        raw = getattr(self.args, "spread_bps", None)
+        if raw is None:
+            return {}
+        if raw == "PROFILE":
+            profile = SpreadProfile()
+            return {sym: float(profile_spread_bps(profile, sym))
+                    for sym in self._symbols}
+        bps = float(raw)
+        if bps <= 0:
+            raise ValueError("--spread-bps must be > 0")
+        return {sym: bps for sym in self._symbols}
 
     def _in_window(self, event: dict) -> bool:
         ts = int(event.get("exchange_ts_ms") or 0)
@@ -801,6 +857,8 @@ class BenchRunner:
         deadline = self._deadline(start_mono)
         self._symbols = self._resolve_symbols()
         self._start_ms, self._end_ms = self._resolve_window()
+        self._spread = self._resolve_spread()
+        self._spread_stats = {sym: {} for sym in self._symbols}
         days = [d.strip() for d in str(self.args.days).split(",") if d.strip()]
         if not days:
             raise ValueError("--days needs at least one YYYY-MM-DD")
@@ -825,6 +883,12 @@ class BenchRunner:
         if self._start_ms is not None or self._end_ms is not None:
             # Windowed only when bounded (v2 unwindowed identity matches).
             self._dataset_id["window"] = [self._start_ms, self._end_ms]
+        if self._spread:
+            from cryptobot.research.spread import PROFILE_ID
+
+            # Spread spec only when modeling (unmodeled identity matches).
+            self._dataset_id["spread"] = {
+                "profile": PROFILE_ID, "bps": dict(self._spread)}
         self._last_mark = {}
         self._first_event_ms = None
         commit_cursor: dict[str, Any] | None = None
@@ -1039,6 +1103,9 @@ class BenchRunner:
             "symbol": self._symbols[0] if len(self._symbols) == 1 else None,
             "symbols": list(self._symbols),
             "window_ms": [self._start_ms, self._end_ms],
+            "spread": {"bps": dict(self._spread),
+                       "windows": {sym: dict(stats) for sym, stats
+                                   in self._spread_stats.items()}},
             "days": days,
             "elapsed_s": round(elapsed, 3),
             "events": {"ingested": self._n_ingested,
@@ -1080,6 +1147,12 @@ def build_parser() -> argparse.ArgumentParser:
                         help="ingest events at/after this UTC ms (inclusive)")
     parser.add_argument("--end-ms", type=int, default=None,
                         help="ingest events before this UTC ms (exclusive)")
+    parser.add_argument("--spread-bps", nargs="?", default=None,
+                        const="PROFILE",
+                        help="model quotes via the frozen spread profile "
+                             "where BBO is absent (bare flag = frozen "
+                             "profile default per symbol; explicit value "
+                             "overrides; omit = unmodeled)")
     parser.add_argument("--days", required=True,
                         help="comma-separated YYYY-MM-DD UTC days")
     parser.add_argument("--wall-budget-s", type=float, required=True)
@@ -1119,6 +1192,17 @@ def main(argv: list[str] | None = None) -> int:
             and args.start_ms >= args.end_ms:
         print("--start-ms must be below --end-ms", file=sys.stderr)
         return 2
+    spread = getattr(args, "spread_bps", None)
+    if spread is not None and spread != "PROFILE":
+        try:
+            bps = float(spread)
+        except (TypeError, ValueError):
+            print("--spread-bps must be a number or bare (profile default)",
+                  file=sys.stderr)
+            return 2
+        if bps <= 0:
+            print("--spread-bps must be > 0", file=sys.stderr)
+            return 2
     runner = BenchRunner(args)
     try:
         rc, _ = runner.run()
