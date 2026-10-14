@@ -1,0 +1,84 @@
+{
+ "generated_utc": "2026-10-14T10:15:00+00:00",
+ "branch": "worker3/rev2-data",
+ "base": "rev2/integration@006fca9",
+ "provenance": "streamed from data/captures events.jsonl (read-only); sha256 over exact selected bytes incl newlines",
+ "slices": [
+  {
+   "slice_id": "cap2h-warmup-5m",
+   "run_id": "cap-2h",
+   "symbols": [
+    "BTCUSDT",
+    "ETHUSDT"
+   ],
+   "start": "2026-10-11T22:17:40+00:00",
+   "end": "2026-10-11T22:22:40+00:00",
+   "purpose": "warmup + first-5m eval window",
+   "events": 139341,
+   "sha256": "f5583cadf9d9784942eb556590b027884cd06ca343e09a5d279a08c0583fd160",
+   "first_exchange_ts_ms": 1791757061274,
+   "last_exchange_ts_ms": 1791757359977,
+   "first_seq": 1,
+   "last_seq": 139341,
+   "gap_rows": 0,
+   "extract": "python3 -c \"import json; [print(l, end='') for l in open('data/captures/cap-2h/events.jsonl') if (lambda r: 1791757060000 <= (r.get('exchange_ts_ms') or -1) < 1791757360000 and r.get('symbol') in ['BTCUSDT', 'ETHUSDT'])(json.loads(l))]\" | sha256sum  # expect f5583cadf9d97849..."
+  },
+  {
+   "slice_id": "cap2h-mid-5m",
+   "run_id": "cap-2h",
+   "symbols": [
+    "BTCUSDT",
+    "ETHUSDT"
+   ],
+   "start": "2026-10-11T23:00:00+00:00",
+   "end": "2026-10-11T23:05:00+00:00",
+   "purpose": "steady-state mid-capture window",
+   "events": 181063,
+   "sha256": "6fcaed4446de34eac740f8a58b2913fdca700658b3ffd8b34d39a7fb2ad17c9f",
+   "first_exchange_ts_ms": 1791759600003,
+   "last_exchange_ts_ms": 1791759899997,
+   "first_seq": 787793,
+   "last_seq": 968856,
+   "gap_rows": 0,
+   "extract": "python3 -c \"import json; [print(l, end='') for l in open('data/captures/cap-2h/events.jsonl') if (lambda r: 1791759600000 <= (r.get('exchange_ts_ms') or -1) < 1791759900000 and r.get('symbol') in ['BTCUSDT', 'ETHUSDT'])(json.loads(l))]\" | sha256sum  # expect 6fcaed4446de34ea..."
+  },
+  {
+   "slice_id": "cap30m-full-30m",
+   "run_id": "cap-30min",
+   "symbols": [
+    "BTCUSDT",
+    "ETHUSDT"
+   ],
+   "start": "2026-10-11T21:43:58+00:00",
+   "end": "2026-10-11T22:13:59+00:00",
+   "purpose": "full dev capture incl designed chaos gap",
+   "events": 1129445,
+   "sha256": "76c9137f00c2ce645e83514409b8019a0a9e5b243fc2be38789587db9e58792e",
+   "first_exchange_ts_ms": 1791755039610,
+   "last_exchange_ts_ms": 1791756838681,
+   "first_seq": 1,
+   "last_seq": 1129445,
+   "gap_rows": 1,
+   "extract": "python3 -c \"import json; [print(l, end='') for l in open('data/captures/cap-30min/events.jsonl') if (lambda r: 1791755038000 <= (r.get('exchange_ts_ms') or -1) < 1791756839000 and r.get('symbol') in ['BTCUSDT', 'ETHUSDT'])(json.loads(l))]\" | sha256sum  # expect 76c9137f00c2ce64..."
+  },
+  {
+   "slice_id": "agreement-full-30s",
+   "run_id": "agreement-30s",
+   "symbols": [
+    "BTCUSDT",
+    "ETHUSDT"
+   ],
+   "start": "2026-10-11T21:43:06+00:00",
+   "end": "2026-10-11T21:43:37+00:00",
+   "purpose": "tiny deterministic smoke slice (whole capture)",
+   "events": 13842,
+   "sha256": "7bd80da656344f0e28a584895356c61b1febb605cab0d1ece3ef9b2ab6a3a722",
+   "first_exchange_ts_ms": 1791754987646,
+   "last_exchange_ts_ms": 1791755016124,
+   "first_seq": 1,
+   "last_seq": 13842,
+   "gap_rows": 0,
+   "extract": "python3 -c \"import json; [print(l, end='') for l in open('data/captures/agreement-30s/events.jsonl') if (lambda r: 1791754986000 <= (r.get('exchange_ts_ms') or -1) < 1791755017000 and r.get('symbol') in ['BTCUSDT', 'ETHUSDT'])(json.loads(l))]\" | sha256sum  # expect 7bd80da656344f0e..."
+  }
+ ]
+}
