@@ -163,6 +163,41 @@ def _run_replay(args: argparse.Namespace) -> int:
     return 0
 
 
+def _ws_socket_factory_for(engine):
+    """Real private-stream socket factory over WsClient (stdlib only).
+
+    The factory takes the venue listen key and dials the engine's
+    user-stream URL. Read timeouts surface as None (idle); socket
+    death raises so the supervised reader heals via reconnect.
+    """
+    import json
+
+    from cryptobot.market_data.ws import WsClient, WsClosed
+
+    def _factory(listen_key: str):
+        url = engine.user_stream_url(listen_key)
+        client = WsClient.connect(url, timeout_s=10.0)
+
+        class _Sock:
+            def recv(self, timeout_s: float):
+                try:
+                    typ, payload = client.recv_message(timeout_s)
+                except WsClosed as exc:
+                    if str(exc).startswith("read timeout"):
+                        return None
+                    raise
+                if typ != "text":
+                    return None
+                return json.loads(payload.decode("utf-8"))
+
+            def close(self) -> None:
+                client.close()
+
+        return _Sock()
+
+    return _factory
+
+
 def _run_paper(args: argparse.Namespace) -> int:
     try:
         config = load_config(args.config)
@@ -219,6 +254,15 @@ def _run_paper(args: argparse.Namespace) -> int:
     _install_stop_handler(session)
     duration = _parse_cli_duration(args.duration) or config.duration_s
     print(f"run: {run_id} workdir={workdir} duration={duration}s")
+    # Private user stream (Checkpoint-B): supervised reader + gap->halt
+    # on live engines only; paper replay/sim engines have no private
+    # stream (attach refuses them loudly).
+    user_stream = None
+    if config.engine_kind == "live":
+        from cryptobot.adapters.user_stream import attach_user_stream
+        user_stream = attach_user_stream(
+            session, engine, _ws_socket_factory_for(engine))
+        print("private user stream: attached (halt-until-first-heal)")
     try:
         stream_host = getattr(engine, "stream_host", None)
         events = _bridge.live_events(
@@ -228,6 +272,8 @@ def _run_paper(args: argparse.Namespace) -> int:
         report = session.run_live(events, duration_s=duration,
                                   resume=bool(args.resume))
     finally:
+        if user_stream is not None:
+            user_stream.close()
         store.close()
         engine.close()
     print(f"run {run_id} done: equity {report['opening_equity']:.2f} -> "

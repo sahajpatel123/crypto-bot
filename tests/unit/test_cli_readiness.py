@@ -257,6 +257,62 @@ def test_reconcile_flat_pass(monkeypatch, capsys):
     assert "reconcile: FLAT" in out
 
 
+class _StubWsClient:
+    dialed = None
+
+    def __init__(self, script):
+        self._script = list(script)
+        self.closed = False
+
+    @classmethod
+    def connect(cls, url, timeout_s=10.0):
+        cls.dialed = (url, timeout_s)
+        return cls(cls.script)
+
+    def recv_message(self, timeout_s):
+        from cryptobot.market_data.ws import WsClosed
+        kind, payload = self._script.pop(0)
+        if kind == "timeout":
+            raise WsClosed(f"read timeout after {timeout_s} s with no message")
+        if kind == "dead":
+            raise WsClosed("socket error while waiting: EOF")
+        return kind, payload
+
+    def close(self, code=1000, reason=""):
+        self.closed = True
+
+
+class _StubLiveForStream:
+    def user_stream_url(self, key):
+        return f"wss://demo-fstream.binance.com/ws/{key}"
+
+
+def test_ws_socket_factory_dials_key_url(monkeypatch):
+    import cryptobot.market_data.ws as ws_mod
+    _StubWsClient.script = [("text", b'{"e":"x"}')]
+    monkeypatch.setattr(ws_mod, "WsClient", _StubWsClient)
+    factory = cli._ws_socket_factory_for(_StubLiveForStream())
+    sock = factory("KEY123")
+    assert _StubWsClient.dialed[0] == \
+        "wss://demo-fstream.binance.com/ws/KEY123"
+    assert sock.recv(1.0) == {"e": "x"}
+
+
+def test_ws_socket_timeout_idle_binary_ignored_death_raises(monkeypatch):
+    import cryptobot.market_data.ws as ws_mod
+    from cryptobot.market_data.ws import WsClosed
+    _StubWsClient.script = [("timeout", None), ("binary", b"\x00"),
+                            ("dead", None)]
+    monkeypatch.setattr(ws_mod, "WsClient", _StubWsClient)
+    factory = cli._ws_socket_factory_for(_StubLiveForStream())
+    sock = factory("K")
+    assert sock.recv(1.0) is None
+    assert sock.recv(1.0) is None
+    import pytest
+    with pytest.raises(WsClosed):
+        sock.recv(1.0)
+
+
 def test_preflight_no_creds_blocked(monkeypatch, tmp_path, capsys):
     _scrub(monkeypatch, "CRYPTOBOT_API_KEY", "CRYPTOBOT_API_SECRET")
     rc = cli.cmd_preflight(argparse.Namespace(
