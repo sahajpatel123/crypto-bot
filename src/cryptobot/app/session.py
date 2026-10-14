@@ -242,6 +242,13 @@ class Session:
         self._status_cache: dict[str, Any] = {}
         # Fail-closed booking blocks (surfaced via _admission_hold).
         self._booking_blocked: str | None = None
+        # Reentrancy guards (contract push delivery): an adapter may
+        # emit synchronously inside a Session-initiated call (e.g. a
+        # sizing lookup adopting a fill inside attach_protection).
+        # Nested order-issuing passes return early; the outer frame
+        # always re-reads fresh truth before acting.
+        self._in_ensure = False
+        self._in_flatten = False
         self._known_reservations: set[str] = set()
         self._cmd_seq = 0
         # Bind the ONE booking handler (contract v1 §1/§2). Adapters
@@ -1811,6 +1818,16 @@ class Session:
         latched emergency close converges via idempotent flatten.
         Never falsely protected.
         """
+        if self._in_ensure:
+            return  # push reentrancy: the outer pass verifies fresh.
+        self._in_ensure = True
+        try:
+            self._ensure_protection_inner(pos)
+        finally:
+            self._in_ensure = False
+
+    def _ensure_protection_inner(self, pos: dict[str, Any]) -> None:
+        """Attach + verify body (see _ensure_protection)."""
         statuses = self._tracked_statuses_for(pos)
         self._mark_seen(pos, statuses)
         self._settle_leg_terminals(pos, statuses)
@@ -2068,6 +2085,16 @@ class Session:
         """
         if self.config.mode == "prod" and not self.config.allow_live_submission:
             raise ValueError("config:prod-submission-disabled")
+        if self._in_flatten:
+            return  # push reentrancy: the outer pass already converges.
+        self._in_flatten = True
+        try:
+            self._flatten_inner(reason)
+        finally:
+            self._in_flatten = False
+
+    def _flatten_inner(self, reason: str) -> None:
+        """Tracked-close body (see _flatten)."""
         # No drain here: callers drain around flatten (_update_position runs
         # post-drain; others drain after), and draining would recurse via
         # time-exit. Retries always observe drained state. Statuses below

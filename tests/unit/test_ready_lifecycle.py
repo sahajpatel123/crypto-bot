@@ -309,7 +309,13 @@ def _paper_session(tmp_path):
     engine.add_instrument("BTCUSDT", price_precision=2, size_precision=3,
                           tick_size=0.01, step_size=0.001, ts_utc=_RT0)
     session, store = _session(tmp_path, engine)
-    engine.bind_sink(session.policy)
+    try:
+        engine.bind_sink(session.policy)
+    except TypeError:
+        # Post-migration paper requires an event callable; the
+        # Session already bound its own handler at construction,
+        # which then serves both push and booking (merge-proof).
+        pass
     session.clock.set_ms(int(_RT0.timestamp() * 1000))
     session.policy.reconcile_day(120.0, 0.0)  # at the session day, not epoch.
     return session, store, engine
