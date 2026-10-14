@@ -1,9 +1,10 @@
 # Crypto bot — integrated release report (the single complete record)
 
-Status: RELEASE CANDIDATE. Starting SHA `48029fb` (`release-start-48029fb`);
-this report written against main `eb63acc` (tag `rel-rc-1` on W5-RC).
+Status: RELEASE CANDIDATE (review f8f6a76 follow-through integrated).
+Starting SHA `48029fb` (`release-start-48029fb`); reviewed `f8f6a76`;
+this report written against the rev2 integration tip (tag on acceptance).
 Runtime: Python 3.14.6, NautilusTrader 1.231.0 (locked `uv.lock`).
-Full suite **1285 passed + 1 skipped** (rc=0, 257 s, budgeted).
+Full suite **1318 passed + 1 skipped** (rc=0, 278 s, budgeted).
 Production submission: DISABLED. No live orders were placed at any point.
 
 This is the only release report. It records the checkpoints, the exact
@@ -30,6 +31,13 @@ bound-sink push, namespaced execution IDs, timestamped `AccountSnapshot`.
   `_in_ensure`/`_in_flatten`; membership-guarded terminal prune).
 - Restart at exposure, crash boundaries, stream-gap halt, foreign-exposure
   untouched, unresolved-restart non-success — all proven.
+- Review-f8f6a76 threading repair: socket-only pump + bounded owner
+  handoff (`drain_owner` ticked by `run_live`); fills recoverable until
+  durable-booking ack; no premature dedup; reason-keyed halts with
+  independent heals. Adversarial acceptance 13/13 (default thread +
+  real store + owner loop), incl. duplicates, booking failure,
+  disconnect/recovery, restart-with-exposure. Linux deadline case:
+  unreproduced across 3 envs — fix REFUSED, tripwire test committed.
 
 ## 2. Checkpoint B — complete application commands: DONE
 
@@ -46,6 +54,7 @@ python -m cryptobot.cli`, repo root). Observed exit codes:
 | `run --mode paper --config configs/paper.toml` | live paper (Nautilus sim) |
 | `run --mode paper --config configs/demo.toml` | 2 without demo creds; live demo with them (private stream attached) |
 | `run --mode prod --config configs/prod.toml` | 3 BLOCKED, no creds / 2 REFUSED at submission switch (full driver verified) |
+| `demo_drill.py --dir <d> full` (no keys) | 2 BLOCKED all phases, zero network (was dishonest exit-0 PASS — fixed) |
 | `status --storage runs --run-id <id>` | 0 state/counts/heartbeat |
 | `stop --storage runs --run-id <id> [--flatten]` | 0 graceful/flatten requested |
 | `report --run-dir runs/<id> --out <dir>` | 0 CSVs + report.html |
@@ -61,18 +70,25 @@ owner authorization to enable, never config).
 
 ## 3. Checkpoint C — economic report: DONE (no strategy qualifies)
 
-### 3a. H-R2 rejected-candidate counterfactuals — REJECTED
+### 3a. H-R2 rejected-candidate counterfactuals — REJECTED (v2, causal)
 
-61 exported candidates (16 S1, 45 S3), all accounted, 0 unscorable.
-60 filled/partial, 1 unmarketable. Exits 50 stop / 4 target / 6 time.
-Exit-net mean **−13.04 bps, 0/60 wins**. Markouts (n=60): 30 s −11.67,
-60 s −13.81, 120 s −8.00, 300 s −12.64. Portfolio overlay (one-position
-+ 300 s cooldown): 5 admitted, 56 skipped, −63.49 bps. Costs 5 bps/leg
-labeled; spread/slippage zero-added (in touch/arrival); funding excluded
-(≤0.01 bp bound). Raw rows: `outputs/hr2/diagnostics.json`;
-`portfolio.json`, `extract_manifest.json` alongside (windows regenerable,
-excluded from git). Verdict: no executable edge; the cost floor correctly
-rejects. Counterfactual diagnostics, never P&L.
+v1 (60/60 fills before decision) is archived byte-exact under
+`outputs/hr2/superseded/` and never citable. v2 rules: arrival = first
+book ≥ decision+100 ms; quote ≤1000 ms else unscorable; exits at
+executable exit-side touch (trigger ≠ fill); markouts need ≤5 s marks +
+book/trade coverage else unscorable; funding settles iff a sourced
+boundary falls in the hold, else 0 with provenance.
+
+61/61 accounted. 60 filled, 1 unmarketable. Exits 50 stop / 4 target /
+6 time. Exit-net mean **−13.42 bps, 0/60 wins**. Markouts: 30 s −11.95
+(0/60 positive), 60 s −14.12 (3/60), 120 s −8.33 (4/60), 300 s −12.76
+(0/58); 2/244 legs unscorable on coverage. Funding zero
+(no-settlement-boundary-in-hold) on all 60. Portfolio overlay: 6
+admitted on decision-ts ordering, mean −15.02 bps. Machine audit
+(`hr2_diagnostic.py audit`): CAUSAL, 0 violations. Raw rows:
+`outputs/hr2/diagnostics.json` (+ `portfolio.json`,
+`extract_manifest.json`). Verdict: no executable edge; the cost floor
+correctly rejects. Counterfactual diagnostics, never P&L.
 
 ### 3b. Bounded round REL-R1 — REJECTED (advance NONE)
 
@@ -108,6 +124,18 @@ either way). S3 **UNQUALIFIED** (H-R2 complete, 0 wins). S4/S5
 expectancy / profit factor / drawdown undefined on zero trades —
 reported as such, never imputed. Turnover 0, fees 0, funding 0.
 
+### 3c-ii. Finite investigation R6 — NO QUALIFYING STRATEGY (0 cells)
+
+Signed H-R6 (manager + W4, before any round cells): "No available S1/S3
+mechanism variant is economically motivated on development data under
+corrected causal execution." Rejection rule: reject only on ≥5 closed
+episodes with mean net > 0 on dev AND replicated positive on
+validation. Measured reasons: −13.42 bps counterfactual mean, markouts
+negative at all horizons, all 4 target exits net-negative, 50/60 stop
+exits, median cost gap −21.13 bps. H-R6 STANDS: round closed with no
+candidate per §6 — no new configs, no loosened costs, no consumed
+holdout. Old registry identities untouched.
+
 ### 3d. Qualification screen — DATA BLOCKED (untouched leg)
 
 Screen preserved (≥100 OOS positions / ≥10 days + positive net adverse).
@@ -116,9 +144,14 @@ knowledge; 30–90 s captures are shorter than warmup+hold; bench30d has
 prior use and is quote-less; no funding channel. Suitability:
 `reports/suitability/table.md` (5 captures, 5/5 SCORABLE with warnings).
 Unblock needs: ≥10 days tick data nobody used (book/depth + trades +
-marks ≥1 s, funding, event/receipt time, seq IDs). Binance vision has
-trades+klines only — full 1 s book history is not publicly available
-post-hoc; a new ≥10-day forward capture is the exact dependency.
+marks ≥1 s, funding, event/receipt time, seq IDs). Feasibility audit
+(`reports/suitability/rev2_feasibility.md`): Binance Vision free data
+covers trades/funding/mark-1m/klines (audited, CC BY-NC-SA research
+only); only book/depth needs a vendor (Tardis samples audited, $0
+spent) or fresh self-capture ($0, recommended). One concrete purchase
+choice for the owner if self-capture is declined: Tardis Solo
+perpetuals 1-month slice ≈ $700 (exact coverage/TOS to confirm at
+purchase; license excludes redistribution/sublicensing).
 
 ## 4. Checkpoint D — venue demonstration: BLOCKED (external)
 
