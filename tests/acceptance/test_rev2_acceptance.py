@@ -622,12 +622,10 @@ def test_rev2_demo_flat_requires_full_agreement(tmp_path, monkeypatch):
     monkeypatch.setenv("BINANCE_DEMO_KEY", "k")
     monkeypatch.setenv("BINANCE_DEMO_SECRET", "s")
     drill = demo_drill.Drill(str(tmp_path / "drill"), "BTCUSDT", None)
-    # Current read order (opens first); the account read carries the
-    # foreign exposure the fixed reconcile must consult. Re-script if
-    # the repair reorders reads (assertions stay).
+    # Session-driven read order: account snapshot first, then the
+    # open-order rails. The account read carries the foreign exposure
+    # the fixed reconcile must consult.
     script = [
-        ("GET", "/fapi/v1/openOrders", None, ("ok", [])),
-        ("GET", "/fapi/v1/openAlgoOrders", None, ("ok", [])),
         ("GET", "/fapi/v2/account", None, ("ok", {
             "totalWalletBalance": "120.0", "availableBalance": "100.0",
             "totalMarginBalance": "115.0",
@@ -636,6 +634,8 @@ def test_rev2_demo_flat_requires_full_agreement(tmp_path, monkeypatch):
                  "entryPrice": "3000.0", "markPrice": "3010.0"},
                 {"symbol": "BTCUSDT", "positionAmt": "0.0",
                  "entryPrice": "0.0", "markPrice": "100.0"}]})),
+        ("GET", "/fapi/v1/openOrders", None, ("ok", [])),
+        ("GET", "/fapi/v1/openAlgoOrders", None, ("ok", [])),
     ]
     transport = venues.ReplayTransport(script)
     real_engine = drill.engine
@@ -644,6 +644,15 @@ def test_rev2_demo_flat_requires_full_agreement(tmp_path, monkeypatch):
     assert rc != 0, (
         "reconcile PASSED with a foreign venue exposure (no "
         "positions/ledger agreement check)")
+    recs = [json.loads(line) for line in
+            (tmp_path / "drill" / "drill_evidence.jsonl").read_text(
+            ).splitlines()]
+    venue = [r for r in recs
+             if r["phase"] == "reconcile/venue-positions"]
+    assert venue and venue[0]["verdict"] == "FAIL", (
+        f"venue-positions leg did not FAIL on the exposure: {venue}")
+    assert "ETHUSDT" in venue[0]["detail"], (
+        f"FAIL detail does not name the exposure: {venue[0]}")
 
 
 def _crafted_row(ev_ms, evaluated_ms):
