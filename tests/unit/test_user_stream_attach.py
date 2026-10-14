@@ -202,8 +202,12 @@ def test_gap_halts_entries_while_exits_work(tmp_path):
         clock.advance(61.0)  # outlast the reconnect backoff.
         assert att.poll_once() == "healed"
         assert not att.halted
+        # R3 rationale: healed checkpoints now carry the canonical
+        # released reason plus the phase detail (same evidence, more
+        # precise: which reason cleared and at which step).
         assert ("stream-t", "user-stream-healed",
-                {"reason": "user-stream-healed"}) in seen
+                {"reason": "user-stream-gap",
+                 "phase": "healed"}) in seen
         transport.assert_empty()
     finally:
         att.close()
@@ -263,9 +267,13 @@ def test_close_stops_pump_thread(tmp_path):
         start_thread=True, poll_timeout_s=0.01, idle_sleep_s=0.01)
     deadline = time.monotonic() + 5.0
     while att.halted and time.monotonic() < deadline:
+        # R1 rationale: the pump owns the socket ONLY and can never
+        # heal alone (healing touches the engine); the owner thread
+        # must drain. The old "pump heals by itself" encoded the
+        # cross-thread defect this release closes.
+        att.drain_owner()
         time.sleep(0.01)
-    assert not att.halted  # the pump healed on its own.
-    assert att.reader.connected
+    assert not att.halted  # healed via owner drain.
     thread = att._thread
     assert thread is not None and thread.is_alive()
     att.close()

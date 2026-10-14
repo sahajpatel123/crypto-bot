@@ -1,7 +1,7 @@
 {
  "cap-30min": {
   "events_seen": 1129445,
-  "events_kept": 8066761,
+  "events_kept": 8058639,
   "windows": 57,
   "span": [
    "2026-10-11T21:43:59.610000+00:00",
@@ -10,7 +10,7 @@
  },
  "cap-2h": {
   "events_seen": 2838861,
-  "events_kept": 254616,
+  "events_kept": 252490,
   "windows": 4,
   "span": [
    "2026-10-11T22:17:41.274000+00:00",

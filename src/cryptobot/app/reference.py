@@ -104,6 +104,7 @@ class ReferenceEngine:
         self._marks: dict[str, float] = {}
         self._pre2real: dict[str, str] = {}
         self._fills_queued: set[str] = set()
+        self._exit_only_reasons: set[str] = set()
         # Contract v1 (W1): bound Session handler (push delivery),
         # per-order observed versions, and last observed (state, filled)
         # for version bumps.
@@ -398,8 +399,25 @@ class ReferenceEngine:
                 "fee": abs(qty) * price * self._taker_bps / 10_000.0,
                 "ts_utc": detail.get("ts_utc", "")})
 
+    def exit_only_reasons(self) -> tuple[str, ...]:
+        """Held halt reasons, sorted (R3 halt independence)."""
+        return tuple(sorted(self._exit_only_reasons))
+
     def set_exit_only(self, halted: bool, reason: str = "") -> None:
-        self.manager.set_halted(halted, reason)
+        """Reason-keyed halt (R3): lifting clears ONLY that reason.
+
+        The OrderManager keeps its persisted bool semantics; this
+        layer owns the reason set and mirrors the level down.
+        """
+        if halted:
+            self._exit_only_reasons.add(reason or "unspecified")
+        elif reason:
+            self._exit_only_reasons.discard(reason)
+        else:
+            self._exit_only_reasons.clear()
+        self.manager.set_halted(bool(self._exit_only_reasons),
+                                reason or ",".join(
+                                    sorted(self._exit_only_reasons)))
 
     def close(self) -> None:
         self._pending.clear()
