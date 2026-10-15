@@ -192,3 +192,13 @@
   rundir + coverage_X1-R1-S1_validation.json). Filed jobs.sh kept byte-identical;
   only its `cd /tmp/cryto-bot-w4-x1` prefix is substituted with the fresh
   worktree path at invocation; all 48 argv verbatim otherwise (disclosed).
+## Job 21: X1-R1-CASH dev bridged (rc=0), chain pruned
+- j1: CHILD_EXIT rc124, 900.3s, 1,978,294 ingested, replayed 0, cursor 09-13.
+## Jobs 22-24: X1-R1-CASH validation bridged (rc=0), chain pruned
+- j1: 3,425,509 ingested, replayed 0, cursor 09-28; j2: 3,373,077, replayed
+  1509, cursor 09-29; j3: 1,377,659, replayed 1077, cursor 09-30.
+  Total 8,176,245. All INCOMPLETE_BUDGET. stop_cursor == j3 cursor exact.
+- Bridge: dev+val rc=0; ingested exact sums; skipped dev 3634217 / val 615343
+  (pre-window); manifest_sha 9008ba92; intents 0/0 (CASH no-trade control);
+  exposed_at_cap false; fills 0; shapes == prior cells. Realistic tag now
+  12/12 cells complete (24/48 jobs). (e) compliance: mechanics/coverage only.
