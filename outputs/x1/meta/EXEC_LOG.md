@@ -86,3 +86,5 @@
 ## Jobs 14-16: X1-R1-F validation bridged (rc=0), chain pruned
 - j1: 3,489,645 ingested, replayed 0; j2: 2,833,211, replayed 1645;
   j3: 1,142,104, replayed 1211, cursor 09-30. Total 7.46M. All INCOMPLETE.
+## Job 17: X1-R1-S1 dev bridged (rc=0), chain pruned
+- j1: INCOMPLETE_BUDGET, 900s, 1,667,316 ingested, replayed 0, cursor 09-13.
