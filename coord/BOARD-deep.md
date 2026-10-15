@@ -101,6 +101,10 @@ Production submission DISABLED. No credentials requested at this stage.
   session gone, job-19 process dead, no orphans running. New W4 briefed:
   fresh worktree at f245331, cache copy + sha-verify, relaunch job-19
   verbatim (disclosed mechanical rerun), then 20–48 as filed.
+- W4 jobs-19/20 ruling (manager): new W4 found 19+20 already ran terminal
+  pre-swap; independently corroborated (receipts, cursors, sha, dense cmds,
+  authorization timing). ACCEPTED as complete; bridge audit must clear the
+  replayed_tail=0 point; continue at 21. True state 20/48 run, 17 committed.
 
 ## Unresolved / risks
 - Linux reviewer-side proof needs a live Linux run (this host macOS); code-inspected only.
