@@ -97,6 +97,10 @@ Production submission DISABLED. No credentials requested at this stage.
 - W4 fix #3 VERIFIED (manager): diff in-scope; 15 failures = stale tests +
   strict wrapper on W4 branch (pass on flag-fixed tree); regression tests
   fail pre-fix (observed). Jobs 20–48 CONFIRMED.
+- W4 SESSION SWAP (owner, Oct-15): whisper-redshift → granite-cetus. Old
+  session gone, job-19 process dead, no orphans running. New W4 briefed:
+  fresh worktree at f245331, cache copy + sha-verify, relaunch job-19
+  verbatim (disclosed mechanical rerun), then 20–48 as filed.
 
 ## Unresolved / risks
 - Linux reviewer-side proof needs a live Linux run (this host macOS); code-inspected only.
