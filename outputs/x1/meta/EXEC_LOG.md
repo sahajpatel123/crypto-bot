@@ -136,3 +136,59 @@
   caused by the fix, rework before job 20.
 - Evidence committed: outputs/x1/meta/fix3-a-evidence.md (IDs + both outputs
   + verbatim commands). With/without outputs identical modulo wall time.
+## Jobs 18-20: X1-R1-S1 validation ran to budget (old session, found on disk)
+- j1 (job 18): INCOMPLETE_BUDGET wall_budget, 1499.9s, 3,286,026 ingested,
+  replayed 0, commits 1646, cursor 09-28 (BTC 940324/ETH 848692). bb:
+  INCOMPLETE_BUDGET child -15 (wrapper-deadline race, same shape as prior
+  1500-wall j1s, enforcement=verified).
+- j2 (job 19, post-fix rerun): INCOMPLETE_BUDGET wall_budget, 1499.9s,
+  3,621,748 ingested, replayed_tail 0, commits 1811, cursor 09-29
+  (BTC 1146804/ETH 1287596). bb: CHILD_EXIT rc 124. No crash: fix #3 held.
+- j3 (job 20): INCOMPLETE_BUDGET wall_budget, 600.0s, 1,352,208 ingested,
+  replayed_tail 1748, commits 677, cursor 09-30 (BTC 658829/ETH 555788).
+  bb: CHILD_EXIT rc 124. stop_cursor.json matches j3 report cursor exactly.
+- Total 8.26M ingested. All INCOMPLETE (caps, as ruled). Launch times inside
+  authorizations: j2 ~16:31 IST under rerun-only ruling, j3 ~16:56 IST under
+  16:38 confirm. Run-id/argv/spread/profile match filed JOBs 18-20 verbatim.
+## Session swap + ruling (a): ACCEPT 19+20 complete (granite-cetus, Oct-15)
+- Manager handoff premise ("job-19 rerun dead, no terminal output") was stale:
+  j2+j3 terminal receipts + reports already on old disk. New-W4 verification
+  (booked.* redacted throughout, never viewed): receipts terminal, cursors
+  monotonic 09-28->09-29->09-30, manifest_sha 9008ba92, store 5 cmds dense
+  000000-000004 zero dups, bb argv == filed. Count corrected: 20/48 run
+  (17 committed + S1-val cell 18-20 on disk), not 18/48.
+- Manager ruling (a): ACCEPT 19+20 as evidenced (independently corroborated
+  on old disk); verbatim --resume relaunch would run UNFILED coverage past
+  j3's cursor. Conditions: (1) sha-verified chain copy, (2) bridge + explicit
+  no-gap clearance of j2 replayed_tail=0, (3) this log record, (4) job 21 next.
+- (1) Chain copied old->fresh worktree (/tmp/cryto-bot-w4-x1-granite, detached
+  f245331; old kept inspectable): all 12 files sha256 MATCH both sides:
+  bench_checkpoint a9c04b48f00ae94b, stop_cursor a4e66fb874da5540, store.db
+  d691889622ed8f86, engine_journal 1e15947f67ec066c, equity 58411a6e9dc295b1,
+  gap_windows 062803b7b0258fcd, rejections 8798e9a4d88d6be5, risk.jsonl
+  052be197e6338032, risk_state 7fdcabbfd99069a1, reports j1 ab31cd4a0395cdcf,
+  j2 6e7f82aca1db831d, j3 ee4f12a2bbdbeeb2 (prefix16; full in shell history).
+  Cache likewise: 506/506 sha match frozen derived_sha256, manifest identical.
+- (2) No-gap clearance (store bench-resume commit records, mechanics only):
+  j1 commit frontier 09-28 (940313/848677), 11/15 behind j1 report (tiny tail,
+  replayed by crashed j2 with zero submits); crashed j2 committed forward to
+  09-28 (1041020/939970) then died ON a commit boundary (zero uncommitted
+  tail); rerun j2 resumed exactly there -> replayed_tail=0 CORRECT, preserved
+  (not rolled back) committed progress; j3 resumed 09-29 (1145990/1286662),
+  exactly 814+934=1748 behind j2 report = replayed_tail 1748 EXACT. Every
+  resume at-or-behind prior frontier with exact tail replay: NO GAP, no
+  double-commit. Crashed-run commits valid (fix touches resume-restore only;
+  crashed run added zero command rows; _cmd_seq reseeded from count=2).
+- (2) Bridge rc=0: run-id unity, ckpt<->live-TOML fingerprint e5ca13e60ed20dcb,
+  ckpt-behind-report cursor, unique exec ids all pass. Coverage audit:
+  ingested_total 8259982 (exact 3-report sum), skipped 615343 (j1 pre-window),
+  INCOMPLETE_BUDGET, exposed_at_cap false, fills 0, intents 6199 (report ==
+  store == ckpt triple match), manifest_sha 9008ba92. Shapes == prior cells.
+  (e) compliance: viewed mechanics/counts/identity/coverage only; no booked
+  nets, fills prices, equity values, or selection inputs viewed.
+## Jobs 18-20: X1-R1-S1 validation bridged (rc=0), chain pruned
+- Cell manifest outputs/x1/meta/realistic_X1-R1-S1_validation.json (mechanical
+  pattern copy, pre-outcome). Bridge assembled per prior layout (comparison +
+  rundir + coverage_X1-R1-S1_validation.json). Filed jobs.sh kept byte-identical;
+  only its `cd /tmp/cryto-bot-w4-x1` prefix is substituted with the fresh
+  worktree path at invocation; all 48 argv verbatim otherwise (disclosed).
