@@ -84,6 +84,9 @@ Production submission DISABLED. No credentials requested at this stage.
   disclosed in W4's stopped.json record.
   Resume acked with one disclosed mechanical redo (dev j1 rerun, journals
   pruned pre-fix-bridge, MATCH-verified vs backup — allowed by freeze).
+- W4 /tmp wipe (~11h stall): worktree + job-10 partial chain lost; committed
+  evidence intact through 8024d13 (9/48 jobs). Recovery in progress (cache
+  copy + sha-verify, job-10 disclosed rerun). Filing ETA ~Oct-16 00:00 UTC.
 
 ## Unresolved / risks
 - Linux reviewer-side proof needs a live Linux run (this host macOS); code-inspected only.
