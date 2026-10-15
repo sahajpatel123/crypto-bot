@@ -88,3 +88,51 @@
   j3: 1,142,104, replayed 1211, cursor 09-30. Total 7.46M. All INCOMPLETE.
 ## Job 17: X1-R1-S1 dev bridged (rc=0), chain pruned
 - j1: INCOMPLETE_BUDGET, 900s, 1,667,316 ingested, replayed 0, cursor 09-13.
+## Job 19 FAILED: duplicate command id on resume (root-caused, HELD for ruling)
+- Symptom: j2 of X1-R1-S1 val crashed 86s in (190K events):
+  "bench failed: duplicate command id 'x1-realistic-X1-R1-S1_validation:cmd:000000'".
+  No j2 report; chain state intact at j1's last commit.
+- Root cause (vehicle bug, latent in ALL bench resumes): Session._cmd_seq
+  restarts at 0 on bench resume (bench _restore_* never seeds it; the only
+  seeding lives in Session._rebuild_booking_state which bench never calls),
+  and store.commands is NOT in _restore_store's rollback list. First command
+  emitted after any resume regenerates cmd:000000 -> IntegrityError -> crash.
+  Surfaced only now because S1 is the first strategy to emit a command
+  (j1 store: 2 submit rows, both failed; all X1 chains: zero commands, plus
+  CASH unknown). All 8 prior resumes passed only because those chains never
+  emit commands (counter value irrelevant) - proven by fills=0 + clean runs.
+- j1's 2 submits are COMMITTED (not tail): crash at 190K events >> max tail
+  (~2-4K: 1646 commits over 3.29M events); tail replay emitted zero submits.
+  Crashed j2 added NO command rows (died on first) and its partial appends
+  roll back to j1's commit on rerun. Chain fully recoverable with fix.
+- Proposed fix (vehicle-only, needs manager authorization): seed
+  session._cmd_seq = store.command_count(run_id) in bench _restore after
+  store rollback + regression test (resume-after-command continues dense).
+  Completed cells structurally unaffected (evidence frozen in git); fix only
+  affects future resumes. HOLDING jobs 19-48 until ruled.
+## Fix #3 validation: 15 suite failures PROVEN pre-existing (HOLD for (a) ruling)
+- Full suite: 1343 passed, 15 failed, 1 skipped. All 15 are strict-mode
+  run_budget/process-containment tests (12 nested-deadline adversarial,
+  2 acceptance, 1 corr-review). Zero failures in bench/store/session/
+  strategy/bridge tests; both new regression tests fail pre-fix, pass fixed.
+- Proof of pre-existing: (1) identical 15 fail WITH and WITHOUT fix #3
+  (stash control); (2) run_budget.py byte-identical across branches;
+  (3) my branch's copies of those tests invoke run_budget WITHOUT
+  --allow-best-effort while mainline (commit 18bd4ea, enforce-or-refuse
+  preflight) updated them to pass --allow-best-effort: my branch predates
+  that update, so strict is REFUSED (125) on darwin instead of running (124).
+- Round impact: NONE. All 48 filed jobs carry --allow-best-effort (macOS
+  rule); every completed job shows enforcement=verified. The 15 test a
+  strict path the round never uses here.
+- (e) compliance: viewed only store mechanics (cmd ids/kinds/statuses/
+  counts), vehicle code, and test results during diagnosis+fix. No booked
+  nets, fills prices, or selection inputs viewed.
+- Requested: accept (a) as no-new-failures, or authorize syncing the 15
+  stale tests from 18bd4ea. HOLDING fix commit + job-19 rerun until ruled.
+## Condition-(a) ruling: commit fix, rerun ONLY job 19, hold 20-48
+- Manager: push fix + regression test as separate commit NOW with with/without
+  comparison evidence alongside; run only job-19 verbatim rerun during
+  parallel verification; hold jobs 20-48 for confirm. If any of the 15 is
+  caused by the fix, rework before job 20.
+- Evidence committed: outputs/x1/meta/fix3-a-evidence.md (IDs + both outputs
+  + verbatim commands). With/without outputs identical modulo wall time.

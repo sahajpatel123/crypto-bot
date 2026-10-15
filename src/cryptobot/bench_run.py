@@ -498,9 +498,11 @@ class BenchRunner:
     def _snapshot_store(self, session: Session) -> dict[str, int]:
         cursors = {}
         for table in ("intents", "execution_events", "risk_transitions",
-                      "checkpoints"):
+                      "checkpoints", "commands"):
+            # commands has a TEXT PK (no integer id): rowid orders it.
+            col = "rowid" if table == "commands" else "id"
             row = session.store._db.execute(
-                f"SELECT COALESCE(MAX(id), 0) FROM {table}").fetchone()
+                f"SELECT COALESCE(MAX({col}), 0) FROM {table}").fetchone()
             cursors[table] = int(row[0])
         return cursors
 
@@ -687,12 +689,15 @@ class BenchRunner:
         try:
             for table, max_id in commit.get("store_cursors", {}).items():
                 if table not in ("intents", "execution_events",
-                                 "risk_transitions", "checkpoints"):
+                                 "risk_transitions", "checkpoints",
+                                 "commands"):
                     raise ValueError(f"unexpected store table {table!r}")
-                db.execute(f"DELETE FROM {table} WHERE id > ?",
+                col = "rowid" if table == "commands" else "id"
+                db.execute(f"DELETE FROM {table} WHERE {col} > ?",
                            (int(max_id),))
                 # Reuse ids on replay: without this the AUTOINCREMENT
                 # sequence keeps climbing and resumed stores diverge.
+                # (No sqlite_sequence row exists for commands; no-op there.)
                 db.execute("UPDATE sqlite_sequence SET seq = ? WHERE name = ?",
                            (int(max_id), table))
             # _set_state reads `old` from the run row: rewind it so replayed
@@ -705,6 +710,10 @@ class BenchRunner:
         except Exception:
             db.rollback()
             raise
+        # Continue the dense command sequence after rollback (mirrors
+        # Session._rebuild_booking_state): without this the first
+        # post-resume command regenerates cmd:000000 and collides.
+        session._cmd_seq = session.store.command_count(session.run_id)
 
     def _restore_run_files(self, commit: dict[str, Any]) -> None:
         """Truncate run files to the commit (no dupes on tail replay)."""
