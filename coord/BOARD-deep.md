@@ -87,6 +87,10 @@ Production submission DISABLED. No credentials requested at this stage.
 - W4 /tmp wipe (~11h stall): worktree + job-10 partial chain lost; committed
   evidence intact through 8024d13 (9/48 jobs). Recovery in progress (cache
   copy + sha-verify, job-10 disclosed rerun). Filing ETA ~Oct-16 00:00 UTC.
+- W4 vehicle authorization #3 (manager): bench _restore must reseed
+  _cmd_seq + roll back commands table (job 19 duplicate cmd:000000;
+  both halves verified in code). Regression-tested, separate commit,
+  verbatim job-19 rerun disclosed. 18/48 jobs done through 71b369f.
 
 ## Unresolved / risks
 - Linux reviewer-side proof needs a live Linux run (this host macOS); code-inspected only.
