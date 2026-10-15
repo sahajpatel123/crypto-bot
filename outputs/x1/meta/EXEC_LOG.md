@@ -68,3 +68,16 @@
   j3: 1,357,874, replayed 1842, cursor 09-30. Total 8.52M. All INCOMPLETE.
 ## Job 9: X1-R1-T dev bridged (rc=0), chain pruned
 - j1: INCOMPLETE_BUDGET, 900s, 2,022,507 ingested, replayed 0, cursor 09-13.
+## Recovery from /tmp wipe (Oct 15 ~07:00-07:30 UTC, disclosed)
+- /tmp wiped ~11h after job-9 push (all agent worktrees gone incl. mine;
+  job 10 process dead, no terminal output). Committed evidence intact
+  (local == origin 8024d13). Lost: job 10 partial chain (fresh j1, no resume
+  value) + regenerable scaffolding.
+- Fresh worktree /tmp/cryto-bot-w4-x1 at 8024d13; cache restored by copy from
+  surviving main checkout; manifests identical; 506/506 cache sha256 match
+  frozen derived_sha256 (0 missing, 0 bad). EVAL never touched/copied.
+- scaffolding (jobs.sh 48 cmds, 5 subsets, EXEC_LOG) restored from meta/.
+  uv sync rebuilt .venv. Manager approved recovery + job-10 mechanical rerun.
+## Jobs 10-12: X1-R1-T validation bridged (rc=0), chain pruned
+- j1 (rerun post-wipe): 3,667,210 ingested, replayed 0; j2: 3,618,175,
+  replayed 1210; j3: 1,442,829, replayed 175, cursor 09-30. Total 8.73M.
