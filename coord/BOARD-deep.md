@@ -94,6 +94,9 @@ Production submission DISABLED. No credentials requested at this stage.
 - W4 fix #3 compat ruling (manager): fix implemented, 15 failures claimed
   pre-existing. W4 to push fix + with/without evidence now; may run ONLY
   job-19 rerun while manager verifies; 20–48 held for confirm.
+- W4 fix #3 VERIFIED (manager): diff in-scope; 15 failures = stale tests +
+  strict wrapper on W4 branch (pass on flag-fixed tree); regression tests
+  fail pre-fix (observed). Jobs 20–48 CONFIRMED.
 
 ## Unresolved / risks
 - Linux reviewer-side proof needs a live Linux run (this host macOS); code-inspected only.
