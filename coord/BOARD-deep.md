@@ -91,6 +91,9 @@ Production submission DISABLED. No credentials requested at this stage.
   _cmd_seq + roll back commands table (job 19 duplicate cmd:000000;
   both halves verified in code). Regression-tested, separate commit,
   verbatim job-19 rerun disclosed. 18/48 jobs done through 71b369f.
+- W4 fix #3 compat ruling (manager): fix implemented, 15 failures claimed
+  pre-existing. W4 to push fix + with/without evidence now; may run ONLY
+  job-19 rerun while manager verifies; 20–48 held for confirm.
 
 ## Unresolved / risks
 - Linux reviewer-side proof needs a live Linux run (this host macOS); code-inspected only.
