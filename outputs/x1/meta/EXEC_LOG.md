@@ -202,3 +202,12 @@
   (pre-window); manifest_sha 9008ba92; intents 0/0 (CASH no-trade control);
   exposed_at_cap false; fills 0; shapes == prior cells. Realistic tag now
   12/12 cells complete (24/48 jobs). (e) compliance: mechanics/coverage only.
+## Job 25: adverse X1-R1 dev bridged (rc=0), chain pruned
+- j1: CHILD_EXIT rc124, 900.4s, 1,933,018 ingested, replayed 0, cursor 09-13,
+  spread 2.0 adverse confirmed.
+## Jobs 26-28: adverse X1-R1 validation bridged (rc=0), chain pruned
+- j1: 3,347,077 ingested, replayed 0, cursor 09-28; j2: 2,801,996, replayed
+  1077, cursor 09-29; j3: 884,898, replayed 1996, cursor 09-29.
+  Total 7,033,971. All INCOMPLETE_BUDGET. stop_cursor == j3 cursor exact.
+- Bridge: dev+val rc=0; ingested exact sums; manifest_sha 9008ba92; intents
+  0/0; exposed_at_cap false; fills 0. Adverse 2/12 cells. (e) mechanics only.
