@@ -1,0 +1,12 @@
+{
+ "cells": {
+  "X1-S|dev": {
+   "closing_equity": 120.0,
+   "run_dir": "/tmp/w4-x1/bridge_AX1S_dev/adverse/X1-R1-S_dev.rundir"
+  }
+ },
+ "dataset_manifest_sha": "9008ba92ef88a8cf8f446f77fbe27983de16d780148a11fe6fd6971b0e8f1e31",
+ "splits": [
+  "dev"
+ ]
+}
