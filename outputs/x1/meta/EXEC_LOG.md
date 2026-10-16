@@ -254,3 +254,32 @@
   0/0; exposed_at_cap false; fills 0. ROUND COMPLETE: realistic 12/12 +
   adverse 12/12 = 24/24 cells, 48/48 jobs. (e) mechanics only to here;
   economics/select tools next (first outcome contact, mechanical only).
+## Bridge pointer fix (mechanical, disclosed) + economics + selection
+- economics[realistic] first run BLOCKED (tool traceback, rc=1): my 15 cells'
+  comparison.json run_dir recorded the per-cell scratch --out
+  (/tmp/w4-x1/bridge_*) instead of the assembled committed rundir (old cells
+  record outputs/x1/bridge/...; old session bridged --out straight into the
+  tree). Re-bridge impossible (chains pruned post-bridge per discipline).
+  Fix: run_dir pointer corrected to the assembled committed rundir in those
+  15 files ONLY (1 line each, targets verified to exist with report+fills);
+  rundir contents byte-identical bridge outputs, untouched. Old 9 cells
+  untouched. No rule/method/threshold change; record-keeping only.
+- Registry outputs/x1/meta/x1_registry.json transcribes frozen X1.md §5.3
+  arms + §10 roles verbatim (4 X1 candidates; S1/CASH reference), written
+  BEFORE economics/select ran (i.e., before first outcome contact).
+- economics realistic rc=0 + adverse rc=0: all 6 configs closed=0 per10d=0.0
+  BELOW on both tags (descriptive screen, not a selection override).
+- select rc=0: verdict NONE (RESEARCH UNRESOLVED unless a candidate
+  qualifies), qualified=[], winner null, opening 120.0 single, all 6
+  realistic nets exactly 0.0/0.0 (dev/val). Consistent with fills=0 in all
+  24 bridge coverage records: nothing traded, so no dev>0&val>0 exists.
+  Frozen rule applied mechanically; stdout + inputs recorded in
+  outputs/x1/selection.json. No post-hoc reinterpretation.
+## Filing: full suite + .done.json
+- Full suite: 1343 passed, 15 failed, 1 skipped (596.5s). Failed IDs diffed
+  vs outputs/x1/meta/fix3-a-evidence.md known-15: IDENTICAL, zero new
+  failures (all strict-mode run_budget/containment, manager-accepted
+  pre-existing; zero in bench/store/session/strategy/bridge).
+- coord/outbox/DEEP-W4-D4.done.json filed per board contract (5 re-runnable
+  commands: economics x2, select, targeted bench tests, full suite; sha =
+  round-complete evidence commit ed465fb). D4 COMPLETE.
