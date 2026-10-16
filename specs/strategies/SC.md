@@ -1,4 +1,4 @@
-# SC micro-breakout scalp — exact rules v0.1.10
+# SC micro-breakout scalp — exact rules v0.1.11
 
 Status: BASELINE (simulation only; not a validated trading system).
 v0.1.0 was frozen before the first measurement. That run rejected
@@ -64,6 +64,17 @@ operating-stop room, so one loser does not spend the book. The 12 bp
 stop floor, the 40 bp target, costs, the spread profile, the full
 IST day, and the burned test split are not changed.
 
+Before v0.1.11, the same full IST day was measured with the shipped
+v0.1.10 entry, the 1 bp spread, the 0.5% operating stop, and the
+venue step. Five causal one-position trips armed. None printed 26 bp
+in favor before the protective stop, including a scan out to 300
+seconds. At the largest legal lot, 0.002 BTC, those trips booked
+about -0.60% and the operating stop halted the day. The minimum lot
+on the same trips booked about -0.30%. v0.1.11 does not size up and
+does not lower the 40 bp target. A 3-second break may arm only when
+the prior 60 seconds already span the 26 bp cost floor. Costs, the
+spread, the day, and the burned test split are not changed.
+
 ## 1. Why this shape
 
 A scalp is a round trip that is over in at most a few minutes. On
@@ -78,9 +89,9 @@ therefore asks for a 40 bps target, which clears 26 bps after the
 2 bps entry band, and it refuses a stop that is either inside the
 spread noise or wide enough to be a swing. Holding is 180 seconds.
 After the book is flat the same arm may fire again. Size is the
-venue minimum lot inside the operating stop. That is the whole
-economic rule. It is not a claim that a day of these trades
-returns 1.5–2%.
+venue minimum lot inside the operating stop. The prior 60 seconds
+must already span 26 bp, the cost floor. That is the whole economic
+rule. It is not a claim that a day of these trades returns 1.5–2%.
 
 ## 2. Bar schema and causality
 
@@ -98,7 +109,7 @@ Momentum uses `close[t]` against the latest present close at index
 disorder still halts. More than 5 consecutive missing seconds still
 halts (`outage`). One quiet second does not.
 
-## 3. Frozen parameters v0.1.10
+## 3. Frozen parameters v0.1.11
 
 | Name | Value | Meaning |
 |---|---|---|
@@ -116,6 +127,8 @@ halts (`outage`). One quiet second does not.
 | `HOLDING_LIMIT_S` | 180 | time exit; three minutes for the 40 bp target |
 | `MAX_CONSECUTIVE_MISSING_HALT` | 5 | consecutive missing seconds that halt |
 | `MIN_RANGE_PRINTS` | 2 | present bars required inside the 3-bar range |
+| `ROOM_N` | 60 | causal span looked at before a break may arm |
+| `ROOM_MIN_BPS` | 26.0 | that span must clear the cost floor |
 
 One arm: `SC`. Forecast cost is the shared conservative preset
 (`fee 5, spread 5, slippage 5, funding 1`, label
@@ -132,13 +145,14 @@ That number is part of this freeze.
 
 LONG, all must hold:
 
-1. `close[t] > max(high)` of the present bars in `t-3..t-1`.
-2. Extension `(close[t] − ref_high) / close[t] · 1e4 > 0`.
-3. Momentum over 3 seconds is at least 2 bps.
-4. `spread_bps[t] <= 4`.
-5. A range stop tighter than 12 bps is placed at 12 bps. A stop wider
+1. The present high-low span of `t-60..t-1` is at least 26 bp.
+2. `close[t] > max(high)` of the present bars in `t-3..t-1`.
+3. Extension `(close[t] − ref_high) / close[t] · 1e4 > 0`.
+4. Momentum over 3 seconds is at least 2 bps.
+5. `spread_bps[t] <= 4`.
+6. A range stop tighter than 12 bps is placed at 12 bps. A stop wider
    than 20 bps rejects.
-6. Planned reward from the entry bound to the target is at least 26 bps.
+7. Planned reward from the entry bound to the target is at least 26 bps.
    With these constants it is about 38 bps. If a later edit breaks
    that, the side rejects `reward-below-cost` and does not emit.
 
@@ -171,7 +185,7 @@ divided by the two UTC files the day spans.
 - Filters: `filters/x1_bench_filters.json` (no network).
 - Wall budget: 3600 seconds, so the day can finish. It is not a cost.
 
-The rules for this run are v0.1.10, frozen above before the rerun.
+The rules for this run are v0.1.11, frozen above before the rerun.
 Costs and live submission are unchanged.
 
 Funding that is absent on the capture is reported and is not added
