@@ -1,0 +1,28 @@
+{
+ "filing": "DEEP-W1-D2.done.json",
+ "sha": "2780d92bbcd17d02681b14057ed18c57d6c687b1",
+ "verdict": "FAIL",
+ "reruns": [
+  {
+   "note": "14 passed in ~190s: 13 lifecycle rows + 06b on the real run_live loop (3 consecutive full-file greens + this artifact run)",
+   "observed_rc": 0,
+   "timeout": false,
+   "missing_artifacts": [],
+   "tail": "..............                                                           [100%]\n14 passed in 184.06s (0:03:04)\n[run_budget] elapsed=0.3s remaining=599.7s checkpoint=coord/evidence/deep-w1-d2/matrix-ckpt/budget_checkpoint.json pid=50603\n[run_budget] elapsed=60.3s remaining=539.7s checkpoint=coord/evidence/deep-w1-d2/matrix-ckpt/budget_checkpoint.json pid=50603\n[run_budget] elapsed=120.5s remaining=479.5s checkpoint=coord/evidence/deep-w1-d2/matrix-ckpt/budget_checkpoint.json pid=50603\n[run_budget] elapsed=180.6s remaining=419.4s checkpoint=coord/evidence/deep-w1-d2/matrix-ckpt/budget_checkpoint.json pid=50603\n"
+  },
+  {
+   "note": "1071 passed, 1 skipped in ~482s (incl. 14 matrix)",
+   "observed_rc": null,
+   "timeout": true,
+   "missing_artifacts": [],
+   "tail": "........................................................................ [  6%]\n........................................................................ [ 12%]\n........................................................................ [ 19%]\n........................................................................ [ 25%]\n........................................................................ [ 32%]\n........................................................................ [ 38%]\n.................................[run_budget] elapsed=0.3s remaining=1315.2s checkpoint=coord/evidence/deep-w1-d2/units-ckpt/budget_checkpoint.json pid=52445\n[run_budget] elapsed=60.5s remaining=1255.0s checkpoint=coord/evidence/deep-w1-d2/units-ckpt/budget_checkpoint.json pid=52445\n[run_budget] elapsed=120.7s remaining=1194.7s checkpoint=coord/evidence/deep-w1-d2/units-ckpt/budget_checkpoint.json pid=52445\n[run_budget] elapsed=180.8s remaining=1134.6s checkpoint=coord/evidence/deep-w1-d2/units-ckpt/budget_checkpoint.json pid=52445\n[run_budget] elapsed=241.1s remaining=1074.4s checkpoint=coord/evidence/deep-w1-d2/units-ckpt/budget_checkpoint.json pid=52445\n[run_budget] elapsed=301.3s remaining=1014.2s checkpoint=coord/evidence/deep-w1-d2/units-ckpt/budget_checkpoint.json pid=52445\n[run_budget] elapsed=361.5s remaining=954.0s checkpoint=coord/evidence/deep-w1-d2/units-ckpt/budget_checkpoint.json pid=52445\n[run_budget] elapsed=421.6s remaining=893.9s checkpoint=coord/evidence/deep-w1-d2/units-ckpt/budget_checkpoint.json pid=52445\n[run_budget] elapsed=481.8s remaining=833.7s checkpoint=coord/evidence/deep-w1-d2/units-ckpt/budget_checkpoint.json pid=52445\n[run_budget] elapsed=541.8s remaining=773.6s checkpoint=coord/evidence/deep-w1-d2/units-ckpt/budget_checkpoint.json pid=52445\n[run_budget] elapsed=602.0s remaining=713.5s checkpoint=coord/evidence/deep-w1-d2/units-ckpt/budget_checkpoint.json pid=52445\n[run_budget] elapsed=662.0s remaining=653.5s checkpoint=coord/evidence/deep-w1-d2/units-ckpt/budget_checkpoint.json pid=52445\n[run_budget] elapsed=722.1s remaining=593.3s checkpoint=coord/evidence/deep-w1-d2/units-ckpt/budget_checkpoint.json pid=52445\n[run_budget] elapsed=782.1s remaining=533.3s checkpoint=coord/evidence/deep-w1-d2/units-ckpt/budget_checkpoint.json pid=52445\n[run_budget] elapsed=842.4s remaining=473.0s checkpoint=coord/evidence/deep-w1-d2/units-ckpt/budget_checkpoint.json pid=52445\n"
+  },
+  {
+   "note": "261 passed in ~106s. Branch predates D1 preflight merge: run_budget CLI here has no --allow-best-effort; commands match this branch.",
+   "observed_rc": 0,
+   "timeout": false,
+   "missing_artifacts": [],
+   "tail": "........................................................................ [ 26%]\n........................................................................ [ 52%]\n........................................................................ [ 79%]\n........................................................                 [100%]\n=============================== warnings summary ===============================\ntests/acceptance/test_risk_v004.py::test_bad_config_raises[kwargs2]\n  <string>:22: DeprecationWarning: daily_loss_halt_pct is deprecated; use emergency_stop_pct\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n272 passed, 1 warning in 104.63s (0:01:44)\n[run_budget] elapsed=0.3s remaining=299.7s checkpoint=coord/evidence/deep-w1-d2/rest-ckpt/budget_checkpoint.json pid=62290\n[run_budget] elapsed=60.3s remaining=239.7s checkpoint=coord/evidence/deep-w1-d2/rest-ckpt/budget_checkpoint.json pid=62290\n"
+  }
+ ]
+}

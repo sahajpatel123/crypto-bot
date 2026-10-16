@@ -1,0 +1,56 @@
+{
+ "runner_version": "bench-run-v3",
+ "status": "TRUNCATED_MAX_EVENTS",
+ "stop_reason": "max_events",
+ "run_id": "deep-d5-benchA",
+ "dataset": "datasets/benchmark_30d.toml",
+ "symbol": "BTCUSDT",
+ "symbols": [
+  "BTCUSDT"
+ ],
+ "window_ms": [
+  null,
+  null
+ ],
+ "spread": {
+  "bps": {},
+  "windows": {
+   "BTCUSDT": {}
+  }
+ },
+ "days": [
+  "2026-09-12"
+ ],
+ "elapsed_s": 13.735,
+ "events": {
+  "ingested": 20000,
+  "replayed_tail": 0,
+  "heartbeats": 1452,
+  "skipped_window": 0,
+  "commits": 10
+ },
+ "cursor": {
+  "day": "2026-09-12",
+  "seqs": {
+   "BTCUSDT": 20000
+  }
+ },
+ "booked": {
+  "equity_open": 120.0,
+  "equity_close": 120.0,
+  "valuation": "cash-exact",
+  "valuation_reason": "flat: no mark required",
+  "realised": 0.0,
+  "commissions": 0.0,
+  "funding": 0.0
+ },
+ "estimated_costs": [],
+ "profile": {
+  "read_s": 0.097,
+  "ingest_s": 11.524,
+  "commit_s": 0.006,
+  "fsync_s": 0.003,
+  "store_s": 0.0,
+  "events_per_s": 1456.2
+ }
+}

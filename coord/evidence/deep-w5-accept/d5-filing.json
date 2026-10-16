@@ -1,0 +1,42 @@
+{
+ "filing": "DEEP-W3-D5.done.json",
+ "sha": "48f22a738bc50a820c326990cbe8b4e786bdf03d",
+ "verdict": "PASS",
+ "reruns": [
+  {
+   "note": "idempotent: skips when Oct funding already merged (derived-sha match), else merges + re-freezes. Requires datasets/cache bulk (see prepare prerequisite).",
+   "observed_rc": 0,
+   "timeout": false,
+   "missing_artifacts": [],
+   "tail": "  BTCUSDT 2026-10: already merged, skip\n  ETHUSDT 2026-10: already merged, skip\nnothing to merge (all staged months already merged)\n"
+  },
+  {
+   "note": "non-mutating: recomputes all 480 IST-window coverage cells + manifest pin + IST cross-check vs harness helper; exits 1 on any drift. Quoted coverage/yield numbers reproduce here.",
+   "observed_rc": 0,
+   "timeout": false,
+   "missing_artifacts": [],
+   "tail": "VERIFY OK: manifest 9008ba92ef88, 480 coverage cells, 30 splits\n"
+  },
+  {
+   "note": "EVAL audit reproduces SCORABLE (profile 24h-1, 0 fatal, 4 warn-level executable gaps). Requires minted EVAL bulk (time-bound capture, provenance in datasets/eval_deep1.toml; capture itself not re-runnable).",
+   "observed_rc": 0,
+   "timeout": false,
+   "missing_artifacts": [],
+   "tail": "audit /Users/sahajpatel/Code/cryto-bot/data/captures/eval-deep1: SCORABLE (profile=24h-1)\n  [warn] aggTrade/BTCUSDT: max executable gap 63005ms exceeds quote_max_age_s=1.0 (admission starves across the gap)\n  [warn] aggTrade/ETHUSDT: max executable gap 62989ms exceeds quote_max_age_s=1.0 (admission starves across the gap)\n  [warn] bookTicker/BTCUSDT: max executable gap 40377ms exceeds quote_max_age_s=1.0 (admission starves across the gap)\n  [warn] bookTicker/ETHUSDT: max executable gap 40408ms exceeds quote_max_age_s=1.0 (admission starves across the gap)\n"
+  },
+  {
+   "note": "bounded proof: TRUNCATED_MAX_EVENTS at 20k ingested/10 commits + checkpoint. PYTHONPATH=src required. Requires fresh bench_d5/ (rm -rf first on re-run).",
+   "observed_rc": 124,
+   "timeout": false,
+   "missing_artifacts": [],
+   "tail": "[bench] TRUNCATED_MAX_EVENTS ingested=20000 replayed=0 commits=10 equity=120.00\n[bench] ingested=5000 day=2026-09-12 seq=5000 commits=3 remaining=595s\n[bench] ingested=10000 day=2026-09-12 seq=10000 commits=6 remaining=592s\n[bench] ingested=15000 day=2026-09-12 seq=15000 commits=8 remaining=589s\n"
+  },
+  {
+   "note": "resume proof (ORDER: after benchA): COMPLETE, 279611 ingested + 2000 tail replayed, 141 commits. Same PYTHONPATH/filters requirements.",
+   "observed_rc": 0,
+   "timeout": false,
+   "missing_artifacts": [],
+   "tail": "resumed deep-d5-benchA at {'day': '2026-09-12', 'seqs': {'BTCUSDT': 18000}}\n[bench] COMPLETE ingested=279611 replayed=2000 commits=141 equity=120.00\n=150000 day=2026-09-12 seq=168000 commits=75 remaining=1087s\n[bench] ingested=155000 day=2026-09-12 seq=173000 commits=77 remaining=1084s\n[bench] ingested=160000 day=2026-09-12 seq=178000 commits=80 remaining=1080s\n[bench] ingested=165000 day=2026-09-12 seq=183000 commits=82 remaining=1077s\n[bench] ingested=170000 day=2026-09-12 seq=188000 commits=85 remaining=1072s\n[bench] ingested=175000 day=2026-09-12 seq=193000 commits=87 remaining=1068s\n[bench] ingested=180000 day=2026-09-12 seq=198000 commits=90 remaining=1065s\n[bench] ingested=185000 day=2026-09-12 seq=203000 commits=92 remaining=1061s\n[bench] ingested=190000 day=2026-09-12 seq=208000 commits=95 remaining=1057s\n[bench] ingested=195000 day=2026-09-12 seq=213000 commits=97 remaining=1054s\n[bench] ingested=200000 day=2026-09-12 seq=218000 commits=100 remaining=1050s\n[bench] ingested=205000 day=2026-09-12 seq=223000 commits=102 remaining=1046s\n[bench] ingested=210000 day=2026-09-12 seq=228000 commits=105 remaining=1043s\n[bench] ingested=215000 day=2026-09-12 seq=233000 commits=107 remaining=1040s\n[bench] ingested=220000 day=2026-09-12 seq=238000 commits=110 remaining=1036s\n[bench] ingested=225000 day=2026-09-12 seq=243000 commits=112 remaining=1033s\n[bench] ingested=230000 day=2026-09-12 seq=248000 commits=115 remaining=1030s\n[bench] ingested=235000 day=2026-09-12 seq=253000 commits=117 remaining=1027s\n[bench] ingested=240000 day=2026-09-12 seq=258000 commits=120 remaining=1023s\n[bench] ingested=245000 day=2026-09-12 seq=263000 commits=122 remaining=1019s\n[bench] ingested=250000 day=2026-09-12 seq=268000 commits=125 remaining=1016s\n[bench] ingested=255000 day=2026-09-12 seq=273000 commits=127 remaining=1010s\n[bench] ingested=260000 day=2026-09-12 seq=278000 commits=130 remaining=1007s\n[bench] ingested=265000 day=2026-09-12 seq=283000 commits=132 remaining=1003s\n[bench] ingested=270000 day=2026-09-12 seq=288000 commits=135 remaining=999s\n[bench] ingested=275000 day=2026-09-12 seq=293000 commits=137 remaining=994s\n"
+  }
+ ]
+}

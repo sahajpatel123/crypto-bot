@@ -1,0 +1,49 @@
+{
+ "filing": "DEEP-W1-D1.done.json",
+ "sha": "18bd4eac79f322a9f29a6475bd196bc57a83c816",
+ "verdict": "PASS",
+ "reruns": [
+  {
+   "note": "macOS-host proof: strict refuses 125 with REFUSED on stderr, REFUSED_UNSUPPORTED in report+checkpoint, child never spawns (MARKER absent; also asserted in pytest)",
+   "observed_rc": 125,
+   "timeout": false,
+   "missing_artifacts": [],
+   "tail": "[run_budget] REFUSED: strict containment unsupported on darwin (linux=False subreaper=False table_scan_ok=True); child never spawned\n"
+  },
+  {
+   "note": "portable proof: broken table scan forces strict refusal on any host (fail closed)",
+   "observed_rc": 125,
+   "timeout": false,
+   "missing_artifacts": [],
+   "tail": "[run_budget] REFUSED: strict containment unsupported on darwin (linux=False subreaper=False table_scan_ok=False); child never spawned\n"
+  },
+  {
+   "note": "best-effort opt-in passes through; rc+report-shape parity proven bit-for-bit in the pytest files below",
+   "observed_rc": 0,
+   "timeout": false,
+   "missing_artifacts": [],
+   "tail": "best-effort-ok\n[run_budget] elapsed=0.0s remaining=60.0s checkpoint=coord/evidence/deep-w1-d1/besteffort-ckpt/budget_checkpoint.json pid=24796\n"
+  },
+  {
+   "note": "14 passed: refusal never-spawns + record shape + best-effort rc/shape parity + preflight leg matrix + legacy budget file",
+   "observed_rc": 0,
+   "timeout": false,
+   "missing_artifacts": [],
+   "tail": "..............                                                           [100%]\n14 passed in 15.76s\n[run_budget] elapsed=0.3s remaining=299.7s checkpoint=coord/evidence/deep-w1-d1/files-ckpt/budget_checkpoint.json pid=24799\n"
+  },
+  {
+   "note": "1066 passed, 1 skipped in ~205s",
+   "observed_rc": 0,
+   "timeout": false,
+   "missing_artifacts": [],
+   "tail": "........................................................................ [  6%]\n........................................................................ [ 12%]\n........................................................................ [ 19%]\n........................................................................ [ 25%]\n........................................................................ [ 32%]\n........................................................................ [ 38%]\n........................................................................ [ 45%]\n........................................................................ [ 51%]\n.......................s................................................ [ 58%]\n........................................................................ [ 64%]\n........................................................................ [ 71%]\n........................................................................ [ 77%]\n........................................................................ [ 84%]\n........................................................................ [ 90%]\n........................................................................ [ 97%]\n................................                                         [100%]\n1111 passed, 1 skipped in 802.58s (0:13:22)\n[run_budget] elapsed=0.3s remaining=1483.4s checkpoint=coord/evidence/deep-w1-d1/units-ckpt/budget_checkpoint.json pid=25051\n[run_budget] elapsed=60.4s remaining=1423.2s checkpoint=coord/evidence/deep-w1-d1/units-ckpt/budget_checkpoint.json pid=25051\n[run_budget] elapsed=120.5s remaining=1363.1s checkpoint=coord/evidence/deep-w1-d1/units-ckpt/budget_checkpoint.json pid=25051\n[run_budget] elapsed=180.6s remaining=1303.0s checkpoint=coord/evidence/deep-w1-d1/units-ckpt/budget_checkpoint.json pid=25051\n[run_budget] elapsed=240.7s remaining=1242.9s checkpoint=coord/evidence/deep-w1-d1/units-ckpt/budget_checkpoint.json pid=25051\n[run_budget] elapsed=301.0s remaining=1182.6s checkpoint=coord/evidence/deep-w1-d1/units-ckpt/budget_checkpoint.json pid=25051\n[run_budget] elapsed=361.2s remaining=1122.4s checkpoint=coord/evidence/deep-w1-d1/units-ckpt/budget_checkpoint.json pid=25051\n[run_budget] elapsed=421.2s remaining=1062.4s checkpoint=coord/evidence/deep-w1-d1/units-ckpt/budget_checkpoint.json pid=25051\n[run_budget] elapsed=481.5s remaining=1002.1s checkpoint=coord/evidence/deep-w1-d1/units-ckpt/budget_checkpoint.json pid=25051\n[run_budget] elapsed=541.8s remaining=941.9s checkpoint=coord/evidence/deep-w1-d1/units-ckpt/budget_checkpoint.json pid=25051\n[run_budget] elapsed=601.8s remaining=881.8s checkpoint=coord/evidence/deep-w1-d1/units-ckpt/budget_checkpoint.json pid=25051\n[run_budget] elapsed=661.8s remaining=821.8s checkpoint=coord/evidence/deep-w1-d1/units-ckpt/budget_checkpoint.json pid=25051\n[run_budget] elapsed=722.1s remaining=761.5s checkpoint=coord/evidence/deep-w1-d1/units-ckpt/budget_checkpoint.json pid=25051\n[run_budget] elapsed=782.2s remaining=701.4s checkpoint=coord/evidence/deep-w1-d1/units-ckpt/budget_checkpoint.json pid=25051\n"
+  },
+  {
+   "note": "261 passed in ~100s",
+   "observed_rc": 0,
+   "timeout": false,
+   "missing_artifacts": [],
+   "tail": "........................................................................ [ 26%]\n........................................................................ [ 52%]\n........................................................................ [ 79%]\n........................................................                 [100%]\n=============================== warnings summary ===============================\ntests/acceptance/test_risk_v004.py::test_bad_config_raises[kwargs2]\n  <string>:22: DeprecationWarning: daily_loss_halt_pct is deprecated; use emergency_stop_pct\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n272 passed, 1 warning in 97.10s (0:01:37)\n[run_budget] elapsed=0.3s remaining=680.3s checkpoint=coord/evidence/deep-w1-d1/rest-ckpt/budget_checkpoint.json pid=34370\n[run_budget] elapsed=60.4s remaining=620.2s checkpoint=coord/evidence/deep-w1-d1/rest-ckpt/budget_checkpoint.json pid=34370\n"
+  }
+ ]
+}
