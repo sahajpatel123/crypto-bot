@@ -111,6 +111,10 @@ Production submission DISABLED. No credentials requested at this stage.
   attempts incl. zero-trade recorded. Outcome weak-as-evidence (see
   mechanism section) — valid execution, RESEARCH UNRESOLVED.
 - W5: IN PROGRESS — started, ETA ~2h, watch armed.
+- Follow-ups messaged: W3 (merge timestamps, audit mkdir — filed at
+  acceptance); W2 (refuse occupied --dir loudly instead of crashing —
+  small bounded fixup, D3 stays accepted regardless). F2/F3/F4 fixes
+  deliberately NOT ordered (new phase; out of assignment scope).
 
 ## Stop-order incident (resolved)
 - W4 stopped round-1 at jobs 1–4 citing "owner order" (1cc77dd, evidence
