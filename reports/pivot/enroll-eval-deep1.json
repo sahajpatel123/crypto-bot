@@ -1,0 +1,62 @@
+{
+ "capture": "data/captures/eval-deep1",
+ "events": 1848480,
+ "floor": {
+  "min_days": 10.0,
+  "per_symbol": [
+   "observed quotes (no modelled)",
+   "aggTrade",
+   "marks >=1s",
+   "funding settlements+provenance",
+   "monotonic seq"
+  ]
+ },
+ "reasons": [
+  "BTCUSDT: span 0.01d < 10.0d floor",
+  "BTCUSDT: mark cadence gap 63997ms > 5000ms (floor: marks >=1s)",
+  "BTCUSDT: no funding settlements with provenance (825 funding-rate observations on marks are not settlements)",
+  "ETHUSDT: span 0.01d < 10.0d floor",
+  "ETHUSDT: mark cadence gap 63997ms > 5000ms (floor: marks >=1s)",
+  "ETHUSDT: no funding settlements with provenance (825 funding-rate observations on marks are not settlements)"
+ ],
+ "run_id": "eval-deep1",
+ "seq_disordered": 0,
+ "symbols": {
+  "BTCUSDT": {
+   "channels": {
+    "aggTrade": 42729,
+    "bookTicker": 879354,
+    "depth": 6758,
+    "markPrice": 825
+   },
+   "days": 0.0103,
+   "funding_settlements": 0,
+   "mark_max_gap_ms": 63997,
+   "modeled_quotes": 0,
+   "reasons": [
+    "span 0.01d < 10.0d floor",
+    "mark cadence gap 63997ms > 5000ms (floor: marks >=1s)",
+    "no funding settlements with provenance (825 funding-rate observations on marks are not settlements)"
+   ]
+  },
+  "ETHUSDT": {
+   "channels": {
+    "aggTrade": 54301,
+    "bookTicker": 856941,
+    "depth": 6747,
+    "markPrice": 825
+   },
+   "days": 0.0103,
+   "funding_settlements": 0,
+   "mark_max_gap_ms": 63997,
+   "modeled_quotes": 0,
+   "reasons": [
+    "span 0.01d < 10.0d floor",
+    "mark cadence gap 63997ms > 5000ms (floor: marks >=1s)",
+    "no funding settlements with provenance (825 funding-rate observations on marks are not settlements)"
+   ]
+  }
+ },
+ "untouched": true,
+ "verdict": "DEVELOPMENT-ONLY"
+}
