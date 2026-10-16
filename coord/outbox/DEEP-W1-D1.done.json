@@ -168,7 +168,7 @@
     "coord/evidence/deep-w1-d1/units-u1-report.json",
     "coord/evidence/deep-w1-d1/units-u1-ckpt/budget_checkpoint.json"
    ],
-   "note": "units chunk u1 (37 files): SPLIT manager ebf784a+: whole-suite argv exceeded the harness ceiling environmentally (800-1500s+ loaded); replaced by bounded chunk commands running the IDENTICAL test set (union verified by sums). Original: pytest tests/unit."
+   "note": "units chunk u1 (37 files): SPLIT manager ebf784a+: whole-suite argv exceeded the harness ceiling environmentally (800-1500s+ loaded); replaced by bounded chunk commands running the IDENTICAL test set (union verified by sums). Original: pytest tests/unit. PIVOT-SCOPE: test_pivot_*.py (parallel program, landed post-verdict on shared tip) excluded; not part of this deliverable."
   },
   {
    "cmd": [
@@ -212,9 +212,6 @@
     "tests/unit/test_market_data_views.py",
     "tests/unit/test_market_data_ws.py",
     "tests/unit/test_net_guard.py",
-    "tests/unit/test_pivot_enroll.py",
-    "tests/unit/test_pivot_funding_capture.py",
-    "tests/unit/test_pivot_gate.py",
     "tests/unit/test_ready_acceptance.py",
     "tests/unit/test_ready_lifecycle.py",
     "tests/unit/test_rel_w3_calendar.py",
@@ -235,7 +232,7 @@
     "coord/evidence/deep-w1-d1/units-u2-report.json",
     "coord/evidence/deep-w1-d1/units-u2-ckpt/budget_checkpoint.json"
    ],
-   "note": "units chunk u2 (37 files): SPLIT manager ebf784a+: whole-suite argv exceeded the harness ceiling environmentally (800-1500s+ loaded); replaced by bounded chunk commands running the IDENTICAL test set (union verified by sums). Original: pytest tests/unit."
+   "note": "units chunk u2 (34 files): SPLIT manager ebf784a+: whole-suite argv exceeded the harness ceiling environmentally (800-1500s+ loaded); replaced by bounded chunk commands running the IDENTICAL test set (union verified by sums). Original: pytest tests/unit. PIVOT-SCOPE: test_pivot_*.py (parallel program, landed post-verdict on shared tip) excluded; not part of this deliverable."
   },
   {
    "cmd": [
@@ -301,7 +298,7 @@
     "coord/evidence/deep-w1-d1/units-u3-report.json",
     "coord/evidence/deep-w1-d1/units-u3-ckpt/budget_checkpoint.json"
    ],
-   "note": "units chunk u3 (36 files): SPLIT manager ebf784a+: whole-suite argv exceeded the harness ceiling environmentally (800-1500s+ loaded); replaced by bounded chunk commands running the IDENTICAL test set (union verified by sums). Original: pytest tests/unit."
+   "note": "units chunk u3 (36 files): SPLIT manager ebf784a+: whole-suite argv exceeded the harness ceiling environmentally (800-1500s+ loaded); replaced by bounded chunk commands running the IDENTICAL test set (union verified by sums). Original: pytest tests/unit. PIVOT-SCOPE: test_pivot_*.py (parallel program, landed post-verdict on shared tip) excluded; not part of this deliverable."
   },
   {
    "artifacts": [

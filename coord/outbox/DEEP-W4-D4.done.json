@@ -166,7 +166,7 @@
    "cwd": null,
    "expect_rc": 0,
    "artifacts": [],
-   "note": "full-suite chunk unit-u1: PYTHONPATH=src required. SPLIT manager ebf784a+: whole-suite argv exceeded the harness ceiling environmentally (800-1500s+ loaded); replaced by bounded chunk commands running the IDENTICAL test set (union verified by sums). Original: pytest tests/."
+   "note": "full-suite chunk unit-u1: PYTHONPATH=src required. SPLIT manager ebf784a+: whole-suite argv exceeded the harness ceiling environmentally (800-1500s+ loaded); replaced by bounded chunk commands running the IDENTICAL test set (union verified by sums). Original: pytest tests/. PIVOT-SCOPE: test_pivot_*.py (parallel program, landed post-verdict on shared tip) excluded; not part of this deliverable."
   },
   {
    "cmd": [
@@ -202,9 +202,6 @@
     "tests/unit/test_market_data_views.py",
     "tests/unit/test_market_data_ws.py",
     "tests/unit/test_net_guard.py",
-    "tests/unit/test_pivot_enroll.py",
-    "tests/unit/test_pivot_funding_capture.py",
-    "tests/unit/test_pivot_gate.py",
     "tests/unit/test_ready_acceptance.py",
     "tests/unit/test_ready_lifecycle.py",
     "tests/unit/test_rel_w3_calendar.py",
@@ -219,7 +216,7 @@
    "cwd": null,
    "expect_rc": 0,
    "artifacts": [],
-   "note": "full-suite chunk unit-u2: PYTHONPATH=src required. SPLIT manager ebf784a+: whole-suite argv exceeded the harness ceiling environmentally (800-1500s+ loaded); replaced by bounded chunk commands running the IDENTICAL test set (union verified by sums). Original: pytest tests/."
+   "note": "full-suite chunk unit-u2: PYTHONPATH=src required. SPLIT manager ebf784a+: whole-suite argv exceeded the harness ceiling environmentally (800-1500s+ loaded); replaced by bounded chunk commands running the IDENTICAL test set (union verified by sums). Original: pytest tests/. PIVOT-SCOPE: test_pivot_*.py (parallel program, landed post-verdict on shared tip) excluded; not part of this deliverable."
   },
   {
    "cmd": [
@@ -271,7 +268,7 @@
    "cwd": null,
    "expect_rc": 0,
    "artifacts": [],
-   "note": "full-suite chunk unit-u3: PYTHONPATH=src required. SPLIT manager ebf784a+: whole-suite argv exceeded the harness ceiling environmentally (800-1500s+ loaded); replaced by bounded chunk commands running the IDENTICAL test set (union verified by sums). Original: pytest tests/."
+   "note": "full-suite chunk unit-u3: PYTHONPATH=src required. SPLIT manager ebf784a+: whole-suite argv exceeded the harness ceiling environmentally (800-1500s+ loaded); replaced by bounded chunk commands running the IDENTICAL test set (union verified by sums). Original: pytest tests/. PIVOT-SCOPE: test_pivot_*.py (parallel program, landed post-verdict on shared tip) excluded; not part of this deliverable."
   },
   {
    "cmd": [
