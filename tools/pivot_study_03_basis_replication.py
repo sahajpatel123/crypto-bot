@@ -22,6 +22,7 @@ import argparse
 import io
 import json
 import math
+import os
 import sys
 import zipfile
 from pathlib import Path
@@ -73,17 +74,24 @@ def load_1m_closes(zip_dir: Path, prefix: str, months: list[str],
             body = rows
         if not body:
             continue
-        # per-file scale decision from the first row's open_time: seconds-era
-        # archives (~1.8e9) vs ms-era (~1.8e12); synthetic/small values in
-        # tests use realistic ms bases
-        scale = 1000 if int(body[0][0]) < 10**11 else 1
+
+        def _to_ms(ts: int) -> int:
+            # Vision archives mix units across product lines: spot legacy
+            # files are headerless with MICROSECOND timestamps, futures are
+            # headered ms, ancient files could be seconds. Normalize to ms.
+            if ts >= 10**15:
+                return ts // 1000  # microseconds
+            if ts >= 10**12:
+                return ts          # milliseconds
+            return ts * 1000       # seconds
+
         for row in body:
             if not row:
                 continue
             count = int(row[coi])
             if count == 0:
                 continue  # no trades -> no price discovery -> missing
-            ct = int(row[cli]) * scale
+            ct = _to_ms(int(row[cli]))
             if window[0] <= ct < window[1]:
                 times.append(ct)
                 closes.append(float(row[ci]))
@@ -286,8 +294,19 @@ def main() -> int:
     w0, w1 = ms("2026-06-01"), ms("2026-09-01")
     window = (w0, w1)
     months = ["2026-06", "2026-07", "2026-08"]
-    months_supp = ["2026-09", "2026-10"]
-    w_supp = (ms("2026-09-11"), ms("2026-10-11"))
+    months_supp = ["2026-09"]
+    w_supp = (ms("2026-09-11"), ms("2026-10-01"))
+
+    def pd_days(win: tuple[int, int]) -> list:
+        d0 = dt.datetime.fromtimestamp(win[0] / 1000,
+                                       tz=dt.timezone.utc).date()
+        d1 = dt.datetime.fromtimestamp(win[1] / 1000,
+                                       tz=dt.timezone.utc).date()
+        out, d = [], d0
+        while d <= d1:
+            out.append(d)
+            d += dt.timedelta(days=1)
+        return out
 
     results: dict = {
         "study": "STUDY-03",
@@ -311,13 +330,20 @@ def main() -> int:
                  arm_a_cells(sym, spot_t, spot_p, perp_t, perp_p,
                              settlements, window)]
         results["armA"]["cells"] += cells
-        # supplementary: benchmark window (prior-use labeled for perp leg;
-        # spot leg freshly fetched)
+        # supplementary: benchmark window (prior-use labeled). Perp leg and
+        # funding from the repo's sealed benchmark parquet; spot leg freshly
+        # fetched (Oct spot monthly absent -> window effectively ends Sep 30).
+        repo_cache = Path(os.environ.get(
+            "STUDY03_REPO_CACHE",
+            "/Users/sahajpatel/Code/cryto-bot/datasets/cache"))
+        perp_t2, perp_p2 = S02.load_minute_closes(
+            repo_cache, sym, [d.isoformat() for d in pd_days(w_supp)])
+        settlements2 = S02.load_funding(repo_cache, sym)
         spot_t2, spot_p2 = load_1m_closes(args.vision_dir, f"spot-1m-{sym}",
                                           months_supp, w_supp)
-        cells2 = [dict(summarize_arm_a(c), window="2026-09-11..2026-10-11")
-                  for c in arm_a_cells(sym, spot_t2, spot_p2, perp_t, perp_p,
-                                       settlements, w_supp)]
+        cells2 = [dict(summarize_arm_a(c), window="2026-09-11..2026-09-30")
+                  for c in arm_a_cells(sym, spot_t2, spot_p2, perp_t2,
+                                       perp_p2, settlements2, w_supp)]
         results["armA"]["supplementary_prior_use"] += cells2
     results["armA"]["capital_efficiency"] = capital_efficiency(
         results["armA"]["cells"])
