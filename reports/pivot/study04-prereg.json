@@ -36,6 +36,16 @@
     "no_candidate_creation": "a MERITS-CANDIDATE verdict goes to the owner as a decision, never auto-advances; any candidate config is a separate preregistration"
   },
   "posthoc_sensitivity_declared": "toxicity threshold {0.55, 0.65}; requote tick {1, 2}; inventory exit {30s, 120s} — all labeled POST-HOC, never decision-relevant",
+  "amendments_pre_data": [
+    {
+      "id": "A1",
+      "utc": "2026-10-16T18:50:00Z",
+      "what": "toxicity filter density floor + requote symmetry clarified",
+      "why": "Tool construction (before ANY capture data was examined) showed the trailing-10s buy_frac is degenerate on thin flow: a single aggressive trade in a quiet window trips the fraction and cancels the resting order, biasing fill counts toward zero for reasons unrelated to adverse selection. Likewise 'moves away' was ambiguous for the ask side when the touch moves toward/through the order price.",
+      "change": "1) The toxicity filter engages only when the trailing-10s window contains >= 20 aggressive trades; below that density the fraction is noise and the order rests. 2) Re-quote is symmetric: the order re-joins the observed touch whenever |touch - order| >= 1 tick in either direction (rest-at-touch). 3) A consumed (filled) order re-quotes only after the same 5s calm gate - a fresh quote is never instantly re-exposed into the flow that just filled it.",
+      "status": "No outcome data existed at amendment time; the 10-day capture had not started. This is the only planned amendment; any further change voids the study."
+    }
+  ],
   "non_goals": [
     "No strategy/spec/code changes in any worker lane",
     "No credentials, no orders, live submission stays disabled",
