@@ -138,20 +138,29 @@ largest lot step inside the operating-stop room.
 
 Development only. Deep split idx 1, IST date 2026-09-12, which is
 role `dev` in `datasets/splits_deep.toml`. The burned test split
-(idx 23–30) is not used.
+(idx 23–30) is not used. Validation is not scored.
 
-The scored slice is the first 15 minutes of that IST date, one
-accounting date, so the average daily net is the window's own ledger
-net return. It is not multiplied by 1440/15.
+Earlier runs scored only the first 15 minutes. That prefix ranges
+25 bp and a lookahead book inside the 0.5% stop nets at most 0.28%
+at the largest legal lot, so the prefix cannot sit inside 1.5–2%.
+The scored slice is the whole IST day, declared before this run.
+It is one accounting date. The average daily net is that day's
+ledger return. It is not multiplied by 1440/minutes, and it is not
+divided by the two UTC files the day spans.
 
 - Start: 2026-09-12 00:00 IST = 2026-09-11 18:30:00Z = `1789151400000`
-- End (exclusive): 2026-09-12 00:15 IST = 2026-09-11 18:45:00Z = `1789152300000`
+- End (exclusive): 2026-09-13 00:00 IST = 2026-09-12 18:30:00Z = `1789237800000`
 - Symbol: BTCUSDT
-- UTC day file: `2026-09-11`
+- UTC day files: `2026-09-11`, `2026-09-12`
 - Dataset: `datasets/benchmark_30d.toml`
 - Spread: the bench's frozen profile (`--spread-bps` with no number).
   The archive has no BBO. The profile is not fitted to this run.
 - Filters: `filters/x1_bench_filters.json` (no network).
+- Wall budget: 3600 seconds, so the day can finish. It is not a cost.
+
+The rules stay v0.1.9. Entry, stop, target, the 90 second hold, the
+operating-stop size, and re-entry after a flat book are unchanged.
+Costs and live submission are unchanged.
 
 Funding that is absent on the capture is reported and is not added
 into the return. A booked funding of zero is not treated as a profit.

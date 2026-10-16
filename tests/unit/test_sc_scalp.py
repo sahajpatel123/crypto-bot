@@ -16,10 +16,15 @@ from cryptobot.app.config import load_config
 from cryptobot.app.session import Session
 from cryptobot.app.store import RunStore
 from cryptobot.research.sc_measure import (
+    ACCOUNTING_DATES,
     BAND_HI,
     BAND_LO,
+    WALL_BUDGET_S,
+    WINDOW_END_MS,
+    WINDOW_START_MS,
     annotate,
     average_daily_net_pct,
+    bench_argv,
 )
 from cryptobot.strategies.contract import SC_BASE
 from cryptobot.strategies.runtime import get_adapter
@@ -329,6 +334,30 @@ def test_session_books_a_fee_bearing_round_trip_or_names_the_rejection(tmp_path)
         "intents_admitted": report["intents_admitted"],
         "reject_counts": report["reject_counts"],
     }))
+
+
+def test_bench_scores_the_full_development_day_not_the_prefix():
+    """The shipped command is the whole IST dev day, one accounting date.
+
+    Costs, the bare spread profile, and the symbol stay on the frozen
+    bench path. The burned test split is not in the day list.
+    """
+    argv = bench_argv("ck", "out.json", "sc-dev-day")
+    assert ACCOUNTING_DATES == 1
+    assert WINDOW_START_MS == 1789151400000
+    assert WINDOW_END_MS == 1789237800000
+    assert WINDOW_END_MS - WINDOW_START_MS == 86_400_000
+    assert argv[argv.index("--days") + 1] == "2026-09-11,2026-09-12"
+    assert argv[argv.index("--start-ms") + 1] == str(WINDOW_START_MS)
+    assert argv[argv.index("--end-ms") + 1] == str(WINDOW_END_MS)
+    assert argv[argv.index("--symbol") + 1] == "BTCUSDT"
+    assert argv[argv.index("--config") + 1] == "configs/sc-dev.toml"
+    assert argv[argv.index("--filters-file") + 1] == "filters/x1_bench_filters.json"
+    spread_at = argv.index("--spread-bps")
+    assert argv[spread_at + 1].startswith("--")
+    assert int(argv[argv.index("--wall-budget-s") + 1]) == WALL_BUDGET_S
+    assert WALL_BUDGET_S >= 3600
+    assert "2026-10-" not in argv[argv.index("--days") + 1]
 
 
 def test_band_uses_the_ledger_and_does_not_add_zero_funding():
