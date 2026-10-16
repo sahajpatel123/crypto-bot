@@ -92,6 +92,25 @@ def test_a_four_bp_impulse_with_a_six_bp_stop_fires():
     assert long_d.evaluation.reason == "fired"
 
 
+def test_a_tight_range_stop_is_placed_out_to_eight_bps():
+    """The v0.1.6 stop was 3.45 bp and died in 11 seconds.
+
+    An impulse that prints with a tighter range stop still enters, and
+    the protective stop is placed at 8 bp.
+    """
+    from cryptobot.coordination import decode_exit_rule
+
+    bars = [_bar(i, 100.00) for i in range(WARMUP_N)]
+    for offset, price in enumerate((100.00, 100.02, 100.025, 100.03, 100.03)):
+        bars[WARMUP_N - 5 + offset] = _bar(WARMUP_N - 5 + offset, price)
+    bars.append(_bar(WARMUP_N, 100.04))
+    long_d, _short_d = evaluate_bar(bars, WARMUP_N, SC_BASE, "BTCUSDT")
+    assert long_d.intent is not None
+    placed = decode_exit_rule(long_d.intent.exit_rule).stop_price
+    distance = (100.04 - placed) / 100.04 * 1e4
+    assert distance == pytest.approx(8.0, abs=0.05)
+
+
 def test_one_quiet_second_does_not_veto_the_scalp():
     bars = _scalp_bars()
     bars[45] = None  # inside the 20-bar range; the other prints remain

@@ -1,4 +1,4 @@
-# SC micro-breakout scalp — exact rules v0.1.6
+# SC micro-breakout scalp — exact rules v0.1.7
 
 Status: BASELINE (simulation only; not a validated trading system).
 v0.1.0 was frozen before the first measurement. That run rejected
@@ -27,15 +27,19 @@ spread profile, the 40 bps target, the 26 bps cost floor, the
 15-minute development window, and the burned test split are
 unchanged. Production order submission stays refused.
 
-v0.1.5 required 4 bps of momentum and a 6 bp stop. That rerun
-booked nothing. v0.1.6 is frozen before the next measurement. The
-entry is a strict break of the prior 5 seconds plus 2 bps of
-momentum: above the frozen 1 bp spread, and low enough that an
-impulse this tape can print is allowed to trade. The stop must be
-at least 2 bps, outside that spread, and at most 20 bps. The hold
-stays 180 seconds so the unchanged 40 bps target, which still clears
-the 26 bps cost floor, has time to be reached. Costs, the spread
-profile, the window, and the burned test split are not changed.
+v0.1.6 booked one short. Entry 77180.9 at 18:36:00.978Z, cover
+77207.5 at 18:36:12.437Z. That is 11.5 seconds, so the exit was the
+stop, not the 180 second clock. The adverse move was 3.45 bps.
+Round-trip taker fees were about 10 bps of notional. No winner
+reached the 26 bps cost floor. v0.1.7 is frozen before the next
+measurement. The entry stays a strict 5-second break plus 2 bps of
+momentum, because that impulse did print and trade. A range stop
+tighter than 8 bps is placed at 8 bps instead of being rejected, so
+the same impulse still trades and a 3 bp wiggle does not stop it.
+A stop wider than 20 bps is still rejected. The hold stays 180
+seconds. The 40 bps target is unchanged and still clears the 26 bps
+cost floor. Costs, the spread profile, the window, and the burned
+test split are not changed.
 
 ## 1. Why this shape
 
@@ -69,7 +73,7 @@ Momentum uses `close[t]` against the latest present close at index
 disorder still halts. More than 5 consecutive missing seconds still
 halts (`outage`). One quiet second does not.
 
-## 3. Frozen parameters v0.1.6
+## 3. Frozen parameters v0.1.7
 
 | Name | Value | Meaning |
 |---|---|---|
@@ -79,7 +83,7 @@ halts (`outage`). One quiet second does not.
 | `EXTENSION_MIN_BPS` | 0.0 | strict break only: extension must be > 0 |
 | `MOM_MIN_BPS` | 2.0 | min 5-second return, same sign |
 | `SPREAD_MAX_BPS` | 4.0 | reject a wider trigger-bar spread |
-| `STOP_MIN_BPS` | 2.0 | stop must sit outside the 1 bp spread |
+| `STOP_MIN_BPS` | 8.0 | a tighter range stop is placed out to this |
 | `STOP_MAX_BPS` | 20.0 | stop wider than this is not a scalp |
 | `TARGET_BPS` | 40.0 | target distance from the trigger close |
 | `ENTRY_TOL_BPS` | 2.0 | entry band around the trigger close |

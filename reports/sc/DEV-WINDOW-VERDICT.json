@@ -1,7 +1,17 @@
 {
  "strategy": "SC",
  "spec": "specs/strategies/SC.md",
- "rules": "v0.1.6",
+ "rules": "v0.1.7",
+ "diagnosis_v016": {
+  "fills": 2,
+  "entry": "SELL 77180.9 at 18:36:00.978Z",
+  "exit": "BUY 77207.5 at 18:36:12.437Z",
+  "hold_s": 11.5,
+  "exit_kind": "stop, not the 180s clock",
+  "adverse_bps": 3.45,
+  "fees_usdt": 0.0771942,
+  "winner_cleared_26bp": false
+ },
  "window": {
   "split": "datasets/splits_deep.toml idx 1 role=dev IST 2026-09-12",
   "symbol": "BTCUSDT",
@@ -17,36 +27,36 @@
  "runs": [
   {
    "run_id": "sc-dev-1",
-   "rules": "SC.md v0.1.6",
+   "rules": "SC.md v0.1.7",
    "status": "COMPLETE",
    "events_ingested": 14088,
-   "paid_costs": 0.07719419999999999,
+   "paid_costs": 0.0772124,
    "funding_net": 0.0,
-   "net_return_pct": -0.0864951666666669,
-   "avg_daily_net_pct": -0.0864951666666669,
+   "net_return_pct": -0.11684366666667723,
+   "avg_daily_net_pct": -0.11684366666667723,
    "inside_band": false,
    "qualified_for_real_capital": false,
    "reason": "average daily net is outside 1.5-2%; ledger net is not strictly positive; validation net is not strictly positive",
    "reconcile_ok": true,
-   "equity_close": 119.8962058
+   "equity_close": 119.85978759999999
   },
   {
    "run_id": "sc-dev-2",
-   "rules": "SC.md v0.1.6",
+   "rules": "SC.md v0.1.7",
    "status": "COMPLETE",
    "events_ingested": 14088,
-   "paid_costs": 0.07719419999999999,
+   "paid_costs": 0.0772124,
    "funding_net": 0.0,
-   "net_return_pct": -0.0864951666666669,
-   "avg_daily_net_pct": -0.0864951666666669,
+   "net_return_pct": -0.11684366666667723,
+   "avg_daily_net_pct": -0.11684366666667723,
    "inside_band": false,
    "qualified_for_real_capital": false,
    "reason": "average daily net is outside 1.5-2%; ledger net is not strictly positive; validation net is not strictly positive",
    "reconcile_ok": true,
-   "equity_close": 119.8962058
+   "equity_close": 119.85978759999999
   }
  ],
  "averages_match": true,
  "qualified_for_real_capital": false,
- "note": "v0.1.6 requires 2 bps of 5-second momentum and a stop of at least 2 bps, with a 180 second hold and the unchanged 40 bps target. Both reruns traded, paid the same costs, and reconciled. Average daily net is about -0.086%, outside 1.5-2%. Funding booked at 0 was not added. Costs, the spread profile, the window, and the burned split were not changed."
+ "note": "v0.1.7 places a range stop tighter than 8 bp out to 8 bp. The same impulse traded again. Both reruns reconciled. Average daily net is about -0.117%, outside 1.5-2%. The exit was still the stop, not the 180s clock, and no winner cleared 26 bp. Costs, the spread profile, the window, and the burned split were not changed."
 }
