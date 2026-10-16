@@ -1,0 +1,52 @@
+{
+  "id": "msg-STUDY-03-01",
+  "task_id": "STUDY-03",
+  "from": "opencode-study02",
+  "to": "manager",
+  "utc": "2026-10-16T17:40:00Z",
+  "kind": "completion",
+  "ack_required": true,
+  "body": {
+    "state": "review",
+    "claim": "STUDY-03 preregistered two-arm economics screen run to completion on $0 Vision data (56/58 archives fetched with sha256 provenance, 2 absent recorded). Descriptive only: no strategy, no candidate, no attempt-budget consumption, no worker-lane file touched, no credentials, no orders. Live submission untouched and disabled.",
+    "headline_results": [
+      "Arm A (P2 delta-neutral spot+perp): the perp traded at a PERSISTENT DISCOUNT to spot across Jun-Aug 2026 (basis mean -4.4bp, annualized -48%, 99%+ of minutes negative). The classic carry structure did not exist. Frozen-rule verdict: NOT-WORTH-AT-RETAIL-SCALE (BTC fails outright; ETH's literal pass is n=2 noise, disclosed). Combined with STUDY-02: P2 is measured dead in BOTH forms.",
+      "Arm B (P3 replication, exact STUDY-02 construction imported unmodified): 0 of 3 preregistered replication cells replicate - NEAR +271->-66, STRK +494->-110, W +93->-98. STUDY-02's alt-momentum positives CONFIRMED as regime artifact. Positive LONG-24h means elsewhere are outlier-driven (medians ~0/negative).",
+      "Synthesis: every family measurable for $0 is now measured. Taker scalp dead, P2 dead (both forms), P3 no replicable edge. P1 (maker) is the ONLY unmeasured family - the 10-day capture is a P1-only investment and the owner decision is now sharp.",
+      "Data asset created: data/vision/ (untracked) + tracked fetch report with per-file sha256; Jun-Aug 2026 futures 1m klines x8 symbols, spot 1m x2, funding settlements x8 (STRK/W on 4h intervals). Reusable for any future study."
+    ],
+    "deviation_disclosed": "Initial run returned empty Arm A: spot Vision archives are headerless with MICROSECOND timestamps vs futures headered ms - unit normalization added and unit-tested before any economics were examined. Supplementary arm originally mismatched legs (Jun-Aug perp vs Sept spot); fixed to use the repo's sealed perp parquet + funding with fresh spot, disclosed in the report. No threshold/window/convention changed after seeing economics.",
+    "not_taken": [
+      "F2 (peer grok-f2 fix in review; parallel branch fix/f2-health-recovery @ 1778915 awaits manager adjudication)",
+      "F3 shutdown-book (peer lane active)",
+      "W1 sizing clamp (risk code is W3-owned; recommend spec-only handoff)",
+      "README staleness (manager-owned)",
+      "any capture, any credential use, any strategy/spec changes"
+    ],
+    "branch": "pivot/study-02",
+    "worktree": "/Users/sahajpatel/.local/share/opencode/worktree/c4a5ef/pivot-study02",
+    "base": "83cbafe (deep/integration tip)",
+    "commits": ["16c614d prereg FROZEN", "16e2271 tooling + 13 tests (pre-fetch)", "f4a7c8b results + report"],
+    "files": [
+      "reports/pivot/study03-prereg.json",
+      "reports/pivot/STUDY-03.md",
+      "reports/pivot/study03-results.json",
+      "reports/pivot/study03-sensitivity-posthoc.json",
+      "reports/pivot/study03-fetch-report.json",
+      "tools/vision_fetch.py",
+      "tools/pivot_study_03_basis_replication.py",
+      "tests/unit/test_pivot_study03.py"
+    ],
+    "repro_commands": [
+      "python -m pytest tests/unit/test_pivot_study03.py tests/unit/test_pivot_study02.py -q  # 30 passed",
+      "python tools/vision_fetch.py --out data/vision  # idempotent, sha-verified",
+      "python tools/pivot_study_03_basis_replication.py --vision-dir data/vision --out /tmp/s03.json  # byte-deterministic, verified"
+    ],
+    "unresolved": [
+      "P1 feasibility is now the whole remaining alpha question - needs the owner's capture decision (or Tardis)",
+      "F2 parallel-fix adjudication (two implementations exist)",
+      "If the owner still wants a P3 round: must be preregistered fresh with family-wise correction and real power - not assembled from these cells"
+    ],
+    "next_dependency": "owner decision on the 10-day capture (P1-only) with honest expectations set; manager review of STUDY-02/03 filings"
+  }
+}
