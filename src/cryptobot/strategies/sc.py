@@ -30,9 +30,10 @@ from .s1 import Bar, EvalLog
 
 _EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
 
-# Frozen SC v0.1.8. The v0.1.7 short was stopped at 8.2 bp. The
-# window's adverse extreme was 9.9 bp and the best favorable move
-# was 15.1 bp, after the 180 s clock. Written down before this run.
+# Frozen SC v0.1.9. The window range is 25.0 bp, so a 40 bp target
+# cannot fill. A lookahead book inside the 0.5% stop nets at most
+# 0.28% at the largest 12 bp lot. Hold is 90 s so a flat book can
+# take the next impulse. Written down before this run.
 WARMUP_N = 60
 RANGE_N = 5
 MOM_M = 5
@@ -44,7 +45,7 @@ STOP_MAX_BPS = 20.0
 TARGET_BPS = 40.0
 ENTRY_TOL_BPS = 2.0
 ENTRY_EXPIRY_S = 5
-HOLDING_LIMIT_S = 300
+HOLDING_LIMIT_S = 90
 MAX_CONSECUTIVE_MISSING_HALT = 5
 MIN_RANGE_PRINTS = 3
 ROUND_TRIP_BPS = 2.0 * (5.0 + 5.0 / 2.0 + 5.0) + 1.0  # 26.0
@@ -52,7 +53,7 @@ ROUND_TRIP_BPS = 2.0 * (5.0 + 5.0 / 2.0 + 5.0) + 1.0  # 26.0
 
 @dataclass(frozen=True)
 class SCParams:
-    """Frozen SC v0.1.8 parameters (SC.md section 3)."""
+    """Frozen SC v0.1.9 parameters (SC.md section 3)."""
 
     warmup_n: int = WARMUP_N
     range_n: int = RANGE_N

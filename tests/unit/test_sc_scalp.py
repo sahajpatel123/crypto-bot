@@ -88,7 +88,7 @@ def test_a_four_bp_impulse_with_a_six_bp_stop_fires():
     long_d, short_d = evaluate_bar(bars, WARMUP_N, SC_BASE, "BTCUSDT")
     assert short_d.intent is None
     assert long_d.intent is not None
-    assert long_d.intent.holding_limit_s == 300
+    assert long_d.intent.holding_limit_s == 90
     assert long_d.evaluation.reason == "fired"
 
 
@@ -111,6 +111,21 @@ def test_a_tight_range_stop_is_placed_out_to_twelve_bps():
     assert distance == pytest.approx(12.0, abs=0.05)
 
 
+def test_a_second_impulse_fires_after_the_first():
+    """The signal is not one-shot. A later break is another scalp."""
+    bars = [_bar(i, 100.00 if i % 2 == 0 else 100.05) for i in range(WARMUP_N)]
+    bars.append(_bar(WARMUP_N, 100.20))
+    long_d, short_d = evaluate_bar(bars, WARMUP_N, SC_BASE, "BTCUSDT")
+    assert long_d.intent is not None and short_d.intent is None
+    for i in range(WARMUP_N + 1, WARMUP_N + 20):
+        bars.append(_bar(i, 100.50))
+    bars.append(_bar(WARMUP_N + 20, 100.40))
+    long_2, short_2 = evaluate_bar(bars, WARMUP_N + 20, SC_BASE, "BTCUSDT")
+    assert long_2.intent is None
+    assert short_2.intent is not None
+    assert short_2.intent.holding_limit_s == 90
+
+
 def test_one_quiet_second_does_not_veto_the_scalp():
     bars = _scalp_bars()
     bars[45] = None  # inside the 20-bar range; the other prints remain
@@ -129,12 +144,13 @@ def test_six_consecutive_quiet_seconds_are_an_outage():
     assert long_d.evaluation.reason.startswith("outage-")
 
 
-def test_sc_lifts_to_the_venue_minimum_inside_the_operating_stop(tmp_path):
-    """A 120 USDT book cannot budget 0.001 BTC. SC takes that lot anyway.
+def test_sc_sizes_to_the_operating_stop_room(tmp_path):
+    """A 120 USDT book cannot budget 0.001 BTC from the 0.125% loss budget.
 
-    The stop on the minimum lot stays inside the 0.5% operating stop.
-    A non-SC arm with the same prices still skips. A minimum lot whose
-    stop would blow the operating stop is refused.
+    SC takes the largest step that still fits in the 0.5% operating
+    stop. At 60_000 with a 20 bp stop that step is 0.002, not the
+    0.001 venue minimum. A non-SC arm still skips. A book that cannot
+    hold even the minimum lot is refused.
     """
     from datetime import timedelta
 
@@ -188,8 +204,9 @@ def test_sc_lifts_to_the_venue_minimum_inside_the_operating_stop(tmp_path):
     )
     lifted = policy("sc").evaluate(intent("SC"), account)
     assert isinstance(lifted, Approved)
-    assert lifted.qty >= 0.001
-    assert lifted.notional_usdt >= 5.0
+    assert lifted.qty == pytest.approx(0.002)
+    assert lifted.notional_usdt == pytest.approx(120.0)
+    assert lifted.reserved_risk == pytest.approx(0.528)
     assert lifted.reserved_risk <= 120.0 * 0.005 * 1.01
     skipped = policy("s1").evaluate(intent("S1"), account)
     assert isinstance(skipped, Rejected)
@@ -257,14 +274,21 @@ def _capture(path: Path) -> Path:
     events = []
     seq = 1
     trade_id = 1
-    # Dense 1-second tape: range, the extension, then a hold past 90s.
+    # Two impulses. The first long target fills, the book goes flat,
+    # the 60s cooldown expires, then a short break fires.
     for second in range(220):
         if second < WARMUP_N:
             price = 100.00 if second % 2 == 0 else 100.05
         elif second == WARMUP_N:
             price = 100.20
-        else:
+        elif second < 141:
             price = 100.70
+        elif second < 150:
+            price = 100.50
+        elif second == 150:
+            price = 100.40
+        else:
+            price = 99.90
         events.append(_event(seq, trade_id, second, "bookTicker", price))
         seq += 1
         events.append(_event(seq, trade_id, second, "aggTrade", price))
