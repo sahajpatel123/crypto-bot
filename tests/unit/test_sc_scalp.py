@@ -69,6 +69,22 @@ def test_frozen_rule_fires_a_long_scalp_and_clears_cost():
     assert TARGET_BPS > ROUND_TRIP_BPS
 
 
+def test_a_strict_five_second_break_fires():
+    """v0.1.3: any positive break of the prior 5 seconds, with 1 bp of momentum.
+
+    The trigger close is about 0.5 bps through the prior high. v0.1.2
+    required 1.5 bps and would not fire this bar.
+    """
+    bars = [_bar(i, 100.00) for i in range(WARMUP_N)]
+    for offset, price in enumerate((99.99, 99.995, 100.00, 100.00, 100.00)):
+        bars[WARMUP_N - 5 + offset] = _bar(WARMUP_N - 5 + offset, price)
+    bars.append(_bar(WARMUP_N, 100.005))
+    long_d, short_d = evaluate_bar(bars, WARMUP_N, SC_BASE, "BTCUSDT")
+    assert short_d.intent is None
+    assert long_d.intent is not None
+    assert long_d.evaluation.reason == "fired"
+
+
 def test_one_quiet_second_does_not_veto_the_scalp():
     bars = _scalp_bars()
     bars[45] = None  # inside the 20-bar range; the other prints remain
