@@ -1807,17 +1807,17 @@ def test_row12_emergency_flatten(tmp_path, monkeypatch, fixtures):
 
 
 def test_row11_operator_stop(tmp_path, monkeypatch, fixtures):
-    """Row 11: operator stop flattens promptly; resume adopts the close.
+    """Row 11: operator stop flattens promptly; resume continues flat.
 
     Phase A: with position 1 open, an operator handle (its own
     RunStore, the real CLI path) requests flatten-stop: the loop
     submits the close and exits promptly with the flag sticky. The
-    close fill lands post-shutdown (threaded drain stops on the
-    exit tick), so the ledger honestly reports open.
-    Phase B: after the explicit clear_stop, resume recovers via
-    lookup — the close adopts and books, the entry is NOT
-    double-booked (exec gate), nothing re-submits, flat. The run
-    serves its full duration (no re-stop).
+    shutdown owner-sweep books the close fill the venue pushes on the
+    exit tick (F3 fix; previously stranded until resume), so the final
+    report is flat and the close command resolves.
+    Phase B: after the explicit clear_stop, resume continues flat —
+    nothing new to adopt, the entry/close are NOT double-booked, and
+    nothing re-submits. The run serves its full duration (no re-stop).
     """
     ready, orders, account = fixtures
     db_path = tmp_path / "runs" / "cryptobot.db"
@@ -1862,16 +1862,21 @@ def test_row11_operator_stop(tmp_path, monkeypatch, fixtures):
         rows_a = [json.loads(line) for line in
                   (rig_a.workdir / "fills.jsonl").read_text().splitlines()
                   if line.strip()]
-        assert len(rows_a) == 1 and rows_a[0]["side"] == "BUY", rows_a
-        assert report_a["open_position"] is True
-        assert rig_a.session.ledger.position_qty() > 0.0
+        # F3 fix: the shutdown owner-sweep books the pushed close fill
+        # before the report — entry + close, flat, command resolved.
+        assert [r["side"] for r in rows_a] == ["BUY", "SELL"], rows_a
         close_cid = posts_a[1][2]["newClientOrderId"]
+        assert rows_a[1]["client_order_id"] == close_cid
+        assert report_a["open_position"] is False
+        assert rig_a.session.ledger.position_qty() == 0.0
         close_side = posts_a[1][2].get("side", "SELL")
         [close_fill] = rig_a.transport._tape[close_cid]
-        close_cmds = [c for c in rig_a.store.open_commands("matrix-r11")
-                      if c.get("engine_client_id") == close_cid]
-        assert len(close_cmds) == 1
-        assert close_cmds[0]["status"] == "submitted", close_cmds[0]
+        close_status = rig_a.store._db.execute(
+            "SELECT status FROM commands WHERE run_id=? AND"
+            " engine_client_id=?", ("matrix-r11", close_cid)).fetchall()
+        assert close_status == [("resolved",)], close_status
+        # Nothing left dangling at shutdown: every command resolved.
+        assert rig_a.store.open_commands("matrix-r11") == []
     finally:
         rig_a.close()
 
@@ -1911,8 +1916,8 @@ def test_row11_operator_stop(tmp_path, monkeypatch, fixtures):
         rows_b = [json.loads(line) for line in
                   (rig_b.workdir / "fills.jsonl").read_text().splitlines()
                   if line.strip()]
-        # Entry once (exec gate: recover did NOT double-book it) +
-        # the adopted close.
+        # Entry + close, each booked exactly ONCE across the restart
+        # (the exec gate stopped any double-book of the A-run close).
         assert len(rows_b) == 2, rows_b
         assert rows_b[0]["side"] == "BUY"
         assert rows_b[1]["side"] == "SELL"
@@ -1925,6 +1930,42 @@ def test_row11_operator_stop(tmp_path, monkeypatch, fixtures):
                                 rig_b.run_id)
     finally:
         rig_b.close()
+
+
+def test_row11b_duration_end_flatten_books_at_shutdown(tmp_path, monkeypatch,
+                                                       fixtures):
+    """Row 11b (F3 ordering): duration ends with position open — the
+    loop flattens, the venue pushes the close fill on that same exit
+    tick, and the shutdown owner-sweep (placed AFTER the flatten)
+    books it: the final report is flat, the command resolves, and
+    nothing is left dangling."""
+    ready, orders, account = fixtures
+    script = ready_prefix(ready) + attach_prefix(orders)
+    rig = Rig(tmp_path, monkeypatch, ready, orders, account, script,
+              shots=1, run_id="matrix-r11d", time_exit_s=600,
+              tail=SUBMIT_TAIL)
+    rig.transport._hook = auto_fill_hook(rig)
+    rig.attach()
+    try:
+        report = rig.session.run_live(rig.events(), duration_s=8,
+                                      expect_class=CLASS)
+        rig.close_streams()
+        rig.transport.assert_empty()
+        assert report["intents_admitted"] == 1, report["reject_counts"]
+        posts = assert_order_posts(rig.transport,
+                                   [("LIMIT", "BUY"), ("MARKET", "SELL")])
+        rows = [json.loads(line) for line in
+                (rig.workdir / "fills.jsonl").read_text().splitlines()
+                if line.strip()]
+        assert [r["side"] for r in rows] == ["BUY", "SELL"], rows
+        assert rows[1]["client_order_id"] == posts[1][2][
+            "newClientOrderId"]
+        assert report["open_position"] is False
+        assert rig.session.ledger.position_qty() == 0.0
+        assert rig.store.open_commands("matrix-r11d") == []
+        assert_reconciled_clean(rig.session, rig.store, rig.run_id)
+    finally:
+        rig.close()
 
 
 def test_row09_stale_data(tmp_path, monkeypatch, fixtures):

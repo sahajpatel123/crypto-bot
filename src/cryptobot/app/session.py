@@ -1219,6 +1219,46 @@ class Session:
         self._flush_staged_deltas()
         return len(events)
 
+    def _sweep_user_stream_owner(self, grace_s: float = 2.0) -> int:
+        """F3: book fills pushed to the socket handoff at shutdown.
+
+        The exit tick that flattens the position can be the loop's last
+        tick: the venue's close fill arrives on the user-stream socket
+        after the loop breaks, and the shutdown path used to drain only
+        the engine queue — the close fill stranded until a resume
+        looked it up (F3, DEEP-W1-D2). Sweep the owner path here,
+        bounded: three consecutive idle polls end early, and a
+        continuous feed cannot hold shutdown past ``grace_s``. Applied
+        on the owner thread via ``drain_owner`` only; threaded
+        attachments only (a non-threaded attachment already applies
+        input inline at poll time). Returns the count of polls that
+        applied input.
+        """
+        att = self._user_stream_attachment
+        drain = getattr(att, "drain_owner", None)
+        if not callable(drain) or not getattr(att, "_threaded", False):
+            return 0
+        applied = 0
+        idle = 0
+        deadline = time.monotonic() + max(0.0, grace_s)
+        while True:
+            try:
+                status = drain()
+            except Exception:
+                # Best-effort recovery only: a sweep failure must never
+                # break shutdown (the resume lookup path stays intact).
+                break
+            if status == "event":
+                applied += 1
+                idle = 0
+                self._drain_engine()
+            else:
+                idle += 1
+            if idle >= 3 or time.monotonic() >= deadline:
+                break
+            time.sleep(0.02)
+        return applied
+
     def _advance_engine_clock(self) -> None:
         # Engine time must track wall time on EVERY live wake, including
         # idle heartbeats (watchdog review): latency-delayed submissions
@@ -3648,6 +3688,10 @@ class Session:
         if self._position is not None and end_reason == "duration-elapsed":
             self._flatten("duration-end")
             self._drain_engine()
+        # F3: exit-tick fills land on the user-stream handoff after the
+        # loop breaks; sweep the owner path (bounded) so shutdown books
+        # every pushed fill before the final drain and the report.
+        self._sweep_user_stream_owner()
         self._set_state("stopping", end_reason)
         # Final full drain: live wakes are bounded, so sweep the backlog
         # (bounded rounds; a pathological flood cannot hang shutdown).
