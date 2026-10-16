@@ -1,4 +1,4 @@
-# SC micro-breakout scalp — exact rules v0.1.8
+# SC micro-breakout scalp — exact rules v0.1.9
 
 Status: BASELINE (simulation only; not a validated trading system).
 v0.1.0 was frozen before the first measurement. That run rejected
@@ -32,14 +32,24 @@ v0.1.7 placed that stop at 8 bps. The same short was sold at
 was 8.2 bps, the 8 bp stop. After that print the window's extreme
 against the short was 9.9 bps, and the best move in favor was 15.1
 bps, which does not clear the 26 bp cost floor. The 15 bp print
-arrived after the 180 second clock. v0.1.8 is frozen before the
-next measurement. The entry stays a strict 5-second break plus 2
-bps of momentum, so the impulse that printed still trades. A range
-stop tighter than 12 bps is placed at 12 bps: outside the 9.9 bp
-adverse extreme, outside the 1 bp spread, and inside the 20 bp
-scalp cap. The hold is 300 seconds. The 40 bp target is unchanged
-and still clears the 26 bp cost floor. Costs, the spread profile,
-the window, and the burned test split are not changed.
+arrived after the 180 second clock. v0.1.8 placed a tighter range
+stop at 12 bps and held 300 seconds. That short was sold at 77180.9
+and covered at 77178.0 on the clock, about 0.4 bp in favor.
+
+Before v0.1.9 was written, the same window's trades were measured.
+High 77257.3, low 77064.3, range 25.0 bps. No leg clears 26 bps, so
+the 40 bp target cannot fill. On 1-second closes, a lookahead book
+that pays the engine's 5 bp taker and the 1 bp research spread, and
+that flattens before a 0.5% loss, nets at most 0.168 USDT (0.14%)
+at 0.001 BTC and 0.335 USDT (0.28%) at 0.002 BTC. 0.002 BTC is the
+largest step whose 12 bp stop plus stressed costs fit in the 0.5%
+room on this book. Swings of 8 bp have a median length of 80
+seconds. v0.1.9 is frozen before the next measurement. The entry,
+the 12 bp stop floor, and the 40 bp target stay. The hold is 90
+seconds, so a finished scalp frees the book and the next impulse
+can trade inside the window. Size is the largest step inside the
+operating-stop room, not the venue minimum alone. Costs, the spread
+profile, the window, and the burned test split are not changed.
 
 ## 1. Why this shape
 
@@ -53,9 +63,11 @@ the frozen round-trip forecast. That forecast is NET_S1_V1:
 A target inside 26 bps is rejected before it can trade. The scalp
 therefore asks for a 40 bps target, which clears 26 bps after the
 2 bps entry band, and it refuses a stop that is either inside the
-spread noise or wide enough to be a swing. Holding is 300 seconds.
-That is the whole economic rule. It is not a claim that a day of
-these trades returns 1.5–2%.
+spread noise or wide enough to be a swing. Holding is 90 seconds.
+After the book is flat the same arm may fire again. That is the
+whole economic rule. It is not a claim that a day of these trades
+returns 1.5–2%. The measured ceiling on this window is 0.28% at
+the largest legal lot.
 
 ## 2. Bar schema and causality
 
@@ -73,7 +85,7 @@ Momentum uses `close[t]` against the latest present close at index
 disorder still halts. More than 5 consecutive missing seconds still
 halts (`outage`). One quiet second does not.
 
-## 3. Frozen parameters v0.1.8
+## 3. Frozen parameters v0.1.9
 
 | Name | Value | Meaning |
 |---|---|---|
@@ -88,7 +100,7 @@ halts (`outage`). One quiet second does not.
 | `TARGET_BPS` | 40.0 | target distance from the trigger close |
 | `ENTRY_TOL_BPS` | 2.0 | entry band around the trigger close |
 | `ENTRY_EXPIRY_S` | 5 | do not chase a stale scalp |
-| `HOLDING_LIMIT_S` | 300 | time exit; five minutes |
+| `HOLDING_LIMIT_S` | 90 | time exit; the next impulse can still trade |
 | `MAX_CONSECUTIVE_MISSING_HALT` | 5 | consecutive missing seconds that halt |
 | `MIN_RANGE_PRINTS` | 3 | present bars required inside the 5-bar range |
 
@@ -107,18 +119,20 @@ That number is part of this freeze.
 
 LONG, all must hold:
 
-1. `close[t] > max(high[t-20..t-1])`.
-2. Extension `(close[t] − ref_high) / close[t] · 1e4 >= 8`.
-3. Momentum `(close[t] / close[t-20] − 1) · 1e4 >= 8`.
+1. `close[t] > max(high)` of the present bars in `t-5..t-1`.
+2. Extension `(close[t] − ref_high) / close[t] · 1e4 > 0`.
+3. Momentum over 5 seconds is at least 2 bps.
 4. `spread_bps[t] <= 4`.
-5. Stop distance `(close[t] − range_low) / close[t] · 1e4` is inside
-   `[8, 20]`.
+5. A range stop tighter than 12 bps is placed at 12 bps. A stop wider
+   than 20 bps rejects.
 6. Planned reward from the entry bound to the target is at least 26 bps.
    With these constants it is about 38 bps. If a later edit breaks
    that, the side rejects `reward-below-cost` and does not emit.
 
 SHORT mirrors every sign. Opposing fires are left to the selector,
-which stands the instrument aside.
+which stands the instrument aside. A later bar may fire again once
+the book is flat and the 60 second cooldown has elapsed. Size is the
+largest lot step inside the operating-stop room.
 
 ## 5. Measurement window (declared before the run)
 

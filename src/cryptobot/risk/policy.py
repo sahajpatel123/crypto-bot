@@ -150,9 +150,9 @@ class RiskPolicy:
                 risk_budget_cap_usdt=cap,
             )
         except SizeRejected as exc:
-            # SC.md v0.1.4: only this arm may lift to the venue minimum
-            # lot, and only inside the operating-stop room. Other arms
-            # keep the round-down skip.
+            # SC.md v0.1.9: only this arm may size up from a sub-minimum
+            # budget. It takes the largest lot that still fits in the
+            # operating-stop room. Other arms keep the round-down skip.
             if not (exc.reason == "skip:min-notional"
                     and intent.strategy == "SC"):
                 return Rejected(exc.reason)
