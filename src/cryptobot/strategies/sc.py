@@ -30,10 +30,11 @@ from .s1 import Bar, EvalLog
 
 _EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
 
-# Frozen SC v0.1.10. The full IST day booked three 90 s clock exits
-# and none reached the 40 bp target. A 3-second break can arm more
-# often. The hold is 180 s so that target, which still clears 26 bp,
-# has time to fill. Written down before this run.
+# Frozen SC v0.1.11. On the full IST day the shipped entry produced
+# five causal trips. None printed 26 bp before the stop, out to 300 s.
+# The largest legal lot booked about -0.60% and the operating stop
+# halted the day. A break may arm only after the prior 60 s already
+# span that 26 bp cost floor. Written down before this run.
 WARMUP_N = 60
 RANGE_N = 3
 MOM_M = 3
@@ -49,11 +50,13 @@ HOLDING_LIMIT_S = 180
 MAX_CONSECUTIVE_MISSING_HALT = 5
 MIN_RANGE_PRINTS = 2
 ROUND_TRIP_BPS = 2.0 * (5.0 + 5.0 / 2.0 + 5.0) + 1.0  # 26.0
+ROOM_N = 60
+ROOM_MIN_BPS = ROUND_TRIP_BPS
 
 
 @dataclass(frozen=True)
 class SCParams:
-    """Frozen SC v0.1.10 parameters (SC.md section 3)."""
+    """Frozen SC v0.1.11 parameters (SC.md section 3)."""
 
     warmup_n: int = WARMUP_N
     range_n: int = RANGE_N
@@ -178,6 +181,14 @@ def evaluate_side(
     mom = (close_t / base - 1.0) * 1e4
     stop_level = min(lows) if is_long else max(highs)
     stop_bps = _distance_bps(close_t, stop_level)
+    # The prior minute must already span the cost floor. The causal
+    # ceiling on this day was zero 26 bp follow-throughs.
+    room_highs = _present(cols["high"], t - ROOM_N, t)
+    room_lows = _present(cols["low"], t - ROOM_N, t)
+    if len(room_highs) < 2 or len(room_lows) < 2:
+        span_bps = 0.0
+    else:
+        span_bps = (max(room_highs) - min(room_lows)) / close_t * 1e4
     # A range stop inside the 9.9 bp adverse extreme of v0.1.7 is
     # placed out to the floor. The impulse still trades. Wider than
     # the scalp cap still skips.
@@ -194,6 +205,8 @@ def evaluate_side(
                         f"{extension:.4f}"),
         FeatureEvidence("momentum", f"{p.mom_m}bars",
                         f"ret_bps>={p.mom_min_bps}", f"{mom:.4f}"),
+        FeatureEvidence("room", f"{ROOM_N}bars",
+                        f"span_bps>={ROOM_MIN_BPS}", f"{span_bps:.4f}"),
         FeatureEvidence("stop", f"{p.range_n}bars",
                         f"stop_bps in [{p.stop_min_bps},{p.stop_max_bps}]",
                         f"{stop_bps:.4f}"),
@@ -202,13 +215,14 @@ def evaluate_side(
         "history": "pass",
         "gap": "pass",
         "spread": "pass" if spread_t <= p.spread_max_bps else "fail",
+        "room": "pass" if span_bps >= ROOM_MIN_BPS else "fail",
         "breakout": "pass" if extension > p.extension_min_bps else "fail",
         "momentum": "pass" if (
             mom >= p.mom_min_bps if is_long else mom <= -p.mom_min_bps
         ) else "fail",
         "stop": "pass" if stop_bps <= p.stop_max_bps else "fail",
     }
-    order = ("history", "gap", "spread", "breakout", "momentum", "stop")
+    order = ("history", "gap", "spread", "room", "breakout", "momentum", "stop")
     if any(checks[k] == "fail" for k in order):
         failed = next(k for k in order if checks[k] == "fail")
         rejects = tuple(f"{k}={checks[k]}" for k in order)

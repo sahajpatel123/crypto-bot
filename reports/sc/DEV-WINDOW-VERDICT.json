@@ -1,7 +1,18 @@
 {
  "strategy": "SC",
  "spec": "specs/strategies/SC.md",
- "rules": "v0.1.10",
+ "rules": "v0.1.11",
+ "ceiling_before_run": {
+  "causal_trips": 5,
+  "trips_clearing_26bp": 0,
+  "trips_clearing_26bp_by_300s": 0,
+  "largest_legal_lot_btc": 0.002,
+  "largest_legal_lot_net_usdt": -0.7178,
+  "largest_legal_lot_net_pct": -0.5982,
+  "min_lot_net_on_those_trips_pct": -0.2991,
+  "operating_stop_halted": true,
+  "max_60s_span_bps_on_the_day": 19.91
+ },
  "window": {
   "split": "datasets/splits_deep.toml idx 1 role=dev IST 2026-09-12",
   "symbol": "BTCUSDT",
@@ -14,40 +25,40 @@
  "runs": [
   {
    "run_id": "sc-dev-1",
-   "rules": "SC.md v0.1.10",
+   "rules": "SC.md v0.1.11",
    "status": "COMPLETE",
    "events_ingested": 495309,
-   "round_trips": 4,
-   "trips_clearing_26bp": 0,
-   "paid_costs": 0.30905635,
+   "round_trips": 0,
+   "paid_costs": 0.0,
    "funding_net": 0.0,
-   "net_return_pct": -0.2654636249999842,
-   "avg_daily_net_pct": -0.2654636249999842,
+   "net_return_pct": 0.0,
+   "avg_daily_net_pct": 0.0,
    "inside_band": false,
    "qualified_for_real_capital": false,
    "reason": "average daily net is outside 1.5-2%; ledger net is not strictly positive; validation net is not strictly positive",
    "reconcile_ok": true,
-   "equity_close": 119.68144365000002
+   "equity_close": 120.0,
+   "room_rejections": 78908
   },
   {
    "run_id": "sc-dev-2",
-   "rules": "SC.md v0.1.10",
+   "rules": "SC.md v0.1.11",
    "status": "COMPLETE",
    "events_ingested": 495309,
-   "round_trips": 4,
-   "trips_clearing_26bp": 0,
-   "paid_costs": 0.30905635,
+   "round_trips": 0,
+   "paid_costs": 0.0,
    "funding_net": 0.0,
-   "net_return_pct": -0.2654636249999842,
-   "avg_daily_net_pct": -0.2654636249999842,
+   "net_return_pct": 0.0,
+   "avg_daily_net_pct": 0.0,
    "inside_band": false,
    "qualified_for_real_capital": false,
    "reason": "average daily net is outside 1.5-2%; ledger net is not strictly positive; validation net is not strictly positive",
    "reconcile_ok": true,
-   "equity_close": 119.68144365000002
+   "equity_close": 120.0,
+   "room_rejections": 78908
   }
  ],
  "averages_match": true,
  "qualified_for_real_capital": false,
- "note": "v0.1.10 was frozen before this rerun. The break is 3 seconds, the hold is 180 seconds, and size is the venue minimum lot inside the 0.5% stop. The 40 bp target still clears the 26 bp cost floor. Both benches on the full IST dev day ingested 495309 events, ended flat, and reconciled to the same -0.265% on the day. Four round trips, each 0.001 BTC. The best price move was about 7.4 bp. None cleared 26 bp. Taker fees were 0.30905635. Booked funding is 0 and is not counted as profit. The average is outside 1.5-2%. Validation was not scored. Not qualified. Costs, the 1 bp spread, live submission, and the burned test split were not changed."
+ "note": "Before this rule, the shipped v0.1.10 entry on the full IST day armed five causal trips. None printed 26 bp before the stop, out to 300 seconds. The largest legal lot, 0.002 BTC, booked about -0.60% and the 0.5% operating stop halted the day. v0.1.11 was frozen from that ceiling: do not size up, do not lower the 40 bp target, and arm a 3-second break only when the prior 60 seconds already span the 26 bp cost floor. On this day the widest 60-second span was 19.91 bp, so both benches rejected every bar at the room gate (78908 rejections), ingested 495309 events, stayed flat, and reconciled to 0.0%. That is outside 1.5-2%. Booked funding is 0 and is not counted as profit. Validation was not scored. Not qualified. Costs, the 1 bp spread, live submission, and the burned test split were not changed."
 }

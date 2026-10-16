@@ -52,10 +52,11 @@ def _bar(i: int, price: float) -> Bar:
 
 
 def _scalp_bars() -> list[Bar]:
-    """60 flat-alternating seconds, then one extension that clears SC."""
+    """One cost-floor span, then a 3-second break that clears SC."""
     bars: list[Bar] = []
     for i in range(WARMUP_N):
         bars.append(_bar(i, 100.00 if i % 2 == 0 else 100.05))
+    bars[10] = _bar(10, 100.30)
     bars.append(_bar(WARMUP_N, 100.20))
     return bars
 
@@ -77,6 +78,7 @@ def test_frozen_rule_fires_a_long_scalp_and_clears_cost():
 def test_a_one_bp_wiggle_does_not_enter():
     """v0.1.6: 1 bp of momentum is inside the frozen 1 bp spread."""
     bars = [_bar(i, 100.00) for i in range(WARMUP_N)]
+    bars[10] = _bar(10, 100.30)
     for offset, price in enumerate((99.99, 99.995, 100.00, 100.00, 100.00)):
         bars[WARMUP_N - 5 + offset] = _bar(WARMUP_N - 5 + offset, price)
     bars.append(_bar(WARMUP_N, 100.005))
@@ -87,6 +89,7 @@ def test_a_one_bp_wiggle_does_not_enter():
 def test_a_four_bp_impulse_with_a_six_bp_stop_fires():
     """A 4 bp impulse clears the 2 bp momentum floor and the 2 bp stop."""
     bars = [_bar(i, 100.00) for i in range(WARMUP_N)]
+    bars[10] = _bar(10, 100.30)
     for offset, price in enumerate((100.00, 100.02, 100.04, 100.05, 100.06)):
         bars[WARMUP_N - 5 + offset] = _bar(WARMUP_N - 5 + offset, price)
     bars.append(_bar(WARMUP_N, 100.10))
@@ -106,6 +109,7 @@ def test_a_tight_range_stop_is_placed_out_to_twelve_bps():
     from cryptobot.coordination import decode_exit_rule
 
     bars = [_bar(i, 100.00) for i in range(WARMUP_N)]
+    bars[10] = _bar(10, 100.30)
     for offset, price in enumerate((100.00, 100.00, 100.015, 100.035, 100.035)):
         bars[WARMUP_N - 5 + offset] = _bar(WARMUP_N - 5 + offset, price)
     bars.append(_bar(WARMUP_N, 100.04))
@@ -119,6 +123,7 @@ def test_a_tight_range_stop_is_placed_out_to_twelve_bps():
 def test_a_second_impulse_fires_after_the_first():
     """The signal is not one-shot. A later break is another scalp."""
     bars = [_bar(i, 100.00 if i % 2 == 0 else 100.05) for i in range(WARMUP_N)]
+    bars[10] = _bar(10, 100.30)
     bars.append(_bar(WARMUP_N, 100.20))
     long_d, short_d = evaluate_bar(bars, WARMUP_N, SC_BASE, "BTCUSDT")
     assert long_d.intent is not None and short_d.intent is None
@@ -129,6 +134,15 @@ def test_a_second_impulse_fires_after_the_first():
     assert long_2.intent is None
     assert short_2.intent is not None
     assert short_2.intent.holding_limit_s == 180
+
+
+def test_a_break_inside_a_tight_hour_does_not_enter():
+    """A 3-second pop inside a sub-26 bp hour does not clear the cost floor."""
+    bars = [_bar(i, 100.00 if i % 2 == 0 else 100.05) for i in range(WARMUP_N)]
+    bars.append(_bar(WARMUP_N, 100.20))
+    long_d, _short_d = evaluate_bar(bars, WARMUP_N, SC_BASE, "BTCUSDT")
+    assert long_d.intent is None
+    assert long_d.evaluation.reason == "room-gate"
 
 
 def test_one_quiet_second_does_not_veto_the_scalp():
@@ -282,7 +296,11 @@ def _capture(path: Path) -> Path:
     # Two impulses. The first long target fills, the book goes flat,
     # the 60s cooldown expires, then a short break fires.
     for second in range(220):
-        if second < WARMUP_N:
+        if second == 10:
+            price = 100.30
+        elif second == 100:
+            price = 100.20
+        elif second < WARMUP_N:
             price = 100.00 if second % 2 == 0 else 100.05
         elif second == WARMUP_N:
             price = 100.20
