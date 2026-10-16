@@ -1,0 +1,19 @@
+{
+ "tool": "sandbox_drill",
+ "seed": 7,
+ "symbol": "ETHUSDT",
+ "verdict": "BLOCKED",
+ "phases": {
+  "preflight": 0,
+  "drill": 2,
+  "interrupt": 0,
+  "resume": 0,
+  "stream-gap": 0,
+  "reconcile": 0
+ },
+ "omitted_phases": [],
+ "sandbox_stamp": "SANDBOX NOT VALIDATED",
+ "demo_stamp": "BINANCE DEMO VALIDATION PENDING",
+ "utc": "2026-10-16T14:02:14.355917+00:00",
+ "records": 33
+}

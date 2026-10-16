@@ -1,0 +1,18 @@
+{
+ "status": "REFUSED_UNSUPPORTED",
+ "pid": 27870,
+ "budget_s": 60.0,
+ "deadline_inherited": false,
+ "command": [
+  "python3",
+  "-c",
+  "open('/tmp/deep-w5-neg/W5-SENTINEL','w').write('spawned'); import time; time.sleep(30)"
+ ],
+ "reason": {
+  "platform": "darwin",
+  "linux": false,
+  "subreaper_acquired": false,
+  "table_scan_ok": true
+ },
+ "note": "strict containment unverifiable on this host; refusing to spawn (pass --allow-best-effort to run the legacy best-effort path)"
+}

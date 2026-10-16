@@ -1,0 +1,15 @@
+{
+ "status": "CHILD_EXIT",
+ "child_rc": 0,
+ "elapsed_s": 917.118,
+ "budget_s": 1500.0,
+ "command": [
+  "env",
+  "PYTHONPATH=src",
+  "python3",
+  "/tmp/deep-w5-onefiling.py",
+  "DEEP-W1-D1.done.json",
+  "/tmp/deep-w5-ckpt/d1-filing.json"
+ ],
+ "subreaper": false
+}

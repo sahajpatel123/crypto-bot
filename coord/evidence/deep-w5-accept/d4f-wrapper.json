@@ -1,0 +1,20 @@
+{
+ "status": "CHILD_EXIT",
+ "child_rc": 0,
+ "elapsed_s": 1103.3,
+ "budget_s": 1500.0,
+ "command": [
+  "env",
+  "PYTHONPATH=src",
+  ".venv/bin/python",
+  "-m",
+  "pytest",
+  "-q",
+  "-p",
+  "no:cacheprovider",
+  "--tb=no",
+  "-rf",
+  "tests/"
+ ],
+ "subreaper": false
+}
