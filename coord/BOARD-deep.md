@@ -75,6 +75,19 @@ Production submission DISABLED. No credentials requested at this stage.
   in resume identity). Premises verified: spreadless bars convert to
   None, cache lacks bookTicker, §8 already assumes the profile.
 
+## Round-1 outcome mechanism (manager analysis, pre-acceptance)
+- Selection NONE is mechanically correct AND weak as strategy evidence.
+- X1 family: 0 intents in 11/12 cells (1 in X1-T val) — 35bps double-gate
+  never co-occurred in capped windows. Strategies untested, not disproven.
+- S1 control: 391 dev + 6199 val intents admitted, 0 fills — all 5 val
+  submits status=failed (execution:submit-rejected under exit-only).
+  Root cause: health:stale-mark latched ~t+5s on quiet window opens and
+  never released (W1 F2, filed, fail-closed). 6084 gate trips in S1-val.
+- Verdict shape: RESEARCH UNRESOLVED with mechanism decomposed. F2 is the
+  binding constraint on any future measurement round (not authorized here).
+- Freeze integrity: only §9 IST clarification (pre-outcome, disclosed) +
+  authorized beta transcription; params/round/selection untouched.
+
 ## Stop-order incident (resolved)
 - W4 stopped round-1 at jobs 1–4 citing "owner order" (1cc77dd, evidence
   preserved). Provenance: stale Oct 12–13 local-session stops, superseded
