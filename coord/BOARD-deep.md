@@ -115,6 +115,8 @@ Production submission DISABLED. No credentials requested at this stage.
   acceptance); W2 (refuse occupied --dir loudly instead of crashing —
   small bounded fixup, D3 stays accepted regardless). F2/F3/F4 fixes
   deliberately NOT ordered (new phase; out of assignment scope).
+- W2 fixup LANDED (dcf80f9 → 1fe88d3): occupied dir → rc 2 loud BLOCKED;
+  fresh drill 6/6 PASS re-verified. W5 told to verify A2 on the new tip.
 
 ## Stop-order incident (resolved)
 - W4 stopped round-1 at jobs 1–4 citing "owner order" (1cc77dd, evidence
