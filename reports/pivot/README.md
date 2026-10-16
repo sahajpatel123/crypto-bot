@@ -101,6 +101,19 @@ loudly. This gives the data lane a target format without editing its
 tools. Tests: `test_funding_sidecar_*` (3, incl. outside-span and
 missing-provenance rejection).
 
+## Capture sizing (measured 2026-10-16, this host)
+
+From `data/captures/cap-2h` (BTC+ETH, 2h): events.jsonl 1.55GB,
+3.06GB written incl. raw duplication. Per-channel byte share
+(300k-line sample): bookTicker 83.6%, depth 13.8%, aggTrade 2.2%,
+markPrice 0.4%. Extrapolated 10d qualifying capture (top-2):
+~186GB events-only (~155GB of it bookTicker, the required quote
+stream), ~370GB with raw duplication. This host has 13GiB free —
+infeasible here by >10x. BTC-only halves it (~95GB) but still
+needs external storage (~256GB) or a capture host with room.
+Dropping depth saves only ~14%; thinning bookTicker would break
+the tick floor. Storage is an owner provisioning decision.
+
 ## Data blocker (owner decision)
 
 Qualification needs ≥10d untouched tick: L2/book quotes (no modelled
