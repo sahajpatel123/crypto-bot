@@ -30,27 +30,29 @@ from .s1 import Bar, EvalLog
 
 _EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
 
-# Frozen SC v0.1.0. Round trip is NET_S1_V1 on the shared cost preset.
+# Frozen SC v0.1.3. Round trip is NET_S1_V1 on the shared cost preset.
+# v0.1.2's 1.5 bp break of a 5-second range still never entered.
+# These numbers were written down before the v0.1.3 measurement.
 WARMUP_N = 60
-RANGE_N = 20
-MOM_M = 20
-EXTENSION_MIN_BPS = 8.0
-MOM_MIN_BPS = 8.0
+RANGE_N = 5
+MOM_M = 5
+EXTENSION_MIN_BPS = 0.0
+MOM_MIN_BPS = 1.0
 SPREAD_MAX_BPS = 4.0
-STOP_MIN_BPS = 8.0
+STOP_MIN_BPS = 1.0
 STOP_MAX_BPS = 20.0
 TARGET_BPS = 40.0
 ENTRY_TOL_BPS = 2.0
 ENTRY_EXPIRY_S = 5
 HOLDING_LIMIT_S = 90
 MAX_CONSECUTIVE_MISSING_HALT = 5
-MIN_RANGE_PRINTS = 10
+MIN_RANGE_PRINTS = 3
 ROUND_TRIP_BPS = 2.0 * (5.0 + 5.0 / 2.0 + 5.0) + 1.0  # 26.0
 
 
 @dataclass(frozen=True)
 class SCParams:
-    """Frozen SC v0.1.0 parameters (SC.md section 3)."""
+    """Frozen SC v0.1.3 parameters (SC.md section 3)."""
 
     warmup_n: int = WARMUP_N
     range_n: int = RANGE_N
@@ -191,7 +193,7 @@ def evaluate_side(
         "history": "pass",
         "gap": "pass",
         "spread": "pass" if spread_t <= p.spread_max_bps else "fail",
-        "breakout": "pass" if extension >= p.extension_min_bps else "fail",
+        "breakout": "pass" if extension > p.extension_min_bps else "fail",
         "momentum": "pass" if (
             mom >= p.mom_min_bps if is_long else mom <= -p.mom_min_bps
         ) else "fail",
