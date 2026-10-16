@@ -1,0 +1,67 @@
+{
+  "study": "STUDY-02",
+  "title": "P2 funding-carry and P3 swing economics screen on the frozen 30-day benchmark (descriptive measurement, NOT a strategy)",
+  "frozen_utc": "2026-10-16T14:30:00Z",
+  "author_lane": "independent 4th agent (owner-directed); filed to manager for review",
+  "role": "Pre-decision economics screen informing the owner's 10-day-capture choice (SWEEP-2026-10-16 blocker #1). Creates NO strategy, NO candidate, consumes NO PIVOT-01 attempt budget. Mirrors STUDY-01's role for the taker-scalp thesis: measure the economics on repo bytes before committing capture effort.",
+  "data_frozen": {
+    "source": "datasets/benchmark_30d.toml manifest 9008ba92 (transform v2 causal; v1 close-at-open lookahead refused by the repo reader)",
+    "window_utc": ["2026-09-11", "2026-10-11"],
+    "symbols_price": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "ZECUSDT", "NEARUSDT", "STRKUSDT", "XRPUSDT", "WUSDT"],
+    "symbols_funding_full": ["BTCUSDT", "ETHUSDT"],
+    "funding_note": "Settlement-grade funding parquets (ts_ms, interval_h, rate; REST v1/fundingInfo reconciled vs Vision, 0 mismatches, 125 settlements each) exist ONLY for BTCUSDT/ETHUSDT over the full window. The other 6 symbols carry September-only funding (manifest gap kind funding-terms-absent, Oct).",
+    "price_construction": "1-minute closes built causally from aggTrade parquet: close = last trade price in [m, m+60s); close_time = m+60s; minutes with zero trades are MISSING (no forward-fill, no interpolation). 1-hour close = last non-missing 1m close in the hour (= last trade of the hour); hours without any trade are MISSING.",
+    "warmup": "Signal generation starts at window_start + 24h. P2 trailing may read settlements from 2026-09-01 (data start, causal); all entries/exits evaluated only inside the window."
+  },
+  "costs_frozen": {
+    "contract": "cost-contract-v1 (src/cryptobot/costs.py): roundtrip = 2*(fee 5 + slippage 5) + spread 5 + funding 1 = 26 bps taker RT",
+    "charge": "26 bps once per round trip, deducted from every cell's net",
+    "label": "conservative-simulation preset; live adverse selection typically worse (STUDY-01 note stands)"
+  },
+  "hypotheses_frozen": {
+    "H-02": "8h funding settlements on BTC/ETH perps are large and persistent enough that a funding-informed hold collects net-positive carry after taker RT costs within the P2 family's stated turnover (~1/day).",
+    "H-03": "4h+ swing continuation on 1h bars clears the P3 80bps target after 26bps costs (costs <10% of the typical move, per the P3 preregistration)."
+  },
+  "method_frozen": {
+    "p2_descriptive": [
+      "Per-settlement rate distribution (bps): mean, median, p10, p90, min, max, fraction positive; annualized mean = mean_rate * 3 * 365 (fraction, reported as %).",
+      "Persistence: Pearson correlation between trailing-3-settlement mean rate and the NEXT settlement rate (settlements with 3 predecessors, inside window); plus sign-match rate P(next same sign as trailing mean).",
+      "Amortization arithmetic: funding_per_day_bps = mean_rate * 3 * 10^4; breakeven_hold_days = 26 / funding_per_day_bps (hold length at which collected funding alone covers one taker RT)."
+    ],
+    "p2_signal_cells": {
+      "trigger": "trailing-3-settlement mean rate >= +T -> SHORT; <= -T -> LONG; T = 1.0 bp/8h = the venue baseline funding (0.01%/8h), declared a priori, not fitted",
+      "entry": "first 1m close with close_time >= settlement_ts + 60s (post-settlement, causal); entry_ts = that close_time",
+      "exit": "first 1m close with close_time >= entry_ts + H; H in {8h, 24h, 72h, 168h} — the long arms test the amortization claim directly and are declared a priori",
+      "funding_attribution": "settlements with entry_ts < s < exit_ts (strictly inside the hold; a settlement at the exit instant is conservatively excluded); SHORT collects +rate, LONG collects -rate per settlement",
+      "net_bps": "((side_price_pnl + funding_collected) * 1e4) - 26; side_price_pnl SHORT = (entry-exit)/entry, LONG = (exit-entry)/entry",
+      "one_position": "per (symbol, side): a signal whose entry precedes the previous exit of the same cell is skipped and counted",
+      "cells": "primary: BTCUSDT/ETHUSDT x {LONG, SHORT} x {8h, 24h, 72h, 168h}; supplementary (labeled September-only, funding absent Oct): the other 6 symbols, same construction",
+      "missing_data": "entry/exit close missing in range -> cell skipped and counted; never imputed"
+    },
+    "p3_arithmetic_screen": {
+      "horizons_h": [4, 8, 24],
+      "per_symbol": "N h-hour close-to-close returns; stdev bps; median |move| bps; p90 |move| bps; fraction of |moves| >= 26bps (cost-covering base rate); fraction >= 80bps (P3 target base rate)",
+      "scope": "all 8 symbols, full window, 1h closes"
+    },
+    "p3_signal_cells": {
+      "trigger": "trailing-24h return (close_t / close_{t-24} - 1, both endpoints present) >= +100bps -> LONG; <= -100bps -> SHORT; threshold declared a priori at the order of the P3 80bps target",
+      "entry": "at the triggering 1h close (last trade of that hour; causal — trigger uses data up to and including that close)",
+      "exit": "1h close at t + k, k in {4, 8, 24} matching H in {4h, 8h, 24h}; target bar missing -> skipped and counted",
+      "funding_attribution": "same convention as P2",
+      "one_position": "per (symbol, side), overlapping signals skipped and counted",
+      "cells": "8 symbols x {LONG, SHORT} x {4h, 8h, 24h}"
+    }
+  },
+  "decision_rules_frozen": {
+    "H-02": "REJECTED-ON-THIS-DATA if every primary signal cell has net_mean <= 0; additionally, if breakeven_hold_days > 7 the perp-only taker funding-tilt at ~1/day turnover is rejected on arithmetic alone and the delta-neutral long-hold variant is flagged as requiring spot-leg data (separate study; Vision spot is $0) — not a candidate, not a capture justification by itself.",
+    "H-03": "REJECTED-ON-ARITHMETIC if median |move| < 26bps at ALL of {4h, 8h, 24h} on BTC and ETH (the continuation premise cannot cover costs at any tested horizon); else REJECTED-ON-THIS-DATA if every primary signal cell net_mean <= 0; else MERITS-CANDIDATE-EVALUATION (owner decision, fresh data, full harness — NOT validation).",
+    "global": "Whatever the outcome: NO candidate is created, NO strategy code changes, NO attempt-budget consumption, NO capture decision is made by this study — the output only informs the owner's choice with measured numbers."
+  },
+  "posthoc_sensitivity_declared": "Any threshold perturbations (P2 T in {0.5, 2.0} bp; P3 trigger in {50, 200} bps) are run separately, labeled POST-HOC in the report, and are never decision-relevant.",
+  "non_goals": [
+    "No strategy/spec/code changes in any worker lane (W1 strategies/research, W2 market_data/execution, W3 risk/accounting untouched)",
+    "No live orders, no credentials, no network calls (repo-local data only)",
+    "No claim of profitability; descriptive economics only",
+    "No re-entry of S1-S5/X1 taker-scalp configs"
+  ]
+}
