@@ -1229,6 +1229,24 @@ def main(argv=None):
         "preflight", "drill", "interrupt", "resume", "stream-gap",
         "reconcile", "full"))
     args = parser.parse_args(argv)
+    run_dir = Path(args.dir)
+    if run_dir.exists() and any(run_dir.iterdir()):
+        # Occupied dir: refuse loudly up front (BLOCKED) instead of
+        # crashing mid-run on reused store/journal/venue state. Applies
+        # to `full` and every standalone phase; chain phases with `full`.
+        msg = (f"[BLOCKED] {args.command}: dir occupied ({run_dir}), "
+               f"use a fresh dir")
+        print(msg, flush=True)
+        try:
+            with open(run_dir / "sandbox_evidence.jsonl", "a",
+                      encoding="utf-8") as fh:
+                fh.write(json.dumps({
+                    "ts_utc": _utcnow().isoformat(),
+                    "phase": args.command, "verdict": "BLOCKED",
+                    "detail": msg, "elapsed_s": 0.0}) + "\n")
+        except OSError:
+            pass
+        return EXIT_BLOCKED
     drill = Drill(args.dir, args.symbol, args.seed)
     if args.command == "preflight":
         return cmd_preflight(drill)
