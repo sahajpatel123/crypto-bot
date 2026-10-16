@@ -1,69 +1,79 @@
-# Deep-research final report (DRAFT — round-1 outcome + verdict pending)
+# Deep-research final report (NEAR-FINAL — W5 verdict pending)
 
-Single acceptance command (manager-owned, re-runs worker proofs):
-`PYTHONPATH=src .venv/bin/python tools/deep_accept.py --suite full --report-out R.json`
-(exits 0 PASS / 2 BLOCKED / 1 FAIL; every cited command re-executed, observed output only.)
+Integrated SHA: `7d48e5e` (`deep/integration`, all five worker branches merged).
+Base: `3aac4c7` (rev2-rc-1). Board + rulings: `coord/BOARD-deep.md`.
 
-Budget: every job ≤1500s via tools/run_budget.py (strict preflight; macOS/dev
-hosts pass --allow-best-effort explicitly). Production submission DISABLED throughout.
+Single acceptance command (manager-owned; re-runs every worker proof):
+`rm -rf drill-out-sandbox bench_d5 && PYTHONPATH=src .venv/bin/python
+tools/deep_accept.py --suite full --report-out R.json`
+(exits 0 PASS / 2 BLOCKED / 1 FAIL; observed output only; fresh dirs required.)
+Observed result: OVERALL PASS — A1 PASS (D1 6/6, D2 3/3), A2 PASS (2/2),
+A3 PASS (D5 5/5, D4 5/5).
 
-## A1 — Deployment + execution correctness: PASS (integrated, re-run green)
+Budget: every job ≤1500s via tools/run_budget.py (strict preflight refuses
+unsupported hosts with exit 125; macOS/dev runs pass --allow-best-effort
+explicitly). Production submission DISABLED throughout. No credentials used.
+
+## A1 — Deployment + execution correctness: PASS
 - D1 enforce-or-refuse (W1 cloud-vega, cd42146 → 04c0bee): strict preflight
-  before checkpoint/spawn; unsupported host → REFUSED_UNSUPPORTED + stderr
-  REFUSED + exit 125, child never spawns (marker-proven). --allow-best-effort
-  reproduces legacy rc/report shape bit-for-bit. 6/6 filing commands re-ran
-  green (refuse ×2, passthrough, 14 file tests, 1080+1 units, 261 rest).
-- D2 lifecycle matrix (W1, 6bc5af6 → 47a8c8c + fixup 9be4fb1): 14/14 rows
-  green on the real run_live loop (happy, dupe, delayed-ack, ambiguous,
-  disconnect, restart-with-exposure, 06b, booking-fail, queue, stale, halt,
-  stop, flatten, foreign). 3/3 filing commands re-ran green.
+  before checkpoint/spawn; exit 125 + REFUSED_UNSUPPORTED + stderr REFUSED,
+  child never spawns (marker-proven); best-effort reproduces legacy
+  rc/report shape bit-for-bit. 6/6 re-ran green (2× refuse, passthrough,
+  14 file tests, 1080+1 units, 261 rest).
+- D2 lifecycle matrix (W1, 6bc5af6 → 47a8c8c + flag fixup 9be4fb1): 14/14
+  rows green on the real run_live loop. 3/3 re-ran green.
 - Session fixes owned: F1 ambiguous-submit attribution (journal seam +
-  durable fallback, pinned by row 4); position-shell persist/restore;
-  orphan-close nonzero-booked fallback — covers both W2 resume findings.
-- Filed, not fixed: F2 stale-mark one-way latch (fail-closed); F3 exit-tick
-  fills strand until resume adopts (venue safe, ledger lags); F4 no operator
-  clear for unknown commands; F5 halts gate entries only (no finding).
-  Docs examples updated for the strict flag (641609a).
+  durable fallback); position-shell persist/restore; orphan-close fallback —
+  covering both W2 resume findings. Filed, not fixed: F2 stale-mark
+  one-way latch (fail-closed — see round mechanism below); F3 exit-tick
+  fills strand until resume adopts; F4 no operator clear for unknowns;
+  F5 halts gate entries only (no finding).
 
-## A2 — Sandbox demonstration: PASS (integrated, re-run green)
-- D3 (W2 white-aldebaran, b72865a → c0e211f): tools/audit/sandbox_drill.py +
-  src/cryptobot/adapters/sandbox_venue.py. One offline seed-pinned command,
-  6/6 phases PASS, report records SANDBOX VALIDATED vs BINANCE DEMO
-  VALIDATION PENDING. 11/11 audit tests green. Verified offline (no network,
-  no creds); demo command + credential config prepared only, never executed.
-- Caveat: drill works around the two session resume defects driver-side
-  (now fixed session-side by W1 D2 — drill predates the fix; re-run still
-  green after the merge).
+## A2 — Sandbox demonstration: PASS
+- D3 (W2 white-aldebaran, b72865a → c0e211f): one offline seed-pinned
+  command, 6/6 phases PASS; report records SANDBOX VALIDATED vs BINANCE
+  DEMO VALIDATION PENDING. 11/11 audit tests green. Verified offline with
+  no secrets; the credentialed demo command is prepared only, never run.
+- Wart (noted, out of scope): re-running into an occupied --dir crashes
+  instead of refusing loudly; fresh dirs are the contract.
 
-## A3 — Economic strategy on real data (PENDING round-1)
-- D5 data (W3 cool-amalthea, 0cdf1e4 → f28bb81): 5/5 proofs re-run green.
-  Manifest 9008ba92 (Oct funding merged, 22 gaps resolved); splits frozen +
-  verified (480 cells; DEV idx1-15, VAL idx16-22 scored-once, TEST idx23-30
-  BURNED); exactly one EVAL minted (eval-deep1, $0 self-capture, SCORABLE
-  reproduced); bench bounded (124 TRUNCATED) + resume (COMPLETE) proven.
-  Caveats: merge script rewrites build timestamps (sha drift on fresh
-  re-run; frozen TOML restored after timestamps-only diff); audit --out
-  needs a pre-existing dir. Both filed to W3 as follow-ups.
-- D4 X1 round-1 (W4 whisper-redshift): freeze verified outcome-free
-  (a96ed72; params match dispatch; honest minimum-trigger economics
-  pre-registered; beta 1.254028 via frozen §9 on DEV idx1–5 — overlaps DEV
-  scoring slice, disclosed, trigger-neutral). Feasibility ruling: frozen
-  30min/2h per-config wall caps executed via chained bounded resume (no
-  amendment, no dataset swap). Vehicle authorizations #1 (multi-symbol +
-  window filters) and #2 (--spread-bps modeled spread) — premises verified
-  in code, backward compat + tests-gated, freeze untouched. Stop-order
-  incident resolved as stale-context false alarm (record in stopped.json);
-  round resumed with one disclosed mechanical redo (dev j1, MATCH-verified).
-- OUTCOME: [pending — selection by frozen tools/x1_select.py; ≤1 advance
-  on dev>0 & val>0 else NONE; economics reconciled to ledger]
+## A3 — Economic strategy on real data
+- D5 data (W3 cool-amalthea, 0cdf1e4 → f28bb81): 5/5 re-ran green.
+  Manifest 9008ba92 (Oct funding merged, 22 gaps resolved); splits frozen
+  + verified (480 cells; DEV idx1-15, VAL idx16-22 scored-once, TEST
+  idx23-30 BURNED); one EVAL minted (eval-deep1, $0 self-capture,
+  SCORABLE reproduced); bench bounded (124) + resume (COMPLETE) proven.
+  Caveats filed to W3: merge rewrites build timestamps (sha drift on
+  fresh re-run); audit --out needs a pre-existing dir.
+- D4 X1 round-1 (W4 whisper-redshift → granite-cetus, d71b050 → af9c86a +
+  expect_rc fixup bd8d54c): 48/48 filed jobs ran to cap, 24/24 cells
+  bridged rc=0, realistic + adverse (2x spread) costs. Freeze verified:
+  only the pre-outcome §9 IST clarification + authorized beta (1.254028)
+  transcription; params/round/selection untouched. Three vehicle
+  extensions + bridge reviewed (narrow, tested, backward compatible).
+  Two session-swap/evidence incidents resolved with records (stopped.json
+  false alarm; jobs-19/20 accepted complete after corroboration).
+- OUTCOME: selection NONE — RESEARCH UNRESOLVED. Fills 0 in all 24 cells.
+  Mechanism (manager pre-acceptance analysis, W5 to confirm): X1 admitted
+  0 intents in 11/12 cells (1 in X1-T val) — the 35bps double-gate never
+  co-occurred in capped windows, so X1 is UNTESTED, not disproven. S1
+  admitted 391 dev + 6199 val intents but all submits failed under the
+  exit-only latch: health:stale-mark trips ~5s in on quiet window opens
+  and never releases (F2; 6084 gate trips in S1-val; 5/5 submits
+  submit-rejected). The round measured the latch, not the strategies.
+  F2 is the binding constraint on any future measurement round.
 
-## Production eligibility: [pending W5 verdict + round outcome]
-Mechanics gates (A1/A2) do not establish profitability. Awaiting: X1-R1
-filing, full acceptance re-run, W5 independent verdict.
+## Independent verification (W5): [PENDING — verdict filing]
+
+## Production eligibility: [PENDING — decided after W5 verdict]
+Standing facts: mechanics gates (A1/A2) never establish profitability;
+no strategy qualified (NONE); F2 blocks any live submission path from
+measuring fills at all. The decision will be explicit: NOT ELIGIBLE
+unless the verdict changes the facts above.
 
 ## Evidence index
-- Board + rulings: coord/BOARD-deep.md (this branch)
-- Filings: coord/outbox/DEEP-*.done.json (+ W5 verdict on arrival)
-- Worker evidence: coord/evidence/deep-w1-d1/, deep-w1-d2/, drill-out-sandbox/,
-  outputs/x1/ (on W4 branch until integrated)
-- Integration SHAs: D1 04c0bee, D3 c0e211f, D5 f28bb81, D2 47a8c8c+9be4fb1
+- Filings: coord/outbox/DEEP-*.done.json (+ DEEP-W5-VERDICT.json on arrival)
+- Worker evidence: coord/evidence/deep-w1-d1/, deep-w1-d2/,
+  drill-out-sandbox/, bench_d5/, outputs/x1/, datasets/splits_deep.toml
+- Integration SHAs: D1 04c0bee, D3 c0e211f, D5 f28bb81, D2 47a8c8c+9be4fb1,
+  D4 af9c86a+bd8d54c; acceptance PASS at 7d48e5e
