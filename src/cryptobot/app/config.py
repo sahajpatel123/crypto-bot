@@ -208,7 +208,7 @@ def load_config(path: str | Path) -> AppConfig:
         raise ConfigError(f"strategies.arms must be 'base' or 'all', got {arms!r}")
     enabled = tuple(strategies.get("enabled", ["S1", "S2", "S3", "S4"]))
     for name in enabled:
-        if name not in ("S1", "S2", "S3", "S4", "S5", "X1"):
+        if name not in ("S1", "S2", "S3", "S4", "S5", "X1", "SC"):
             raise ConfigError(f"unknown strategy {name!r} in strategies.enabled")
     allowlist = strategies.get("arms_allowlist")
     if allowlist is not None:

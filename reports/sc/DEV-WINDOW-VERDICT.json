@@ -1,0 +1,47 @@
+{
+ "strategy": "SC",
+ "spec": "specs/strategies/SC.md",
+ "window": {
+  "split": "datasets/splits_deep.toml idx 1 role=dev IST 2026-09-12",
+  "symbol": "BTCUSDT",
+  "utc_day": "2026-09-11",
+  "start_ms": 1789151400000,
+  "end_ms": 1789152300000,
+  "accounting_dates": 1
+ },
+ "band_pct": [
+  1.5,
+  2.0
+ ],
+ "runs": [
+  {
+   "run_id": "sc-dev-1",
+   "status": "COMPLETE",
+   "events_ingested": 14088,
+   "paid_costs": 0.0,
+   "funding_net": 0.0,
+   "net_return_pct": 0.0,
+   "avg_daily_net_pct": 0.0,
+   "inside_band": false,
+   "qualified_for_real_capital": false,
+   "reason": "average daily net is outside 1.5-2%; ledger net is not strictly positive; validation net is not strictly positive",
+   "reconcile_ok": true
+  },
+  {
+   "run_id": "sc-dev-2",
+   "status": "COMPLETE",
+   "events_ingested": 14088,
+   "paid_costs": 0.0,
+   "funding_net": 0.0,
+   "net_return_pct": 0.0,
+   "avg_daily_net_pct": 0.0,
+   "inside_band": false,
+   "qualified_for_real_capital": false,
+   "reason": "average daily net is outside 1.5-2%; ledger net is not strictly positive; validation net is not strictly positive",
+   "reconcile_ok": true
+  }
+ ],
+ "averages_match": true,
+ "qualified_for_real_capital": false,
+ "note": "Both runs book the same average daily net, 0, which is outside 1.5-2%. Funding booked at 0 was not added. Validation was not scored. The window and the cost preset were not changed after this result."
+}

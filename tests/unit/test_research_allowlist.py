@@ -107,7 +107,7 @@ def test_allowlist_config_validation(tmp_path):
 
 def test_live_fingerprint_shape():
     live = runtime_param_fingerprint()
-    assert set(live) == {"S1", "S2", "S3", "S4", "X1"}
+    assert set(live) == {"S1", "S2", "S3", "S4", "X1", "SC"}
     assert live["S1"]["params"]["breakout_n"] == 120
     assert live["S3"]["params"]["cost_cover_bps"] == 26.0
 
