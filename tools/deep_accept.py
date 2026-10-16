@@ -33,13 +33,28 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 OUTBOX = ROOT / "coord" / "outbox"
-CMD_TIMEOUT_S = 900
+# Per-command ceiling matches the run_budget job budget (1500s). Raised
+# from 900 after W5 measured 802-1102s suite runtimes on shared hosts
+# (zero margin caused environmental timeouts, not product failures).
+CMD_TIMEOUT_S = 1500
 
 GATE_FILINGS = {
     "A1": ["DEEP-W1-D1.done.json", "DEEP-W1-D2.done.json"],
     "A2": ["DEEP-W2-D3.done.json"],
     "A3": ["DEEP-W3-D5.done.json", "DEEP-W4-D4.done.json"],
 }
+
+
+def _text(blob) -> str:
+    """Timeout partials may be bytes (or undecodable): never crash json."""
+    if blob is None:
+        return ""
+    if isinstance(blob, str):
+        return blob
+    try:
+        return bytes(blob).decode("utf-8", errors="replace")
+    except Exception:
+        return "<undecodable output>"
 
 
 def _rerun(cmd: list[str], cwd: str | None) -> dict:
@@ -49,9 +64,9 @@ def _rerun(cmd: list[str], cwd: str | None) -> dict:
                               cwd=cwd or str(ROOT))
     except subprocess.TimeoutExpired as exc:
         return {"rc": None, "timeout": True,
-                "tail": (exc.stdout or "")[-2000:] + (exc.stderr or "")[-2000:]}
-    tail = (proc.stdout[-2000:] if proc.stdout else "") + \
-        (proc.stderr[-2000:] if proc.stderr else "")
+                "tail": _text(exc.stdout)[-2000:] + _text(exc.stderr)[-2000:]}
+    tail = (_text(proc.stdout)[-2000:] if proc.stdout else "") + \
+        (_text(proc.stderr)[-2000:] if proc.stderr else "")
     return {"rc": proc.returncode, "timeout": False, "tail": tail}
 
 
