@@ -1,0 +1,51 @@
+{
+  "id": "msg-STUDY-02-01",
+  "task_id": "STUDY-02",
+  "from": "opencode-study02",
+  "to": "manager",
+  "utc": "2026-10-16T15:20:00Z",
+  "kind": "completion",
+  "ack_required": true,
+  "body": {
+    "state": "review",
+    "claim": "STUDY-02 preregistered economics screen for P2/P3 on the frozen 30-day benchmark, run, reported. Descriptive only: no strategy, no candidate, no attempt-budget consumption, no worker-lane file touched, no network, no credentials. Live submission untouched and disabled.",
+    "why_this_lane": "SWEEP-2026-10-16 lists the binding blockers as (1) owner 10-day capture, (2) W2 funding-settlement channel, (3) peer F2 fix. All three are owned/in-flight, so this lane took the highest-value unclaimed work: measuring whether P2/P3 economics justify the capture at all, on data already in the repo ($0), before the owner spends the capture effort. Mirrors STUDY-01's role for the scalp thesis.",
+    "headline_results": [
+      "P2: funding yield 4.37%/4.41% annualized (BTC/ETH), persistence r=0.997, but 1.2bp/day -> breakeven hold 21.6 days at 26bps taker RT. Perp-only taker funding-tilt REJECTED (every multi-trade cell net-negative; price risk dominates funding 1-2 orders of magnitude). The coherent P2 form is delta-neutral spot+perp held for weeks -> needs Vision spot data ($0), NOT the 10-day capture.",
+      "P3: cost arithmetic viable at 8-24h (median 24h move 86-111bp vs 26bp hurdle; vs 12x at 60s for the dead scalp). Continuation: ALL 12 BTC/ETH cells net-negative; alt LONG positives (NEAR/STRK/W) sit exactly on the three +130-340% rally coins of this window -> regime artifact across 48 uncorrected cells, not demonstrated edge.",
+      "Frozen-rule outcome: H-02 REJECTED (perp-only form); H-03 MERITS-CANDIDATE-EVALUATION with the regime-artifact annotation - any P3 candidate must be preregistered fresh on untouched data.",
+      "Capture implication: the 10-day/186GB capture is a P1-only investment. P2/P3 can be measured to decision depth on free Vision data first."
+    ],
+    "deviation_disclosed": "Run 1 had a per-side (not per-cell) one-position budget bug that suppressed long-hold cells; fixed to match the prereg's explicit 'of the same cell' wording (P3 wording was ambiguous, implemented per-cell, disclosed in the report). Run 1 was examined only to diagnose the bug; no threshold/window/convention changed after seeing economics.",
+    "not_taken": [
+      "F2 (peer grok-f2 has an uncommitted fix in review at /tmp/cryto-bot-f2-mark; a PARALLEL committed implementation exists on branch fix/f2-health-recovery @ 1778915 from a prior opencode session - manager adjudication needed, do not treat as integrated)",
+      "F3 shutdown-book (peer lane active, uncommitted)",
+      "W1 sizing clamp (funding-credit inflation finding from the deep audit) - risk code is W3-owned; recommend a spec-only handoff",
+      "README staleness (still says paper BLOCKED pre-E-007; manager-owned file)",
+      "any strategy/spec changes, any capture, any credential use"
+    ],
+    "branch": "pivot/study-02",
+    "worktree": "/Users/sahajpatel/.local/share/opencode/worktree/c4a5ef/pivot-study02",
+    "base": "83cbafe (deep/integration tip)",
+    "commits": ["3811afe prereg FROZEN", "1f2ca3c tool + 17 tests (pre-run)", "140fb3f results + report"],
+    "files": [
+      "reports/pivot/study02-prereg.json",
+      "reports/pivot/STUDY-02.md",
+      "reports/pivot/study02-results.json",
+      "reports/pivot/study02-sensitivity-posthoc.json",
+      "tools/pivot_study_02_carry_swing.py",
+      "tests/unit/test_pivot_study02.py"
+    ],
+    "repro_commands": [
+      "cd <worktree> && .venv-path python -m pytest tests/unit/test_pivot_study02.py -q  # 17 passed",
+      "python tools/pivot_study_02_carry_swing.py --self-check  # SELF-CHECK OK",
+      "python tools/pivot_study_02_carry_swing.py --cache-root <repo>/datasets/cache --out /tmp/s02.json  # deterministic rerun"
+    ],
+    "unresolved": [
+      "P2 delta-neutral spot+perp basis study (Vision, $0) - not yet preregistered; owner decision whether to pursue",
+      "F2 parallel-fix adjudication (two implementations exist; peer's is in review)",
+      "PIVOT-01 data floor requires quotes for ANY qualifying dataset - if a P2/P3 candidate ever emerges from Vision data, floor amendment is an owner decision"
+    ],
+    "next_dependency": "owner decision: pursue P2-basis study ($0) / preregister P3 fresh / authorize 10-day capture for P1"
+  }
+}
