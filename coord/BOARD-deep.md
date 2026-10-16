@@ -95,6 +95,23 @@ Production submission DISABLED. No credentials requested at this stage.
   stale drill-out-sandbox + bench_d5 dirs (mine, documented fresh-dir
   requirement) — no regressions. W5 called for independent verdict.
 
+## Manager completion audit (per-agent, vs dispatch acceptance)
+- W1 D1: PASS — strict refuse 125 + never-spawn + best-effort parity, all
+  re-ran green; no weakened assertions (reviewed). Docs pass done by manager.
+- W1 D2: PASS — 14/14 matrix re-ran green (incl. row 13 foreign-untouched);
+  F1 fix covers W2 findings; F2–F5 precisely filed.
+- W2 D3: PASS — 6/6 drill + 11/11 audit re-ran green; offline + secret-free
+  verified; demo command prepared-only; session-caveat documented.
+- W3 D5: PASS — 5/5 re-ran green; splits frozen/verified; EVAL sealed
+  (zero round refs); TEST burned (role=test idx23–30, status burned-round1).
+- W4 D4: PASS (execution) — 48/48 jobs + 24/24 bridges; freeze intact
+  (params/round untouched; beta 1.254028 = record = 8 TOMLs); selection
+  NONE mechanical; TEST untouched (val window ends exactly at TEST start
+  10-03T18:30Z exclusive; no TEST dates in jobs); EVAL sealed; all
+  attempts incl. zero-trade recorded. Outcome weak-as-evidence (see
+  mechanism section) — valid execution, RESEARCH UNRESOLVED.
+- W5: IN PROGRESS — started, ETA ~2h, watch armed.
+
 ## Stop-order incident (resolved)
 - W4 stopped round-1 at jobs 1–4 citing "owner order" (1cc77dd, evidence
   preserved). Provenance: stale Oct 12–13 local-session stops, superseded
