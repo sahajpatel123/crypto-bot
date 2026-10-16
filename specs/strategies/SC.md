@@ -1,4 +1,4 @@
-# SC micro-breakout scalp — exact rules v0.1.5
+# SC micro-breakout scalp — exact rules v0.1.6
 
 Status: BASELINE (simulation only; not a validated trading system).
 v0.1.0 was frozen before the first measurement. That run rejected
@@ -27,16 +27,15 @@ spread profile, the 40 bps target, the 26 bps cost floor, the
 15-minute development window, and the burned test split are
 unchanged. Production order submission stays refused.
 
-v0.1.5 revises only the entry, the stop, and the hold, and it is
-frozen before the next measurement. The v0.1.4 rerun did trade.
-Price P&L was about flat and the loss was the round-trip cost:
-a 1 bp momentum entry and a 1 bp minimum stop sit inside the
-spread, so the exit is a fee with no move. The entry now requires
-4 bps of 5-second momentum. The stop must be at least 6 bps, outside
-that noise, and still at most 20 bps. The hold is 180 seconds, still
-a few minutes, so the unchanged 40 bps target has time to be reached.
-Costs, the spread profile, the window, and the burned test split are
-not changed.
+v0.1.5 required 4 bps of momentum and a 6 bp stop. That rerun
+booked nothing. v0.1.6 is frozen before the next measurement. The
+entry is a strict break of the prior 5 seconds plus 2 bps of
+momentum: above the frozen 1 bp spread, and low enough that an
+impulse this tape can print is allowed to trade. The stop must be
+at least 2 bps, outside that spread, and at most 20 bps. The hold
+stays 180 seconds so the unchanged 40 bps target, which still clears
+the 26 bps cost floor, has time to be reached. Costs, the spread
+profile, the window, and the burned test split are not changed.
 
 ## 1. Why this shape
 
@@ -70,7 +69,7 @@ Momentum uses `close[t]` against the latest present close at index
 disorder still halts. More than 5 consecutive missing seconds still
 halts (`outage`). One quiet second does not.
 
-## 3. Frozen parameters v0.1.5
+## 3. Frozen parameters v0.1.6
 
 | Name | Value | Meaning |
 |---|---|---|
@@ -78,9 +77,9 @@ halts (`outage`). One quiet second does not.
 | `RANGE_N` | 5 | micro-range, bars `t-5..t-1` |
 | `MOM_M` | 5 | momentum lookback |
 | `EXTENSION_MIN_BPS` | 0.0 | strict break only: extension must be > 0 |
-| `MOM_MIN_BPS` | 4.0 | min 5-second return, same sign |
+| `MOM_MIN_BPS` | 2.0 | min 5-second return, same sign |
 | `SPREAD_MAX_BPS` | 4.0 | reject a wider trigger-bar spread |
-| `STOP_MIN_BPS` | 6.0 | stop must sit outside spread noise |
+| `STOP_MIN_BPS` | 2.0 | stop must sit outside the 1 bp spread |
 | `STOP_MAX_BPS` | 20.0 | stop wider than this is not a scalp |
 | `TARGET_BPS` | 40.0 | target distance from the trigger close |
 | `ENTRY_TOL_BPS` | 2.0 | entry band around the trigger close |

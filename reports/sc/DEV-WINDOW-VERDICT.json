@@ -1,7 +1,7 @@
 {
  "strategy": "SC",
  "spec": "specs/strategies/SC.md",
- "rules": "v0.1.5",
+ "rules": "v0.1.6",
  "window": {
   "split": "datasets/splits_deep.toml idx 1 role=dev IST 2026-09-12",
   "symbol": "BTCUSDT",
@@ -17,34 +17,36 @@
  "runs": [
   {
    "run_id": "sc-dev-1",
-   "rules": "SC.md v0.1.5",
+   "rules": "SC.md v0.1.6",
    "status": "COMPLETE",
    "events_ingested": 14088,
-   "paid_costs": 0.0,
+   "paid_costs": 0.07719419999999999,
    "funding_net": 0.0,
-   "net_return_pct": 0.0,
-   "avg_daily_net_pct": 0.0,
+   "net_return_pct": -0.0864951666666669,
+   "avg_daily_net_pct": -0.0864951666666669,
    "inside_band": false,
    "qualified_for_real_capital": false,
    "reason": "average daily net is outside 1.5-2%; ledger net is not strictly positive; validation net is not strictly positive",
-   "reconcile_ok": true
+   "reconcile_ok": true,
+   "equity_close": 119.8962058
   },
   {
    "run_id": "sc-dev-2",
-   "rules": "SC.md v0.1.5",
+   "rules": "SC.md v0.1.6",
    "status": "COMPLETE",
    "events_ingested": 14088,
-   "paid_costs": 0.0,
+   "paid_costs": 0.07719419999999999,
    "funding_net": 0.0,
-   "net_return_pct": 0.0,
-   "avg_daily_net_pct": 0.0,
+   "net_return_pct": -0.0864951666666669,
+   "avg_daily_net_pct": -0.0864951666666669,
    "inside_band": false,
    "qualified_for_real_capital": false,
    "reason": "average daily net is outside 1.5-2%; ledger net is not strictly positive; validation net is not strictly positive",
-   "reconcile_ok": true
+   "reconcile_ok": true,
+   "equity_close": 119.8962058
   }
  ],
  "averages_match": true,
  "qualified_for_real_capital": false,
- "note": "v0.1.5 requires 4 bps of 5-second momentum, a stop of at least 6 bps, and a 180 second hold. Both reruns of the same window reconciled to a 0% daily average, outside 1.5-2%. No fill was booked. Costs, the spread profile, the window, and the burned split were not changed after the result."
+ "note": "v0.1.6 requires 2 bps of 5-second momentum and a stop of at least 2 bps, with a 180 second hold and the unchanged 40 bps target. Both reruns traded, paid the same costs, and reconciled. Average daily net is about -0.086%, outside 1.5-2%. Funding booked at 0 was not added. Costs, the spread profile, the window, and the burned split were not changed."
 }
