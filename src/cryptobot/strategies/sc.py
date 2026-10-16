@@ -30,17 +30,16 @@ from .s1 import Bar, EvalLog
 
 _EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
 
-# Frozen SC v0.1.5. Round trip is NET_S1_V1 on the shared cost preset.
-# v0.1.4 traded and the loss was the round trip: a 1 bp entry and a
-# 1 bp stop. These three numbers were written down before the v0.1.5
-# measurement. Costs are not in this list.
+# Frozen SC v0.1.6. Round trip is NET_S1_V1 on the shared cost preset.
+# v0.1.5's 4 bp momentum booked nothing. 2 bp is above the frozen
+# 1 bp spread and was written down before the v0.1.6 measurement.
 WARMUP_N = 60
 RANGE_N = 5
 MOM_M = 5
 EXTENSION_MIN_BPS = 0.0
-MOM_MIN_BPS = 4.0
+MOM_MIN_BPS = 2.0
 SPREAD_MAX_BPS = 4.0
-STOP_MIN_BPS = 6.0
+STOP_MIN_BPS = 2.0
 STOP_MAX_BPS = 20.0
 TARGET_BPS = 40.0
 ENTRY_TOL_BPS = 2.0
@@ -53,7 +52,7 @@ ROUND_TRIP_BPS = 2.0 * (5.0 + 5.0 / 2.0 + 5.0) + 1.0  # 26.0
 
 @dataclass(frozen=True)
 class SCParams:
-    """Frozen SC v0.1.5 parameters (SC.md section 3)."""
+    """Frozen SC v0.1.6 parameters (SC.md section 3)."""
 
     warmup_n: int = WARMUP_N
     range_n: int = RANGE_N

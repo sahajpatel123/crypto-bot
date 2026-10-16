@@ -70,7 +70,7 @@ def test_frozen_rule_fires_a_long_scalp_and_clears_cost():
 
 
 def test_a_one_bp_wiggle_does_not_enter():
-    """v0.1.5: 1 bp of momentum and a 1 bp stop are inside the noise."""
+    """v0.1.6: 1 bp of momentum is inside the frozen 1 bp spread."""
     bars = [_bar(i, 100.00) for i in range(WARMUP_N)]
     for offset, price in enumerate((99.99, 99.995, 100.00, 100.00, 100.00)):
         bars[WARMUP_N - 5 + offset] = _bar(WARMUP_N - 5 + offset, price)
@@ -80,7 +80,7 @@ def test_a_one_bp_wiggle_does_not_enter():
 
 
 def test_a_four_bp_impulse_with_a_six_bp_stop_fires():
-    """Entry needs 4 bps of momentum and a stop of at least 6 bps."""
+    """A 4 bp impulse clears the 2 bp momentum floor and the 2 bp stop."""
     bars = [_bar(i, 100.00) for i in range(WARMUP_N)]
     for offset, price in enumerate((100.00, 100.02, 100.04, 100.05, 100.06)):
         bars[WARMUP_N - 5 + offset] = _bar(WARMUP_N - 5 + offset, price)
