@@ -14,12 +14,15 @@ from typing import Any
 
 from cryptobot.bench_run import main as bench_main
 
-# SC.md §5. First 15 minutes of deep-split idx 1 (IST 2026-09-12).
+# SC.md §5. Full IST day of deep-split idx 1 (2026-09-12), not the
+# 15-minute prefix. One accounting date. The two UTC files are how
+# that IST day is stored.
 WINDOW_START_MS = 1789151400000
-WINDOW_END_MS = 1789152300000
-UTC_DAY = "2026-09-11"
+WINDOW_END_MS = 1789237800000
+UTC_DAYS = "2026-09-11,2026-09-12"
 SYMBOL = "BTCUSDT"
 ACCOUNTING_DATES = 1
+WALL_BUDGET_S = 3600
 BAND_LO = 1.5
 BAND_HI = 2.0
 RECONCILE_TICK_USDT = 1e-4
@@ -128,12 +131,12 @@ def bench_argv(checkpoint_dir: str, report_out: str, run_id: str) -> list[str]:
         "--config", CONFIG,
         "--dataset", DATASET,
         "--symbol", SYMBOL,
-        "--days", UTC_DAY,
+        "--days", UTC_DAYS,
         "--start-ms", str(WINDOW_START_MS),
         "--end-ms", str(WINDOW_END_MS),
         "--spread-bps",
         "--filters-file", FILTERS,
-        "--wall-budget-s", "900",
+        "--wall-budget-s", str(WALL_BUDGET_S),
         "--checkpoint-dir", checkpoint_dir,
         "--report-out", report_out,
         "--run-id", run_id,

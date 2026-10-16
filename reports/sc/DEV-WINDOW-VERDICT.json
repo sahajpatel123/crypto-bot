@@ -2,67 +2,61 @@
  "strategy": "SC",
  "spec": "specs/strategies/SC.md",
  "rules": "v0.1.9",
- "capacity_before_run": {
-  "high": 77257.3,
-  "low": 77064.3,
-  "range_bps": 25.01,
-  "note": "No leg clears 26 bp, so the 40 bp target cannot fill. Lookahead net inside the 0.5% stop, paying 5 bp taker and the 1 bp research spread, is 0.168 USDT at 0.001 BTC and 0.335 USDT at 0.002 BTC. 0.002 is the largest step whose 12 bp stop plus stressed costs fit in the 0.5% room. That ceiling is 0.28% of the 120 USDT book. 1.5% is 1.80 USDT.",
-  "oracle_net_usdt_qty_0_002": 0.3354,
-  "oracle_avg_daily_net_pct_qty_0_002": 0.2795
- },
  "window": {
   "split": "datasets/splits_deep.toml idx 1 role=dev IST 2026-09-12",
   "symbol": "BTCUSDT",
-  "utc_day": "2026-09-11",
+  "utc_days": ["2026-09-11", "2026-09-12"],
   "start_ms": 1789151400000,
-  "end_ms": 1789152300000,
-  "accounting_dates": 1
+  "end_ms": 1789237800000,
+  "accounting_dates": 1,
+  "note": "Full IST day. The 15-minute prefix was measured earlier and its lookahead ceiling at the largest legal lot is 0.28%."
  },
- "band_pct": [
-  1.5,
-  2.0
- ],
+ "band_pct": [1.5, 2.0],
  "runs": [
   {
    "run_id": "sc-dev-1",
    "rules": "SC.md v0.1.9",
    "status": "COMPLETE",
-   "events_ingested": 14088,
-   "paid_costs": 0.1544254,
+   "events_ingested": 495309,
+   "round_trips": 3,
+   "paid_costs": 0.30863795,
    "funding_net": 0.0,
-   "net_return_pct": -0.23468783333335796,
-   "avg_daily_net_pct": -0.23468783333335796,
+   "net_return_pct": -0.3667816250000011,
+   "avg_daily_net_pct": -0.3667816250000011,
    "inside_band": false,
    "qualified_for_real_capital": false,
    "reason": "average daily net is outside 1.5-2%; ledger net is not strictly positive; validation net is not strictly positive",
    "reconcile_ok": true,
-   "equity_close": 119.71837459999998,
-   "fills": "SELL 0.002 at 77180.9 at 18:36:00.978Z; BUY 0.002 at 77244.5 at 18:37:29.102Z",
-   "exit_kind": "90s time exit; 12 bp stop at 77273.42 did not fire",
-   "adverse_bps_at_exit": 8.24,
-   "winner_cleared_26bp": false
+   "equity_close": 119.55986204999999,
+   "fills": [
+    "SELL 0.002 at 77180.9 18:36:00.978Z then BUY 0.002 at 77244.5 18:37:29.102Z",
+    "BUY 0.001 at 77052.1 19:03:00.884Z then SELL 0.001 at 77113.9 19:04:29.180Z",
+    "SELL 0.001 at 77096.5 19:11:00.825Z then BUY 0.001 at 77162.6 19:12:29.222Z"
+   ]
   },
   {
    "run_id": "sc-dev-2",
    "rules": "SC.md v0.1.9",
    "status": "COMPLETE",
-   "events_ingested": 14088,
-   "paid_costs": 0.1544254,
+   "events_ingested": 495309,
+   "round_trips": 3,
+   "paid_costs": 0.30863795,
    "funding_net": 0.0,
-   "net_return_pct": -0.23468783333335796,
-   "avg_daily_net_pct": -0.23468783333335796,
+   "net_return_pct": -0.3667816250000011,
+   "avg_daily_net_pct": -0.3667816250000011,
    "inside_band": false,
    "qualified_for_real_capital": false,
    "reason": "average daily net is outside 1.5-2%; ledger net is not strictly positive; validation net is not strictly positive",
    "reconcile_ok": true,
-   "equity_close": 119.71837459999998,
-   "fills": "SELL 0.002 at 77180.9 at 18:36:00.978Z; BUY 0.002 at 77244.5 at 18:37:29.102Z",
-   "exit_kind": "90s time exit; 12 bp stop at 77273.42 did not fire",
-   "adverse_bps_at_exit": 8.24,
-   "winner_cleared_26bp": false
+   "equity_close": 119.55986204999999,
+   "fills": [
+    "SELL 0.002 at 77180.9 18:36:00.978Z then BUY 0.002 at 77244.5 18:37:29.102Z",
+    "BUY 0.001 at 77052.1 19:03:00.884Z then SELL 0.001 at 77113.9 19:04:29.180Z",
+    "SELL 0.001 at 77096.5 19:11:00.825Z then BUY 0.001 at 77162.6 19:12:29.222Z"
+   ]
   }
  ],
  "averages_match": true,
  "qualified_for_real_capital": false,
- "note": "v0.1.9 was frozen after the range study and before this rerun. The hold is 90 seconds and size is the largest lot inside the 0.5% operating stop. On this window that lot is 0.002 BTC. The same short traded once. The 12 bp stop did not fire. The cover was the 90s clock, 8.24 bp against, and taker fees were 0.1544254. No second impulse cleared the entry gate. Both reruns reconciled to about -0.235% on the day, outside 1.5-2%. The lookahead ceiling at this size is 0.28%, which is also outside the band. Booked funding is 0 and is not counted as profit. Validation was not scored. Not qualified. Costs, the spread profile, the window, and the burned split were not changed."
+ "note": "Rules stayed v0.1.9: 90s hold, re-entry after a flat book, size inside the 0.5% operating stop. The full IST development day was declared before this rerun. Both benches ingested 495309 events, ended flat, and reconciled to the same -0.367% on the day. Three round trips re-entered. None cleared 26 bp. Taker fees were 0.30863795. Booked funding is 0 and is not counted as profit. The average is outside 1.5-2%. Validation was not scored. Not qualified. Costs, the 1 bp spread profile, live submission, and the burned test split were not changed."
 }
