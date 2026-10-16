@@ -93,7 +93,7 @@ def test_a_four_bp_impulse_with_a_six_bp_stop_fires():
     long_d, short_d = evaluate_bar(bars, WARMUP_N, SC_BASE, "BTCUSDT")
     assert short_d.intent is None
     assert long_d.intent is not None
-    assert long_d.intent.holding_limit_s == 90
+    assert long_d.intent.holding_limit_s == 180
     assert long_d.evaluation.reason == "fired"
 
 
@@ -106,7 +106,7 @@ def test_a_tight_range_stop_is_placed_out_to_twelve_bps():
     from cryptobot.coordination import decode_exit_rule
 
     bars = [_bar(i, 100.00) for i in range(WARMUP_N)]
-    for offset, price in enumerate((100.00, 100.02, 100.025, 100.03, 100.03)):
+    for offset, price in enumerate((100.00, 100.00, 100.015, 100.035, 100.035)):
         bars[WARMUP_N - 5 + offset] = _bar(WARMUP_N - 5 + offset, price)
     bars.append(_bar(WARMUP_N, 100.04))
     long_d, _short_d = evaluate_bar(bars, WARMUP_N, SC_BASE, "BTCUSDT")
@@ -128,7 +128,7 @@ def test_a_second_impulse_fires_after_the_first():
     long_2, short_2 = evaluate_bar(bars, WARMUP_N + 20, SC_BASE, "BTCUSDT")
     assert long_2.intent is None
     assert short_2.intent is not None
-    assert short_2.intent.holding_limit_s == 90
+    assert short_2.intent.holding_limit_s == 180
 
 
 def test_one_quiet_second_does_not_veto_the_scalp():
@@ -149,13 +149,13 @@ def test_six_consecutive_quiet_seconds_are_an_outage():
     assert long_d.evaluation.reason.startswith("outage-")
 
 
-def test_sc_sizes_to_the_operating_stop_room(tmp_path):
+def test_sc_takes_the_venue_minimum_inside_the_operating_stop(tmp_path):
     """A 120 USDT book cannot budget 0.001 BTC from the 0.125% loss budget.
 
-    SC takes the largest step that still fits in the 0.5% operating
-    stop. At 60_000 with a 20 bp stop that step is 0.002, not the
-    0.001 venue minimum. A non-SC arm still skips. A book that cannot
-    hold even the minimum lot is refused.
+    SC takes that venue minimum when the lot fits in the 0.5% operating
+    stop. It does not spend the rest of the room. A non-SC arm still
+    skips. A minimum lot whose stop would blow the operating stop is
+    refused.
     """
     from datetime import timedelta
 
@@ -209,9 +209,9 @@ def test_sc_sizes_to_the_operating_stop_room(tmp_path):
     )
     lifted = policy("sc").evaluate(intent("SC"), account)
     assert isinstance(lifted, Approved)
-    assert lifted.qty == pytest.approx(0.002)
-    assert lifted.notional_usdt == pytest.approx(120.0)
-    assert lifted.reserved_risk == pytest.approx(0.528)
+    assert lifted.qty == pytest.approx(0.001)
+    assert lifted.notional_usdt == pytest.approx(60.0)
+    assert lifted.reserved_risk == pytest.approx(0.264)
     assert lifted.reserved_risk <= 120.0 * 0.005 * 1.01
     skipped = policy("s1").evaluate(intent("S1"), account)
     assert isinstance(skipped, Rejected)

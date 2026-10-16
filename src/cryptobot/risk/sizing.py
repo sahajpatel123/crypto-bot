@@ -184,16 +184,16 @@ def plan_venue_minimum(
     fee_buffer_usdt: float = 0.0,
     inflight_exposure_usdt: float = 0.0,
 ) -> SizePlan:
-    """Size one SC order to the largest lot inside the operating-stop room.
+    """Size one SC order at the venue minimum lot.
 
     The budget sizer rounds down and skips when that quantity is below
-    the venue minimum. SC takes the largest step that is still at least
-    the venue minimum (quantity and notional) and whose stop loss plus
-    stressed costs fit in ``ceiling_usdt``. The caller sets that ceiling
-    to the operating-stop room. A minimum lot that would spend more than
-    the room is rejected. Leverage and margin still cap the notional.
-    The quantity is floored to the step. It is not rounded up through
-    the ceiling.
+    the venue minimum. SC lifts only to the smallest lot that clears
+    min quantity and min notional. The dollar risk of that lot (stop
+    plus stressed costs) must fit in ``ceiling_usdt``, which the caller
+    sets to the operating-stop room. A lot that would spend more than
+    that room is rejected. Leverage and margin still cap the notional.
+    The lift does not take the rest of the room: one full-room loser
+    was leaving no book for the next cost-clearing trip.
     """
     if intent.side == Side.LONG:
         adverse = intent.entry_high
@@ -223,26 +223,20 @@ def plan_venue_minimum(
         raise SizeRejected("skip:min-notional")
     if min_notional and min_lot * adverse + 1e-9 < min_notional:
         min_lot = _ceil_to_step(min_lot + step, step)
-    per = stop_dist + adverse * stressed
-    qty_cap = ceiling_usdt / per
-    qty_cap = min(qty_cap, config.leverage_cap * reconciled_equity / adverse)
-    if available_margin_usdt is not None:
-        affordable = ((available_margin_usdt - fee_buffer_usdt)
-                      * config.leverage_cap - inflight_exposure_usdt)
-        if affordable <= 0:
-            raise SizeRejected("margin:insufficient")
-        qty_cap = min(qty_cap, affordable / adverse)
-    if max_qty is not None:
-        qty_cap = min(qty_cap, max_qty)
-    qty = floor_to_step(qty_cap, step)
-    if qty + 1e-12 < min_lot:
-        raise SizeRejected("sizing:min-lot-exceeds-operating-stop")
+    if max_qty is not None and min_lot > max_qty + 1e-12:
+        raise SizeRejected("filters:notional-cap")
+    qty = min_lot
     notional = qty * adverse
     risk = qty * stop_dist + notional * stressed
     if risk > ceiling_usdt * (1 + 1e-9):
         raise SizeRejected("sizing:min-lot-exceeds-operating-stop")
     if notional > config.leverage_cap * reconciled_equity * (1 + 1e-9):
         raise SizeRejected("leverage:cap-exceeded")
+    if available_margin_usdt is not None:
+        affordable = ((available_margin_usdt - fee_buffer_usdt)
+                      * config.leverage_cap - inflight_exposure_usdt)
+        if notional > affordable * (1 + 1e-9):
+            raise SizeRejected("margin:insufficient")
     return SizePlan(
         notional_usdt=notional,
         qty=qty,

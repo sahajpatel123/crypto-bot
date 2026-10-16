@@ -1,4 +1,4 @@
-# SC micro-breakout scalp — exact rules v0.1.9
+# SC micro-breakout scalp — exact rules v0.1.10
 
 Status: BASELINE (simulation only; not a validated trading system).
 v0.1.0 was frozen before the first measurement. That run rejected
@@ -51,6 +51,19 @@ can trade inside the window. Size is the largest step inside the
 operating-stop room, not the venue minimum alone. Costs, the spread
 profile, the window, and the burned test split are not changed.
 
+The full IST day under v0.1.9 booked three round trips. Each one
+exited on the 90 second clock. None reached the 40 bp target, so
+none cleared the 26 bp cost floor in cash. About 75,000 evaluations
+failed the 5-second break. The first order took 0.002 BTC and the
+loss cut the later trips. v0.1.10 is frozen before the next
+measurement. The break is the prior 3 seconds, with 2 bp of
+3-second momentum, so more impulses can arm and each planned target
+still clears 26 bp. The hold is 180 seconds, so that target has
+time to fill. Size is the venue minimum lot when it fits in the
+operating-stop room, so one loser does not spend the book. The 12 bp
+stop floor, the 40 bp target, costs, the spread profile, the full
+IST day, and the burned test split are not changed.
+
 ## 1. Why this shape
 
 A scalp is a round trip that is over in at most a few minutes. On
@@ -63,11 +76,11 @@ the frozen round-trip forecast. That forecast is NET_S1_V1:
 A target inside 26 bps is rejected before it can trade. The scalp
 therefore asks for a 40 bps target, which clears 26 bps after the
 2 bps entry band, and it refuses a stop that is either inside the
-spread noise or wide enough to be a swing. Holding is 90 seconds.
-After the book is flat the same arm may fire again. That is the
-whole economic rule. It is not a claim that a day of these trades
-returns 1.5–2%. The measured ceiling on this window is 0.28% at
-the largest legal lot.
+spread noise or wide enough to be a swing. Holding is 180 seconds.
+After the book is flat the same arm may fire again. Size is the
+venue minimum lot inside the operating stop. That is the whole
+economic rule. It is not a claim that a day of these trades
+returns 1.5–2%.
 
 ## 2. Bar schema and causality
 
@@ -78,38 +91,38 @@ trigger bar, does not fire (`insufficient-history`).
 
 A `None` bar is a quiet second: no trade printed. It is not a veto.
 The micro-range and the momentum base use the present prints only.
-The range window must contain at least 3 present bars
+The range window must contain at least 2 present bars
 (`MIN_RANGE_PRINTS`), or the side rejects `insufficient-prints`.
 Momentum uses `close[t]` against the latest present close at index
-`<= t-5` inside the warmup. Timestamp
+`<= t-3` inside the warmup. Timestamp
 disorder still halts. More than 5 consecutive missing seconds still
 halts (`outage`). One quiet second does not.
 
-## 3. Frozen parameters v0.1.9
+## 3. Frozen parameters v0.1.10
 
 | Name | Value | Meaning |
 |---|---|---|
 | `WARMUP_N` | 60 | minimum bar index |
-| `RANGE_N` | 5 | micro-range, bars `t-5..t-1` |
-| `MOM_M` | 5 | momentum lookback |
+| `RANGE_N` | 3 | micro-range, bars `t-3..t-1` |
+| `MOM_M` | 3 | momentum lookback |
 | `EXTENSION_MIN_BPS` | 0.0 | strict break only: extension must be > 0 |
-| `MOM_MIN_BPS` | 2.0 | min 5-second return, same sign |
+| `MOM_MIN_BPS` | 2.0 | min 3-second return, same sign |
 | `SPREAD_MAX_BPS` | 4.0 | reject a wider trigger-bar spread |
 | `STOP_MIN_BPS` | 12.0 | a tighter range stop is placed out to this |
 | `STOP_MAX_BPS` | 20.0 | stop wider than this is not a scalp |
 | `TARGET_BPS` | 40.0 | target distance from the trigger close |
 | `ENTRY_TOL_BPS` | 2.0 | entry band around the trigger close |
 | `ENTRY_EXPIRY_S` | 5 | do not chase a stale scalp |
-| `HOLDING_LIMIT_S` | 90 | time exit; the next impulse can still trade |
+| `HOLDING_LIMIT_S` | 180 | time exit; three minutes for the 40 bp target |
 | `MAX_CONSECUTIVE_MISSING_HALT` | 5 | consecutive missing seconds that halt |
-| `MIN_RANGE_PRINTS` | 3 | present bars required inside the 5-bar range |
+| `MIN_RANGE_PRINTS` | 2 | present bars required inside the 3-bar range |
 
 One arm: `SC`. Forecast cost is the shared conservative preset
 (`fee 5, spread 5, slippage 5, funding 1`, label
 `conservative-simulation`).
 
 Exit wire: `stop` = the far side of the micro-range, `target` =
-`close[t] · (1 ± TARGET_BPS/1e4)`, `time_exit` = evidence + 90s,
+`close[t] · (1 ± TARGET_BPS/1e4)`, `time_exit` = evidence + 180s,
 policy id `SC:stop+target+time`.
 
 Research config cooldown is 60 seconds (`configs/sc-dev.toml`).
@@ -119,9 +132,9 @@ That number is part of this freeze.
 
 LONG, all must hold:
 
-1. `close[t] > max(high)` of the present bars in `t-5..t-1`.
+1. `close[t] > max(high)` of the present bars in `t-3..t-1`.
 2. Extension `(close[t] − ref_high) / close[t] · 1e4 > 0`.
-3. Momentum over 5 seconds is at least 2 bps.
+3. Momentum over 3 seconds is at least 2 bps.
 4. `spread_bps[t] <= 4`.
 5. A range stop tighter than 12 bps is placed at 12 bps. A stop wider
    than 20 bps rejects.
@@ -132,7 +145,7 @@ LONG, all must hold:
 SHORT mirrors every sign. Opposing fires are left to the selector,
 which stands the instrument aside. A later bar may fire again once
 the book is flat and the 60 second cooldown has elapsed. Size is the
-largest lot step inside the operating-stop room.
+venue minimum lot when that lot fits in the operating-stop room.
 
 ## 5. Measurement window (declared before the run)
 
@@ -158,8 +171,7 @@ divided by the two UTC files the day spans.
 - Filters: `filters/x1_bench_filters.json` (no network).
 - Wall budget: 3600 seconds, so the day can finish. It is not a cost.
 
-The rules stay v0.1.9. Entry, stop, target, the 90 second hold, the
-operating-stop size, and re-entry after a flat book are unchanged.
+The rules for this run are v0.1.10, frozen above before the rerun.
 Costs and live submission are unchanged.
 
 Funding that is absent on the capture is reported and is not added

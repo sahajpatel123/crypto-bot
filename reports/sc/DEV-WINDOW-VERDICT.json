@@ -1,62 +1,53 @@
 {
  "strategy": "SC",
  "spec": "specs/strategies/SC.md",
- "rules": "v0.1.9",
+ "rules": "v0.1.10",
  "window": {
   "split": "datasets/splits_deep.toml idx 1 role=dev IST 2026-09-12",
   "symbol": "BTCUSDT",
   "utc_days": ["2026-09-11", "2026-09-12"],
   "start_ms": 1789151400000,
   "end_ms": 1789237800000,
-  "accounting_dates": 1,
-  "note": "Full IST day. The 15-minute prefix was measured earlier and its lookahead ceiling at the largest legal lot is 0.28%."
+  "accounting_dates": 1
  },
  "band_pct": [1.5, 2.0],
  "runs": [
   {
    "run_id": "sc-dev-1",
-   "rules": "SC.md v0.1.9",
+   "rules": "SC.md v0.1.10",
    "status": "COMPLETE",
    "events_ingested": 495309,
-   "round_trips": 3,
-   "paid_costs": 0.30863795,
+   "round_trips": 4,
+   "trips_clearing_26bp": 0,
+   "paid_costs": 0.30905635,
    "funding_net": 0.0,
-   "net_return_pct": -0.3667816250000011,
-   "avg_daily_net_pct": -0.3667816250000011,
+   "net_return_pct": -0.2654636249999842,
+   "avg_daily_net_pct": -0.2654636249999842,
    "inside_band": false,
    "qualified_for_real_capital": false,
    "reason": "average daily net is outside 1.5-2%; ledger net is not strictly positive; validation net is not strictly positive",
    "reconcile_ok": true,
-   "equity_close": 119.55986204999999,
-   "fills": [
-    "SELL 0.002 at 77180.9 18:36:00.978Z then BUY 0.002 at 77244.5 18:37:29.102Z",
-    "BUY 0.001 at 77052.1 19:03:00.884Z then SELL 0.001 at 77113.9 19:04:29.180Z",
-    "SELL 0.001 at 77096.5 19:11:00.825Z then BUY 0.001 at 77162.6 19:12:29.222Z"
-   ]
+   "equity_close": 119.68144365000002
   },
   {
    "run_id": "sc-dev-2",
-   "rules": "SC.md v0.1.9",
+   "rules": "SC.md v0.1.10",
    "status": "COMPLETE",
    "events_ingested": 495309,
-   "round_trips": 3,
-   "paid_costs": 0.30863795,
+   "round_trips": 4,
+   "trips_clearing_26bp": 0,
+   "paid_costs": 0.30905635,
    "funding_net": 0.0,
-   "net_return_pct": -0.3667816250000011,
-   "avg_daily_net_pct": -0.3667816250000011,
+   "net_return_pct": -0.2654636249999842,
+   "avg_daily_net_pct": -0.2654636249999842,
    "inside_band": false,
    "qualified_for_real_capital": false,
    "reason": "average daily net is outside 1.5-2%; ledger net is not strictly positive; validation net is not strictly positive",
    "reconcile_ok": true,
-   "equity_close": 119.55986204999999,
-   "fills": [
-    "SELL 0.002 at 77180.9 18:36:00.978Z then BUY 0.002 at 77244.5 18:37:29.102Z",
-    "BUY 0.001 at 77052.1 19:03:00.884Z then SELL 0.001 at 77113.9 19:04:29.180Z",
-    "SELL 0.001 at 77096.5 19:11:00.825Z then BUY 0.001 at 77162.6 19:12:29.222Z"
-   ]
+   "equity_close": 119.68144365000002
   }
  ],
  "averages_match": true,
  "qualified_for_real_capital": false,
- "note": "Rules stayed v0.1.9: 90s hold, re-entry after a flat book, size inside the 0.5% operating stop. The full IST development day was declared before this rerun. Both benches ingested 495309 events, ended flat, and reconciled to the same -0.367% on the day. Three round trips re-entered. None cleared 26 bp. Taker fees were 0.30863795. Booked funding is 0 and is not counted as profit. The average is outside 1.5-2%. Validation was not scored. Not qualified. Costs, the 1 bp spread profile, live submission, and the burned test split were not changed."
+ "note": "v0.1.10 was frozen before this rerun. The break is 3 seconds, the hold is 180 seconds, and size is the venue minimum lot inside the 0.5% stop. The 40 bp target still clears the 26 bp cost floor. Both benches on the full IST dev day ingested 495309 events, ended flat, and reconciled to the same -0.265% on the day. Four round trips, each 0.001 BTC. The best price move was about 7.4 bp. None cleared 26 bp. Taker fees were 0.30905635. Booked funding is 0 and is not counted as profit. The average is outside 1.5-2%. Validation was not scored. Not qualified. Costs, the 1 bp spread, live submission, and the burned test split were not changed."
 }
