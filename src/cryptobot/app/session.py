@@ -1134,8 +1134,14 @@ class Session:
             return "skip:min-notional"
         stop_dist = abs(adverse - intent.invalidation_price)
         fc = intent.forecast_cost
-        stressed = ((fc.fee_bps + fc.spread_bps + fc.slippage_bps
-                     + fc.funding_bps) / 10000 * cfg.stress_multiplier)
+        # F-SIZING-01: same non-negative clamp as risk/sizing.py — the
+        # post-rounding recheck must judge the budget against the same
+        # convention the sizer used, or a clamped admission would be
+        # re-judged with funding credit and falsely rejected (or an
+        # unclamped one falsely admitted).
+        stressed = (max(fc.fee_bps + fc.spread_bps + fc.slippage_bps
+                        + fc.funding_bps, 0.0)
+                    / 10000 * cfg.stress_multiplier)
         if qty * stop_dist + qty * adverse * stressed > budget * (1 + 1e-9):
             return "sizing:budget-exceeded"
         notional = qty * adverse
