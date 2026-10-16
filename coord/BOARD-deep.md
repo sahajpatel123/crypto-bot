@@ -88,6 +88,13 @@ Production submission DISABLED. No credentials requested at this stage.
 - Freeze integrity: only §9 IST clarification (pre-outcome, disclosed) +
   authorized beta transcription; params/round/selection untouched.
 
+## Integration log (continued)
+- W4 D4 ACCEPTED (d71b050 → af9c86a + fixup bd8d54c): economics/select/
+  bench-tests re-ran green; full-suite expect_rc adjusted for merged tree.
+- FULL ACCEPTANCE PASS (A1+A2+A3) on clean state. First attempt failed on
+  stale drill-out-sandbox + bench_d5 dirs (mine, documented fresh-dir
+  requirement) — no regressions. W5 called for independent verdict.
+
 ## Stop-order incident (resolved)
 - W4 stopped round-1 at jobs 1–4 citing "owner order" (1cc77dd, evidence
   preserved). Provenance: stale Oct 12–13 local-session stops, superseded
