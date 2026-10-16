@@ -1,4 +1,4 @@
-"""SC micro-breakout scalp (specs/strategies/SC.md v0.1.0).
+"""SC micro-breakout scalp (specs/strategies/SC.md v0.1.1).
 
 Pure causal evaluation. The constants below are the spec's freeze.
 Nothing here reads a tape or a measurement report.
@@ -17,7 +17,6 @@ from cryptobot.coordination import (
     Side,
     encode_exit_rule,
 )
-from cryptobot.features.breakout import momentum_bps, ref_high, ref_low
 
 from ._shared import columns, gap_scan
 from .contract import (
@@ -45,6 +44,7 @@ ENTRY_TOL_BPS = 2.0
 ENTRY_EXPIRY_S = 5
 HOLDING_LIMIT_S = 90
 MAX_CONSECUTIVE_MISSING_HALT = 5
+MIN_RANGE_PRINTS = 10
 ROUND_TRIP_BPS = 2.0 * (5.0 + 5.0 / 2.0 + 5.0) + 1.0  # 26.0
 
 
@@ -64,6 +64,7 @@ class SCParams:
     entry_tol_bps: float = ENTRY_TOL_BPS
     entry_expiry_s: int = ENTRY_EXPIRY_S
     holding_limit_s: int = HOLDING_LIMIT_S
+    min_range_prints: int = MIN_RANGE_PRINTS
 
 
 @dataclass(frozen=True)
@@ -86,6 +87,29 @@ class SCDecision:
 
 def _distance_bps(price: float, other: float) -> float:
     return abs(price - other) / price * 1e4
+
+
+def _present(values: list[float | None], lo: int, hi: int) -> list[float]:
+    """Present finite prints in ``[lo, hi)``. Quiet ``None`` slots are skipped."""
+    out: list[float] = []
+    for i in range(max(0, lo), min(len(values), hi)):
+        value = values[i]
+        if value is not None:
+            out.append(value)
+    return out
+
+
+def _momentum_base(closes: list[float | None], t: int, mom_m: int,
+                   warmup_n: int) -> float | None:
+    """Latest present close at index ``<= t-mom_m`` inside the warmup."""
+    floor = t - warmup_n
+    for i in range(t - mom_m, floor - 1, -1):
+        if i < 0:
+            break
+        value = closes[i]
+        if value is not None and value > 0:
+            return value
+    return None
 
 
 def evaluate_side(
@@ -120,14 +144,15 @@ def evaluate_side(
         ts = bars[t].ts_utc if 0 <= t < len(bars) and bars[t] else _EPOCH
         return _log("insufficient-history", ts, rejects=("history=fail",))
     evidence_ts = bars[t].ts_utc  # type: ignore[union-attr]
-    gap, max_consec, disorder = gap_scan(bars, t - p.warmup_n, t + 1)
-    if gap or disorder:
-        halt = disorder or max_consec > MAX_CONSECUTIVE_MISSING_HALT
+    # Quiet seconds are None. They are not a veto. Disorder, and a run
+    # of missing seconds longer than the halt, still stop the side.
+    _quiet, max_consec, disorder = gap_scan(bars, t - p.warmup_n, t + 1)
+    if disorder or max_consec > MAX_CONSECUTIVE_MISSING_HALT:
         return _log(
-            "ts-disorder" if disorder else f"gap-{max_consec}",
+            "ts-disorder" if disorder else f"outage-{max_consec}",
             evidence_ts,
             rejects=("history=pass", "gap=fail"),
-            dq=DataQuality.HALT if halt else DataQuality.DEGRADED,
+            dq=DataQuality.HALT,
         )
 
     cols = columns(bars)
@@ -135,12 +160,20 @@ def evaluate_side(
     assert close_t is not None and close_t > 0
     spread_t = bars[t].spread_bps  # type: ignore[union-attr]
     is_long = side == Side.LONG
-    ref = ref_high(cols["high"], t, p.range_n) if is_long else ref_low(
-        cols["low"], t, p.range_n)
+    highs = _present(cols["high"], t - p.range_n, t)
+    lows = _present(cols["low"], t - p.range_n, t)
+    prints = min(len(highs), len(lows))
+    if prints < p.min_range_prints:
+        return _log("insufficient-prints", evidence_ts,
+                    rejects=("history=pass", "gap=pass", "prints=fail"))
+    ref = max(highs) if is_long else min(lows)
     extension = ((close_t - ref) if is_long else (ref - close_t)) / close_t * 1e4
-    mom = momentum_bps(cols["close"], t, p.mom_m)
-    stop_level = ref_low(cols["low"], t, p.range_n) if is_long else ref_high(
-        cols["high"], t, p.range_n)
+    base = _momentum_base(cols["close"], t, p.mom_m, p.warmup_n)
+    if base is None:
+        return _log("insufficient-prints", evidence_ts,
+                    rejects=("history=pass", "gap=pass", "momentum=fail"))
+    mom = (close_t / base - 1.0) * 1e4
+    stop_level = min(lows) if is_long else max(highs)
     stop_bps = _distance_bps(close_t, stop_level)
     feats = (
         FeatureEvidence("spread", "1bar", f"spread_bps<={p.spread_max_bps}",

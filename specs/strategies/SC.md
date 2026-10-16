@@ -1,8 +1,13 @@
-# SC micro-breakout scalp — exact rules v0.1.0
+# SC micro-breakout scalp — exact rules v0.1.1
 
 Status: BASELINE (simulation only; not a validated trading system).
-Written before any SC measurement was opened. Parameters are not
-fitted to a tape. Production order submission stays refused.
+v0.1.0 was frozen before the first measurement. That run, on the
+window in §5, rejected 697 of 839 evaluations as `gap:fail` because
+a quiet second with no trade was treated as a broken tape. v0.1.1
+re-freezes only that rule, below. Costs, the 40 bps target, the stop
+band, the spread gate, the 15-minute development window, and the
+burned test split are unchanged. Production order submission stays
+refused.
 
 ## 1. Why this shape
 
@@ -24,10 +29,19 @@ these trades returns 1.5–2%.
 
 Same 1-second bars as S1. Evaluate at index `t`. Windows end at
 `t-1` except the trigger bar's own close, spread, and the momentum
-endpoint `close[t]`. No later bar is read. `t < 60` does not fire
-(`insufficient-history`).
+endpoint `close[t]`. No later bar is read. `t < 60`, or a missing
+trigger bar, does not fire (`insufficient-history`).
 
-## 3. Frozen parameters v0.1.0
+A `None` bar is a quiet second: no trade printed. It is not a veto.
+The micro-range and the momentum base use the present prints only.
+The range window must contain at least 10 present bars
+(`MIN_RANGE_PRINTS`), half of 20, or the side rejects
+`insufficient-prints`. Momentum uses `close[t]` against the latest
+present close at index `<= t-20` inside the warmup. Timestamp
+disorder still halts. More than 5 consecutive missing seconds still
+halts (`outage`). One quiet second does not.
+
+## 3. Frozen parameters v0.1.1
 
 | Name | Value | Meaning |
 |---|---|---|
@@ -43,7 +57,8 @@ endpoint `close[t]`. No later bar is read. `t < 60` does not fire
 | `ENTRY_TOL_BPS` | 2.0 | entry band around the trigger close |
 | `ENTRY_EXPIRY_S` | 5 | do not chase a stale scalp |
 | `HOLDING_LIMIT_S` | 90 | time exit; under a few minutes |
-| `MAX_CONSECUTIVE_MISSING_HALT` | 5 | same gap halt as S1 |
+| `MAX_CONSECUTIVE_MISSING_HALT` | 5 | consecutive missing seconds that halt |
+| `MIN_RANGE_PRINTS` | 10 | present bars required inside the 20-bar range |
 
 One arm: `SC`. Forecast cost is the shared conservative preset
 (`fee 5, spread 5, slippage 5, funding 1`, label

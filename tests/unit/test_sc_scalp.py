@@ -69,6 +69,24 @@ def test_frozen_rule_fires_a_long_scalp_and_clears_cost():
     assert TARGET_BPS > ROUND_TRIP_BPS
 
 
+def test_one_quiet_second_does_not_veto_the_scalp():
+    bars = _scalp_bars()
+    bars[45] = None  # inside the 20-bar range; the other prints remain
+    bars[30] = None  # inside the warmup, outside the range
+    long_d, _short_d = evaluate_bar(bars, WARMUP_N, SC_BASE, "BTCUSDT")
+    assert long_d.intent is not None
+    assert long_d.evaluation.reason == "fired"
+
+
+def test_six_consecutive_quiet_seconds_are_an_outage():
+    bars = _scalp_bars()
+    for i in range(50, 56):
+        bars[i] = None
+    long_d, _short_d = evaluate_bar(bars, WARMUP_N, SC_BASE, "BTCUSDT")
+    assert long_d.intent is None
+    assert long_d.evaluation.reason.startswith("outage-")
+
+
 def test_adapter_is_registered():
     adapter = get_adapter("SC")
     assert adapter.strategy_id == "SC"
