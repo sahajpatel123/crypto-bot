@@ -29,21 +29,24 @@ VARIANT_MAP: dict[str, tuple[str, ...]] = {
     "S2": ("S2", "S2-V", "S2-F"),
     "S3": ("S3", "S3-R", "S3-C"),
     "S4": ("S4", "S4-S"),
+    "X1": ("X1", "X1-S", "X1-T", "X1-F"),
 }
 NO_VARIANT_FAMILIES = ("S5",)
-FAMILIES = ("S1", "S2", "S3", "S4", "S5")
+FAMILIES = ("S1", "S2", "S3", "S4", "S5", "X1")
 
 PARAM_CLASSES: dict[str, str] = {
     "S1": "cryptobot.strategies.s1:S1Params",
     "S2": "cryptobot.strategies.s2:S2Params",
     "S3": "cryptobot.strategies.s3:S3Params",
     "S4": "cryptobot.strategies.s4:S4Params",
+    "X1": "cryptobot.strategies.x1:X1Params",
 }
 MODULE_CONSTS: dict[str, tuple[str, ...]] = {
     "S1": ("MAX_CONSECUTIVE_MISSING_HALT",),
     "S2": ("MAX_CONSECUTIVE_MISSING_HALT", "WARMUP_N"),
     "S3": ("MAX_CONSECUTIVE_MISSING_HALT", "WARMUP_N"),
     "S4": ("MAX_CONSECUTIVE_MISSING_HALT", "WARMUP_N"),
+    "X1": ("MAX_CONSECUTIVE_MISSING_HALT",),
 }
 
 

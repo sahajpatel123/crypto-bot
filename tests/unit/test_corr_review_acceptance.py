@@ -304,11 +304,13 @@ def test_gate_future_and_malformed_ts_rejected(tmp_path):
 def test_nested_budget_stops_descendants(tmp_path):
     marker = f"corr-nested-{time.time_ns()}"
     child_code = f"import time; time.sleep(2)  # {marker}"
-    inner = [sys.executable, "tools/run_budget.py", "--budget-s", "30",
+    inner = [sys.executable, "tools/run_budget.py", "--allow-best-effort",
+             "--budget-s", "30",
              "--checkpoint-dir", str(tmp_path / "inner"), "--report-out",
              str(tmp_path / "inner.json"), "--", sys.executable, "-c",
              child_code]
-    outer = [sys.executable, "tools/run_budget.py", "--budget-s", "1",
+    outer = [sys.executable, "tools/run_budget.py", "--allow-best-effort",
+             "--budget-s", "1",
              "--term-grace-s", ".2", "--checkpoint-dir",
              str(tmp_path / "outer"), "--report-out",
              str(tmp_path / "outer.json"), "--", *inner]

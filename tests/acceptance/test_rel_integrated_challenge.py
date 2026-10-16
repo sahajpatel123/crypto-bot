@@ -872,7 +872,10 @@ def test_rel_deadline_reparent_contained_or_refused(tmp_path):
         "time.sleep(10)\n"
         "open(MARK, 'w').write('daemon-survived')\n"
     )
-    cmd = [sys.executable, "tools/run_budget.py", "--budget-s", "2",
+    # Enforce-or-refuse contract: opt into best-effort explicitly to
+    # prove legacy containment semantics (strict would refuse outright).
+    cmd = [sys.executable, "tools/run_budget.py", "--allow-best-effort",
+           "--budget-s", "2",
            "--checkpoint-dir", str(tmp_path / "ckpt"), "--report-out",
            str(tmp_path / "rep.json"), "--term-grace-s", "1",
            "--", sys.executable, "-c", child]

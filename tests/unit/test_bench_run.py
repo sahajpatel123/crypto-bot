@@ -361,6 +361,80 @@ def test_store_rollback_removes_tail_dupes(tmp_path):
         session.store.close()
 
 
+def test_restore_store_rolls_back_tail_commands_and_reseeds(tmp_path):
+    """Vehicle fix #3: resume-after-command must not duplicate; the
+    restored commands table must match a fresh single run."""
+    from cryptobot.app.store import RunStore
+
+    runner = _corr_runner(tmp_path)
+    session = runner._build_session("cmds")
+    try:
+        session.store.create_run("cmds", "bench",
+                                 session.config.fingerprint,
+                                 str(session.workdir), None)
+        run = "cmds"
+        session.store.record_command(run, f"{run}:cmd:000000", "submit",
+                                     {"a": 1})
+        session.store.record_command(run, f"{run}:cmd:000001", "submit",
+                                     {"a": 2})
+        cursors = runner._snapshot_store(session)
+        assert cursors["commands"] == 2
+        session.store.record_command(run, f"{run}:cmd:000002", "submit",
+                                     {"a": 3})  # tail row.
+        session._cmd_seq = 0  # fresh-Session state on resume.
+        runner._restore_store(session, {"store_cursors": cursors})
+        have = session.store._db.execute(
+            "SELECT cmd_id, kind, status, payload FROM commands"
+            " WHERE run_id=? ORDER BY cmd_id", (run,)).fetchall()
+        assert [r[0] for r in have] == [f"{run}:cmd:000000",
+                                        f"{run}:cmd:000001"]
+        assert session._cmd_seq == 2
+        # Continued dense id inserts without duplicate...
+        session.store.record_command(
+            run, f"{run}:cmd:{session._cmd_seq:06d}", "submit", {"a": 3})
+        # ...matching a fresh single run's table (modulo wall timestamps).
+        fresh = RunStore(str(tmp_path / "fresh.db"))
+        try:
+            for i in (1, 2, 3):
+                fresh.record_command(run, f"{run}:cmd:{i - 1:06d}",
+                                     "submit", {"a": i})
+            want = fresh._db.execute(
+                "SELECT cmd_id, kind, status, payload FROM commands"
+                " WHERE run_id=? ORDER BY cmd_id", (run,)).fetchall()
+        finally:
+            fresh.close()
+        have = session.store._db.execute(
+            "SELECT cmd_id, kind, status, payload FROM commands"
+            " WHERE run_id=? ORDER BY cmd_id", (run,)).fetchall()
+        assert have == want
+    finally:
+        session.engine.close()
+        session.store.close()
+
+
+def test_restore_store_old_commit_without_commands_still_reseeds(tmp_path):
+    """Pre-fix checkpoints carry no commands cursor: restore must not
+    raise and must still continue the dense command sequence."""
+    runner = _corr_runner(tmp_path)
+    session = runner._build_session("oldcmds")
+    try:
+        session.store.create_run("oldcmds", "bench",
+                                 session.config.fingerprint,
+                                 str(session.workdir), None)
+        run = "oldcmds"
+        session.store.record_command(run, f"{run}:cmd:000000", "submit", {})
+        session.store.record_command(run, f"{run}:cmd:000001", "submit", {})
+        cursors = runner._snapshot_store(session)
+        del cursors["commands"]  # pre-fix commit shape.
+        session._cmd_seq = 0  # fresh-Session state on resume.
+        runner._restore_store(session, {"store_cursors": cursors})
+        assert session._cmd_seq == 2
+        session.store.record_command(run, f"{run}:cmd:000002", "submit", {})
+    finally:
+        session.engine.close()
+        session.store.close()
+
+
 def test_closing_valuation_never_zero(tmp_path):
     runner = _corr_runner(tmp_path)
     session = runner._build_session("val")

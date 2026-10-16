@@ -36,12 +36,13 @@ from cryptobot.coordination import (
     decode_exit_rule,
 )
 
-from .contract import ARM_BASE, S2_BASE, S3_BASE, S4_BASE, S5_BASE
+from .contract import ARM_BASE, S2_BASE, S3_BASE, S4_BASE, S5_BASE, X1_BASE
 from .s1 import Bar, EvalLog, evaluate_bar as _s1_bar
 from .s2 import evaluate_bar as _s2_bar
 from .s3 import evaluate_bar as _s3_bar
 from .s4 import evaluate_bar as _s4_bar
 from .s5 import evaluate_view as _s5_view
+from .x1 import evaluate_bar as _x1_bar
 
 __all__ = [
     "ADAPTERS",
@@ -95,6 +96,11 @@ class MarketView:
     flow: FlowView | None  # signed trade aggregates or None + reason
     quality: DataQuality
     quality_reason: str = ""
+    # Dual-symbol reference leg (X1.md §4; other families ignore).
+    # Leader aligned slots + symbol + frozen beta, or all-None.
+    ref_bars: tuple[Bar | None, ...] | None = None
+    ref_instrument: str | None = None
+    ref_beta: float | None = None
 
     def __post_init__(self) -> None:
         if not self.instrument:
@@ -207,12 +213,37 @@ class _S5Strategy:
                        (short_d.evaluation, short_d.intent))
 
 
+class _X1Strategy:
+    """Adapter for the leader-laggard base arm (X1.md §4+§5).
+
+    Reads the laggard bars plus the reference leg (leader bars +
+    frozen beta) off the view. A missing reference leg or beta
+    no-fires inside the evaluator (recorded reasons, never errors).
+    """
+
+    strategy_id = X1_BASE
+
+    def evaluate(self, view: MarketView) -> StrategyOutcome:
+        gate = _gate_view(view)
+        if gate:
+            return StrategyOutcome(None, gate)
+        bars = list(view.bars)
+        t = _last_present(view.bars)
+        assert t is not None  # gated above
+        ref = list(view.ref_bars) if view.ref_bars is not None else None
+        long_d, short_d = _x1_bar(bars, t, X1_BASE, view.instrument,
+                                  ref_bars=ref, beta=view.ref_beta)
+        return _finish((long_d.evaluation, long_d.intent),
+                       (short_d.evaluation, short_d.intent))
+
+
 ADAPTERS: tuple[RuntimeStrategy, ...] = (
     _BarsStrategy(ARM_BASE, ARM_BASE, _s1_bar),
     _BarsStrategy(S2_BASE, S2_BASE, _s2_bar),
     _BarsStrategy(S3_BASE, S3_BASE, _s3_bar),
     _BarsStrategy(S4_BASE, S4_BASE, _s4_bar),
     _S5Strategy(),
+    _X1Strategy(),
 )
 
 

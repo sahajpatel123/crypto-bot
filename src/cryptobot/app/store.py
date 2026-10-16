@@ -445,3 +445,16 @@ class RunStore:
         row = self._db.execute("SELECT mode FROM stop_requests WHERE run_id=?",
                                (run_id,)).fetchone()
         return row[0] if row else None
+
+    def clear_stop(self, run_id: str) -> bool:
+        """Withdraw a stop request (explicit operator action).
+
+        A consumed stop is never cleared by the loop itself: an
+        unattended restart must not silently continue a run the
+        operator stopped. Resume-after-stop requires this explicit
+        call. Returns True when a request was actually withdrawn.
+        """
+        cur = self._db.execute("DELETE FROM stop_requests WHERE run_id=?",
+                               (run_id,))
+        self._db.commit()
+        return cur.rowcount > 0

@@ -37,6 +37,12 @@ def _unit_interval(value: object, name: str) -> float:
     return number
 
 
+def _x1_beta(value: object) -> float | None:
+    if value is None:
+        return None
+    return _positive(value, "strategies.x1_beta")
+
+
 @dataclass(frozen=True)
 class AppConfig:
     mode: str
@@ -92,6 +98,10 @@ class AppConfig:
     # None preserves legacy base/all behavior; when set, Session
     # evaluates only allowlisted arms and fails closed on unknown IDs.
     strategies_arms_allowlist: tuple[str, ...] | None = None
+    # X1 leader-laggard frozen beta (X1.md §9): None until the
+    # pre-round beta step transcribes the recorded value; X1
+    # no-fires while unset.
+    x1_beta: float | None = None
     cooldown_s: int = 300
     min_reward_multiple: float = 1.0
     allow_legacy_exit_rules: bool = True
@@ -197,7 +207,7 @@ def load_config(path: str | Path) -> AppConfig:
         raise ConfigError(f"strategies.arms must be 'base' or 'all', got {arms!r}")
     enabled = tuple(strategies.get("enabled", ["S1", "S2", "S3", "S4"]))
     for name in enabled:
-        if name not in ("S1", "S2", "S3", "S4", "S5"):
+        if name not in ("S1", "S2", "S3", "S4", "S5", "X1"):
             raise ConfigError(f"unknown strategy {name!r} in strategies.enabled")
     allowlist = strategies.get("arms_allowlist")
     if allowlist is not None:
@@ -272,6 +282,7 @@ def load_config(path: str | Path) -> AppConfig:
         strategies_enabled=enabled,
         strategies_arms=arms,
         strategies_arms_allowlist=allowlist,
+        x1_beta=_x1_beta(strategies.get("x1_beta")),
         cooldown_s=int(_finite(strategies.get("cooldown_s", 300), "strategies.cooldown_s")),
         min_reward_multiple=_positive(
             strategies.get("min_reward_multiple", 1.0), "strategies.min_reward_multiple"),
@@ -297,6 +308,8 @@ def load_config(path: str | Path) -> AppConfig:
     # Only fingerprinted when set, so legacy configs keep their hashes.
     if cfg.strategies_arms_allowlist is not None:
         canonical_obj["arms_allowlist"] = list(cfg.strategies_arms_allowlist)
+    if cfg.x1_beta is not None:
+        canonical_obj["x1_beta"] = cfg.x1_beta
     canonical = json.dumps(canonical_obj, sort_keys=True)
     fingerprint = hashlib.sha256(
         f"{PACKAGE_VERSION}|{canonical}".encode("utf-8")).hexdigest()[:16]

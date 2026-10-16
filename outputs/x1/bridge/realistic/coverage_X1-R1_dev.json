@@ -1,0 +1,18 @@
+{
+ "cells": [
+  {
+   "config_id": "X1-R1",
+   "coverage_frac": 0.05550895523298412,
+   "exposed_at_cap": false,
+   "fills": 0,
+   "final_status": "INCOMPLETE_BUDGET",
+   "ingested_total": 2120483,
+   "skipped_window_total": 3634217,
+   "split": "dev",
+   "split_days": 15,
+   "split_event_total": 38200737
+  }
+ ],
+ "rule": "X1.md section 11",
+ "tag": "realistic"
+}

@@ -8,6 +8,14 @@ journal offset, cursor, seeds) with FLAT-BOUNDARY commits: the commit
 cursor advances only when flat (no position, no open orders); the
 uncommitted tail is replayed from the commit on resume, never dropped.
 
+W4 multi-symbol extension (DEEP, manager-authorized): ``--symbols``
+streams several symbols through ONE Session via a deterministic
+heap-merge (ts, channel, stream order) with per-symbol cursors, and
+``--start-ms``/``--end-ms`` window the ingest to a UTC half-open
+interval (split-pure ingest). Checkpoints are v3
+(``{"day", "seqs": {symbol: seq}}``); v2 single-symbol checkpoints
+migrate automatically. Single-symbol runs behave exactly as before.
+
 Exit codes: 0 with status COMPLETE only when the input is exhausted;
 124 with status INCOMPLETE_BUDGET (deadline/signal) or
 TRUNCATED_MAX_EVENTS (max-events bound) otherwise — partial work is
@@ -42,7 +50,8 @@ from cryptobot.market_data.datasets import open_dataset
 
 EXIT_INCOMPLETE = 124
 ENV_DEADLINE = "CRYPTOBOT_DEADLINE_MONO"
-RUNNER_VERSION = "bench-run-v2"
+RUNNER_VERSION = "bench-run-v3"
+RUNNER_VERSION_V2 = "bench-run-v2"
 # Per-run result files truncated to the commit on resume (tail re-appends).
 RUN_FILES = ("fills.jsonl", "equity.jsonl", "rejections.jsonl", "risk.jsonl")
 
@@ -88,8 +97,14 @@ class BenchRunner:
         self._n_replayed = 0
         self._n_ingested = 0
         self._n_heartbeats = 0
+        self._n_skipped_window = 0
         self._estimates: list[dict[str, Any]] = []
         self._open_reservation: str | None = None
+        self._symbols: list[str] = []
+        self._start_ms: int | None = None
+        self._end_ms: int | None = None
+        self._spread: dict[str, float] = {}
+        self._spread_stats: dict[str, dict[str, int]] = {}
 
     # -- lifecycle ----------------------------------------------------
     def _install_signal_handlers(self) -> None:
@@ -100,6 +115,217 @@ class BenchRunner:
 
         signal.signal(signal.SIGTERM, _handle)
         signal.signal(signal.SIGINT, _handle)
+
+    def _resolve_symbols(self) -> list[str]:
+        """Exactly one of --symbol/--symbols; ordered, de-duplicated."""
+        single = getattr(self.args, "symbol", None)
+        plural = getattr(self.args, "symbols", None)
+        if bool(single) == bool(plural):
+            raise ValueError("pass exactly one of --symbol/--symbols")
+        names = [single] if single else [
+            s.strip() for s in str(plural).split(",") if s.strip()]
+        if not names:
+            raise ValueError("--symbols needs at least one symbol")
+        if len(set(names)) != len(names):
+            raise ValueError(f"duplicate symbols in {names!r}")
+        return names
+
+    def _resolve_window(self) -> tuple[int | None, int | None]:
+        """UTC half-open ingest window (None bounds = unbounded)."""
+        start = getattr(self.args, "start_ms", None)
+        end = getattr(self.args, "end_ms", None)
+        start_ms = None if start is None else int(start)
+        end_ms = None if end is None else int(end)
+        if start_ms is not None and end_ms is not None \
+                and start_ms >= end_ms:
+            raise ValueError("--start-ms must be below --end-ms")
+        return start_ms, end_ms
+
+    @staticmethod
+    def _merge_key(event: dict, stream_idx: int) -> tuple:
+        """Deterministic total order: (ts, channel, stream order).
+
+        Same convention as the research harness merge; stream heads
+        are unique per stream so same-stream ties cannot collide.
+        """
+        return (int(event["exchange_ts_ms"]),
+                str(event.get("channel", "")), stream_idx)
+
+    def _prep_symbol_stream(self, handle: Any, symbol: str, day: str):
+        """Per-symbol stream: heartbeat policy + optional spread modeling.
+
+        Single-symbol UNMODELED streams pass through untouched
+        (heartbeats preserved, exactly v2 behavior). Otherwise Nones
+        are dropped (counted) and, when spread is configured, the
+        frozen iter_with_spread interleaves modeled quotes where BBO
+        is absent (same helper + profile the capture harness uses).
+        """
+        from cryptobot.research.spread import iter_with_spread
+
+        modeled = symbol in self._spread
+        raw = handle.events(symbol, day)
+        if len(self._symbols) == 1 and not modeled:
+            yield from raw
+            return
+
+        def _stripped():
+            for event in raw:
+                if event is None:
+                    self._n_heartbeats += 1
+                else:
+                    yield event
+
+        if modeled:
+            stats = self._spread_stats.setdefault(symbol, {})
+            yield from iter_with_spread(
+                _stripped(), symbol, self._spread[symbol], stats)
+        else:
+            yield from _stripped()
+
+    def _stream_day(self, handle: Any, day: str):
+        """Yield (symbol, event) merged across symbols for one day.
+
+        Single-symbol unmodeled mode streams the dataset order
+        untouched (exactly v2 behavior). Multi-symbol mode
+        heap-merges per-symbol streams. Modeled streams renumber
+        per-symbol dense seqs post-injection (mirroring capture
+        prep, which also renumbers injected quotes); unmodeled
+        streams keep dataset seqs byte-identically.
+        """
+        import heapq
+
+        multi = len(self._symbols) > 1
+        modeled = bool(self._spread)
+        if not multi:
+            stream = self._prep_symbol_stream(handle, self._symbols[0], day)
+            if not modeled:
+                for event in stream:
+                    yield self._symbols[0], event
+                return
+            seq = 0
+            for event in stream:
+                seq += 1
+                event["seq"] = seq
+                yield self._symbols[0], event
+            return
+        streams = [self._prep_symbol_stream(handle, sym, day)
+                   for sym in self._symbols]
+        seqs = [0] * len(streams)
+        heap: list[tuple] = []
+
+        def _push(idx: int, stream) -> None:
+            while True:
+                try:
+                    head = next(stream)
+                except StopIteration:
+                    return
+                if head is None:  # pragma: no cover (prepped streams
+                    continue  # strip Nones; single-raw never merges)
+                heapq.heappush(heap, (self._merge_key(head, idx), idx,
+                                      head, stream))
+                return
+
+        for idx, stream in enumerate(streams):
+            _push(idx, stream)
+        while heap:
+            _, idx, event, stream = heapq.heappop(heap)
+            if modeled:
+                seqs[idx] += 1
+                event["seq"] = seqs[idx]
+            yield self._symbols[idx], event
+            _push(idx, stream)
+
+    def _resolve_spread(self) -> dict[str, float]:
+        """Per-symbol modeled spread; {} = unmodeled (default).
+
+        Bare --spread-bps resolves per symbol through the frozen
+        research profile (no hand-picked literal); an explicit value
+        overrides for every symbol.
+        """
+        from cryptobot.research.spread import (
+            SpreadProfile,
+            profile_spread_bps,
+        )
+
+        raw = getattr(self.args, "spread_bps", None)
+        if raw is None:
+            return {}
+        if raw == "PROFILE":
+            profile = SpreadProfile()
+            return {sym: float(profile_spread_bps(profile, sym))
+                    for sym in self._symbols}
+        bps = float(raw)
+        if bps <= 0:
+            raise ValueError("--spread-bps must be > 0")
+        return {sym: bps for sym in self._symbols}
+
+    def _in_window(self, event: dict) -> bool:
+        ts = int(event.get("exchange_ts_ms") or 0)
+        if self._start_ms is not None and ts < self._start_ms:
+            return False
+        if self._end_ms is not None and ts >= self._end_ms:
+            return False
+        return True
+
+    @staticmethod
+    def _cursor_copy(cursor: dict[str, Any]) -> dict[str, Any]:
+        """Deep-enough cursor copy (seqs must not alias)."""
+        return {"day": cursor["day"],
+                "seqs": dict(cursor.get("seqs", {}))}
+
+    def _normalize_cursor(self, cursor: dict[str, Any],
+                          symbols: list[str]) -> dict[str, Any]:
+        """v2 {day, seq} -> v3 {day, seqs}; v3 passes through.
+
+        Shape-driven (a v3-stamped commit may still carry a legacy
+        cursor when callers snapshot internals directly). With no
+        known symbol the seq maps to a placeholder key: _last_seq
+        restores from values, and real runs always re-resolve
+        per-symbol skips from identity-checked commits.
+        """
+        if "seqs" in cursor:
+            return {"day": cursor["day"],
+                    "seqs": {str(k): int(v)
+                             for k, v in cursor["seqs"].items()}}
+        if len(symbols) > 1:
+            raise ValueError("v2 single-seq cursor cannot resume a "
+                             "multi-symbol run")
+        sym = symbols[0] if symbols else "?"
+        return {"day": cursor["day"], "seqs": {sym: int(cursor["seq"])}}
+
+    def _normalize_commit(self, commit: dict[str, Any]) -> dict[str, Any]:
+        """Copy a v2/v3 commit into v3 shape (original untouched).
+
+        v2 maps via its own stored symbol; a multi-symbol run against
+        a v2 commit then fails the dataset identity check with the
+        symbol lists shown (single-symbol v2 resumes migrate).
+        """
+        version = commit.get("runner_version")
+        if version == RUNNER_VERSION:
+            if "seqs" in commit.get("cursor", {}):
+                return commit
+            # Legacy-shaped cursor under a v3 stamp (direct snapshots):
+            # normalize the shape; identity already compares v3.
+            fixed = dict(commit)
+            fixed["cursor"] = self._normalize_cursor(
+                commit["cursor"], self._symbols)
+            return fixed
+        if version != RUNNER_VERSION_V2:
+            raise ValueError(
+                f"checkpoint runner_version {version!r} != "
+                f"{RUNNER_VERSION!r} (or migratable {RUNNER_VERSION_V2!r})")
+        identity = dict(commit.get("identity", {}))
+        dataset = dict(identity.get("dataset", {}))
+        if "symbol" not in dataset or "symbols" in dataset:
+            raise ValueError("v2 commit lacks a single dataset symbol")
+        dataset["symbols"] = [dataset.pop("symbol")]
+        identity["dataset"] = dataset
+        migrated = dict(commit)
+        migrated["runner_version"] = RUNNER_VERSION
+        migrated["cursor"] = self._normalize_cursor(
+            commit["cursor"], dataset["symbols"])
+        migrated["identity"] = identity
+        return migrated
 
     def _deadline(self, start_mono: float) -> float:
         deadline = start_mono + float(self.args.wall_budget_s)
@@ -272,9 +498,11 @@ class BenchRunner:
     def _snapshot_store(self, session: Session) -> dict[str, int]:
         cursors = {}
         for table in ("intents", "execution_events", "risk_transitions",
-                      "checkpoints"):
+                      "checkpoints", "commands"):
+            # commands has a TEXT PK (no integer id): rowid orders it.
+            col = "rowid" if table == "commands" else "id"
             row = session.store._db.execute(
-                f"SELECT COALESCE(MAX(id), 0) FROM {table}").fetchone()
+                f"SELECT COALESCE(MAX({col}), 0) FROM {table}").fetchone()
             cursors[table] = int(row[0])
         return cursors
 
@@ -377,12 +605,13 @@ class BenchRunner:
 
     def _check_identity(self, session: Session,
                         commit: dict[str, Any]) -> None:
-        """Refuse resume when source/config/strategy/cost/dataset differ."""
-        if commit.get("runner_version") != RUNNER_VERSION:
-            raise ValueError(
-                f"checkpoint runner_version {commit.get('runner_version')!r} "
-                f"!= {RUNNER_VERSION!r}")
-        want = commit.get("identity", {})
+        """Refuse resume when source/config/strategy/cost/dataset differ.
+
+        v2 commits migrate (single-symbol only); a v2 commit resumes
+        only an unwindowed run (a window changes the input).
+        """
+        want = self._normalize_commit(commit)
+        want = want.get("identity", {})
         got = self._snapshot_identity(session)
         for key in ("config_fingerprint", "config_file_sha16", "cooldown_s",
                     "mode", "strategy_version", "adapters", "cost_contract",
@@ -391,6 +620,10 @@ class BenchRunner:
                 raise ValueError(
                     f"resume identity mismatch on {key}: checkpoint "
                     f"{want.get(key)!r} != current {got.get(key)!r}")
+        if commit.get("runner_version") == RUNNER_VERSION_V2 \
+                and (self._start_ms is not None
+                     or self._end_ms is not None):
+            raise ValueError("v2 checkpoints resume unwindowed runs only")
 
     def _restore_feeds(self, session: Session, commit: dict[str, Any]) -> None:
         from cryptobot.app.session import _SymbolFeed
@@ -456,12 +689,15 @@ class BenchRunner:
         try:
             for table, max_id in commit.get("store_cursors", {}).items():
                 if table not in ("intents", "execution_events",
-                                 "risk_transitions", "checkpoints"):
+                                 "risk_transitions", "checkpoints",
+                                 "commands"):
                     raise ValueError(f"unexpected store table {table!r}")
-                db.execute(f"DELETE FROM {table} WHERE id > ?",
+                col = "rowid" if table == "commands" else "id"
+                db.execute(f"DELETE FROM {table} WHERE {col} > ?",
                            (int(max_id),))
                 # Reuse ids on replay: without this the AUTOINCREMENT
                 # sequence keeps climbing and resumed stores diverge.
+                # (No sqlite_sequence row exists for commands; no-op there.)
                 db.execute("UPDATE sqlite_sequence SET seq = ? WHERE name = ?",
                            (int(max_id), table))
             # _set_state reads `old` from the run row: rewind it so replayed
@@ -474,6 +710,10 @@ class BenchRunner:
         except Exception:
             db.rollback()
             raise
+        # Continue the dense command sequence after rollback (mirrors
+        # Session._rebuild_booking_state): without this the first
+        # post-resume command regenerates cmd:000000 and collides.
+        session._cmd_seq = session.store.command_count(session.run_id)
 
     def _restore_run_files(self, commit: dict[str, Any]) -> None:
         """Truncate run files to the commit (no dupes on tail replay)."""
@@ -513,11 +753,17 @@ class BenchRunner:
                 fh.truncate(int(saved.get("evidence_bytes", 0)))
 
     def _restore(self, session: Session) -> dict[str, Any]:
-        """Restore the committed experiment; returns the commit cursor."""
+        """Restore the committed experiment; returns the commit cursor.
+
+        v2 commits normalize to v3 shape internally; the stored
+        cursor object is returned as-is (callers comparing
+        round-trips see their own shape back).
+        """
         from cryptobot.market_data.views import DepthStore
 
-        commit = json.loads(self.ckpt_path.read_text(encoding="utf-8"))
-        self._check_identity(session, commit)
+        stored = json.loads(self.ckpt_path.read_text(encoding="utf-8"))
+        self._check_identity(session, stored)
+        commit = self._normalize_commit(stored)
         session.ledger = Ledger.from_dict(commit["ledger"])
         session.policy.bind_ledger(session.ledger)
         if commit["risk_state_json"] is not None:
@@ -544,10 +790,11 @@ class BenchRunner:
         keep_ms = int(commit["counts"].get("dispatch_ms", 0))
         if hasattr(session, "_dispatch_ms"):
             del session._dispatch_ms[keep_ms:]
-        session._last_seq = int(commit["cursor"]["seq"])
+        seqs = commit["cursor"].get("seqs", {})
+        session._last_seq = max([int(v) for v in seqs.values()] or [0])
         self._estimates = list(commit["estimates"])
         self._last_mark = dict(commit.get("last_mark", {}))
-        return commit["cursor"]
+        return stored["cursor"]
 
     # -- estimates (separate from booked) -------------------------------
     def _track_mark(self, event: dict[str, Any]) -> None:
@@ -617,6 +864,10 @@ class BenchRunner:
         self._install_signal_handlers()
         start_mono = time.monotonic()
         deadline = self._deadline(start_mono)
+        self._symbols = self._resolve_symbols()
+        self._start_ms, self._end_ms = self._resolve_window()
+        self._spread = self._resolve_spread()
+        self._spread_stats = {sym: {} for sym in self._symbols}
         days = [d.strip() for d in str(self.args.days).split(",") if d.strip()]
         if not days:
             raise ValueError("--days needs at least one YYYY-MM-DD")
@@ -627,10 +878,8 @@ class BenchRunner:
                 raise FileNotFoundError(
                     f"--resume but no checkpoint at {self.ckpt_path}")
             peek = json.loads(self.ckpt_path.read_text(encoding="utf-8"))
-            if peek.get("runner_version") != RUNNER_VERSION:
-                raise ValueError(
-                    f"checkpoint runner_version {peek.get('runner_version')!r} "
-                    f"!= {RUNNER_VERSION!r}")
+            # v2 commits migrate (identity + cursor); unknown refused.
+            self._normalize_commit(peek)
             cash = (peek.get("engine") or {}).get("cash")
             if cash is None:
                 raise ValueError("commit lacks engine cash; cannot rebase")
@@ -639,7 +888,16 @@ class BenchRunner:
         handle = open_dataset(self.args.dataset)
         self._dataset_id = {"manifest_sha": handle.manifest_sha(),
                             "kind": handle.manifest.get("kind"),
-                            "symbol": self.args.symbol, "days": days}
+                            "symbols": list(self._symbols), "days": days}
+        if self._start_ms is not None or self._end_ms is not None:
+            # Windowed only when bounded (v2 unwindowed identity matches).
+            self._dataset_id["window"] = [self._start_ms, self._end_ms]
+        if self._spread:
+            from cryptobot.research.spread import PROFILE_ID
+
+            # Spread spec only when modeling (unmodeled identity matches).
+            self._dataset_id["spread"] = {
+                "profile": PROFILE_ID, "bps": dict(self._spread)}
         self._last_mark = {}
         self._first_event_ms = None
         commit_cursor: dict[str, Any] | None = None
@@ -649,14 +907,15 @@ class BenchRunner:
         try:
             if self.args.resume:
                 resumed = self._restore(session)
-                commit_cursor = {"day": resumed["day"], "seq": resumed["seq"]}
+                commit_cursor = self._normalize_cursor(resumed, self._symbols)
                 stop_file = self.ckpt_dir / "stop_cursor.json"
                 if stop_file.exists():
-                    prior_stop = json.loads(stop_file.read_text(
-                        encoding="utf-8"))
+                    prior_stop = self._normalize_cursor(
+                        json.loads(stop_file.read_text(encoding="utf-8")),
+                        self._symbols)
                 session.store.checkpoint(run_id, "bench-resume",
-                                         {"cursor": resumed})
-                print(f"resumed {run_id} at {resumed}", flush=True)
+                                         {"cursor": commit_cursor})
+                print(f"resumed {run_id} at {commit_cursor}", flush=True)
             else:
                 if self.ckpt_path.exists():
                     raise FileExistsError(
@@ -665,23 +924,32 @@ class BenchRunner:
                                          str(self.workdir), os.getpid())
                 session.store.checkpoint(run_id, "bench-open",
                                          {"dataset": str(self.args.dataset),
-                                          "symbol": self.args.symbol,
+                                          "symbols": list(self._symbols),
                                           "days": days})
             day_pos = {day: idx for idx, day in enumerate(days)}
             need_initial_commit = not self.args.resume
             status = "COMPLETE"
             stop_reason: str | None = None
             baselined = self.args.resume
-            last_cursor: dict[str, Any] = {"day": days[0], "seq": 0}
+            last_cursor: dict[str, Any] = {"day": days[0], "seqs": {}}
             for day in days:
                 if commit_cursor is not None \
                         and day_pos[day] < day_pos[commit_cursor["day"]]:
                     continue  # whole day committed: skip.
-                stream = iter(handle.events(self.args.symbol, day))
+                # Fresh seq space per day (seqs restart each day),
+                # seeded from the commit on the commit day so an
+                # all-skipped day re-commits identically (never back).
+                if commit_cursor is not None \
+                        and day == commit_cursor["day"]:
+                    last_cursor = {"day": day,
+                                   "seqs": dict(commit_cursor["seqs"])}
+                else:
+                    last_cursor = {"day": day, "seqs": {}}
+                stream = self._stream_day(handle, day)
                 while True:
                     t0 = time.perf_counter()
                     try:
-                        event = next(stream)
+                        sym, event = next(stream)
                     except StopIteration:
                         break
                     finally:
@@ -695,8 +963,12 @@ class BenchRunner:
                         continue
                     seq = int(event.get("seq", 0))
                     if commit_cursor is not None and day == commit_cursor["day"] \
-                            and seq <= int(commit_cursor["seq"]):
+                            and seq <= int(commit_cursor["seqs"].get(sym, -1)):
                         continue  # already committed: skip without replay.
+                    last_cursor["seqs"][sym] = seq
+                    if not self._in_window(event):
+                        self._n_skipped_window += 1
+                        continue  # outside the window: consumed, not ingested.
                     if not baselined:
                         session.clock.set_ms(int(event["exchange_ts_ms"]))
                         session.policy.reconcile_day(
@@ -721,12 +993,14 @@ class BenchRunner:
                     self._track_position(session)
                     self._n_ingested += 1
                     session._events_seen += 1
-                    session._last_seq = seq
-                    last_cursor = {"day": day, "seq": seq}
+                    # Monotonic marker across symbols (single-symbol
+                    # streams increase, so max() == assignment there).
+                    session._last_seq = max(int(session._last_seq), seq)
                     if prior_stop is not None and (
                             day_pos[day] < day_pos[prior_stop["day"]]
                             or (day == prior_stop["day"]
-                                and seq <= int(prior_stop["seq"]))):
+                                and seq <= int(prior_stop["seqs"].get(
+                                    sym, -1)))):
                         self._n_replayed += 1  # uncommitted tail, replayed.
                     if self.args.max_events is not None \
                             and self._n_ingested >= int(self.args.max_events):
@@ -741,10 +1015,10 @@ class BenchRunner:
                     if need_initial_commit and self._is_flat(session):
                         # Run start is a flat boundary: guarantees resume can
                         # always replay from a commit, even for tiny chunks.
-                        self._commit(session, dict(last_cursor))
+                        self._commit(session, self._cursor_copy(last_cursor))
                         need_initial_commit = False
                     if self._n_ingested % int(self.args.commit_every) == 0:
-                        self._commit(session, dict(last_cursor))
+                        self._commit(session, self._cursor_copy(last_cursor))
                     if self._n_ingested % 5000 == 0:
                         t2 = time.perf_counter()
                         session.store.heartbeat(run_id, os.getpid())
@@ -757,20 +1031,21 @@ class BenchRunner:
                 if stop_reason is not None:
                     break
                 # Day boundary: commit when flat (cheap resume point).
-                self._commit(session, dict(last_cursor))
+                self._commit(session, self._cursor_copy(last_cursor))
             else:
                 stop_reason = None
             if status == "COMPLETE":
                 # Input exhausted: COMPLETE only when actually flat. Open
                 # exposure is an unresolved end state, never a completed
                 # economic result; no forced flatten, no forced commit.
-                committed = self._commit(session, dict(last_cursor))
+                committed = self._commit(session,
+                                         self._cursor_copy(last_cursor))
                 if not committed or not self._is_flat(session):
                     status = "INCOMPLETE_EXPOSURE"
                     stop_reason = "exposed_at_input_end"
             if status != "COMPLETE":
                 _atomic_write_json(self.ckpt_dir / "stop_cursor.json",
-                                   dict(last_cursor))
+                                   self._cursor_copy(last_cursor))
             report = self._report(session, run_id, days, status, stop_reason,
                                   last_cursor, start_mono)
             fsync_s = _atomic_write_json(Path(self.args.report_out), report)
@@ -834,12 +1109,18 @@ class BenchRunner:
             "stop_reason": stop_reason,
             "run_id": run_id,
             "dataset": str(self.args.dataset),
-            "symbol": self.args.symbol,
+            "symbol": self._symbols[0] if len(self._symbols) == 1 else None,
+            "symbols": list(self._symbols),
+            "window_ms": [self._start_ms, self._end_ms],
+            "spread": {"bps": dict(self._spread),
+                       "windows": {sym: dict(stats) for sym, stats
+                                   in self._spread_stats.items()}},
             "days": days,
             "elapsed_s": round(elapsed, 3),
             "events": {"ingested": self._n_ingested,
                        "replayed_tail": self._n_replayed,
                        "heartbeats": self._n_heartbeats,
+                       "skipped_window": self._n_skipped_window,
                        "commits": self._n_commits},
             "cursor": last_cursor,
             "booked": {
@@ -867,7 +1148,20 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Bounded resumable benchmark run")
     parser.add_argument("--config", required=True)
     parser.add_argument("--dataset", required=True, help="dataset manifest .toml")
-    parser.add_argument("--symbol", required=True)
+    parser.add_argument("--symbol", default=None,
+                        help="single symbol (exactly one of --symbol/--symbols)")
+    parser.add_argument("--symbols", default=None,
+                        help="comma-separated symbols, one Session, merged")
+    parser.add_argument("--start-ms", type=int, default=None,
+                        help="ingest events at/after this UTC ms (inclusive)")
+    parser.add_argument("--end-ms", type=int, default=None,
+                        help="ingest events before this UTC ms (exclusive)")
+    parser.add_argument("--spread-bps", nargs="?", default=None,
+                        const="PROFILE",
+                        help="model quotes via the frozen spread profile "
+                             "where BBO is absent (bare flag = frozen "
+                             "profile default per symbol; explicit value "
+                             "overrides; omit = unmodeled)")
     parser.add_argument("--days", required=True,
                         help="comma-separated YYYY-MM-DD UTC days")
     parser.add_argument("--wall-budget-s", type=float, required=True)
@@ -893,6 +1187,31 @@ def main(argv: list[str] | None = None) -> int:
     if args.resume and not args.run_id:
         print("--resume needs --run-id", file=sys.stderr)
         return 2
+    if bool(args.symbol) == bool(args.symbols):
+        print("pass exactly one of --symbol/--symbols", file=sys.stderr)
+        return 2
+    if args.symbols is not None:
+        names = [s.strip() for s in str(args.symbols).split(",")
+                 if s.strip()]
+        if not names or len(set(names)) != len(names):
+            print("--symbols needs distinct non-empty symbols",
+                  file=sys.stderr)
+            return 2
+    if args.start_ms is not None and args.end_ms is not None \
+            and args.start_ms >= args.end_ms:
+        print("--start-ms must be below --end-ms", file=sys.stderr)
+        return 2
+    spread = getattr(args, "spread_bps", None)
+    if spread is not None and spread != "PROFILE":
+        try:
+            bps = float(spread)
+        except (TypeError, ValueError):
+            print("--spread-bps must be a number or bare (profile default)",
+                  file=sys.stderr)
+            return 2
+        if bps <= 0:
+            print("--spread-bps must be > 0", file=sys.stderr)
+            return 2
     runner = BenchRunner(args)
     try:
         rc, _ = runner.run()

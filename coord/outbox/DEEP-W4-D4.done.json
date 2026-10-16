@@ -1,0 +1,148 @@
+{
+ "acceptance": [
+  "X1.md v0.1.0 frozen BEFORE any round outcome (a96ed72 + beta addendum 653d52d, outcome-free verified)",
+  "round-1 executed exactly as frozen: 48/48 filed jobs, 24/24 cells bridged rc=0, realistic + adverse costs",
+  "mechanical selection by frozen tool: NONE (RESEARCH UNRESOLVED), qualified=[], all realistic nets 0.0/0.0",
+  "every attempt recorded incl zero-trade cells; economics reconciled to ledger; TEST burned; EVAL sealed"
+ ],
+ "artifacts_note": "bulk prerequisites (machine-local, untracked): datasets/cache/ parquet bulk (506 files, sha-verified vs frozen manifest 9008ba92). The 48 bench jobs are NOT re-runnable from this filing (10h, pruned chains); their evidence is committed. Economics/select/bridge-audit re-run from the committed tree below.",
+ "commands": [
+  {
+   "artifacts": [
+    "outputs/x1/economics_realistic.json"
+   ],
+   "cmd": [
+    ".venv/bin/python",
+    "tools/x1_economics.py",
+    "--comparisons",
+    "outputs/x1/bridge/realistic/X1-R1-CASH_dev.comparison.json",
+    "outputs/x1/bridge/realistic/X1-R1-CASH_validation.comparison.json",
+    "outputs/x1/bridge/realistic/X1-R1-F_dev.comparison.json",
+    "outputs/x1/bridge/realistic/X1-R1-F_validation.comparison.json",
+    "outputs/x1/bridge/realistic/X1-R1-S1_dev.comparison.json",
+    "outputs/x1/bridge/realistic/X1-R1-S1_validation.comparison.json",
+    "outputs/x1/bridge/realistic/X1-R1-S_dev.comparison.json",
+    "outputs/x1/bridge/realistic/X1-R1-S_validation.comparison.json",
+    "outputs/x1/bridge/realistic/X1-R1-T_dev.comparison.json",
+    "outputs/x1/bridge/realistic/X1-R1-T_validation.comparison.json",
+    "outputs/x1/bridge/realistic/X1-R1_dev.comparison.json",
+    "outputs/x1/bridge/realistic/X1-R1_validation.comparison.json",
+    "--registry",
+    "outputs/x1/meta/x1_registry.json",
+    "--tag",
+    "realistic",
+    "--out",
+    "outputs/x1/economics_realistic.json"
+   ],
+   "cwd": null,
+   "expect_rc": 0,
+   "note": "PYTHONPATH=src required. Reproduces committed economics_realistic.json (12 cells, all screens BELOW)."
+  },
+  {
+   "artifacts": [
+    "outputs/x1/economics_adverse.json"
+   ],
+   "cmd": [
+    ".venv/bin/python",
+    "tools/x1_economics.py",
+    "--comparisons",
+    "outputs/x1/bridge/adverse/X1-R1-CASH_dev.comparison.json",
+    "outputs/x1/bridge/adverse/X1-R1-CASH_validation.comparison.json",
+    "outputs/x1/bridge/adverse/X1-R1-F_dev.comparison.json",
+    "outputs/x1/bridge/adverse/X1-R1-F_validation.comparison.json",
+    "outputs/x1/bridge/adverse/X1-R1-S1_dev.comparison.json",
+    "outputs/x1/bridge/adverse/X1-R1-S1_validation.comparison.json",
+    "outputs/x1/bridge/adverse/X1-R1-S_dev.comparison.json",
+    "outputs/x1/bridge/adverse/X1-R1-S_validation.comparison.json",
+    "outputs/x1/bridge/adverse/X1-R1-T_dev.comparison.json",
+    "outputs/x1/bridge/adverse/X1-R1-T_validation.comparison.json",
+    "outputs/x1/bridge/adverse/X1-R1_dev.comparison.json",
+    "outputs/x1/bridge/adverse/X1-R1_validation.comparison.json",
+    "--registry",
+    "outputs/x1/meta/x1_registry.json",
+    "--tag",
+    "adverse",
+    "--out",
+    "outputs/x1/economics_adverse.json"
+   ],
+   "cwd": null,
+   "expect_rc": 0,
+   "note": "PYTHONPATH=src required. Reproduces committed economics_adverse.json (12 cells, all screens BELOW)."
+  },
+  {
+   "artifacts": [
+    "outputs/x1/selection.json"
+   ],
+   "cmd": [
+    ".venv/bin/python",
+    "tools/x1_select.py",
+    "--registry",
+    "outputs/x1/meta/x1_registry.json",
+    "--dev",
+    "outputs/x1/bridge/realistic/X1-R1_dev.comparison.json",
+    "outputs/x1/bridge/realistic/X1-R1-S_dev.comparison.json",
+    "outputs/x1/bridge/realistic/X1-R1-T_dev.comparison.json",
+    "outputs/x1/bridge/realistic/X1-R1-F_dev.comparison.json",
+    "outputs/x1/bridge/realistic/X1-R1-S1_dev.comparison.json",
+    "outputs/x1/bridge/realistic/X1-R1-CASH_dev.comparison.json",
+    "--val",
+    "outputs/x1/bridge/realistic/X1-R1_validation.comparison.json",
+    "outputs/x1/bridge/realistic/X1-R1-S_validation.comparison.json",
+    "outputs/x1/bridge/realistic/X1-R1-T_validation.comparison.json",
+    "outputs/x1/bridge/realistic/X1-R1-F_validation.comparison.json",
+    "outputs/x1/bridge/realistic/X1-R1-S1_validation.comparison.json",
+    "outputs/x1/bridge/realistic/X1-R1-CASH_validation.comparison.json",
+    "--out",
+    "outputs/x1/selection.json"
+   ],
+   "cwd": null,
+   "expect_rc": 0,
+   "note": "PYTHONPATH=src required. Frozen X1.md section 10 rule. Expect stdout: selection: NONE (RESEARCH UNRESOLVED unless a candidate qualifies) qualified=[]."
+  },
+  {
+   "artifacts": [],
+   "cmd": [
+    ".venv/bin/python",
+    "-m",
+    "pytest",
+    "-q",
+    "-p",
+    "no:cacheprovider",
+    "--tb=short",
+    "tests/unit/test_bench_run.py"
+   ],
+   "cwd": null,
+   "expect_rc": 0,
+   "note": "PYTHONPATH=src required. 14 passed incl the 2 fix-#3 resume regression tests (fail pre-fix, pass post-fix)."
+  },
+  {
+   "artifacts": [],
+   "cmd": [
+    ".venv/bin/python",
+    "-m",
+    "pytest",
+    "-q",
+    "-p",
+    "no:cacheprovider",
+    "--tb=no",
+    "-rf",
+    "tests/"
+   ],
+   "cwd": null,
+   "expect_rc": 0,
+   "note": "PYTHONPATH=src required. Full suite: 1343 passed, exactly the 15 fix3-a-evidence stale strict-containment failures (proven pre-existing, manager-accepted; zero in bench/store/session/strategy/bridge), 1 skipped. Any failure outside those 15 IDs is a blocker. INTEGRATION: expect_rc 1->0 (merged tree carries D1 flag-fixed tests; the 15 stale failures exist only on the W4 branch)."
+  }
+ ],
+ "id": "DEEP-W4-D4",
+ "notes": [
+  "Round executed exactly as frozen: 48/48 jobs INCOMPLETE_BUDGET to cap (dev 900s / val 1500+1500+600s), 24/24 cells bridge rc=0, realistic + adverse (2x spread) costs. TEST idx23-30 burned, EVAL sealed, freeze/caps/params untouched (3 vehicle-only bench extensions + fix #3, all manager-authorized, regression-tested).",
+  "Outcome honest: fills=0 in all 24 cells (strategies never fired within caps) -> all realistic nets 0.0/0.0 -> frozen rule yields NONE (RESEARCH UNRESOLVED). 100-pos/10d screen BELOW everywhere (descriptive). No qualification is a valid preregistered result, not an execution failure.",
+  "Session swap mid-round (whisper-redshift -> granite-cetus): jobs 19+20 accepted complete under ruling (a) with sha-verified chain copy + explicit no-gap clearance; job-19 verbatim relaunch correctly skipped (would have run unfiled coverage). Full provenance in outputs/x1/meta/EXEC_LOG.md.",
+  "Known caveat (disclosed in EXEC_LOG): one dev-j1 booked block seen during mechanics inspection (no-downstream-discretion, all jobs filed + frozen selection); bench stdout completion lines unavoidably display closing equity (120.00 paper capital); executor sought no booked/fills/selection inputs until the selection step."
+ ],
+ "outbox": "coord/outbox/DEEP-W4-D4.done.json",
+ "owner": "granite-cetus",
+ "sha": "ed465fb41f2388100e1cea629ddfe1974728ab12",
+ "verdict": "NONE (RESEARCH UNRESOLVED unless a candidate qualifies)",
+ "integration_note": "manager af9c86a: full-suite expect_rc 1->0 for the reason above. No other change."
+}

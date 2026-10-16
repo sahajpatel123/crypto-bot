@@ -1,0 +1,1134 @@
+{
+ "tool": "tools/x1_bench_bridge.py",
+ "frozen": "pre-outcome run manifest (24 cells, 48 jobs, all wall<=1500s)",
+ "cells": [
+  {
+   "config_id": "X1-R1",
+   "arm": "X1",
+   "split": "dev",
+   "tag": "realistic",
+   "toml": "configs/x1-r1.toml",
+   "dataset": "datasets/benchmark_30d.toml",
+   "symbols": [
+    "BTCUSDT",
+    "ETHUSDT"
+   ],
+   "days": [
+    "2026-09-11",
+    "2026-09-12",
+    "2026-09-13",
+    "2026-09-14",
+    "2026-09-15",
+    "2026-09-16",
+    "2026-09-17",
+    "2026-09-18",
+    "2026-09-19",
+    "2026-09-20",
+    "2026-09-21",
+    "2026-09-22",
+    "2026-09-23",
+    "2026-09-24",
+    "2026-09-25",
+    "2026-09-26"
+   ],
+   "window_ms": [
+    1789151400000,
+    1790447400000
+   ],
+   "spread": "PROFILE",
+   "filters_file": "filters/x1_bench_filters.json",
+   "engine_seed": 42,
+   "run_id": "x1-realistic-X1-R1_dev",
+   "ckpt_dir": "outputs/x1/ckpts/realistic/X1-R1_dev",
+   "jobs": [
+    {
+     "wall_budget_s": 900,
+     "resume": false,
+     "report": "outputs/x1/reports/realistic/X1-R1_dev_j1.json"
+    }
+   ]
+  },
+  {
+   "config_id": "X1-R1",
+   "arm": "X1",
+   "split": "validation",
+   "tag": "realistic",
+   "toml": "configs/x1-r1.toml",
+   "dataset": "datasets/benchmark_30d.toml",
+   "symbols": [
+    "BTCUSDT",
+    "ETHUSDT"
+   ],
+   "days": [
+    "2026-09-26",
+    "2026-09-27",
+    "2026-09-28",
+    "2026-09-29",
+    "2026-09-30",
+    "2026-10-01",
+    "2026-10-02",
+    "2026-10-03"
+   ],
+   "window_ms": [
+    1790447400000,
+    1791052200000
+   ],
+   "spread": "PROFILE",
+   "filters_file": "filters/x1_bench_filters.json",
+   "engine_seed": 42,
+   "run_id": "x1-realistic-X1-R1_validation",
+   "ckpt_dir": "outputs/x1/ckpts/realistic/X1-R1_validation",
+   "jobs": [
+    {
+     "wall_budget_s": 1500,
+     "resume": false,
+     "report": "outputs/x1/reports/realistic/X1-R1_validation_j1.json"
+    },
+    {
+     "wall_budget_s": 1500,
+     "resume": true,
+     "report": "outputs/x1/reports/realistic/X1-R1_validation_j2.json"
+    },
+    {
+     "wall_budget_s": 600,
+     "resume": true,
+     "report": "outputs/x1/reports/realistic/X1-R1_validation_j3.json"
+    }
+   ]
+  },
+  {
+   "config_id": "X1-R1-S",
+   "arm": "X1-S",
+   "split": "dev",
+   "tag": "realistic",
+   "toml": "configs/x1-r1-s.toml",
+   "dataset": "datasets/benchmark_30d.toml",
+   "symbols": [
+    "BTCUSDT",
+    "ETHUSDT"
+   ],
+   "days": [
+    "2026-09-11",
+    "2026-09-12",
+    "2026-09-13",
+    "2026-09-14",
+    "2026-09-15",
+    "2026-09-16",
+    "2026-09-17",
+    "2026-09-18",
+    "2026-09-19",
+    "2026-09-20",
+    "2026-09-21",
+    "2026-09-22",
+    "2026-09-23",
+    "2026-09-24",
+    "2026-09-25",
+    "2026-09-26"
+   ],
+   "window_ms": [
+    1789151400000,
+    1790447400000
+   ],
+   "spread": "PROFILE",
+   "filters_file": "filters/x1_bench_filters.json",
+   "engine_seed": 42,
+   "run_id": "x1-realistic-X1-R1-S_dev",
+   "ckpt_dir": "outputs/x1/ckpts/realistic/X1-R1-S_dev",
+   "jobs": [
+    {
+     "wall_budget_s": 900,
+     "resume": false,
+     "report": "outputs/x1/reports/realistic/X1-R1-S_dev_j1.json"
+    }
+   ]
+  },
+  {
+   "config_id": "X1-R1-S",
+   "arm": "X1-S",
+   "split": "validation",
+   "tag": "realistic",
+   "toml": "configs/x1-r1-s.toml",
+   "dataset": "datasets/benchmark_30d.toml",
+   "symbols": [
+    "BTCUSDT",
+    "ETHUSDT"
+   ],
+   "days": [
+    "2026-09-26",
+    "2026-09-27",
+    "2026-09-28",
+    "2026-09-29",
+    "2026-09-30",
+    "2026-10-01",
+    "2026-10-02",
+    "2026-10-03"
+   ],
+   "window_ms": [
+    1790447400000,
+    1791052200000
+   ],
+   "spread": "PROFILE",
+   "filters_file": "filters/x1_bench_filters.json",
+   "engine_seed": 42,
+   "run_id": "x1-realistic-X1-R1-S_validation",
+   "ckpt_dir": "outputs/x1/ckpts/realistic/X1-R1-S_validation",
+   "jobs": [
+    {
+     "wall_budget_s": 1500,
+     "resume": false,
+     "report": "outputs/x1/reports/realistic/X1-R1-S_validation_j1.json"
+    },
+    {
+     "wall_budget_s": 1500,
+     "resume": true,
+     "report": "outputs/x1/reports/realistic/X1-R1-S_validation_j2.json"
+    },
+    {
+     "wall_budget_s": 600,
+     "resume": true,
+     "report": "outputs/x1/reports/realistic/X1-R1-S_validation_j3.json"
+    }
+   ]
+  },
+  {
+   "config_id": "X1-R1-T",
+   "arm": "X1-T",
+   "split": "dev",
+   "tag": "realistic",
+   "toml": "configs/x1-r1-t.toml",
+   "dataset": "datasets/benchmark_30d.toml",
+   "symbols": [
+    "BTCUSDT",
+    "ETHUSDT"
+   ],
+   "days": [
+    "2026-09-11",
+    "2026-09-12",
+    "2026-09-13",
+    "2026-09-14",
+    "2026-09-15",
+    "2026-09-16",
+    "2026-09-17",
+    "2026-09-18",
+    "2026-09-19",
+    "2026-09-20",
+    "2026-09-21",
+    "2026-09-22",
+    "2026-09-23",
+    "2026-09-24",
+    "2026-09-25",
+    "2026-09-26"
+   ],
+   "window_ms": [
+    1789151400000,
+    1790447400000
+   ],
+   "spread": "PROFILE",
+   "filters_file": "filters/x1_bench_filters.json",
+   "engine_seed": 42,
+   "run_id": "x1-realistic-X1-R1-T_dev",
+   "ckpt_dir": "outputs/x1/ckpts/realistic/X1-R1-T_dev",
+   "jobs": [
+    {
+     "wall_budget_s": 900,
+     "resume": false,
+     "report": "outputs/x1/reports/realistic/X1-R1-T_dev_j1.json"
+    }
+   ]
+  },
+  {
+   "config_id": "X1-R1-T",
+   "arm": "X1-T",
+   "split": "validation",
+   "tag": "realistic",
+   "toml": "configs/x1-r1-t.toml",
+   "dataset": "datasets/benchmark_30d.toml",
+   "symbols": [
+    "BTCUSDT",
+    "ETHUSDT"
+   ],
+   "days": [
+    "2026-09-26",
+    "2026-09-27",
+    "2026-09-28",
+    "2026-09-29",
+    "2026-09-30",
+    "2026-10-01",
+    "2026-10-02",
+    "2026-10-03"
+   ],
+   "window_ms": [
+    1790447400000,
+    1791052200000
+   ],
+   "spread": "PROFILE",
+   "filters_file": "filters/x1_bench_filters.json",
+   "engine_seed": 42,
+   "run_id": "x1-realistic-X1-R1-T_validation",
+   "ckpt_dir": "outputs/x1/ckpts/realistic/X1-R1-T_validation",
+   "jobs": [
+    {
+     "wall_budget_s": 1500,
+     "resume": false,
+     "report": "outputs/x1/reports/realistic/X1-R1-T_validation_j1.json"
+    },
+    {
+     "wall_budget_s": 1500,
+     "resume": true,
+     "report": "outputs/x1/reports/realistic/X1-R1-T_validation_j2.json"
+    },
+    {
+     "wall_budget_s": 600,
+     "resume": true,
+     "report": "outputs/x1/reports/realistic/X1-R1-T_validation_j3.json"
+    }
+   ]
+  },
+  {
+   "config_id": "X1-R1-F",
+   "arm": "X1-F",
+   "split": "dev",
+   "tag": "realistic",
+   "toml": "configs/x1-r1-f.toml",
+   "dataset": "datasets/benchmark_30d.toml",
+   "symbols": [
+    "BTCUSDT",
+    "ETHUSDT"
+   ],
+   "days": [
+    "2026-09-11",
+    "2026-09-12",
+    "2026-09-13",
+    "2026-09-14",
+    "2026-09-15",
+    "2026-09-16",
+    "2026-09-17",
+    "2026-09-18",
+    "2026-09-19",
+    "2026-09-20",
+    "2026-09-21",
+    "2026-09-22",
+    "2026-09-23",
+    "2026-09-24",
+    "2026-09-25",
+    "2026-09-26"
+   ],
+   "window_ms": [
+    1789151400000,
+    1790447400000
+   ],
+   "spread": "PROFILE",
+   "filters_file": "filters/x1_bench_filters.json",
+   "engine_seed": 42,
+   "run_id": "x1-realistic-X1-R1-F_dev",
+   "ckpt_dir": "outputs/x1/ckpts/realistic/X1-R1-F_dev",
+   "jobs": [
+    {
+     "wall_budget_s": 900,
+     "resume": false,
+     "report": "outputs/x1/reports/realistic/X1-R1-F_dev_j1.json"
+    }
+   ]
+  },
+  {
+   "config_id": "X1-R1-F",
+   "arm": "X1-F",
+   "split": "validation",
+   "tag": "realistic",
+   "toml": "configs/x1-r1-f.toml",
+   "dataset": "datasets/benchmark_30d.toml",
+   "symbols": [
+    "BTCUSDT",
+    "ETHUSDT"
+   ],
+   "days": [
+    "2026-09-26",
+    "2026-09-27",
+    "2026-09-28",
+    "2026-09-29",
+    "2026-09-30",
+    "2026-10-01",
+    "2026-10-02",
+    "2026-10-03"
+   ],
+   "window_ms": [
+    1790447400000,
+    1791052200000
+   ],
+   "spread": "PROFILE",
+   "filters_file": "filters/x1_bench_filters.json",
+   "engine_seed": 42,
+   "run_id": "x1-realistic-X1-R1-F_validation",
+   "ckpt_dir": "outputs/x1/ckpts/realistic/X1-R1-F_validation",
+   "jobs": [
+    {
+     "wall_budget_s": 1500,
+     "resume": false,
+     "report": "outputs/x1/reports/realistic/X1-R1-F_validation_j1.json"
+    },
+    {
+     "wall_budget_s": 1500,
+     "resume": true,
+     "report": "outputs/x1/reports/realistic/X1-R1-F_validation_j2.json"
+    },
+    {
+     "wall_budget_s": 600,
+     "resume": true,
+     "report": "outputs/x1/reports/realistic/X1-R1-F_validation_j3.json"
+    }
+   ]
+  },
+  {
+   "config_id": "X1-R1-S1",
+   "arm": "S1",
+   "split": "dev",
+   "tag": "realistic",
+   "toml": "configs/x1-r1-s1.toml",
+   "dataset": "datasets/benchmark_30d.toml",
+   "symbols": [
+    "BTCUSDT",
+    "ETHUSDT"
+   ],
+   "days": [
+    "2026-09-11",
+    "2026-09-12",
+    "2026-09-13",
+    "2026-09-14",
+    "2026-09-15",
+    "2026-09-16",
+    "2026-09-17",
+    "2026-09-18",
+    "2026-09-19",
+    "2026-09-20",
+    "2026-09-21",
+    "2026-09-22",
+    "2026-09-23",
+    "2026-09-24",
+    "2026-09-25",
+    "2026-09-26"
+   ],
+   "window_ms": [
+    1789151400000,
+    1790447400000
+   ],
+   "spread": "PROFILE",
+   "filters_file": "filters/x1_bench_filters.json",
+   "engine_seed": 42,
+   "run_id": "x1-realistic-X1-R1-S1_dev",
+   "ckpt_dir": "outputs/x1/ckpts/realistic/X1-R1-S1_dev",
+   "jobs": [
+    {
+     "wall_budget_s": 900,
+     "resume": false,
+     "report": "outputs/x1/reports/realistic/X1-R1-S1_dev_j1.json"
+    }
+   ]
+  },
+  {
+   "config_id": "X1-R1-S1",
+   "arm": "S1",
+   "split": "validation",
+   "tag": "realistic",
+   "toml": "configs/x1-r1-s1.toml",
+   "dataset": "datasets/benchmark_30d.toml",
+   "symbols": [
+    "BTCUSDT",
+    "ETHUSDT"
+   ],
+   "days": [
+    "2026-09-26",
+    "2026-09-27",
+    "2026-09-28",
+    "2026-09-29",
+    "2026-09-30",
+    "2026-10-01",
+    "2026-10-02",
+    "2026-10-03"
+   ],
+   "window_ms": [
+    1790447400000,
+    1791052200000
+   ],
+   "spread": "PROFILE",
+   "filters_file": "filters/x1_bench_filters.json",
+   "engine_seed": 42,
+   "run_id": "x1-realistic-X1-R1-S1_validation",
+   "ckpt_dir": "outputs/x1/ckpts/realistic/X1-R1-S1_validation",
+   "jobs": [
+    {
+     "wall_budget_s": 1500,
+     "resume": false,
+     "report": "outputs/x1/reports/realistic/X1-R1-S1_validation_j1.json"
+    },
+    {
+     "wall_budget_s": 1500,
+     "resume": true,
+     "report": "outputs/x1/reports/realistic/X1-R1-S1_validation_j2.json"
+    },
+    {
+     "wall_budget_s": 600,
+     "resume": true,
+     "report": "outputs/x1/reports/realistic/X1-R1-S1_validation_j3.json"
+    }
+   ]
+  },
+  {
+   "config_id": "X1-R1-CASH",
+   "arm": "CASH",
+   "split": "dev",
+   "tag": "realistic",
+   "toml": "configs/x1-r1-cash.toml",
+   "dataset": "datasets/benchmark_30d.toml",
+   "symbols": [
+    "BTCUSDT",
+    "ETHUSDT"
+   ],
+   "days": [
+    "2026-09-11",
+    "2026-09-12",
+    "2026-09-13",
+    "2026-09-14",
+    "2026-09-15",
+    "2026-09-16",
+    "2026-09-17",
+    "2026-09-18",
+    "2026-09-19",
+    "2026-09-20",
+    "2026-09-21",
+    "2026-09-22",
+    "2026-09-23",
+    "2026-09-24",
+    "2026-09-25",
+    "2026-09-26"
+   ],
+   "window_ms": [
+    1789151400000,
+    1790447400000
+   ],
+   "spread": "PROFILE",
+   "filters_file": "filters/x1_bench_filters.json",
+   "engine_seed": 42,
+   "run_id": "x1-realistic-X1-R1-CASH_dev",
+   "ckpt_dir": "outputs/x1/ckpts/realistic/X1-R1-CASH_dev",
+   "jobs": [
+    {
+     "wall_budget_s": 900,
+     "resume": false,
+     "report": "outputs/x1/reports/realistic/X1-R1-CASH_dev_j1.json"
+    }
+   ]
+  },
+  {
+   "config_id": "X1-R1-CASH",
+   "arm": "CASH",
+   "split": "validation",
+   "tag": "realistic",
+   "toml": "configs/x1-r1-cash.toml",
+   "dataset": "datasets/benchmark_30d.toml",
+   "symbols": [
+    "BTCUSDT",
+    "ETHUSDT"
+   ],
+   "days": [
+    "2026-09-26",
+    "2026-09-27",
+    "2026-09-28",
+    "2026-09-29",
+    "2026-09-30",
+    "2026-10-01",
+    "2026-10-02",
+    "2026-10-03"
+   ],
+   "window_ms": [
+    1790447400000,
+    1791052200000
+   ],
+   "spread": "PROFILE",
+   "filters_file": "filters/x1_bench_filters.json",
+   "engine_seed": 42,
+   "run_id": "x1-realistic-X1-R1-CASH_validation",
+   "ckpt_dir": "outputs/x1/ckpts/realistic/X1-R1-CASH_validation",
+   "jobs": [
+    {
+     "wall_budget_s": 1500,
+     "resume": false,
+     "report": "outputs/x1/reports/realistic/X1-R1-CASH_validation_j1.json"
+    },
+    {
+     "wall_budget_s": 1500,
+     "resume": true,
+     "report": "outputs/x1/reports/realistic/X1-R1-CASH_validation_j2.json"
+    },
+    {
+     "wall_budget_s": 600,
+     "resume": true,
+     "report": "outputs/x1/reports/realistic/X1-R1-CASH_validation_j3.json"
+    }
+   ]
+  },
+  {
+   "config_id": "X1-R1",
+   "arm": "X1",
+   "split": "dev",
+   "tag": "adverse",
+   "toml": "configs/x1-r1-adv.toml",
+   "dataset": "datasets/benchmark_30d.toml",
+   "symbols": [
+    "BTCUSDT",
+    "ETHUSDT"
+   ],
+   "days": [
+    "2026-09-11",
+    "2026-09-12",
+    "2026-09-13",
+    "2026-09-14",
+    "2026-09-15",
+    "2026-09-16",
+    "2026-09-17",
+    "2026-09-18",
+    "2026-09-19",
+    "2026-09-20",
+    "2026-09-21",
+    "2026-09-22",
+    "2026-09-23",
+    "2026-09-24",
+    "2026-09-25",
+    "2026-09-26"
+   ],
+   "window_ms": [
+    1789151400000,
+    1790447400000
+   ],
+   "spread": 2.0,
+   "filters_file": "filters/x1_bench_filters.json",
+   "engine_seed": 42,
+   "run_id": "x1-adverse-X1-R1_dev",
+   "ckpt_dir": "outputs/x1/ckpts/adverse/X1-R1_dev",
+   "jobs": [
+    {
+     "wall_budget_s": 900,
+     "resume": false,
+     "report": "outputs/x1/reports/adverse/X1-R1_dev_j1.json"
+    }
+   ]
+  },
+  {
+   "config_id": "X1-R1",
+   "arm": "X1",
+   "split": "validation",
+   "tag": "adverse",
+   "toml": "configs/x1-r1-adv.toml",
+   "dataset": "datasets/benchmark_30d.toml",
+   "symbols": [
+    "BTCUSDT",
+    "ETHUSDT"
+   ],
+   "days": [
+    "2026-09-26",
+    "2026-09-27",
+    "2026-09-28",
+    "2026-09-29",
+    "2026-09-30",
+    "2026-10-01",
+    "2026-10-02",
+    "2026-10-03"
+   ],
+   "window_ms": [
+    1790447400000,
+    1791052200000
+   ],
+   "spread": 2.0,
+   "filters_file": "filters/x1_bench_filters.json",
+   "engine_seed": 42,
+   "run_id": "x1-adverse-X1-R1_validation",
+   "ckpt_dir": "outputs/x1/ckpts/adverse/X1-R1_validation",
+   "jobs": [
+    {
+     "wall_budget_s": 1500,
+     "resume": false,
+     "report": "outputs/x1/reports/adverse/X1-R1_validation_j1.json"
+    },
+    {
+     "wall_budget_s": 1500,
+     "resume": true,
+     "report": "outputs/x1/reports/adverse/X1-R1_validation_j2.json"
+    },
+    {
+     "wall_budget_s": 600,
+     "resume": true,
+     "report": "outputs/x1/reports/adverse/X1-R1_validation_j3.json"
+    }
+   ]
+  },
+  {
+   "config_id": "X1-R1-S",
+   "arm": "X1-S",
+   "split": "dev",
+   "tag": "adverse",
+   "toml": "configs/x1-r1-s-adv.toml",
+   "dataset": "datasets/benchmark_30d.toml",
+   "symbols": [
+    "BTCUSDT",
+    "ETHUSDT"
+   ],
+   "days": [
+    "2026-09-11",
+    "2026-09-12",
+    "2026-09-13",
+    "2026-09-14",
+    "2026-09-15",
+    "2026-09-16",
+    "2026-09-17",
+    "2026-09-18",
+    "2026-09-19",
+    "2026-09-20",
+    "2026-09-21",
+    "2026-09-22",
+    "2026-09-23",
+    "2026-09-24",
+    "2026-09-25",
+    "2026-09-26"
+   ],
+   "window_ms": [
+    1789151400000,
+    1790447400000
+   ],
+   "spread": 2.0,
+   "filters_file": "filters/x1_bench_filters.json",
+   "engine_seed": 42,
+   "run_id": "x1-adverse-X1-R1-S_dev",
+   "ckpt_dir": "outputs/x1/ckpts/adverse/X1-R1-S_dev",
+   "jobs": [
+    {
+     "wall_budget_s": 900,
+     "resume": false,
+     "report": "outputs/x1/reports/adverse/X1-R1-S_dev_j1.json"
+    }
+   ]
+  },
+  {
+   "config_id": "X1-R1-S",
+   "arm": "X1-S",
+   "split": "validation",
+   "tag": "adverse",
+   "toml": "configs/x1-r1-s-adv.toml",
+   "dataset": "datasets/benchmark_30d.toml",
+   "symbols": [
+    "BTCUSDT",
+    "ETHUSDT"
+   ],
+   "days": [
+    "2026-09-26",
+    "2026-09-27",
+    "2026-09-28",
+    "2026-09-29",
+    "2026-09-30",
+    "2026-10-01",
+    "2026-10-02",
+    "2026-10-03"
+   ],
+   "window_ms": [
+    1790447400000,
+    1791052200000
+   ],
+   "spread": 2.0,
+   "filters_file": "filters/x1_bench_filters.json",
+   "engine_seed": 42,
+   "run_id": "x1-adverse-X1-R1-S_validation",
+   "ckpt_dir": "outputs/x1/ckpts/adverse/X1-R1-S_validation",
+   "jobs": [
+    {
+     "wall_budget_s": 1500,
+     "resume": false,
+     "report": "outputs/x1/reports/adverse/X1-R1-S_validation_j1.json"
+    },
+    {
+     "wall_budget_s": 1500,
+     "resume": true,
+     "report": "outputs/x1/reports/adverse/X1-R1-S_validation_j2.json"
+    },
+    {
+     "wall_budget_s": 600,
+     "resume": true,
+     "report": "outputs/x1/reports/adverse/X1-R1-S_validation_j3.json"
+    }
+   ]
+  },
+  {
+   "config_id": "X1-R1-T",
+   "arm": "X1-T",
+   "split": "dev",
+   "tag": "adverse",
+   "toml": "configs/x1-r1-t-adv.toml",
+   "dataset": "datasets/benchmark_30d.toml",
+   "symbols": [
+    "BTCUSDT",
+    "ETHUSDT"
+   ],
+   "days": [
+    "2026-09-11",
+    "2026-09-12",
+    "2026-09-13",
+    "2026-09-14",
+    "2026-09-15",
+    "2026-09-16",
+    "2026-09-17",
+    "2026-09-18",
+    "2026-09-19",
+    "2026-09-20",
+    "2026-09-21",
+    "2026-09-22",
+    "2026-09-23",
+    "2026-09-24",
+    "2026-09-25",
+    "2026-09-26"
+   ],
+   "window_ms": [
+    1789151400000,
+    1790447400000
+   ],
+   "spread": 2.0,
+   "filters_file": "filters/x1_bench_filters.json",
+   "engine_seed": 42,
+   "run_id": "x1-adverse-X1-R1-T_dev",
+   "ckpt_dir": "outputs/x1/ckpts/adverse/X1-R1-T_dev",
+   "jobs": [
+    {
+     "wall_budget_s": 900,
+     "resume": false,
+     "report": "outputs/x1/reports/adverse/X1-R1-T_dev_j1.json"
+    }
+   ]
+  },
+  {
+   "config_id": "X1-R1-T",
+   "arm": "X1-T",
+   "split": "validation",
+   "tag": "adverse",
+   "toml": "configs/x1-r1-t-adv.toml",
+   "dataset": "datasets/benchmark_30d.toml",
+   "symbols": [
+    "BTCUSDT",
+    "ETHUSDT"
+   ],
+   "days": [
+    "2026-09-26",
+    "2026-09-27",
+    "2026-09-28",
+    "2026-09-29",
+    "2026-09-30",
+    "2026-10-01",
+    "2026-10-02",
+    "2026-10-03"
+   ],
+   "window_ms": [
+    1790447400000,
+    1791052200000
+   ],
+   "spread": 2.0,
+   "filters_file": "filters/x1_bench_filters.json",
+   "engine_seed": 42,
+   "run_id": "x1-adverse-X1-R1-T_validation",
+   "ckpt_dir": "outputs/x1/ckpts/adverse/X1-R1-T_validation",
+   "jobs": [
+    {
+     "wall_budget_s": 1500,
+     "resume": false,
+     "report": "outputs/x1/reports/adverse/X1-R1-T_validation_j1.json"
+    },
+    {
+     "wall_budget_s": 1500,
+     "resume": true,
+     "report": "outputs/x1/reports/adverse/X1-R1-T_validation_j2.json"
+    },
+    {
+     "wall_budget_s": 600,
+     "resume": true,
+     "report": "outputs/x1/reports/adverse/X1-R1-T_validation_j3.json"
+    }
+   ]
+  },
+  {
+   "config_id": "X1-R1-F",
+   "arm": "X1-F",
+   "split": "dev",
+   "tag": "adverse",
+   "toml": "configs/x1-r1-f-adv.toml",
+   "dataset": "datasets/benchmark_30d.toml",
+   "symbols": [
+    "BTCUSDT",
+    "ETHUSDT"
+   ],
+   "days": [
+    "2026-09-11",
+    "2026-09-12",
+    "2026-09-13",
+    "2026-09-14",
+    "2026-09-15",
+    "2026-09-16",
+    "2026-09-17",
+    "2026-09-18",
+    "2026-09-19",
+    "2026-09-20",
+    "2026-09-21",
+    "2026-09-22",
+    "2026-09-23",
+    "2026-09-24",
+    "2026-09-25",
+    "2026-09-26"
+   ],
+   "window_ms": [
+    1789151400000,
+    1790447400000
+   ],
+   "spread": 2.0,
+   "filters_file": "filters/x1_bench_filters.json",
+   "engine_seed": 42,
+   "run_id": "x1-adverse-X1-R1-F_dev",
+   "ckpt_dir": "outputs/x1/ckpts/adverse/X1-R1-F_dev",
+   "jobs": [
+    {
+     "wall_budget_s": 900,
+     "resume": false,
+     "report": "outputs/x1/reports/adverse/X1-R1-F_dev_j1.json"
+    }
+   ]
+  },
+  {
+   "config_id": "X1-R1-F",
+   "arm": "X1-F",
+   "split": "validation",
+   "tag": "adverse",
+   "toml": "configs/x1-r1-f-adv.toml",
+   "dataset": "datasets/benchmark_30d.toml",
+   "symbols": [
+    "BTCUSDT",
+    "ETHUSDT"
+   ],
+   "days": [
+    "2026-09-26",
+    "2026-09-27",
+    "2026-09-28",
+    "2026-09-29",
+    "2026-09-30",
+    "2026-10-01",
+    "2026-10-02",
+    "2026-10-03"
+   ],
+   "window_ms": [
+    1790447400000,
+    1791052200000
+   ],
+   "spread": 2.0,
+   "filters_file": "filters/x1_bench_filters.json",
+   "engine_seed": 42,
+   "run_id": "x1-adverse-X1-R1-F_validation",
+   "ckpt_dir": "outputs/x1/ckpts/adverse/X1-R1-F_validation",
+   "jobs": [
+    {
+     "wall_budget_s": 1500,
+     "resume": false,
+     "report": "outputs/x1/reports/adverse/X1-R1-F_validation_j1.json"
+    },
+    {
+     "wall_budget_s": 1500,
+     "resume": true,
+     "report": "outputs/x1/reports/adverse/X1-R1-F_validation_j2.json"
+    },
+    {
+     "wall_budget_s": 600,
+     "resume": true,
+     "report": "outputs/x1/reports/adverse/X1-R1-F_validation_j3.json"
+    }
+   ]
+  },
+  {
+   "config_id": "X1-R1-S1",
+   "arm": "S1",
+   "split": "dev",
+   "tag": "adverse",
+   "toml": "configs/x1-r1-s1-adv.toml",
+   "dataset": "datasets/benchmark_30d.toml",
+   "symbols": [
+    "BTCUSDT",
+    "ETHUSDT"
+   ],
+   "days": [
+    "2026-09-11",
+    "2026-09-12",
+    "2026-09-13",
+    "2026-09-14",
+    "2026-09-15",
+    "2026-09-16",
+    "2026-09-17",
+    "2026-09-18",
+    "2026-09-19",
+    "2026-09-20",
+    "2026-09-21",
+    "2026-09-22",
+    "2026-09-23",
+    "2026-09-24",
+    "2026-09-25",
+    "2026-09-26"
+   ],
+   "window_ms": [
+    1789151400000,
+    1790447400000
+   ],
+   "spread": 2.0,
+   "filters_file": "filters/x1_bench_filters.json",
+   "engine_seed": 42,
+   "run_id": "x1-adverse-X1-R1-S1_dev",
+   "ckpt_dir": "outputs/x1/ckpts/adverse/X1-R1-S1_dev",
+   "jobs": [
+    {
+     "wall_budget_s": 900,
+     "resume": false,
+     "report": "outputs/x1/reports/adverse/X1-R1-S1_dev_j1.json"
+    }
+   ]
+  },
+  {
+   "config_id": "X1-R1-S1",
+   "arm": "S1",
+   "split": "validation",
+   "tag": "adverse",
+   "toml": "configs/x1-r1-s1-adv.toml",
+   "dataset": "datasets/benchmark_30d.toml",
+   "symbols": [
+    "BTCUSDT",
+    "ETHUSDT"
+   ],
+   "days": [
+    "2026-09-26",
+    "2026-09-27",
+    "2026-09-28",
+    "2026-09-29",
+    "2026-09-30",
+    "2026-10-01",
+    "2026-10-02",
+    "2026-10-03"
+   ],
+   "window_ms": [
+    1790447400000,
+    1791052200000
+   ],
+   "spread": 2.0,
+   "filters_file": "filters/x1_bench_filters.json",
+   "engine_seed": 42,
+   "run_id": "x1-adverse-X1-R1-S1_validation",
+   "ckpt_dir": "outputs/x1/ckpts/adverse/X1-R1-S1_validation",
+   "jobs": [
+    {
+     "wall_budget_s": 1500,
+     "resume": false,
+     "report": "outputs/x1/reports/adverse/X1-R1-S1_validation_j1.json"
+    },
+    {
+     "wall_budget_s": 1500,
+     "resume": true,
+     "report": "outputs/x1/reports/adverse/X1-R1-S1_validation_j2.json"
+    },
+    {
+     "wall_budget_s": 600,
+     "resume": true,
+     "report": "outputs/x1/reports/adverse/X1-R1-S1_validation_j3.json"
+    }
+   ]
+  },
+  {
+   "config_id": "X1-R1-CASH",
+   "arm": "CASH",
+   "split": "dev",
+   "tag": "adverse",
+   "toml": "configs/x1-r1-cash-adv.toml",
+   "dataset": "datasets/benchmark_30d.toml",
+   "symbols": [
+    "BTCUSDT",
+    "ETHUSDT"
+   ],
+   "days": [
+    "2026-09-11",
+    "2026-09-12",
+    "2026-09-13",
+    "2026-09-14",
+    "2026-09-15",
+    "2026-09-16",
+    "2026-09-17",
+    "2026-09-18",
+    "2026-09-19",
+    "2026-09-20",
+    "2026-09-21",
+    "2026-09-22",
+    "2026-09-23",
+    "2026-09-24",
+    "2026-09-25",
+    "2026-09-26"
+   ],
+   "window_ms": [
+    1789151400000,
+    1790447400000
+   ],
+   "spread": 2.0,
+   "filters_file": "filters/x1_bench_filters.json",
+   "engine_seed": 42,
+   "run_id": "x1-adverse-X1-R1-CASH_dev",
+   "ckpt_dir": "outputs/x1/ckpts/adverse/X1-R1-CASH_dev",
+   "jobs": [
+    {
+     "wall_budget_s": 900,
+     "resume": false,
+     "report": "outputs/x1/reports/adverse/X1-R1-CASH_dev_j1.json"
+    }
+   ]
+  },
+  {
+   "config_id": "X1-R1-CASH",
+   "arm": "CASH",
+   "split": "validation",
+   "tag": "adverse",
+   "toml": "configs/x1-r1-cash-adv.toml",
+   "dataset": "datasets/benchmark_30d.toml",
+   "symbols": [
+    "BTCUSDT",
+    "ETHUSDT"
+   ],
+   "days": [
+    "2026-09-26",
+    "2026-09-27",
+    "2026-09-28",
+    "2026-09-29",
+    "2026-09-30",
+    "2026-10-01",
+    "2026-10-02",
+    "2026-10-03"
+   ],
+   "window_ms": [
+    1790447400000,
+    1791052200000
+   ],
+   "spread": 2.0,
+   "filters_file": "filters/x1_bench_filters.json",
+   "engine_seed": 42,
+   "run_id": "x1-adverse-X1-R1-CASH_validation",
+   "ckpt_dir": "outputs/x1/ckpts/adverse/X1-R1-CASH_validation",
+   "jobs": [
+    {
+     "wall_budget_s": 1500,
+     "resume": false,
+     "report": "outputs/x1/reports/adverse/X1-R1-CASH_validation_j1.json"
+    },
+    {
+     "wall_budget_s": 1500,
+     "resume": true,
+     "report": "outputs/x1/reports/adverse/X1-R1-CASH_validation_j2.json"
+    },
+    {
+     "wall_budget_s": 600,
+     "resume": true,
+     "report": "outputs/x1/reports/adverse/X1-R1-CASH_validation_j3.json"
+    }
+   ]
+  }
+ ]
+}

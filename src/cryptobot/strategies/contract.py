@@ -44,7 +44,13 @@ ARM_IDS_S4 = (S4_BASE, S4_SIMPLE)
 S5_BASE = "S5"
 ARM_IDS_S5 = (S5_BASE,)
 
-ARM_IDS = ARM_IDS_S1 + ARM_IDS_S2 + ARM_IDS_S3 + ARM_IDS_S4 + ARM_IDS_S5
+X1_BASE = "X1"
+X1_STRICT = "X1-S"
+X1_TIMED = "X1-T"
+X1_FLOW = "X1-F"
+ARM_IDS_X1 = (X1_BASE, X1_STRICT, X1_TIMED, X1_FLOW)
+
+ARM_IDS = ARM_IDS_S1 + ARM_IDS_S2 + ARM_IDS_S3 + ARM_IDS_S4 + ARM_IDS_S5 + ARM_IDS_X1
 
 COST_LABEL = "conservative-simulation"
 
@@ -67,6 +73,11 @@ S4_FORECAST_COST = ForecastCost(
 S5_FORECAST_COST = ForecastCost(
     fee_bps=5.0, spread_bps=5.0, slippage_bps=5.0, funding_bps=1.0
 )
+# X1 uses the same frozen preset values under its own name (X1.md §3:
+# comparability with the S1 control; identical conservative label).
+X1_FORECAST_COST = ForecastCost(
+    fee_bps=5.0, spread_bps=5.0, slippage_bps=5.0, funding_bps=1.0
+)
 
 __all__ = [
     "ARM_BASE",
@@ -77,6 +88,7 @@ __all__ = [
     "ARM_IDS_S3",
     "ARM_IDS_S4",
     "ARM_IDS_S5",
+    "ARM_IDS_X1",
     "ARM_VOLUME",
     "CONTRACT_VERSION",
     "COST_LABEL",
@@ -95,6 +107,11 @@ __all__ = [
     "S4_FORECAST_COST",
     "S5_BASE",
     "S5_FORECAST_COST",
+    "X1_BASE",
+    "X1_FLOW",
+    "X1_FORECAST_COST",
+    "X1_STRICT",
+    "X1_TIMED",
     "DataQuality",
     "DecisionRecord",
     "FeatureEvidence",
