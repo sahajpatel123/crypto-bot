@@ -137,8 +137,8 @@ def p2_cells(symbol: str, settlements: list[tuple[int, float]],
     w_start, w_end = window
     sig_start = w_start + WARMUP_H * 3_600_000
     for side in ("SHORT", "LONG"):
-        last_exit = -1
         for hold_h in holds_h:
+            last_exit = -1  # one-position rule is PER CELL (prereg: "of the same cell")
             cell = {"symbol": symbol, "family": "P2", "side": side,
                     "hold_h": hold_h, "n_signals": 0, "n_entered": 0,
                     "n_skipped_overlap": 0, "n_skipped_missing": 0,
@@ -244,8 +244,8 @@ def p3_cells(symbol: str, settlements: list[tuple[int, float]],
     w_start, w_end = window
     sig_start = w_start + WARMUP_H * 3_600_000
     for side in ("LONG", "SHORT"):
-        last_exit = -1
         for k in P3_HORIZONS_H:
+            last_exit = -1  # per-cell tracking, consistent with P2 frozen wording
             cell = {"symbol": symbol, "family": "P3", "side": side,
                     "hold_h": k, "n_signals": 0, "n_entered": 0,
                     "n_skipped_overlap": 0, "n_skipped_missing": 0,
