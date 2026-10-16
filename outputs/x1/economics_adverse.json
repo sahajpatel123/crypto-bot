@@ -1,0 +1,349 @@
+{
+ "cells": [
+  {
+   "armset": "X1",
+   "closed_positions": 0,
+   "closing_equity": 120.0,
+   "comparison": "outputs/x1/bridge/adverse/X1-R1_dev.comparison.json",
+   "config_fingerprint": "2f93730276f3449f",
+   "config_id": "X1-R1",
+   "dataset_manifest_sha": "9008ba92ef88a8cf8f446f77fbe27983de16d780148a11fe6fd6971b0e8f1e31",
+   "fee_schedule": {
+    "taker_bps": 10.0
+   },
+   "funding_net": 0.0,
+   "intents_admitted": 0,
+   "ledger_net": 0.0,
+   "max_flat_residual": 0.0,
+   "n_fills": 0,
+   "net_return_pct": 0.0,
+   "open_tail_qty": 0.0,
+   "opening_equity": 120.0,
+   "paid_costs": 0.0,
+   "realised": 0.0,
+   "reject_counts": {},
+   "split": "dev"
+  },
+  {
+   "armset": "X1",
+   "closed_positions": 0,
+   "closing_equity": 120.0,
+   "comparison": "outputs/x1/bridge/adverse/X1-R1_validation.comparison.json",
+   "config_fingerprint": "2f93730276f3449f",
+   "config_id": "X1-R1",
+   "dataset_manifest_sha": "9008ba92ef88a8cf8f446f77fbe27983de16d780148a11fe6fd6971b0e8f1e31",
+   "fee_schedule": {
+    "taker_bps": 10.0
+   },
+   "funding_net": 0.0,
+   "intents_admitted": 0,
+   "ledger_net": 0.0,
+   "max_flat_residual": 0.0,
+   "n_fills": 0,
+   "net_return_pct": 0.0,
+   "open_tail_qty": 0.0,
+   "opening_equity": 120.0,
+   "paid_costs": 0.0,
+   "realised": 0.0,
+   "reject_counts": {},
+   "split": "validation"
+  },
+  {
+   "armset": "CASH",
+   "closed_positions": 0,
+   "closing_equity": 120.0,
+   "comparison": "outputs/x1/bridge/adverse/X1-R1-CASH_dev.comparison.json",
+   "config_fingerprint": "8750818303f35a1e",
+   "config_id": "X1-R1-CASH",
+   "dataset_manifest_sha": "9008ba92ef88a8cf8f446f77fbe27983de16d780148a11fe6fd6971b0e8f1e31",
+   "fee_schedule": {
+    "taker_bps": 10.0
+   },
+   "funding_net": 0.0,
+   "intents_admitted": 0,
+   "ledger_net": 0.0,
+   "max_flat_residual": 0.0,
+   "n_fills": 0,
+   "net_return_pct": 0.0,
+   "open_tail_qty": 0.0,
+   "opening_equity": 120.0,
+   "paid_costs": 0.0,
+   "realised": 0.0,
+   "reject_counts": {},
+   "split": "dev"
+  },
+  {
+   "armset": "CASH",
+   "closed_positions": 0,
+   "closing_equity": 120.0,
+   "comparison": "outputs/x1/bridge/adverse/X1-R1-CASH_validation.comparison.json",
+   "config_fingerprint": "8750818303f35a1e",
+   "config_id": "X1-R1-CASH",
+   "dataset_manifest_sha": "9008ba92ef88a8cf8f446f77fbe27983de16d780148a11fe6fd6971b0e8f1e31",
+   "fee_schedule": {
+    "taker_bps": 10.0
+   },
+   "funding_net": 0.0,
+   "intents_admitted": 0,
+   "ledger_net": 0.0,
+   "max_flat_residual": 0.0,
+   "n_fills": 0,
+   "net_return_pct": 0.0,
+   "open_tail_qty": 0.0,
+   "opening_equity": 120.0,
+   "paid_costs": 0.0,
+   "realised": 0.0,
+   "reject_counts": {},
+   "split": "validation"
+  },
+  {
+   "armset": "X1-F",
+   "closed_positions": 0,
+   "closing_equity": 120.0,
+   "comparison": "outputs/x1/bridge/adverse/X1-R1-F_dev.comparison.json",
+   "config_fingerprint": "0e77eafcddf44f8c",
+   "config_id": "X1-R1-F",
+   "dataset_manifest_sha": "9008ba92ef88a8cf8f446f77fbe27983de16d780148a11fe6fd6971b0e8f1e31",
+   "fee_schedule": {
+    "taker_bps": 10.0
+   },
+   "funding_net": 0.0,
+   "intents_admitted": 0,
+   "ledger_net": 0.0,
+   "max_flat_residual": 0.0,
+   "n_fills": 0,
+   "net_return_pct": 0.0,
+   "open_tail_qty": 0.0,
+   "opening_equity": 120.0,
+   "paid_costs": 0.0,
+   "realised": 0.0,
+   "reject_counts": {},
+   "split": "dev"
+  },
+  {
+   "armset": "X1-F",
+   "closed_positions": 0,
+   "closing_equity": 120.0,
+   "comparison": "outputs/x1/bridge/adverse/X1-R1-F_validation.comparison.json",
+   "config_fingerprint": "0e77eafcddf44f8c",
+   "config_id": "X1-R1-F",
+   "dataset_manifest_sha": "9008ba92ef88a8cf8f446f77fbe27983de16d780148a11fe6fd6971b0e8f1e31",
+   "fee_schedule": {
+    "taker_bps": 10.0
+   },
+   "funding_net": 0.0,
+   "intents_admitted": 0,
+   "ledger_net": 0.0,
+   "max_flat_residual": 0.0,
+   "n_fills": 0,
+   "net_return_pct": 0.0,
+   "open_tail_qty": 0.0,
+   "opening_equity": 120.0,
+   "paid_costs": 0.0,
+   "realised": 0.0,
+   "reject_counts": {},
+   "split": "validation"
+  },
+  {
+   "armset": "X1-S",
+   "closed_positions": 0,
+   "closing_equity": 120.0,
+   "comparison": "outputs/x1/bridge/adverse/X1-R1-S_dev.comparison.json",
+   "config_fingerprint": "bc84b2f07eae1d4d",
+   "config_id": "X1-R1-S",
+   "dataset_manifest_sha": "9008ba92ef88a8cf8f446f77fbe27983de16d780148a11fe6fd6971b0e8f1e31",
+   "fee_schedule": {
+    "taker_bps": 10.0
+   },
+   "funding_net": 0.0,
+   "intents_admitted": 0,
+   "ledger_net": 0.0,
+   "max_flat_residual": 0.0,
+   "n_fills": 0,
+   "net_return_pct": 0.0,
+   "open_tail_qty": 0.0,
+   "opening_equity": 120.0,
+   "paid_costs": 0.0,
+   "realised": 0.0,
+   "reject_counts": {},
+   "split": "dev"
+  },
+  {
+   "armset": "X1-S",
+   "closed_positions": 0,
+   "closing_equity": 120.0,
+   "comparison": "outputs/x1/bridge/adverse/X1-R1-S_validation.comparison.json",
+   "config_fingerprint": "bc84b2f07eae1d4d",
+   "config_id": "X1-R1-S",
+   "dataset_manifest_sha": "9008ba92ef88a8cf8f446f77fbe27983de16d780148a11fe6fd6971b0e8f1e31",
+   "fee_schedule": {
+    "taker_bps": 10.0
+   },
+   "funding_net": 0.0,
+   "intents_admitted": 0,
+   "ledger_net": 0.0,
+   "max_flat_residual": 0.0,
+   "n_fills": 0,
+   "net_return_pct": 0.0,
+   "open_tail_qty": 0.0,
+   "opening_equity": 120.0,
+   "paid_costs": 0.0,
+   "realised": 0.0,
+   "reject_counts": {},
+   "split": "validation"
+  },
+  {
+   "armset": "S1",
+   "closed_positions": 0,
+   "closing_equity": 120.0,
+   "comparison": "outputs/x1/bridge/adverse/X1-R1-S1_dev.comparison.json",
+   "config_fingerprint": "63a92416a23ac50d",
+   "config_id": "X1-R1-S1",
+   "dataset_manifest_sha": "9008ba92ef88a8cf8f446f77fbe27983de16d780148a11fe6fd6971b0e8f1e31",
+   "fee_schedule": {
+    "taker_bps": 10.0
+   },
+   "funding_net": 0.0,
+   "intents_admitted": 596,
+   "ledger_net": 0.0,
+   "max_flat_residual": 0.0,
+   "n_fills": 0,
+   "net_return_pct": 0.0,
+   "open_tail_qty": 0.0,
+   "opening_equity": 120.0,
+   "paid_costs": 0.0,
+   "realised": 0.0,
+   "reject_counts": {},
+   "split": "dev"
+  },
+  {
+   "armset": "S1",
+   "closed_positions": 0,
+   "closing_equity": 120.0,
+   "comparison": "outputs/x1/bridge/adverse/X1-R1-S1_validation.comparison.json",
+   "config_fingerprint": "63a92416a23ac50d",
+   "config_id": "X1-R1-S1",
+   "dataset_manifest_sha": "9008ba92ef88a8cf8f446f77fbe27983de16d780148a11fe6fd6971b0e8f1e31",
+   "fee_schedule": {
+    "taker_bps": 10.0
+   },
+   "funding_net": 0.0,
+   "intents_admitted": 6075,
+   "ledger_net": 0.0,
+   "max_flat_residual": 0.0,
+   "n_fills": 0,
+   "net_return_pct": 0.0,
+   "open_tail_qty": 0.0,
+   "opening_equity": 120.0,
+   "paid_costs": 0.0,
+   "realised": 0.0,
+   "reject_counts": {},
+   "split": "validation"
+  },
+  {
+   "armset": "X1-T",
+   "closed_positions": 0,
+   "closing_equity": 120.0,
+   "comparison": "outputs/x1/bridge/adverse/X1-R1-T_dev.comparison.json",
+   "config_fingerprint": "f4c3ab15c11db36d",
+   "config_id": "X1-R1-T",
+   "dataset_manifest_sha": "9008ba92ef88a8cf8f446f77fbe27983de16d780148a11fe6fd6971b0e8f1e31",
+   "fee_schedule": {
+    "taker_bps": 10.0
+   },
+   "funding_net": 0.0,
+   "intents_admitted": 0,
+   "ledger_net": 0.0,
+   "max_flat_residual": 0.0,
+   "n_fills": 0,
+   "net_return_pct": 0.0,
+   "open_tail_qty": 0.0,
+   "opening_equity": 120.0,
+   "paid_costs": 0.0,
+   "realised": 0.0,
+   "reject_counts": {},
+   "split": "dev"
+  },
+  {
+   "armset": "X1-T",
+   "closed_positions": 0,
+   "closing_equity": 120.0,
+   "comparison": "outputs/x1/bridge/adverse/X1-R1-T_validation.comparison.json",
+   "config_fingerprint": "f4c3ab15c11db36d",
+   "config_id": "X1-R1-T",
+   "dataset_manifest_sha": "9008ba92ef88a8cf8f446f77fbe27983de16d780148a11fe6fd6971b0e8f1e31",
+   "fee_schedule": {
+    "taker_bps": 10.0
+   },
+   "funding_net": 0.0,
+   "intents_admitted": 1,
+   "ledger_net": 0.0,
+   "max_flat_residual": 0.0,
+   "n_fills": 0,
+   "net_return_pct": 0.0,
+   "open_tail_qty": 0.0,
+   "opening_equity": 120.0,
+   "paid_costs": 0.0,
+   "realised": 0.0,
+   "reject_counts": {},
+   "split": "validation"
+  }
+ ],
+ "inputs": {
+  "comparisons": [
+   "outputs/x1/bridge/adverse/X1-R1_dev.comparison.json",
+   "outputs/x1/bridge/adverse/X1-R1_validation.comparison.json",
+   "outputs/x1/bridge/adverse/X1-R1-CASH_dev.comparison.json",
+   "outputs/x1/bridge/adverse/X1-R1-CASH_validation.comparison.json",
+   "outputs/x1/bridge/adverse/X1-R1-F_dev.comparison.json",
+   "outputs/x1/bridge/adverse/X1-R1-F_validation.comparison.json",
+   "outputs/x1/bridge/adverse/X1-R1-S_dev.comparison.json",
+   "outputs/x1/bridge/adverse/X1-R1-S_validation.comparison.json",
+   "outputs/x1/bridge/adverse/X1-R1-S1_dev.comparison.json",
+   "outputs/x1/bridge/adverse/X1-R1-S1_validation.comparison.json",
+   "outputs/x1/bridge/adverse/X1-R1-T_dev.comparison.json",
+   "outputs/x1/bridge/adverse/X1-R1-T_validation.comparison.json"
+  ],
+  "registry": "outputs/x1/meta/x1_registry.json"
+ },
+ "rule": "X1.md section 11",
+ "screens": {
+  "X1-R1": {
+   "closed_positions": 0,
+   "positions_per_10d": 0.0,
+   "screen_100pos_10d": "BELOW",
+   "split_days": 22
+  },
+  "X1-R1-CASH": {
+   "closed_positions": 0,
+   "positions_per_10d": 0.0,
+   "screen_100pos_10d": "BELOW",
+   "split_days": 22
+  },
+  "X1-R1-F": {
+   "closed_positions": 0,
+   "positions_per_10d": 0.0,
+   "screen_100pos_10d": "BELOW",
+   "split_days": 22
+  },
+  "X1-R1-S": {
+   "closed_positions": 0,
+   "positions_per_10d": 0.0,
+   "screen_100pos_10d": "BELOW",
+   "split_days": 22
+  },
+  "X1-R1-S1": {
+   "closed_positions": 0,
+   "positions_per_10d": 0.0,
+   "screen_100pos_10d": "BELOW",
+   "split_days": 22
+  },
+  "X1-R1-T": {
+   "closed_positions": 0,
+   "positions_per_10d": 0.0,
+   "screen_100pos_10d": "BELOW",
+   "split_days": 22
+  }
+ },
+ "tag": "adverse"
+}

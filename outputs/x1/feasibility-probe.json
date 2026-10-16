@@ -1,0 +1,30 @@
+{
+ "probe": "one-day CASH timing/sizing (idx1 IST 2026-09-12, BTCUSDT+ETHUSDT)",
+ "manifest_sha": "9008ba92ef88a8cf8f446f77fbe27983de16d780148a11fe6fd6971b0e8f1e31",
+ "events_seen": 1050204,
+ "partitions_mb": 545,
+ "capture_mb": 532,
+ "replay_only_s": 619,
+ "run_dir_mb": 419,
+ "store_risk_transitions": 1019251,
+ "extrapolated_dev_per_cell": {
+  "compute_s": 22500,
+  "peak_disk_gb": 54
+ },
+ "extrapolated_val_per_cell": {
+  "compute_s": 9000,
+  "peak_disk_gb": 22
+ },
+ "budgets": {
+  "dev_cap": "30min",
+  "val_cap": "2h",
+  "job_s": 1500,
+  "disk_free_gb": 6
+ },
+ "verdict": "BLOCKED-feasibility (refined): dev ~6.3h+54GB/cell, val ~2.5h+22GB/cell vs 30min/2h/1500s/6GB budgets; manager ruling requested",
+ "split_rows_btc_eth": {
+  "dev": 38157537,
+  "val": 15190815,
+  "idx1": 1047324
+ }
+}

@@ -46,7 +46,7 @@ def _quiet_view():
 
 
 def test_registry_covers_s1_to_s5():
-    assert [a.strategy_id for a in ADAPTERS] == ["S1", "S2", "S3", "S4", "S5"]
+    assert [a.strategy_id for a in ADAPTERS] == ["S1", "S2", "S3", "S4", "S5", "X1"]
     assert get_adapter("S3").strategy_id == "S3"
     try:
         get_adapter("S9")

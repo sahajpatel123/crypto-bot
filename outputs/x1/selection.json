@@ -1,0 +1,58 @@
+{
+ "candidates": [
+  "X1-R1",
+  "X1-R1-F",
+  "X1-R1-S",
+  "X1-R1-T"
+ ],
+ "inputs": {
+  "dev": [
+   "outputs/x1/bridge/realistic/X1-R1_dev.comparison.json",
+   "outputs/x1/bridge/realistic/X1-R1-S_dev.comparison.json",
+   "outputs/x1/bridge/realistic/X1-R1-T_dev.comparison.json",
+   "outputs/x1/bridge/realistic/X1-R1-F_dev.comparison.json",
+   "outputs/x1/bridge/realistic/X1-R1-S1_dev.comparison.json",
+   "outputs/x1/bridge/realistic/X1-R1-CASH_dev.comparison.json"
+  ],
+  "registry": "outputs/x1/meta/x1_registry.json",
+  "val": [
+   "outputs/x1/bridge/realistic/X1-R1_validation.comparison.json",
+   "outputs/x1/bridge/realistic/X1-R1-S_validation.comparison.json",
+   "outputs/x1/bridge/realistic/X1-R1-T_validation.comparison.json",
+   "outputs/x1/bridge/realistic/X1-R1-F_validation.comparison.json",
+   "outputs/x1/bridge/realistic/X1-R1-S1_validation.comparison.json",
+   "outputs/x1/bridge/realistic/X1-R1-CASH_validation.comparison.json"
+  ]
+ },
+ "nets": {
+  "X1-R1": {
+   "dev": 0.0,
+   "val": 0.0
+  },
+  "X1-R1-CASH": {
+   "dev": 0.0,
+   "val": 0.0
+  },
+  "X1-R1-F": {
+   "dev": 0.0,
+   "val": 0.0
+  },
+  "X1-R1-S": {
+   "dev": 0.0,
+   "val": 0.0
+  },
+  "X1-R1-S1": {
+   "dev": 0.0,
+   "val": 0.0
+  },
+  "X1-R1-T": {
+   "dev": 0.0,
+   "val": 0.0
+  }
+ },
+ "opening_equity": 120.0,
+ "qualified": [],
+ "rule": "X1.md section 10",
+ "verdict": "NONE (RESEARCH UNRESOLVED unless a candidate qualifies)",
+ "winner": null
+}

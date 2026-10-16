@@ -1,0 +1,56 @@
+{
+ "algo": "ols-eth60-on-btc60-v1",
+ "beta": 1.254028,
+ "calibration_idx": [
+  1,
+  2,
+  3,
+  4,
+  5
+ ],
+ "dataset_manifest_sha": "9008ba92ef88a8cf8f446f77fbe27983de16d780148a11fe6fd6971b0e8f1e31",
+ "day_ids": [
+  "2026-09-12",
+  "2026-09-13",
+  "2026-09-14",
+  "2026-09-15",
+  "2026-09-16"
+ ],
+ "intercept": -5.121676949620265e-06,
+ "n": 335206,
+ "per_day": [
+  {
+   "btc_seconds": 72988,
+   "day": "2026-09-12",
+   "eth_seconds": 81167,
+   "paired": 56077
+  },
+  {
+   "btc_seconds": 71809,
+   "day": "2026-09-13",
+   "eth_seconds": 77712,
+   "paired": 53328
+  },
+  {
+   "btc_seconds": 81172,
+   "day": "2026-09-14",
+   "eth_seconds": 83272,
+   "paired": 72420
+  },
+  {
+   "btc_seconds": 84107,
+   "day": "2026-09-15",
+   "eth_seconds": 85124,
+   "paired": 79699
+  },
+  {
+   "btc_seconds": 82172,
+   "day": "2026-09-16",
+   "eth_seconds": 83500,
+   "paired": 73682
+  }
+ ],
+ "returns_sha256": "8d630183f44201f5e1a7fb9346f6d39afec412e2268031f756afc03a7bf4c372",
+ "tool": "tools/x1_beta.py",
+ "var_btc": 2.6732883061742163e-07
+}
