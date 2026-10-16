@@ -22,7 +22,7 @@ from cryptobot.accounting.day import accounting_date
 from cryptobot.accounting.ledger import Ledger
 from cryptobot.coordination import DataQuality, Side
 
-from .sizing import SizeRejected, plan_size
+from .sizing import SizeRejected, plan_size, plan_venue_minimum
 from .state import Reservation, RiskState, load_state, save_state
 from .types import AccountSnapshot, Approved, HealthStatus, Rejected, RiskConfig
 
@@ -150,7 +150,23 @@ class RiskPolicy:
                 risk_budget_cap_usdt=cap,
             )
         except SizeRejected as exc:
-            return Rejected(exc.reason)
+            # SC.md v0.1.4: only this arm may lift to the venue minimum
+            # lot, and only inside the operating-stop room. Other arms
+            # keep the round-down skip.
+            if not (exc.reason == "skip:min-notional"
+                    and intent.strategy == "SC"):
+                return Rejected(exc.reason)
+            ceiling = min(cap, cfg.operating_stop_pct * account.reconciled_equity)
+            try:
+                plan = plan_venue_minimum(
+                    intent, account.reconciled_equity, cfg,
+                    ceiling_usdt=ceiling,
+                    available_margin_usdt=account.available_margin_usdt,
+                    fee_buffer_usdt=account.fee_buffer_usdt,
+                    inflight_exposure_usdt=account.inflight_exposure_usdt,
+                )
+            except SizeRejected as lifted:
+                return Rejected(lifted.reason)
 
         self._state.seq += 1
         rid = f"r-{self._state.seq:06d}"
