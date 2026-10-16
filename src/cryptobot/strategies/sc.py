@@ -30,16 +30,16 @@ from .s1 import Bar, EvalLog
 
 _EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
 
-# Frozen SC v0.1.6. Round trip is NET_S1_V1 on the shared cost preset.
-# v0.1.5's 4 bp momentum booked nothing. 2 bp is above the frozen
-# 1 bp spread and was written down before the v0.1.6 measurement.
+# Frozen SC v0.1.7. The v0.1.6 short was stopped in 11.5 seconds
+# after a 3.45 bp adverse move, before the 40 bp target. A tighter
+# range stop is placed out to 8 bp. Written down before this measurement.
 WARMUP_N = 60
 RANGE_N = 5
 MOM_M = 5
 EXTENSION_MIN_BPS = 0.0
 MOM_MIN_BPS = 2.0
 SPREAD_MAX_BPS = 4.0
-STOP_MIN_BPS = 2.0
+STOP_MIN_BPS = 8.0
 STOP_MAX_BPS = 20.0
 TARGET_BPS = 40.0
 ENTRY_TOL_BPS = 2.0
@@ -52,7 +52,7 @@ ROUND_TRIP_BPS = 2.0 * (5.0 + 5.0 / 2.0 + 5.0) + 1.0  # 26.0
 
 @dataclass(frozen=True)
 class SCParams:
-    """Frozen SC v0.1.6 parameters (SC.md section 3)."""
+    """Frozen SC v0.1.7 parameters (SC.md section 3)."""
 
     warmup_n: int = WARMUP_N
     range_n: int = RANGE_N
@@ -177,6 +177,14 @@ def evaluate_side(
     mom = (close_t / base - 1.0) * 1e4
     stop_level = min(lows) if is_long else max(highs)
     stop_bps = _distance_bps(close_t, stop_level)
+    # A range stop inside the noise that stopped v0.1.6 (3.45 bp in
+    # 11.5 s) is placed out to the floor. It is not a reason to skip
+    # an impulse that printed. Wider than the scalp cap still skips.
+    if stop_bps < p.stop_min_bps:
+        shift = p.stop_min_bps / 1e4
+        stop_level = (close_t * (1.0 - shift) if is_long
+                      else close_t * (1.0 + shift))
+        stop_bps = _distance_bps(close_t, stop_level)
     feats = (
         FeatureEvidence("spread", "1bar", f"spread_bps<={p.spread_max_bps}",
                         f"{spread_t:.4f}"),
@@ -197,7 +205,7 @@ def evaluate_side(
         "momentum": "pass" if (
             mom >= p.mom_min_bps if is_long else mom <= -p.mom_min_bps
         ) else "fail",
-        "stop": "pass" if p.stop_min_bps <= stop_bps <= p.stop_max_bps else "fail",
+        "stop": "pass" if stop_bps <= p.stop_max_bps else "fail",
     }
     order = ("history", "gap", "spread", "breakout", "momentum", "stop")
     if any(checks[k] == "fail" for k in order):
