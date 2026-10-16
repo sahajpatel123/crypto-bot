@@ -61,7 +61,7 @@ def test_frozen_rule_fires_a_long_scalp_and_clears_cost():
     assert short_d.intent is None
     assert long_d.intent is not None
     assert long_d.intent.holding_limit_s == HOLDING_LIMIT_S
-    assert long_d.intent.holding_limit_s <= 180
+    assert long_d.intent.holding_limit_s <= 300
     assert "stop" in long_d.intent.exit_rule
     reward = next(part for part in long_d.record.rejects_evaluated
                   if part.startswith("reward="))
@@ -88,15 +88,15 @@ def test_a_four_bp_impulse_with_a_six_bp_stop_fires():
     long_d, short_d = evaluate_bar(bars, WARMUP_N, SC_BASE, "BTCUSDT")
     assert short_d.intent is None
     assert long_d.intent is not None
-    assert long_d.intent.holding_limit_s == 180
+    assert long_d.intent.holding_limit_s == 300
     assert long_d.evaluation.reason == "fired"
 
 
-def test_a_tight_range_stop_is_placed_out_to_eight_bps():
-    """The v0.1.6 stop was 3.45 bp and died in 11 seconds.
+def test_a_tight_range_stop_is_placed_out_to_twelve_bps():
+    """v0.1.7 was stopped at 8 bp. The adverse extreme was 9.9 bp.
 
     An impulse that prints with a tighter range stop still enters, and
-    the protective stop is placed at 8 bp.
+    the protective stop is placed at 12 bp.
     """
     from cryptobot.coordination import decode_exit_rule
 
@@ -108,7 +108,7 @@ def test_a_tight_range_stop_is_placed_out_to_eight_bps():
     assert long_d.intent is not None
     placed = decode_exit_rule(long_d.intent.exit_rule).stop_price
     distance = (100.04 - placed) / 100.04 * 1e4
-    assert distance == pytest.approx(8.0, abs=0.05)
+    assert distance == pytest.approx(12.0, abs=0.05)
 
 
 def test_one_quiet_second_does_not_veto_the_scalp():

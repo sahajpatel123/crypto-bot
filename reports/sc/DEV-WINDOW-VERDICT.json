@@ -1,15 +1,18 @@
 {
  "strategy": "SC",
  "spec": "specs/strategies/SC.md",
- "rules": "v0.1.7",
- "diagnosis_v016": {
+ "rules": "v0.1.8",
+ "diagnosis_v017": {
   "fills": 2,
   "entry": "SELL 77180.9 at 18:36:00.978Z",
-  "exit": "BUY 77207.5 at 18:36:12.437Z",
-  "hold_s": 11.5,
-  "exit_kind": "stop, not the 180s clock",
-  "adverse_bps": 3.45,
-  "fees_usdt": 0.0771942,
+  "exit": "BUY 77243.9 at 18:37:19.045Z",
+  "hold_s": 78,
+  "exit_kind": "8 bp placed stop, not the 180s clock",
+  "adverse_bps": 8.2,
+  "window_adverse_extreme_bps": 9.9,
+  "window_favorable_extreme_bps": 15.1,
+  "favorable_extreme_after_180s_clock": true,
+  "fees_usdt": 0.0772124,
   "winner_cleared_26bp": false
  },
  "window": {
@@ -27,36 +30,44 @@
  "runs": [
   {
    "run_id": "sc-dev-1",
-   "rules": "SC.md v0.1.7",
+   "rules": "SC.md v0.1.8",
    "status": "COMPLETE",
    "events_ingested": 14088,
-   "paid_costs": 0.0772124,
+   "paid_costs": 0.07717945,
    "funding_net": 0.0,
-   "net_return_pct": -0.11684366666667723,
-   "avg_daily_net_pct": -0.11684366666667723,
+   "net_return_pct": -0.06189954166667677,
+   "avg_daily_net_pct": -0.06189954166667677,
    "inside_band": false,
    "qualified_for_real_capital": false,
    "reason": "average daily net is outside 1.5-2%; ledger net is not strictly positive; validation net is not strictly positive",
    "reconcile_ok": true,
-   "equity_close": 119.85978759999999
+   "equity_close": 119.92572055,
+   "fills": "SELL 77180.9 at 18:36:00.978Z; BUY 77178.0 at 18:40:59.026Z",
+   "exit_kind": "300s time exit; stop placed at 77273.42 did not fire",
+   "favorable_bps_at_exit": 0.38,
+   "winner_cleared_26bp": false
   },
   {
    "run_id": "sc-dev-2",
-   "rules": "SC.md v0.1.7",
+   "rules": "SC.md v0.1.8",
    "status": "COMPLETE",
    "events_ingested": 14088,
-   "paid_costs": 0.0772124,
+   "paid_costs": 0.07717945,
    "funding_net": 0.0,
-   "net_return_pct": -0.11684366666667723,
-   "avg_daily_net_pct": -0.11684366666667723,
+   "net_return_pct": -0.06189954166667677,
+   "avg_daily_net_pct": -0.06189954166667677,
    "inside_band": false,
    "qualified_for_real_capital": false,
    "reason": "average daily net is outside 1.5-2%; ledger net is not strictly positive; validation net is not strictly positive",
    "reconcile_ok": true,
-   "equity_close": 119.85978759999999
+   "equity_close": 119.92572055,
+   "fills": "SELL 77180.9 at 18:36:00.978Z; BUY 77178.0 at 18:40:59.026Z",
+   "exit_kind": "300s time exit; stop placed at 77273.42 did not fire",
+   "favorable_bps_at_exit": 0.38,
+   "winner_cleared_26bp": false
   }
  ],
  "averages_match": true,
  "qualified_for_real_capital": false,
- "note": "v0.1.7 places a range stop tighter than 8 bp out to 8 bp. The same impulse traded again. Both reruns reconciled. Average daily net is about -0.117%, outside 1.5-2%. The exit was still the stop, not the 180s clock, and no winner cleared 26 bp. Costs, the spread profile, the window, and the burned split were not changed."
+ "note": "v0.1.7 was stopped at 8.2 bp. The window's adverse extreme was 9.9 bp and the best favorable print was 15.1 bp, after the 180s clock, which does not clear the 26 bp cost floor. v0.1.8 was frozen before this rerun: the same 2 bp impulse, a tighter range stop placed at 12 bp, a 300s hold, and the 40 bp target. The same short traded. The 12 bp stop did not fire. The cover was the 300s clock at 77178.0, about 0.4 bp in favor, and taker fees were 0.07717945. Both reruns reconciled to about -0.062% on the day, outside 1.5-2%. Booked funding is 0 and is not counted as profit. Validation was not scored, so its net is not strictly positive. Not qualified. Costs, the spread profile, the window, and the burned split were not changed."
 }

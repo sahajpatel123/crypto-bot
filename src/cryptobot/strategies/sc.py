@@ -30,21 +30,21 @@ from .s1 import Bar, EvalLog
 
 _EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
 
-# Frozen SC v0.1.7. The v0.1.6 short was stopped in 11.5 seconds
-# after a 3.45 bp adverse move, before the 40 bp target. A tighter
-# range stop is placed out to 8 bp. Written down before this measurement.
+# Frozen SC v0.1.8. The v0.1.7 short was stopped at 8.2 bp. The
+# window's adverse extreme was 9.9 bp and the best favorable move
+# was 15.1 bp, after the 180 s clock. Written down before this run.
 WARMUP_N = 60
 RANGE_N = 5
 MOM_M = 5
 EXTENSION_MIN_BPS = 0.0
 MOM_MIN_BPS = 2.0
 SPREAD_MAX_BPS = 4.0
-STOP_MIN_BPS = 8.0
+STOP_MIN_BPS = 12.0
 STOP_MAX_BPS = 20.0
 TARGET_BPS = 40.0
 ENTRY_TOL_BPS = 2.0
 ENTRY_EXPIRY_S = 5
-HOLDING_LIMIT_S = 180
+HOLDING_LIMIT_S = 300
 MAX_CONSECUTIVE_MISSING_HALT = 5
 MIN_RANGE_PRINTS = 3
 ROUND_TRIP_BPS = 2.0 * (5.0 + 5.0 / 2.0 + 5.0) + 1.0  # 26.0
@@ -52,7 +52,7 @@ ROUND_TRIP_BPS = 2.0 * (5.0 + 5.0 / 2.0 + 5.0) + 1.0  # 26.0
 
 @dataclass(frozen=True)
 class SCParams:
-    """Frozen SC v0.1.7 parameters (SC.md section 3)."""
+    """Frozen SC v0.1.8 parameters (SC.md section 3)."""
 
     warmup_n: int = WARMUP_N
     range_n: int = RANGE_N
@@ -177,9 +177,9 @@ def evaluate_side(
     mom = (close_t / base - 1.0) * 1e4
     stop_level = min(lows) if is_long else max(highs)
     stop_bps = _distance_bps(close_t, stop_level)
-    # A range stop inside the noise that stopped v0.1.6 (3.45 bp in
-    # 11.5 s) is placed out to the floor. It is not a reason to skip
-    # an impulse that printed. Wider than the scalp cap still skips.
+    # A range stop inside the 9.9 bp adverse extreme of v0.1.7 is
+    # placed out to the floor. The impulse still trades. Wider than
+    # the scalp cap still skips.
     if stop_bps < p.stop_min_bps:
         shift = p.stop_min_bps / 1e4
         stop_level = (close_t * (1.0 - shift) if is_long
