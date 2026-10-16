@@ -276,6 +276,16 @@ class RunStore:
                          (run_id, _now(), row[0], state, reason))
         self._db.commit()
 
+    def last_risk_transition(self, run_id: str) -> dict[str, str] | None:
+        """Latest recorded run-state transition, or None."""
+        row = self._db.execute(
+            "SELECT to_state, reason FROM risk_transitions WHERE run_id=? "
+            "ORDER BY id DESC LIMIT 1",
+            (run_id,)).fetchone()
+        if row is None:
+            return None
+        return {"to_state": row[0], "reason": row[1]}
+
     def heartbeat(self, run_id: str, pid: int | None = None) -> None:
         if pid is None:
             self._db.execute("UPDATE runs SET heartbeat_utc=?, updated_utc=?"

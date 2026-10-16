@@ -2,6 +2,7 @@
  "strategy": "SC",
  "spec": "specs/strategies/SC.md",
  "rules": "v0.1.4",
+ "mark_health": "stale-mark releases when a later account snapshot is fresh",
  "window": {
   "split": "datasets/splits_deep.toml idx 1 role=dev IST 2026-09-12",
   "symbol": "BTCUSDT",
@@ -17,42 +18,36 @@
  "runs": [
   {
    "run_id": "sc-dev-1",
-   "rules": "SC.md v0.1.4",
+   "rules": "SC.md v0.1.4 plus mark-age release",
    "status": "COMPLETE",
    "events_ingested": 14088,
-   "paid_costs": 0.0,
+   "paid_costs": 0.23143564999999997,
    "funding_net": 0.0,
-   "net_return_pct": 0.0,
-   "avg_daily_net_pct": 0.0,
+   "net_return_pct": -0.19511304166669463,
+   "avg_daily_net_pct": -0.19511304166669463,
    "inside_band": false,
    "qualified_for_real_capital": false,
    "reason": "average daily net is outside 1.5-2%; ledger net is not strictly positive; validation net is not strictly positive",
-   "reconcile_ok": true
+   "reconcile_ok": true,
+   "equity_close": 119.76586434999997
   },
   {
    "run_id": "sc-dev-2",
-   "rules": "SC.md v0.1.4",
+   "rules": "SC.md v0.1.4 plus mark-age release",
    "status": "COMPLETE",
    "events_ingested": 14088,
-   "paid_costs": 0.0,
+   "paid_costs": 0.23143564999999997,
    "funding_net": 0.0,
-   "net_return_pct": 0.0,
-   "avg_daily_net_pct": 0.0,
+   "net_return_pct": -0.19511304166669463,
+   "avg_daily_net_pct": -0.19511304166669463,
    "inside_band": false,
    "qualified_for_real_capital": false,
    "reason": "average daily net is outside 1.5-2%; ledger net is not strictly positive; validation net is not strictly positive",
-   "reconcile_ok": true
+   "reconcile_ok": true,
+   "equity_close": 119.76586434999997
   }
  ],
  "averages_match": true,
  "qualified_for_real_capital": false,
- "rejection_mix_run_1": {
-  "strategy:breakout:fail|breakout:fail": 632,
-  "gate:stale-mark": 138,
-  "strategy:breakout:fail|momentum:fail": 34,
-  "strategy:momentum:fail|breakout:fail": 31,
-  "execution:submit-rejected:PermissionError": 3,
-  "strategy:history:fail|history:fail": 1
- },
- "note": "v0.1.4 lifts an SC order to the venue minimum lot when the 0.125% budget is too small, provided the lot fits inside the 0.5% operating stop. The three former min-notional skips reached submit and were refused PermissionError after the stale-mark exit-only latch. Both reruns reconcile to a 0% daily average, outside 1.5-2%. Costs, the spread profile, the window, and the burned split were not changed."
+ "note": "The stale-mark exit-only latch now releases on a fresh snapshot. Both reruns of the same window traded, paid the same costs, and reconciled. Average daily net is about -0.195%, outside 1.5-2%. Funding booked at 0 was not added. Costs, the spread profile, the window, and the burned split were not changed."
 }

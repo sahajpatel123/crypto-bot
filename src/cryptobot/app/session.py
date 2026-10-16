@@ -29,7 +29,8 @@ from cryptobot.market_data.replayer import assert_input_class
 from cryptobot.market_data.views import DepthStore, book_flow_for
 from cryptobot.risk.policy import RiskPolicy
 from cryptobot.risk.rounding import ceil_to_tick, floor_to_step, floor_to_tick
-from cryptobot.risk.types import AccountSnapshot, Approved, RiskConfig
+from cryptobot.risk.types import (AccountSnapshot, Approved, HealthStatus,
+                                 RiskConfig)
 
 from .config import AppConfig
 from .engine import EngineEvent, EngineOrder
@@ -40,6 +41,14 @@ from .store import RunStore
 __all__ = ["Session", "ReplayClock", "WallClock", "STRATEGY_ARMS"]
 
 _EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
+
+# These two reasons describe the snapshot just observed. They halt
+# while present and lift when a later account snapshot omits them.
+# Every other halt is an incident and stays latched.
+_MARK_HEALTH_REASONS = frozenset({
+    "health:stale-mark",
+    "health:mark-age-unknown",
+})
 
 
 class _SessionEngineHandler:
@@ -1492,6 +1501,64 @@ class Session:
         if callable(setter):
             setter(True, reason)
 
+    def _apply_account_health(self, health: HealthStatus) -> None:
+        """Apply one account-snapshot health verdict.
+
+        Supervision ticks pass no account and must not call this. A tick
+        that did not observe a mark cannot clear a stale-mark halt.
+        """
+        if not health.ok:
+            reason = ";".join(health.reasons)
+            self._halt_entries(reason)
+            self._set_state("halted", reason)
+        self._sync_mark_health(health)
+
+    def _sync_mark_health(self, health: HealthStatus) -> None:
+        """Lift mark-age halts this snapshot no longer reports.
+
+        ``health:stale-mark`` and ``health:mark-age-unknown`` are
+        observations. They halt while present and release when a later
+        account snapshot omits them. The quote gate and the risk
+        mark-age check still reject that stale snapshot.
+
+        Emergency, operating-stop, funding, filters, and booking blocks
+        stay latched. The paper engine stores one bool, so after a mark
+        reason drops, a surviving reason is re-asserted and the bool
+        cannot fall open underneath it.
+        """
+        current = {r for r in health.reasons if r in _MARK_HEALTH_REASONS}
+        lifting = [r for r in sorted(self._exit_only_reasons)
+                   if r in _MARK_HEALTH_REASONS and r not in current]
+        if not lifting:
+            return
+        for reason in lifting:
+            self._exit_only_reasons.discard(reason)
+        setter = getattr(self.engine, "set_exit_only", None)
+        if callable(setter):
+            for reason in lifting:
+                setter(False, reason)
+            if self._exit_only_reasons:
+                setter(True, sorted(self._exit_only_reasons)[0])
+        self.store.checkpoint(self.run_id, "mark-health-released", {
+            "lifted": lifting,
+            "remaining": sorted(self._exit_only_reasons)})
+        self._restore_state_if_mark_halt_cleared()
+
+    def _restore_state_if_mark_halt_cleared(self) -> None:
+        """Return the run to ready only when the halt was mark-age alone."""
+        if self._exit_only_reasons:
+            return
+        last = self.store.last_risk_transition(self.run_id)
+        if last is None or last["to_state"] != "halted":
+            return
+        parts = [p for p in last["reason"].split(";") if p]
+        if not parts or any(p not in _MARK_HEALTH_REASONS for p in parts):
+            return
+        row = self.store.get_run(self.run_id) or {}
+        if row.get("state") != "halted":
+            return
+        self._set_state("ready" if self._warmed else "warming", "mark-fresh")
+
     def _release_exit_only(self, reason: str) -> None:
         """Lift one Session-owned reason (R3: others survive)."""
         self._exit_only_reasons.discard(reason)
@@ -2755,10 +2822,8 @@ class Session:
                     self.protection.observe(self.now_utc(), reading, baseline)
                 except (KeyError, TypeError, ValueError):
                     pass
-        health = self.policy.check_health(self._snapshot_account())
-        if not health.ok:
-            self._halt_entries(";".join(health.reasons))
-            self._set_state("halted", ";".join(health.reasons))
+        self._apply_account_health(
+            self.policy.check_health(self._snapshot_account()))
         self._run_stop_actions()
 
     @staticmethod
