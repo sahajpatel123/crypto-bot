@@ -103,6 +103,93 @@ def test_six_consecutive_quiet_seconds_are_an_outage():
     assert long_d.evaluation.reason.startswith("outage-")
 
 
+def test_sc_lifts_to_the_venue_minimum_inside_the_operating_stop(tmp_path):
+    """A 120 USDT book cannot budget 0.001 BTC. SC takes that lot anyway.
+
+    The stop on the minimum lot stays inside the 0.5% operating stop.
+    A non-SC arm with the same prices still skips. A minimum lot whose
+    stop would blow the operating stop is refused.
+    """
+    from datetime import timedelta
+
+    from cryptobot.coordination import Side, encode_exit_rule
+    from cryptobot.coordination.exits import ExitPolicy
+    from cryptobot.risk.policy import RiskPolicy
+    from cryptobot.risk.types import (
+        AccountSnapshot, Approved, InstrumentFilter, Rejected, RiskConfig,
+    )
+    from cryptobot.strategies.contract import SC_FORECAST_COST, build_intent
+
+    now = datetime(2026, 9, 11, 18, 30, tzinfo=timezone.utc)
+    price = 60_000.0
+    stop = price * (1.0 - 20.0 / 1e4)
+
+    def intent(strategy: str):
+        return build_intent(
+            strategy=strategy, instrument="BTCUSDT", side=Side.LONG,
+            evidence_ts_utc=now,
+            entry_low=price, entry_high=price,
+            entry_expiry_utc=now + timedelta(seconds=5),
+            invalidation_price=stop,
+            exit_rule=encode_exit_rule(ExitPolicy(
+                stop_price=stop, target_price=price * 1.004,
+                time_exit_utc=now + timedelta(seconds=90),
+                policy_id="SC:stop+target+time")),
+            holding_limit_s=90,
+            evidence_ref=f"{strategy}:test",
+            data_quality=__import__(
+                "cryptobot.coordination", fromlist=["DataQuality"]
+            ).DataQuality.CLEAN,
+            forecast_cost=SC_FORECAST_COST,
+        )
+
+    def policy(name: str):
+        cfg = RiskConfig(
+            max_loss_budget_pct=0.00125,
+            filters_asof_utc=now,
+            instrument_filters={"BTCUSDT": InstrumentFilter(
+                min_notional_usdt=5.0, qty_step=0.001, min_qty=0.001)},
+        )
+        gate = RiskPolicy(cfg, state_path=tmp_path / f"{name}.json",
+                          now_utc=lambda: now)
+        gate.reconcile_day(120.0, 0.0)
+        return gate
+
+    account = AccountSnapshot(
+        reconciled_equity=120.0, marked_equity=120.0,
+        net_liquidation=120.0, net_realised_global=0.0,
+        open_position=False, flows_cumulative=0.0,
+    )
+    lifted = policy("sc").evaluate(intent("SC"), account)
+    assert isinstance(lifted, Approved)
+    assert lifted.qty >= 0.001
+    assert lifted.notional_usdt >= 5.0
+    assert lifted.reserved_risk <= 120.0 * 0.005 * 1.01
+    skipped = policy("s1").evaluate(intent("S1"), account)
+    assert isinstance(skipped, Rejected)
+    assert skipped.reason == "skip:min-notional"
+
+    huge = build_intent(
+        strategy="SC", instrument="BTCUSDT", side=Side.LONG,
+        evidence_ts_utc=now,
+        entry_low=1_000_000.0, entry_high=1_000_000.0,
+        entry_expiry_utc=now + timedelta(seconds=5),
+        invalidation_price=1_000_000.0 * (1.0 - 20.0 / 1e4),
+        exit_rule=encode_exit_rule(ExitPolicy(
+            stop_price=980_000.0, target_price=1_004_000.0,
+            time_exit_utc=now + timedelta(seconds=90),
+            policy_id="SC:stop+target+time")),
+        holding_limit_s=90, evidence_ref="SC:huge",
+        data_quality=__import__(
+            "cryptobot.coordination", fromlist=["DataQuality"]
+        ).DataQuality.CLEAN,
+        forecast_cost=SC_FORECAST_COST,
+    )
+    blown = policy("huge").evaluate(huge, account)
+    assert isinstance(blown, Rejected)
+    assert blown.reason == "sizing:min-lot-exceeds-operating-stop"
+
+
 def test_adapter_is_registered():
     adapter = get_adapter("SC")
     assert adapter.strategy_id == "SC"

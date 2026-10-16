@@ -1,4 +1,4 @@
-# SC micro-breakout scalp — exact rules v0.1.3
+# SC micro-breakout scalp — exact rules v0.1.4
 
 Status: BASELINE (simulation only; not a validated trading system).
 v0.1.0 was frozen before the first measurement. That run rejected
@@ -9,12 +9,21 @@ these 1-second bars. v0.1.2 shortened that to a 5-second impulse and
 a 1.5 bps break. That rerun still booked nothing: 812 of 839
 evaluations were `breakout:fail`. A 1.5 bps hurdle is still larger
 than the new highs this tape prints. v0.1.3 is frozen before the
-next measurement. The trigger is now a strict break of the prior
-5-second range (any positive extension) plus at least 1 bps of
-5-second momentum, which is the width of the frozen 1 bp spread
-profile and is not a change to that profile. The stop must be at
-least that same 1 bp and at most 20 bps. The 40 bps target, the
-26 bps cost floor, the 4 bps spread gate, the fee preset, the
+next measurement. The trigger is a strict break of the prior
+5-second range plus at least 1 bp of 5-second momentum. v0.1.3
+did fire: three intents reached risk and were refused
+`skip:min-notional`, because the 0.125% budget cannot buy the
+venue's minimum BTC lot on a 120 USDT book. v0.1.4 is frozen
+before the next measurement. Only the size of an SC order changes.
+When the budget quantity is below the venue minimum quantity or
+minimum notional, SC submits the smallest lot that clears both,
+rounded up to the lot step. That lot is allowed only when its stop
+loss plus stressed costs fits inside the configured operating stop
+(0.5% of reconciled equity) and inside the room still left before
+that stop. If it does not, the reason is
+`sizing:min-lot-exceeds-operating-stop`. Every other strategy still
+rounds down and never lifts to the minimum. The fee preset, the
+spread profile, the 40 bps target, the 26 bps cost floor, the
 15-minute development window, and the burned test split are
 unchanged. Production order submission stays refused.
 
