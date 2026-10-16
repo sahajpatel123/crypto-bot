@@ -1,0 +1,52 @@
+# SC research replay. Simulation only. Live submission is not a key here.
+# Rules: specs/strategies/SC.md v0.1.0, frozen before measurement.
+
+[run]
+mode = "replay"
+paper_capital_usdt = 120.0
+accounting_tz = "Asia/Kolkata"
+duration = "24h"
+
+[risk]
+max_loss_budget_pct = 0.00125
+leverage_cap = 3.0
+min_notional_usdt = 5.0
+stress_multiplier = 1.5
+operating_stop_pct = 0.005
+emergency_stop_pct = 0.01
+profile_version = "24h-1"
+max_mark_age_ms = 1000
+daily_target_pct = 0.02
+profit_arm_pct = 0.01
+profit_retain_pct = 0.70
+max_evidence_age_s = 120.0
+max_clock_skew_s = 5.0
+filters_max_age_s = 3600.0
+max_notional_cap_usdt = 500.0
+
+[fees]
+label = "simulation-labeled"
+taker_bps = 5.0
+funding_bps_per_8h = 1.0
+
+[engine]
+kind = "reference"
+submit_delay_ms = 50
+fill_delay_ms = 50
+
+[data]
+symbols = ["BTCUSDT"]
+max_symbols = 8
+max_hf_subscriptions = 2
+warmup_bars = 60
+
+[storage]
+dir = "runs"
+budget_mb = 2048
+
+[strategies]
+enabled = ["SC"]
+arms = "base"
+cooldown_s = 60
+min_reward_multiple = 1.0
+allow_legacy_exit_rules = false

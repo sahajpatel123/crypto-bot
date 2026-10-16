@@ -50,7 +50,11 @@ X1_TIMED = "X1-T"
 X1_FLOW = "X1-F"
 ARM_IDS_X1 = (X1_BASE, X1_STRICT, X1_TIMED, X1_FLOW)
 
-ARM_IDS = ARM_IDS_S1 + ARM_IDS_S2 + ARM_IDS_S3 + ARM_IDS_S4 + ARM_IDS_S5 + ARM_IDS_X1
+SC_BASE = "SC"
+ARM_IDS_SC = (SC_BASE,)
+
+ARM_IDS = (ARM_IDS_S1 + ARM_IDS_S2 + ARM_IDS_S3 + ARM_IDS_S4
+           + ARM_IDS_S5 + ARM_IDS_X1 + ARM_IDS_SC)
 
 COST_LABEL = "conservative-simulation"
 
@@ -78,6 +82,11 @@ S5_FORECAST_COST = ForecastCost(
 X1_FORECAST_COST = ForecastCost(
     fee_bps=5.0, spread_bps=5.0, slippage_bps=5.0, funding_bps=1.0
 )
+# SC uses the same frozen preset (SC.md §3). The scalp does not
+# loosen fees, spread, slippage, or funding to clear a return band.
+SC_FORECAST_COST = ForecastCost(
+    fee_bps=5.0, spread_bps=5.0, slippage_bps=5.0, funding_bps=1.0
+)
 
 __all__ = [
     "ARM_BASE",
@@ -89,6 +98,7 @@ __all__ = [
     "ARM_IDS_S4",
     "ARM_IDS_S5",
     "ARM_IDS_X1",
+    "ARM_IDS_SC",
     "ARM_VOLUME",
     "CONTRACT_VERSION",
     "COST_LABEL",
@@ -112,6 +122,8 @@ __all__ = [
     "X1_FORECAST_COST",
     "X1_STRICT",
     "X1_TIMED",
+    "SC_BASE",
+    "SC_FORECAST_COST",
     "DataQuality",
     "DecisionRecord",
     "FeatureEvidence",

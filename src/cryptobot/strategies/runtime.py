@@ -36,12 +36,14 @@ from cryptobot.coordination import (
     decode_exit_rule,
 )
 
-from .contract import ARM_BASE, S2_BASE, S3_BASE, S4_BASE, S5_BASE, X1_BASE
+from .contract import (ARM_BASE, S2_BASE, S3_BASE, S4_BASE, S5_BASE, SC_BASE,
+                       X1_BASE)
 from .s1 import Bar, EvalLog, evaluate_bar as _s1_bar
 from .s2 import evaluate_bar as _s2_bar
 from .s3 import evaluate_bar as _s3_bar
 from .s4 import evaluate_bar as _s4_bar
 from .s5 import evaluate_view as _s5_view
+from .sc import evaluate_bar as _sc_bar
 from .x1 import evaluate_bar as _x1_bar
 
 __all__ = [
@@ -243,6 +245,7 @@ ADAPTERS: tuple[RuntimeStrategy, ...] = (
     _BarsStrategy(S3_BASE, S3_BASE, _s3_bar),
     _BarsStrategy(S4_BASE, S4_BASE, _s4_bar),
     _S5Strategy(),
+    _BarsStrategy(SC_BASE, SC_BASE, _sc_bar),
     _X1Strategy(),
 )
 
