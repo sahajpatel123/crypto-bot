@@ -1,4 +1,4 @@
-# SC micro-breakout scalp — exact rules v0.1.7
+# SC micro-breakout scalp — exact rules v0.1.8
 
 Status: BASELINE (simulation only; not a validated trading system).
 v0.1.0 was frozen before the first measurement. That run rejected
@@ -27,19 +27,19 @@ spread profile, the 40 bps target, the 26 bps cost floor, the
 15-minute development window, and the burned test split are
 unchanged. Production order submission stays refused.
 
-v0.1.6 booked one short. Entry 77180.9 at 18:36:00.978Z, cover
-77207.5 at 18:36:12.437Z. That is 11.5 seconds, so the exit was the
-stop, not the 180 second clock. The adverse move was 3.45 bps.
-Round-trip taker fees were about 10 bps of notional. No winner
-reached the 26 bps cost floor. v0.1.7 is frozen before the next
-measurement. The entry stays a strict 5-second break plus 2 bps of
-momentum, because that impulse did print and trade. A range stop
-tighter than 8 bps is placed at 8 bps instead of being rejected, so
-the same impulse still trades and a 3 bp wiggle does not stop it.
-A stop wider than 20 bps is still rejected. The hold stays 180
-seconds. The 40 bps target is unchanged and still clears the 26 bps
-cost floor. Costs, the spread profile, the window, and the burned
-test split are not changed.
+v0.1.7 placed that stop at 8 bps. The same short was sold at
+77180.9 and covered at 77243.9, 78 seconds later. The adverse move
+was 8.2 bps, the 8 bp stop. After that print the window's extreme
+against the short was 9.9 bps, and the best move in favor was 15.1
+bps, which does not clear the 26 bp cost floor. The 15 bp print
+arrived after the 180 second clock. v0.1.8 is frozen before the
+next measurement. The entry stays a strict 5-second break plus 2
+bps of momentum, so the impulse that printed still trades. A range
+stop tighter than 12 bps is placed at 12 bps: outside the 9.9 bp
+adverse extreme, outside the 1 bp spread, and inside the 20 bp
+scalp cap. The hold is 300 seconds. The 40 bp target is unchanged
+and still clears the 26 bp cost floor. Costs, the spread profile,
+the window, and the burned test split are not changed.
 
 ## 1. Why this shape
 
@@ -53,7 +53,7 @@ the frozen round-trip forecast. That forecast is NET_S1_V1:
 A target inside 26 bps is rejected before it can trade. The scalp
 therefore asks for a 40 bps target, which clears 26 bps after the
 2 bps entry band, and it refuses a stop that is either inside the
-spread noise or wide enough to be a swing. Holding is 180 seconds.
+spread noise or wide enough to be a swing. Holding is 300 seconds.
 That is the whole economic rule. It is not a claim that a day of
 these trades returns 1.5–2%.
 
@@ -73,7 +73,7 @@ Momentum uses `close[t]` against the latest present close at index
 disorder still halts. More than 5 consecutive missing seconds still
 halts (`outage`). One quiet second does not.
 
-## 3. Frozen parameters v0.1.7
+## 3. Frozen parameters v0.1.8
 
 | Name | Value | Meaning |
 |---|---|---|
@@ -83,12 +83,12 @@ halts (`outage`). One quiet second does not.
 | `EXTENSION_MIN_BPS` | 0.0 | strict break only: extension must be > 0 |
 | `MOM_MIN_BPS` | 2.0 | min 5-second return, same sign |
 | `SPREAD_MAX_BPS` | 4.0 | reject a wider trigger-bar spread |
-| `STOP_MIN_BPS` | 8.0 | a tighter range stop is placed out to this |
+| `STOP_MIN_BPS` | 12.0 | a tighter range stop is placed out to this |
 | `STOP_MAX_BPS` | 20.0 | stop wider than this is not a scalp |
 | `TARGET_BPS` | 40.0 | target distance from the trigger close |
 | `ENTRY_TOL_BPS` | 2.0 | entry band around the trigger close |
 | `ENTRY_EXPIRY_S` | 5 | do not chase a stale scalp |
-| `HOLDING_LIMIT_S` | 180 | time exit; a few minutes |
+| `HOLDING_LIMIT_S` | 300 | time exit; five minutes |
 | `MAX_CONSECUTIVE_MISSING_HALT` | 5 | consecutive missing seconds that halt |
 | `MIN_RANGE_PRINTS` | 3 | present bars required inside the 5-bar range |
 
