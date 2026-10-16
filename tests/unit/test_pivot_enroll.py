@@ -98,6 +98,45 @@ def test_qualifying_synthetic_enrolls_when_attested(tmp_path):
     assert res["reasons"] == []
 
 
+def _sidecar(tmp_path, records):
+    p = tmp_path / "funding.jsonl"
+    p.write_text("".join(json.dumps(r) + "\n" for r in records),
+                 encoding="utf-8")
+    return p
+
+
+def test_funding_sidecar_with_provenance_enrolls(tmp_path):
+    evs = [e for e in _qualifying_events()
+           if e["channel"] != "fundingSettlement"]
+    cap = _capture(tmp_path, evs)
+    fund = _sidecar(tmp_path, [
+        {"symbol": "BTCUSDT", "funding_ts_ms": T0 + DAY,
+         "funding_rate": 0.0001, "source": "GET /fapi/v1/fundingRate"}])
+    res = pivot_enroll.audit(cap, True, fund)
+    assert res["verdict"] == "ENROLLED", res["reasons"]
+    assert res["symbols"]["BTCUSDT"]["funding_sidecar_in_span"] == 1
+
+
+def test_funding_sidecar_without_provenance_rejected(tmp_path):
+    fund = _sidecar(tmp_path, [
+        {"symbol": "BTCUSDT", "funding_ts_ms": T0, "funding_rate": 0.1}])
+    import pytest
+    with pytest.raises(ValueError, match="provenance"):
+        pivot_enroll._funding_sidecar(fund)
+
+
+def test_funding_sidecar_outside_span_does_not_count(tmp_path):
+    evs = [e for e in _qualifying_events()
+           if e["channel"] != "fundingSettlement"]
+    cap = _capture(tmp_path, evs)
+    fund = _sidecar(tmp_path, [
+        {"symbol": "BTCUSDT", "funding_ts_ms": T0 - DAY,
+         "funding_rate": 0.0001, "source": "GET /fapi/v1/fundingRate"}])
+    res = pivot_enroll.audit(cap, True, fund)
+    assert res["verdict"] == "DEVELOPMENT-ONLY"
+    assert any("outside capture span" in r for r in res["reasons"])
+
+
 def test_unattested_prior_use_blocks_enrollment(tmp_path):
     cap = _capture(tmp_path, _qualifying_events(),
                    {"run_id": "seen", "symbols": ["BTCUSDT"],

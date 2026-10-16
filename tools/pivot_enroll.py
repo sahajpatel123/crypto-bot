@@ -59,7 +59,38 @@ class _Symbol:
         self.funding_settlements = 0
 
 
-def audit(capture: Path, attest_untouched: bool = False) -> dict:
+def _funding_sidecar(path: Path) -> dict[str, list[int]]:
+    """Load funding settlements JSONL: symbol -> [funding_ts_ms].
+
+    Every record must carry symbol, funding_ts_ms, funding_rate and a
+    non-empty ``source`` (provenance, per datasets/backfill_funding.py).
+    Records missing any field are rejected loudly, never skipped.
+    """
+    out: dict[str, list[int]] = {}
+    with path.open(encoding="utf-8") as fh:
+        for i, line in enumerate(fh, 1):
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                rec = json.loads(line)
+            except json.JSONDecodeError as exc:
+                raise ValueError(f"{path}:{i}: invalid JSON ({exc})")
+            if not isinstance(rec, dict) or not rec.get("symbol") \
+                    or not isinstance(rec.get("funding_ts_ms"), int) \
+                    or not isinstance(rec.get("funding_rate"),
+                                      (int, float)) \
+                    or not str(rec.get("source", "")).strip():
+                raise ValueError(
+                    f"{path}:{i}: settlement needs symbol, "
+                    f"funding_ts_ms, funding_rate, source (provenance)")
+            out.setdefault(str(rec["symbol"]), []).append(
+                int(rec["funding_ts_ms"]))
+    return out
+
+
+def audit(capture: Path, attest_untouched: bool = False,
+          funding_file: Path | None = None) -> dict:
     manifest = _load_json(capture / "manifest.json")
     events_path = capture / "events.jsonl"
     if not events_path.exists():
@@ -110,6 +141,7 @@ def audit(capture: Path, attest_untouched: bool = False) -> dict:
                     payload.get("settlement") is True:
                 st.funding_settlements += 1
 
+    sidecar = _funding_sidecar(funding_file) if funding_file else {}
     declared = [str(s) for s in manifest.get("symbols", [])] \
         or sorted(symbols)
     prior = manifest.get("prior_use")
@@ -143,17 +175,25 @@ def audit(capture: Path, attest_untouched: bool = False) -> dict:
             reasons.append(
                 f"mark cadence gap {st.mark_max_gap}ms > 5000ms "
                 f"(floor: marks >=1s)")
-        if not st.funding_settlements:
+        in_span = [t for t in sidecar.get(sym, [])
+                   if st.ts_min is not None and st.ts_max is not None
+                   and st.ts_min <= t <= st.ts_max]
+        settlements = st.funding_settlements + len(in_span)
+        if not settlements:
             note = (f" ({st.funding_rates} funding-rate observations "
                     f"on marks are not settlements)") \
                 if st.funding_rates else ""
+            if sidecar.get(sym):
+                note += (f"; {len(sidecar[sym])} sidecar settlements "
+                         f"all outside capture span")
             reasons.append("no funding settlements with provenance"
                            + note)
         per_symbol[sym] = {
             "days": round(days, 4), "channels": st.channels,
             "mark_max_gap_ms": st.mark_max_gap,
             "modeled_quotes": st.modeled_quotes,
-            "funding_settlements": st.funding_settlements,
+            "funding_settlements": settlements,
+            "funding_sidecar_in_span": len(in_span),
             "reasons": reasons,
         }
         all_reasons += [f"{sym}: {r}" for r in reasons]
@@ -189,9 +229,14 @@ def main() -> int:
     parser.add_argument("--out", required=True)
     parser.add_argument("--attest-untouched", action="store_true",
                         help="operator attests no prior round saw this data")
+    parser.add_argument("--funding-file", default=None,
+                        help="funding settlements JSONL with provenance "
+                             "(symbol, funding_ts_ms, funding_rate, source)")
     args = parser.parse_args()
     try:
-        result = audit(Path(args.capture), args.attest_untouched)
+        result = audit(Path(args.capture), args.attest_untouched,
+                       Path(args.funding_file) if args.funding_file
+                       else None)
     except ValueError as exc:
         print(f"BLOCKED: {exc}")
         return EXIT_BLOCKED

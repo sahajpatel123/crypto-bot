@@ -92,6 +92,15 @@ edited here): current captures record no funding-settlement channel,
 so even a future 10d self-capture cannot enroll until settlement
 capture with provenance is added there.
 
+Update (same day): the auditor now also accepts
+`--funding-file settlements.jsonl` — records of
+`{symbol, funding_ts_ms, funding_rate, source}` matching the repo's
+`datasets/backfill_funding.py` provenance pattern. Settlements count
+only inside the capture span; records without provenance are rejected
+loudly. This gives the data lane a target format without editing its
+tools. Tests: `test_funding_sidecar_*` (3, incl. outside-span and
+missing-provenance rejection).
+
 ## Data blocker (owner decision)
 
 Qualification needs ≥10d untouched tick: L2/book quotes (no modelled
