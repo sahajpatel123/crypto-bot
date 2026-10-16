@@ -1,0 +1,67 @@
+{
+  "study": "STUDY-03",
+  "title": "P2 delta-neutral basis/carry economics + P3 momentum replication, on untouched $0 Binance Vision data (descriptive, NOT a strategy)",
+  "frozen_utc": "2026-10-16T16:30:00Z",
+  "author_lane": "independent 4th agent (owner-directed continuation of STUDY-02); filed to manager for review",
+  "role": "STUDY-02 concluded: perp-only taker funding-tilt is dead; the coherent P2 form is delta-neutral spot+perp (needs spot data, $0); the P3 alt-momentum positives were a regime artifact pending replication. This study measures both on a window NO prior round touched. Creates NO strategy, NO candidate, consumes NO PIVOT-01 attempt budget.",
+  "data_frozen": {
+    "source": "data.binance.vision free archives (CC BY-NC-SA research use), fetched with sha256 provenance per file into data/vision/ (new, unowned path)",
+    "armA_window_utc": ["2026-06-01", "2026-08-31"],
+    "armA_symbols": ["BTCUSDT", "ETHUSDT"],
+    "armB_window_utc": ["2026-06-01", "2026-08-31"],
+    "armB_symbols": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "ZECUSDT", "NEARUSDT", "STRKUSDT", "XRPUSDT", "WUSDT"],
+    "channels": {
+      "futures_1m_klines": "futures/um/monthly/klines/{s}/1m/{s}-1m-{YYYY-MM}.zip",
+      "spot_1m_klines": "spot/monthly/klines/{s}/1m/{s}-1m-{YYYY-MM}.zip",
+      "funding": "futures/um/monthly/fundingRate/{s}/{s}-fundingRate-{YYYY-MM}.zip"
+    },
+    "conventions": {
+      "close_availability": "kline close is published at close_time = open_time + 60s (causal; never paired at open_time)",
+      "no_trade_minutes": "klines with trade count 0 are MISSING (no forward-fill) - matches STUDY-02 and transform-v2 semantics",
+      "hour_close": "last non-missing 1m close in the hour",
+      "funding": "settlement rows (calc_time, funding_interval_hours, last_funding_rate); positive rate = longs pay shorts"
+    },
+    "missing_months": "a 404/absent monthly zip is recorded as absent and that symbol-month is excluded (never imputed)"
+  },
+  "costs_frozen": {
+    "primary_all_taker_vip0": "spot 10 bps/side x2 + perp 5 bps/side x2 = 30 bps per book round trip (Binance VIP0 list prices)",
+    "posthoc_bnb": "spot 7.5 x2 + perp 4.5 x2 = 24 bps (BNB discount, labeled POST-HOC)",
+    "perp_only_reference": "26 bps (cost-contract-v1) for any perp-only cell"
+  },
+  "armA_method_frozen": {
+    "basis": "b_t = (perp_close - spot_close)/spot_close at minutes where both legs present",
+    "descriptive": [
+      "basis mean/median/p10/p90 in bps; fraction positive; annualized mean premium = mean_b * 3 * 365",
+      "convergence signature: Pearson correlation between b_t and (b_{t+8h} - b_t) over common minutes (negative = mean-reverting premium)",
+      "fraction of minutes with basis_annualized >= 8%"
+    ],
+    "signal_cells": {
+      "trigger": "at any minute t: basis_annualized(b_t) >= 8% (a priori hurdle = risk-free-equivalent + operational premium) -> enter SHORT perp + LONG spot at the NEXT common close (t+1 minute close, causal)",
+      "holds_H": [72, 168, 336],
+      "exit": "first common minute close >= entry_close_time + H",
+      "pnl_exact": "spot_ret + short_perp_ret where spot_ret = (spot_exit - spot_entry)/spot_entry and short_perp_ret = (perp_entry - perp_exit)/perp_entry",
+      "funding_attribution": "settlements strictly inside (entry_ts, exit_ts): SHORT-perp collects +rate",
+      "net_bps": "(pnl + funding_collected)*1e4 - 30 (primary costs)",
+      "one_position": "per (symbol, hold): overlapping signals skipped and counted",
+      "warmup": "none needed beyond data start; signals only inside window"
+    },
+    "capital_efficiency_declared": "total capital = notional*(1 + 1/L) for perp-leg leverage L in {1,2,3} (spot wallet cannot margin the futures leg on Binance - declared assumption); net_ann_on_total = ann_carry / (1 + 1/L)",
+    "decision_rule": "MERITS-CANDIDATE-EVALUATION iff median 168h-hold net >= 0 under 30bps AND net_ann_on_total at L=1 >= 8%; else NOT-WORTH-AT-RETAIL-SCALE (owner decision recorded, no capture justified)"
+  },
+  "armB_method_frozen": {
+    "construction": "identical to STUDY-02 P3 (prereg 3811afe): trailing-24h return >= +100bps -> LONG / <= -100bps -> SHORT at 1h closes; exits at 4h/8h/24h closes; one position per (symbol, side, horizon); funding attribution where settlements exist (absent funding zip -> funding=0, labeled); 26bps RT",
+    "purpose": "replication/robustness check of STUDY-02's alt-momentum finding on a window no round touched - NOT candidate creation",
+    "decision_rule": "REPLICATED iff >= 2 of {NEARUSDT, STRKUSDT, WUSDT} LONG 24h cells have net_mean > 0 with n_entered >= 15 in the new window; else NOT-REPLICATED (regime artifact confirmed). BTC/ETH cells reported for consistency (expected ~0/negative)."
+  },
+  "posthoc_sensitivity_declared": "BNB-discount cost arm (24bps) for arm A; trigger 4%/12% for arm A; trigger 50/200bps for arm B - all labeled POST-HOC, never decision-relevant.",
+  "decision_rules_global": [
+    "Whatever the outcome: NO candidate is created, NO strategy code changes, NO attempt-budget consumption",
+    "Outputs inform the owner's P2/P3 pursuit and the 10-day-capture decision with measured numbers",
+    "Live submission stays disabled; no credentials; no orders"
+  ],
+  "non_goals": [
+    "No worker-lane file touched (W1 strategies/research, W2 market_data/execution, W3 risk/accounting)",
+    "No re-entry of S1-S5/X1 configs",
+    "No claim of profitability; descriptive economics only"
+  ]
+}
