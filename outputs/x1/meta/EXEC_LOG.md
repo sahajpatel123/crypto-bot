@@ -244,3 +244,13 @@
   Total 8,343,917. All INCOMPLETE_BUDGET. stop_cursor == j3 cursor exact.
 - Bridge: dev+val rc=0; ingested exact sums; manifest_sha 9008ba92; intents
   596/6075; exposed_at_cap false; fills 0. Adverse 10/12 cells. (e) mech only.
+## Job 45: adverse X1-R1-CASH dev bridged (rc=0), chain pruned
+- j1: CHILD_EXIT rc124, 900.4s, 2,221,597 ingested, replayed 0, cursor 09-13.
+## Jobs 46-48: adverse X1-R1-CASH validation bridged (rc=0), chain pruned
+- j1: 3,740,984 ingested, replayed 0, cursor 09-28; j2: 3,790,506, replayed
+  984, cursor 09-30; j3: 1,488,938, replayed 506, cursor 09-30.
+  Total 9,020,428. All INCOMPLETE_BUDGET. stop_cursor == j3 cursor exact.
+- Bridge: dev+val rc=0; ingested exact sums; manifest_sha 9008ba92; intents
+  0/0; exposed_at_cap false; fills 0. ROUND COMPLETE: realistic 12/12 +
+  adverse 12/12 = 24/24 cells, 48/48 jobs. (e) mechanics only to here;
+  economics/select tools next (first outcome contact, mechanical only).
