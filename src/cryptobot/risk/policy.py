@@ -23,6 +23,8 @@ from cryptobot.accounting.day import accounting_date
 from cryptobot.accounting.ledger import Ledger
 from cryptobot.coordination import DataQuality, Side
 
+from .margin import (
+    liquidation_ok, liquidation_price_isolated, maintenance_margin)
 from .sizing import SizeRejected, plan_size
 from .state import Reservation, RiskState, load_state, save_state
 from .types import AccountSnapshot, Approved, HealthStatus, Rejected, RiskConfig
@@ -187,6 +189,12 @@ class RiskPolicy:
             )
         except SizeRejected as exc:
             return Rejected(exc.reason)
+
+        # F0.4a LIVE bracket/liquidation gate: price the ACTIVE tier at
+        # the sized notional; stale brackets always reject (fail closed).
+        bracket_block = self._check_liquidation(intent, plan, now)
+        if bracket_block is not None:
+            return bracket_block
 
         self._state.seq += 1
         rid = f"r-{self._state.seq:06d}"
@@ -666,6 +674,54 @@ class RiskPolicy:
         asof = self.config.filters_asof_utc
         if asof is None or (now - asof).total_seconds() > self.config.filters_max_age_s:
             return Rejected("filters:stale-metadata")
+        return None
+
+    def _check_liquidation(self, intent, plan, now: datetime,
+                           ) -> Rejected | None:
+        """F0.4a: tiered-bracket liquidation gate on the sized plan.
+
+        Prices the ACTIVE tier at plan.notional_usdt, estimates the
+        isolated liquidation mark at max leverage (conservative: the
+        smallest margin buffer; passing here passes at any lower
+        leverage), and requires liquidation_ok (3x stop distance +
+        beyond stop+stressed slippage). Run mode requires fresh
+        brackets; stale brackets reject in every mode when brackets
+        are configured. Non-run without brackets skips (replay/fault
+        tests that predate venue metadata).
+        """
+        cfg = self.config
+        brackets = cfg.leverage_brackets.get(intent.instrument)
+        if brackets is None:
+            if cfg.run_mode:
+                if not cfg.leverage_brackets:
+                    return Rejected("brackets:required-in-run-mode")
+                return Rejected("brackets:unknown-instrument")
+            return None
+        asof = cfg.brackets_asof_utc
+        if asof is None or (now - asof).total_seconds() > cfg.brackets_max_age_s:
+            return Rejected("brackets:stale-metadata")
+        try:
+            mm = maintenance_margin(plan.notional_usdt, brackets)
+        except ValueError:
+            return Rejected("brackets:invalid-tier")
+        qty_signed = plan.qty if intent.side == Side.LONG else -plan.qty
+        isolated_margin = plan.notional_usdt / cfg.leverage_cap
+        try:
+            liq = liquidation_price_isolated(
+                entry=plan.adverse_price, qty=qty_signed,
+                isolated_margin=isolated_margin, maint_margin=mm)
+        except ValueError:
+            return Rejected("brackets:invalid-tier")
+        stressed_slip = intent.forecast_cost.slippage_bps * cfg.stress_multiplier
+        try:
+            ok = liquidation_ok(
+                entry=plan.adverse_price, stop=intent.invalidation_price,
+                liq=liq, stressed_slippage_bps=stressed_slip,
+                side=intent.side.value)
+        except ValueError:
+            return Rejected("brackets:invalid-tier")
+        if not ok:
+            return Rejected("brackets:liquidation-distance")
         return None
 
     def _settle_expired(self, now: datetime) -> bool:

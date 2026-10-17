@@ -109,6 +109,16 @@ class RiskConfig:
     instrument_filters: dict = field(default_factory=dict)
     filters_asof_utc: datetime | None = None
     filters_max_age_s: float = 3600.0
+    # F0.4a LIVE bracket gate: symbol -> leverage-bracket tiers as
+    # published by GET /fapi/v1/leverageBracket (each tier:
+    # {notionalCap, maintMarginRatio, cum}). Run mode requires fresh
+    # brackets for the intent instrument; stale brackets always reject
+    # when brackets are configured (fail closed: an unknown tier must
+    # never admit size). Non-run without brackets skips the gate
+    # (fault/replay tests).
+    leverage_brackets: dict = field(default_factory=dict)
+    brackets_asof_utc: datetime | None = None
+    brackets_max_age_s: float = 3600.0
     # V-006 run mode: strict filter/metadata enforcement for session runtime.
     # Fault tests run with run_mode=False (filters optional, fee=0 allowed).
     run_mode: bool = False
@@ -147,6 +157,9 @@ class RiskConfig:
             value = _finite(getattr(self, name), name)
             if value <= 0:
                 raise ValueError(f"{name} must be > 0")
+        _finite(self.brackets_max_age_s, "brackets_max_age_s")
+        if self.brackets_max_age_s <= 0:
+            raise ValueError("brackets_max_age_s must be > 0")
         _finite(self.min_notional_usdt, "min_notional_usdt")
         if self.min_notional_usdt < 0:
             raise ValueError("min_notional_usdt must be >= 0")
@@ -156,11 +169,29 @@ class RiskConfig:
         if self.filters_asof_utc is not None:
             if not isinstance(self.filters_asof_utc, datetime) or self.filters_asof_utc.tzinfo is None:
                 raise ValueError("filters_asof_utc must be a tz-aware datetime or None")
+        if self.brackets_asof_utc is not None:
+            if not isinstance(self.brackets_asof_utc, datetime) or self.brackets_asof_utc.tzinfo is None:
+                raise ValueError("brackets_asof_utc must be a tz-aware datetime or None")
         for symbol, filt in self.instrument_filters.items():
             if not symbol or not isinstance(symbol, str):
                 raise ValueError("instrument filter keys must be non-empty symbols")
             if not isinstance(filt, InstrumentFilter):
                 raise ValueError(f"filter for {symbol!r} must be an InstrumentFilter")
+        for symbol, tiers in self.leverage_brackets.items():
+            if not symbol or not isinstance(symbol, str):
+                raise ValueError("leverage bracket keys must be non-empty symbols")
+            if not isinstance(tiers, list) or not tiers:
+                raise ValueError(f"brackets for {symbol!r} must be a non-empty list")
+            for tier in tiers:
+                for key in ("notionalCap", "maintMarginRatio"):
+                    if key not in tier:
+                        raise ValueError(
+                            f"bracket tier for {symbol!r} missing {key!r}")
+                    _finite(float(tier[key]), f"bracket {key}")
+                if float(tier["notionalCap"]) <= 0:
+                    raise ValueError("bracket notionalCap must be > 0")
+                if not 0.0 <= float(tier["maintMarginRatio"]) < 1.0:
+                    raise ValueError("bracket maintMarginRatio must lie in [0, 1)")
         if not isinstance(self.run_mode, bool):
             raise ValueError("run_mode must be a bool")
 

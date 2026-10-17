@@ -241,7 +241,7 @@ never read. Campaign `data/captures/campaign-1day-*` events never read
 | F0.1 | Re-entry: worktree + read committed docs | DONE |
 | F0.2 | Hermetic suite: zone test via git object + guard test, full suite 0 failed | IN_PROGRESS (fix 1e96e80; full suite sh_14bf34aa running) |
 | F0.3 | Claim audit PASS/REOPEN table | DONE (21 items, 0 REOPEN; item 21 full-suite shared w/F0.2) |
-| F0.4a | Leverage-bracket gate into LIVE admission + stale reject | TODO |
+| F0.4a | Leverage-bracket gate into LIVE admission + stale reject | DONE |
 | F0.4b | Break-even re-derivation + tests + fix >60% statement | TODO |
 | F0.4c | Paper fill model parameterized + calibration path | TODO |
 | F0.4d | RESEARCH_VERDICTS sentences -> verdict JSON mapping | TODO |
@@ -327,3 +327,16 @@ never read. Campaign `data/captures/campaign-1day-*` events never read
   sentences to machine JSON.
   REOPENs opened: NONE (0). F0.3 → DONE pending full-suite close of
   item 21 (shared with F0.2).
+- F0.4a DONE: bracket/liq gate wired into RiskPolicy.evaluate (was 0
+  production callers). RiskConfig gains leverage_brackets /
+  brackets_asof_utc / brackets_max_age_s (validated); run_mode
+  requires fresh brackets; stale always rejects; sized notional
+  prices the ACTIVE tier, liq estimated at max leverage
+  (conservative), liquidation_ok 3x enforced. Session.arm_brackets
+  injection + parse_brackets_payload (signed-endpoint fetch stays
+  credentialed/owner). Tests: test_bracket_admission 8 (failed 5
+  first, incl. boundary + stale + tier-flip + parser + arm).
+  Behaviour-change updates (not weakening, cf. T1.9): 3
+  test_risk_v006 run_mode Approve tests now supply fresh brackets via
+  _run_policy. Regression: risk v004/v006/v007/v008/gates + bracket +
+  margin + replay + app_filters + hardening_batch → 158 passed.

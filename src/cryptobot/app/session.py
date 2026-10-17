@@ -380,6 +380,33 @@ class Session:
                               {"origin": origin, "asof_utc": asof.isoformat(),
                                "symbols": sorted(built)})
 
+    def arm_brackets(self, brackets: dict[str, list[dict]],
+                     origin: str, *,
+                     asof_utc: datetime | None = None) -> None:
+        """Install leverage-bracket tiers for the LIVE liquidation gate.
+
+        Offline injection (F0.4a): the caller supplies tiers parsed via
+        ``parse_brackets_payload`` from a credentialed
+        GET /fapi/v1/leverageBracket fetch (demo/live readiness) or from
+        recorded fixtures. Fail-closed: empty maps and malformed tiers
+        raise (RiskConfig validation). Merges per symbol; refresh by
+        re-calling with a newer asof.
+        """
+        from dataclasses import replace
+
+        if not brackets:
+            raise ValueError("arm_brackets requires a non-empty map")
+        merged = dict(self.policy.config.leverage_brackets)
+        merged.update({k.upper(): v for k, v in brackets.items()})
+        asof = asof_utc or datetime.now(timezone.utc)
+        # replace() runs RiskConfig.__post_init__ validation (fail closed).
+        self.policy.config = replace(
+            self.policy.config, leverage_brackets=merged,
+            brackets_asof_utc=asof)
+        self.store.checkpoint(self.run_id, "brackets-armed",
+                              {"origin": origin, "asof_utc": asof.isoformat(),
+                               "symbols": sorted(merged)})
+
     def _ensure_symbol_filters(self, symbol: str) -> bool:
         """Arm filters for a newly seen paper symbol. False when blocked."""
         if self.config.mode != "paper":
