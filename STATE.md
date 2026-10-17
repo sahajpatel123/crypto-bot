@@ -245,7 +245,7 @@ never read. Campaign `data/captures/campaign-1day-*` events never read
 | F0.4b | Break-even re-derivation + tests + fix >60% statement | DONE |
 | F0.4c | Paper fill model parameterized + calibration path | DONE |
 | F0.4d | RESEARCH_VERDICTS sentences -> verdict JSON mapping | DONE |
-| F0.5 | Adversarial review (2 subagents or 30-item pre-mortem) | IN PROGRESS (triage batches; batch1 committed) |
+| F0.5 | Adversarial review (2 subagents or 30-item pre-mortem) | DONE (33 findings: 32 FIXED, 1 DISPUTED w/evidence; batches 1-8) |
 | F3.1 | Standalone recorder Binance USD-M + USDC check | DONE (integrated) |
 | F3.2 | Venue plugins Bybit/OKX behind flags | DONE (stubs behind flags) |
 | F3.3 | Durability: buffer, fsync, rotation, hash-chain, reports | DONE (integrated) |
@@ -381,43 +381,51 @@ never read. Campaign `data/captures/campaign-1day-*` events never read
   0 failed in 1107s. STILL mixed-collect (F1.1/recorder/vault/triage
   landed mid-run, uncollected) → final authoritative suite re-runs at
   F0 end.
-- F0.5 TRIAGE (A: 11 findings, B: 22 findings; overlaps noted):
+- F0.5 DONE: both cold reviewers returned (A: 11 findings ses_eb3ff36d,
+  B: 22 findings ses_eb3ff369; briefed without STATE/decisions).
+  Triage: 32 FIXED across batches 1-8 (all CRITICAL/HIGH closed with
+  failing-first tests), 1 DISPUTED (B#21 paper MARKET GTC: live
+  closes are MARKET sweep not IOC-cancel; GTC documented
+  paper_engine:603-615; timing residual drift-priced by B#9).
+  Notable independent confirmations: A#11 == F1.1 rounding bug;
+  reviewer-held areas (journaling, idempotency, sizing clamp,
+  prod-off chain) match the F0.3 PASS column.
 
   | ID | Severity | Finding | Verdict |
   |---|---|---|---|
   | A#1 | CRITICAL | Duplicate close over unknown | FIXED (batch1: unknown=in-flight) |
-  | A#2 | CRITICAL | Orphaned exposure unsupervised | TODO |
-  | A#3 | HIGH | shutdown_flatten exits naked | TODO |
-  | A#4 | HIGH | Venue exc crash/flatten (=B#5) | TODO |
-  | A#5 | HIGH | Paper funding restart mismatch | TODO |
-  | A#6 | HIGH | Mark-missing fail-open (short) | TODO |
-  | A#7 | MEDIUM | Dust deadlock (exact-zero) | TODO |
-  | A#8 | MEDIUM | Reconcile symbol-vs-global + silent skip | TODO |
-  | A#9 | MEDIUM | Hot-path REST while holding (=B#16) | TODO |
-  | A#10 | LOW | OrderManager/paper ID recovery | TODO |
+  | A#2 | CRITICAL | Orphaned exposure unsupervised | FIXED (batch4: orphan watch+flatten+alert) |
+  | A#3 | HIGH | shutdown_flatten exits naked | FIXED (batch4: keep-legs+drain+safe-mode) |
+  | A#4 | HIGH | Venue exc crash/flatten (=B#5) | FIXED (batch2: degraded reads+gate) |
+  | A#5 | HIGH | Paper funding restart mismatch | FIXED (batch5: journal+restore totals) |
+  | A#6 | HIGH | Mark-missing fail-open (short) | FIXED (batch4: mark-missing blocks entries) |
+  | A#7 | MEDIUM | Dust deadlock (exact-zero) | FIXED (batch6: ledger snaps ≤1e-9) |
+  | A#8 | MEDIUM | Reconcile symbol-vs-global + silent skip | FIXED (batch5: per-symbol+skipped loud) |
+  | A#9 | MEDIUM | Hot-path REST while holding (=B#16) | FIXED (batch7: cached agree on hot_cache) |
+  | A#10 | LOW | OrderManager/paper ID recovery | FIXED (batch8: seq restore+collision loop+32-bit) |
   | A#11 | LOW | Rounding epsilon round-up | FIXED (F1.1 scale-aware eps) |
-  | B#1 | CRITICAL | Submit exc escapes admit + latch | TODO |
-  | B#2 | CRITICAL | Sibling double-fill reversal | TODO |
-  | B#3 | HIGH | Shadow stop dead code | TODO |
-  | B#4 | HIGH | Supervision feed-dependent | TODO |
-  | B#5 | HIGH | 429 kills stop processing (=A#4) | TODO |
-  | B#6 | HIGH | Flatten-then-cancel race | TODO |
+  | B#1 | CRITICAL | Submit exc escapes admit + latch | FIXED (batch2: reject/unknown/ratelimit paths) |
+  | B#2 | CRITICAL | Sibling double-fill reversal | FIXED (batch3: reversal detector+flatten; venue reduce-only backstop verified) |
+  | B#3 | HIGH | Shadow stop dead code | FIXED (batch4: wired+tested both branches) |
+  | B#4 | HIGH | Supervision feed-dependent | FIXED (batch4: throttled idle health eval) |
+  | B#5 | HIGH | 429 kills stop processing (=A#4) | FIXED (batch2: skip-tick+defer+duration safe-mode) |
+  | B#6 | HIGH | Flatten-then-cancel race | FIXED (outcome-covered: reduce-only backstop + reversal detector+flatten) |
   | B#7 | HIGH | Safe-mode misreport | FIXED (batch1: verify+unknown_ids) |
   | B#8 | HIGH | Flat-confirm fail-open | FIXED (batch1: None→False) |
-  | B#9 | HIGH | Paper fills raw (audit unwired) | TODO |
-  | B#10 | HIGH | Live funding unwired | TODO |
-  | B#11 | MEDIUM | Orphan leg on partial attach | TODO |
-  | B#12 | MEDIUM | Re-protection wrong-way (=B#2) | TODO |
-  | B#13 | MEDIUM | Seed foreign-order gate vacuous | TODO |
-  | B#14 | MEDIUM | run_mode brackets livelock (paper) | TODO |
-  | B#15 | MEDIUM | ACCOUNT_UPDATE freshness lie | TODO |
-  | B#16 | MEDIUM | Snapshot-per-event (=A#9) | TODO |
-  | B#17 | MEDIUM | Triggered-algo misattribute | TODO |
-  | B#18 | MEDIUM | Watchdog/supervisor unwired | TODO |
-  | B#19 | MEDIUM | Resume flatten skips note_flat | TODO |
-  | B#20 | LOW | Cancel lookup throttled in window | TODO |
-  | B#21 | LOW | Paper MARKET GTC vs live IOC | TODO |
-  | B#22 | LOW | Funding fallback-id collision | TODO |
+  | B#9 | HIGH | Paper fills raw (audit unwired) | FIXED (batch6: drift top-up+fills_drift.jsonl, B9 schema intact) |
+  | B#10 | HIGH | Live funding unwired | FIXED (batch5: throttled booking+reconcile) |
+  | B#11 | MEDIUM | Orphan leg on partial attach | FIXED (batch3: rollback+partial_leg_id both seams) |
+  | B#12 | MEDIUM | Re-protection wrong-way (=B#2) | FIXED (batch3: reversed books flatten, never protect) |
+  | B#13 | MEDIUM | Seed foreign-order gate vacuous | FIXED (batch8: strays surfaced+refused) |
+  | B#14 | MEDIUM | run_mode brackets livelock (paper) | FIXED (batch8: paper flag+live arm at readiness) |
+  | B#15 | MEDIUM | ACCOUNT_UPDATE freshness lie | FIXED (batch7: age REST-bound) |
+  | B#16 | MEDIUM | Snapshot-per-event (=A#9) | FIXED (batch7: see A#9) |
+  | B#17 | MEDIUM | Triggered-algo misattribute | FIXED (batch3: _triggered remap+journal) |
+  | B#18 | MEDIUM | Watchdog/supervisor unwired | FIXED (batch8: heartbeat+unit+resume-safe+alerts.jsonl; sinks→F6) |
+  | B#19 | MEDIUM | Resume flatten skips note_flat | FIXED (batch4: shell-less release) |
+  | B#20 | LOW | Cancel lookup throttled in window | FIXED (batch7: window-bypass DELETE) |
+  | B#21 | LOW | Paper MARKET GTC vs live IOC | DISPUTED (live closes are MARKET sweep, not IOC; GTC documented paper_engine:603-615; timing residual drift-priced by B#9) |
+  | B#22 | LOW | Funding fallback-id collision | FIXED (batch5: row-index ids) |
 - F3 BUILDERS launched: recorder (ses_eb3fdca9: writer/streams/
   plugins/integrity/service + tests + systemd) and vault
   (ses_eb3fdca8: registry/tokens/loader + 4 tests + import-lint).
