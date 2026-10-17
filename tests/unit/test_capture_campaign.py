@@ -210,3 +210,61 @@ def test_stop_and_status_subcommands(tmp_path):
     assert cc.main(["stop", "--dest", str(dest)]) == 0
     assert (dest / cc.STOP_FILE).exists()
     assert cc.main(["status", "--dest", str(dest)]) == 0
+
+
+# -- storage budget ----------------------------------------------------------
+
+
+def _seed_state(dest):
+    dest.mkdir(parents=True, exist_ok=True)
+    cc.save_state(dest, {"format": "cryptobot-campaign/1",
+                         "chunks_total": 2, "chunks": [], "gaps": [],
+                         "status": "running", "days": 1,
+                         "chunk_hours": 12})
+
+
+def test_budget_reached_stops_before_any_chunk(tmp_path):
+    dest = tmp_path / "camp"
+    _seed_state(dest)
+    chunk = dest / "chunk-000-x"
+    chunk.mkdir()
+    (chunk / "events.jsonl.gz").write_bytes(b"z" * 100)
+    log = []
+    c = _campaign(dest, _fake_executor(log), free=1 << 40,
+                  days=1, chunk_hours=12,
+                  max_settled_gb=50 / (1 << 30))
+    st = c.run()
+    assert st["status"] == "budget-reached"
+    assert st["settled_bytes"] == 100
+    assert log == []              # budget checked before any chunk
+    assert c.settled_bytes() == 100
+
+
+def test_under_budget_proceeds_and_records_usage(tmp_path):
+    dest = tmp_path / "camp"
+    _seed_state(dest)
+    log = []
+    c = _campaign(dest, _fake_executor(log), free=1 << 40,
+                  days=1, chunk_hours=12,
+                  max_settled_gb=10.0)
+    st = c.run(max_chunks=1)
+    assert st["status"] == "capped"
+    assert st["budget_bytes"] == 10 * (1 << 30)
+    assert st["settled_bytes"] >= 0
+    assert len(log) == 1          # one chunk ran (no probe on resume)
+
+
+def test_bad_budget_raises(tmp_path):
+    with pytest.raises(ValueError):
+        cc.Campaign(tmp_path, days=1, chunk_hours=12,
+                    symbols=["BTCUSDT"], max_settled_gb=0)
+
+
+def test_status_reports_settled_bytes(tmp_path):
+    dest = tmp_path / "camp"
+    _seed_state(dest)
+    chunk = dest / "chunk-000-x"
+    chunk.mkdir()
+    (chunk / "events.jsonl.gz").write_bytes(b"z" * 64)
+    out = cc.status(dest)
+    assert out["settled_bytes_now"] == 64

@@ -104,13 +104,23 @@ Monitor / stop:
 Notes: `status` shows the full chunk ledger once the first hourly chunk
 settles; before that, `chunk-*/heartbeat.json` is the live pulse.
 Restart after any reboot = re-run the same `start` command (resumes at
-the next unsettled chunk, no re-probe). Why BTC-only: at current market
-activity BTC+ETH needs ~16–21 GB settled and the disk has ~13 GB free;
-ETH (and X1's BTC/ETH pairing) waits for space or a second campaign.
-Why `lean500`: bookTicker (83 % of bytes) and depth@100ms were the
-alternatives that did not fit; depth@500ms still reconstructs the full
-book at ≤1 s resolution (soak: 2,236/2,381 diffs applied, 24/24
-snapshots synced).
+the next unsettled chunk, no re-probe). The stopped 10-day campaign was
+BTC-only because at then-current activity BTC+ETH needed ~16–21 GB
+settled against ~13 GB free; it used `lean500` because bookTicker
+(83 % of bytes) and depth@100ms did not fit — depth@500ms still
+reconstructs the full book at ≤1 s resolution (soak: 2,236/2,381 diffs
+applied, 24/24 snapshots synced).
+
+## Storage budget (10 GB owner cap)
+
+`--max-settled-gb N` is a hard cap on settled bytes (sum of settled
+`*.jsonl.gz` across chunks), checked before every chunk: when reached,
+the campaign stops cleanly with status `budget-reached`. The cap stops
+intake — it never deletes or filters captured data. `status` reports
+`settled_bytes_now` so usage is always visible. The live 1-day campaign
+projects ~1.2 GB settled against the 10 GB cap (no restart needed: the
+guard only binds future runs that approach the cap, and the disk guard
+already protects the host).
 
 ## What this does NOT do
 

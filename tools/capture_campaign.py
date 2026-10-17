@@ -21,7 +21,13 @@ Runs the E-006 Collector in bounded chunks under a supervisor loop:
   chunk returns the recorded marker untouched.
 - RESUME: on restart the campaign skips settled chunks and settles a
   crash-partial chunk as partial (never fabricated, never re-run).
-- DISK GUARD before every chunk: stop cleanly when free < --min-free-gb.
+- DISK GUARD before every chunk: pause (status ``disk-paused``,
+  15-minute re-checks) when free < --min-free-gb.
+- STORAGE BUDGET (--max-settled-gb): hard cap on settled bytes
+  (sum of settled ``*.jsonl.gz`` across chunks). Checked before every
+  chunk; when reached the campaign stops cleanly with status
+  ``budget-reached``. Nothing is deleted to make room — the cap stops
+  intake, it never filters the past.
 - AUDIT SURFACE: ``campaign_state.json`` (chunks, gaps, preflight
   numbers, status) + ``campaign_log.jsonl``; ``status`` prints both.
 - STOP: ``stop`` subcommand writes ``dest/STOP`` and SIGTERMs the
@@ -200,10 +206,13 @@ class Campaign:
                  symbols: list[str], profile: str = "lean500",
                  probe_s: float = 45.0, min_free_gb: float = 5.0,
                  keep_raw: bool = False, allow_tight: bool = False,
+                 max_settled_gb: float | None = None,
                  chunk_executor=None, disk_free=None,
                  cooldown_s: float = 60.0, max_attempts: int = 5) -> None:
         if profile not in PROFILES:
             raise ValueError(f"unknown profile {profile!r}")
+        if max_settled_gb is not None and max_settled_gb <= 0:
+            raise ValueError("max_settled_gb must be > 0")
         self.dest = Path(dest)
         self.days = days
         self.chunk_hours = chunk_hours
@@ -220,6 +229,8 @@ class Campaign:
             lambda p: shutil.disk_usage(p).free)
         self.cooldown_s = cooldown_s
         self.max_attempts = max_attempts
+        self.max_settled_bytes = (None if max_settled_gb is None
+                                  else int(max_settled_gb * (1 << 30)))
         self.disk_pause_s = 900.0
         self.disk_pause_limit: int | None = None
         self._disk_pauses = 0
@@ -366,6 +377,17 @@ class Campaign:
                     if state.get("status") == "disk-paused":
                         state["status"] = "running"
                         log_line(self.dest, {"event": "disk-resumed"})
+                if self.max_settled_bytes is not None:
+                    used = self.settled_bytes()
+                    state["settled_bytes"] = used
+                    state["budget_bytes"] = self.max_settled_bytes
+                    if used >= self.max_settled_bytes:
+                        state["status"] = "budget-reached"
+                        log_line(self.dest, {
+                            "event": "budget-reached",
+                            "settled_bytes": used,
+                            "budget_bytes": self.max_settled_bytes})
+                        break
                 idx = pending[0]
                 chunk_dir = self.dest / f"chunk-{idx:03d}-{utc_now()}"
                 chunk_dir.mkdir(parents=True, exist_ok=True)
@@ -440,11 +462,36 @@ class Campaign:
             except Exception:
                 pass
 
+    # -- storage budget --------------------------------------------------
+    def settled_bytes(self) -> int:
+        """Sum of settled ``*.jsonl.gz`` bytes across chunk dirs.
+
+        Measured from the files on disk (the same bytes the budget
+        caps), not from state bookkeeping, so a restart sees the truth.
+        """
+        total = 0
+        if not self.dest.exists():
+            return 0
+        for gz in self.dest.glob("chunk-*/**.jsonl.gz"):
+            try:
+                total += gz.stat().st_size
+            except OSError:
+                pass
+        return total
+
 
 def status(dest: Path) -> dict:
     state = load_state(dest) or {"status": "no-state"}
     free = shutil.disk_usage(dest if dest.exists() else dest.parent).free
     state["free_bytes_now"] = free
+    settled = 0
+    if dest.exists():
+        for gz in dest.glob("chunk-*/**.jsonl.gz"):
+            try:
+                settled += gz.stat().st_size
+            except OSError:
+                pass
+    state["settled_bytes_now"] = settled
     logs = []
     p = dest / LOG_FILE
     if p.exists():
@@ -468,6 +515,8 @@ def main(argv=None) -> int:
     s.add_argument("--min-free-gb", type=float, default=5.0)
     s.add_argument("--keep-raw", action="store_true")
     s.add_argument("--allow-tight", action="store_true")
+    s.add_argument("--max-settled-gb", type=float, default=None,
+                   help="hard cap on settled bytes; stops cleanly when hit")
     s.add_argument("--max-chunks", type=int, default=None)
     st = sub.add_parser("status")
     st.add_argument("--dest", required=True)
@@ -500,7 +549,8 @@ def main(argv=None) -> int:
                         probe_s=args.probe_s,
                         min_free_gb=args.min_free_gb,
                         keep_raw=args.keep_raw,
-                        allow_tight=args.allow_tight)
+                        allow_tight=args.allow_tight,
+                        max_settled_gb=args.max_settled_gb)
 
     def _sig(signum, frame):
         campaign.request_stop()
