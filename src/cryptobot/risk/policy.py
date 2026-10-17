@@ -694,6 +694,8 @@ class RiskPolicy:
         brackets = cfg.leverage_brackets.get(intent.instrument)
         if brackets is None:
             if cfg.run_mode:
+                if not cfg.brackets_required_in_run_mode:
+                    return None  # B#14 paper path: no brackets to price.
                 if not cfg.leverage_brackets:
                     return Rejected("brackets:required-in-run-mode")
                 return Rejected("brackets:unknown-instrument")

@@ -226,8 +226,21 @@ def _seed_live_session(session, engine, config) -> float:
     snapshot = engine.account_snapshot()
     open_ids = [str(o.client_order_id) for o in engine.open_orders()]
     journal_ids = [str(c) for c in engine.journal_client_ids()]
-    return session.seed_from_venue(snapshot, open_client_ids=open_ids,
-                                   journal_client_ids=journal_ids)
+    strays_fn = getattr(engine, "stray_order_ids", None)
+    if callable(strays_fn):
+        strays = [str(c) for c in strays_fn()]
+        if strays:
+            raise ValueError(
+                "foreign orders on venue (not bot-journaled): "
+                + ",".join(sorted(strays)))
+    seeded = session.seed_from_venue(snapshot, open_client_ids=open_ids,
+                                     journal_client_ids=journal_ids)
+    if symbols:
+        # B#14: live/demo run_mode arms WITH venue brackets (fail
+        # closed when the fetch/parse fails — no gate, no trading).
+        armed = session.arm_live_brackets(symbols)
+        print(f"brackets armed: {armed}")
+    return seeded
 
 
 def _run_paper(args: argparse.Namespace) -> int:
@@ -380,6 +393,36 @@ def _run_paper(args: argparse.Namespace) -> int:
         try:
             report = session.run_live(events, duration_s=duration,
                                       resume=bool(args.resume))
+        except KeyError as exc:
+            # B#18: --resume with no such run (first boot with the
+            # resume unit, or a lost store). Live engines fail CLOSED
+            # (refuse: the lost run may hold venue exposure — never
+            # auto-start a second writer). Paper fresh-starts LOUDLY
+            # (sim-only, nothing to double-trade) instead of
+            # crash-looping to StartLimitBurst. Narrowly scoped to
+            # the resume-unknown shape; all other KeyErrors fall
+            # through to the generic handler below.
+            if not bool(args.resume) or "unknown run" not in str(exc):
+                print(f"run {run_id} interrupted: "
+                      f"{type(exc).__name__}: {exc}", file=sys.stderr)
+                print(f"resume with: cryptobot run --mode paper --config "
+                      f"{args.config} --duration {args.duration or 'left'} "
+                      f"--run-id {run_id} --resume")
+                return 3
+            if config.engine_kind == "live":
+                print(f"run {run_id} REFUSED (resume: {exc}); inspect "
+                      f"venue exposure before starting fresh without "
+                      f"--resume", file=sys.stderr)
+                return 2
+            print(f"run {run_id}: no such run ({exc}); fresh paper "
+                  f"start (dropping --resume)", file=sys.stderr)
+            try:
+                report = session.run_live(events, duration_s=duration,
+                                          resume=False)
+            except Exception as exc2:
+                print(f"run {run_id} interrupted: "
+                      f"{type(exc2).__name__}: {exc2}", file=sys.stderr)
+                return 3
         except Exception as exc:
             # Mirror _run_replay: a venue/connection death (e.g.
             # routes-exhausted) must leave a resume hint, not a bare

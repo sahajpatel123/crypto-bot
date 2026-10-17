@@ -230,6 +230,13 @@ class _StubLiveEngine:
     def journal_client_ids(self):
         return ()
 
+    def leverage_brackets(self, symbols):
+        # B#14 stub: venue tiers for live readiness arming.
+        return [{"symbol": s,
+                 "brackets": [{"bracket": 1, "notionalCap": 50000.0,
+                               "maintMarginRatio": 0.004, "cum": 0.0}]}
+                for s in symbols]
+
     def close(self):
         pass
 

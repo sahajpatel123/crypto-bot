@@ -130,9 +130,15 @@ class OrderManager:
 
     # -- identity --------------------------------------------------------
     def new_client_id(self, prefix: str = "w2") -> str:
-        self._seq += 1
-        rand = uuid.uuid4().hex[:8]  # cross-restart uniqueness; seq is per-process.
-        return f"{prefix}-{self._seq:06d}-{rand}"
+        # A#10: never re-mint a journaled id (post-recover _seq could
+        # otherwise re-collide on the random leg): bounded redraw.
+        for _ in range(100):
+            self._seq += 1
+            rand = uuid.uuid4().hex[:8]  # cross-restart uniqueness; seq is per-process.
+            cid = f"{prefix}-{self._seq:06d}-{rand}"
+            if cid not in self._minted_ids:
+                return cid
+        raise RuntimeError("new_client_id: 100 consecutive collisions")
 
     # -- submission ------------------------------------------------------
     def submit_entry(
@@ -640,6 +646,13 @@ class OrderManager:
                 manager._exit_frozen.add(detail["reservation_id"])
         if halted is not None:
             manager.exit_only = halted  # persisted halt level wins over the constructor edge.
+        # A#10: restore the monotonic seq past journaled ids so the
+        # post-restart sequence continues (never reuses seq numbers).
+        for cid in manager._minted_ids:
+            try:
+                manager._seq = max(manager._seq, int(str(cid).split("-")[1]))
+            except (IndexError, ValueError):
+                continue
         for client_id, snap in snapshots.items():
             if not snap:
                 continue

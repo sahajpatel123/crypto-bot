@@ -119,6 +119,11 @@ class RiskConfig:
     leverage_brackets: dict = field(default_factory=dict)
     brackets_asof_utc: datetime | None = None
     brackets_max_age_s: float = 3600.0
+    # B#14: paper run_mode (public exchangeInfo arming, no signed
+    # endpoint) cannot fetch leverageBracket — the paper path sets
+    # this False (gate skipped unless brackets were armed via
+    # fixtures). Live/demo keep True (fail closed when missing).
+    brackets_required_in_run_mode: bool = True
     # V-006 run mode: strict filter/metadata enforcement for session runtime.
     # Fault tests run with run_mode=False (filters optional, fee=0 allowed).
     run_mode: bool = False
@@ -194,6 +199,8 @@ class RiskConfig:
                     raise ValueError("bracket maintMarginRatio must lie in [0, 1)")
         if not isinstance(self.run_mode, bool):
             raise ValueError("run_mode must be a bool")
+        if not isinstance(self.brackets_required_in_run_mode, bool):
+            raise ValueError("brackets_required_in_run_mode must be a bool")
 
 
 @dataclass(frozen=True)

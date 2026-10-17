@@ -1245,7 +1245,10 @@ class NautilusPaperEngine:
                 except ValueError:
                     pass
         for _ in range(self._seq):  # advance seeded RNG past journaled ids.
-            self._rng.getrandbits(64)
+            # A#10: generation draws getrandbits(32) per id — recovery
+            # must advance the IDENTICAL stream (64-bit draws diverge
+            # it and break post-restart determinism).
+            self._rng.getrandbits(32)
         if halted is not None:
             self._exit_only = halted
         replayed = 0

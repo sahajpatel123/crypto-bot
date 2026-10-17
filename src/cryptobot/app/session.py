@@ -417,6 +417,37 @@ class Session:
                               {"origin": origin, "asof_utc": asof.isoformat(),
                                "symbols": sorted(merged)})
 
+    def arm_live_brackets(self, symbols: list[str]) -> dict[str, Any]:
+        """Fetch venue brackets + arm live run_mode (B#14 readiness).
+
+        Live/demo only: pulls signed leverageBracket tiers through the
+        engine (credentialed at runtime), parses + installs them, and
+        flips run_mode True with brackets REQUIRED. Any fetch/parse
+        failure raises (readiness refuses — fail closed, never trade
+        live without the liquidation gate).
+        """
+        from dataclasses import replace
+
+        from .filters import parse_brackets_payload
+
+        fetch = getattr(self.engine, "leverage_brackets", None)
+        if not callable(fetch):
+            raise ValueError("engine does not expose leverage_brackets")
+        payload = fetch(list(symbols))
+        brackets = parse_brackets_payload(payload, list(symbols))
+        asof = self.now_utc()
+        merged = dict(self.policy.config.leverage_brackets)
+        merged.update(brackets)
+        self.policy.config = replace(
+            self.policy.config, leverage_brackets=merged,
+            brackets_asof_utc=asof, run_mode=True,
+            brackets_required_in_run_mode=True)
+        self.store.checkpoint(self.run_id, "brackets-armed",
+                              {"origin": "live-readiness",
+                               "asof_utc": asof.isoformat(),
+                               "symbols": sorted(brackets)})
+        return {"symbols": sorted(brackets), "asof_utc": asof.isoformat()}
+
     def _ensure_symbol_filters(self, symbol: str) -> bool:
         """Arm filters for a newly seen paper symbol. False when blocked."""
         if self.config.mode != "paper":
@@ -515,6 +546,12 @@ class Session:
                "unknown_ids": unknown_ids,
                "ts_utc": self.now_utc().isoformat()}
         self.alerts.append(out)
+        # B#18: alerts persist to alerts.jsonl (durable, watchdog/
+        # operator readable); sink delivery (webhook/Telegram) is F6.
+        try:
+            self._append_run_file("alerts.jsonl", out)
+        except (OSError, ValueError):
+            pass
         try:
             self.store.checkpoint(self.run_id, "safe-mode", out)
         except Exception:  # noqa: BLE001 — checkpoint best-effort here
@@ -3815,13 +3852,22 @@ class Session:
             name="filters")
 
     def _apply_run_filters(self, filters: dict, asof: Any) -> None:
-        """Install fetched venue filters on the control thread."""
+        """Install fetched venue filters on the control thread.
+
+        B#14: paper arming (public exchangeInfo, no signed endpoint)
+        cannot require venue brackets — the flag flips False here so
+        paper run_mode admissions flow; arming brackets later via
+        arm_brackets re-engages the gate (configured brackets always
+        enforce). Live/demo readiness arms brackets + run_mode
+        together via arm_live_brackets (fail closed).
+        """
         from dataclasses import replace
         merged = dict(self.policy.config.instrument_filters)
         merged.update(filters)
         self.policy.config = replace(
             self.policy.config, instrument_filters=merged,
-            filters_asof_utc=asof, run_mode=True)
+            filters_asof_utc=asof, run_mode=True,
+            brackets_required_in_run_mode=(self.config.mode != "paper"))
         self.store.checkpoint(self.run_id, "filters-armed",
                               {"symbols": sorted(filters),
                                "asof_utc": asof.isoformat()})
@@ -4270,6 +4316,28 @@ class Session:
             return "duration-elapsed"
         return None
 
+    def _write_watchdog_heartbeat(self) -> None:
+        """Write the external-watchdog heartbeat file (B#18).
+
+        tools/watchdog.py --heartbeat <this file>: {ts_utc,
+        has_exposure, run_id}. Stable path under storage_dir (one per
+        host, latest run wins); atomic replace so readers never see a
+        torn write. Best-effort: a failed write must not disturb the
+        run (the watchdog treats unreadable as stale+exposed).
+        """
+        try:
+            beat = {"ts_utc": self.now_utc().isoformat(),
+                    "has_exposure": bool(self.ledger.has_position()
+                                         or self._position is not None),
+                    "run_id": self.run_id}
+            base = Path(self.config.storage_dir)
+            base.mkdir(parents=True, exist_ok=True)
+            tmp = base / "heartbeat.json.tmp"
+            tmp.write_text(json.dumps(beat) + "\n", encoding="utf-8")
+            os.replace(tmp, base / "heartbeat.json")
+        except (OSError, ValueError):
+            pass
+
     def _supervise(self, ctx: dict[str, Any],
                    now_mono: float) -> str | None:
         """Position + risk supervision shared by the loop and control_tick."""
@@ -4306,6 +4374,7 @@ class Session:
             ctx["last_beat"] = now_mono
             self.store.heartbeat(self.run_id, self._pid)
             self._persist_local_state()
+            self._write_watchdog_heartbeat()
         stop = self._stop_flag or self.store.stop_requested(self.run_id)
         if stop is not None:
             if stop == "flatten":

@@ -1190,6 +1190,7 @@ class BinanceLiveEngine:
                 return list(cached)
         views = self._signed("GET", "/fapi/v1/openOrders")
         algo_views = self._signed("GET", "/fapi/v1/openAlgoOrders")
+        self._last_open_views = (views, algo_views)
         journaled = set(self._reservations)
         out: list[EngineOrderStatus] = []
         ignored = 0
@@ -1226,6 +1227,31 @@ class BinanceLiveEngine:
             self._journal("foreign-orders-ignored", {"count": ignored})
         self._orders_cache = (now_s, out)
         return list(out)
+
+    def stray_order_ids(self) -> tuple[str, ...]:
+        """Unjournaled (foreign/manual) open order ids (B#13).
+
+        Refreshes through open_orders() (TTL applies), then reports
+        the venue cids that are NOT bot-journaled. Seed refuses on
+        any strays (fail closed: unknown live orders + a fresh bot
+        run = unmanaged interaction). Empty tuple when clean.
+        """
+        self.open_orders()
+        journaled = set(self._reservations)
+        strays: list[str] = []
+        try:
+            views = self._last_open_views
+        except AttributeError:
+            views = ([], [])
+        for v in views[0]:
+            cid = str(v.get("clientOrderId", ""))
+            if cid and cid not in journaled and cid not in strays:
+                strays.append(cid)
+        for v in views[1]:
+            cid = str(v.get("clientAlgoId", v.get("clientOrderId", "")))
+            if cid and cid not in journaled and cid not in strays:
+                strays.append(cid)
+        return tuple(strays)
 
     def resolve(self, client_id: str) -> str | None:
         """Live ids are durable at submit; None only when never journaled."""
@@ -1652,6 +1678,24 @@ class BinanceLiveEngine:
                             {"symbol": symbol.upper(),
                              "incomeType": "FUNDING_FEE", "limit": 1000})
         return sum(float(r.get("income", 0.0) or 0.0) for r in rows)
+
+    def leverage_brackets(self, symbols: list[str]) -> list[dict[str, Any]]:
+        """Raw leverageBracket entries for `symbols` (B#14 live arming).
+
+        Signed GET per symbol (credentialed at runtime, never stored).
+        Raises VenueHttpError/VenueRejectedError on transport failure
+        (readiness refuses — the bracket gate needs these tiers).
+        """
+        out: list[dict[str, Any]] = []
+        for symbol in symbols:
+            self._guarded("leverage_brackets")
+            rows = self._signed("GET", "/fapi/v1/leverageBracket",
+                                {"symbol": symbol.upper()})
+            if isinstance(rows, list):
+                out.extend(dict(r) for r in rows)
+            elif isinstance(rows, dict):
+                out.append(dict(rows))
+        return out
 
     def venue_status(self, symbols: list[str]) -> dict[str, Any]:
         """Read-only account/venue snapshot for `cryptobot readiness`.
