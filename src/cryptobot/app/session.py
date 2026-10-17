@@ -19,6 +19,9 @@ from typing import Any, Callable
 
 from cryptobot.accounting.day import accounting_date
 from cryptobot.accounting.ledger import Ledger
+from cryptobot.adapters.binance_live import (
+    RateLimitedError, UnknownOutcomeError, VenueHttpError,
+    VenueRejectedError)
 from cryptobot.coordination.exits import decode_exit_rule
 from cryptobot.coordination.selector import (Candidate, Selector,
                                              SelectorConfig)
@@ -275,6 +278,11 @@ class Session:
         # releases exactly the strings it latched once a fresh snapshot
         # proves the condition cleared. Empty == no health latch.
         self._health_halt_reasons: set[str] = set()
+        # A#4: set by _snapshot_account when a venue read inside it
+        # fails degraded (margin/inflight unknown). _health_tick turns
+        # it into a blocking gate reason (level-wise: auto-releases on
+        # the next fresh snapshot). Reset on every snapshot call.
+        self._reads_degraded = False
         self._user_stream_attachment: Any | None = None
         self._known_reservations: set[str] = set()
         self._cmd_seq = 0
@@ -658,6 +666,7 @@ class Session:
         # (None skips the margin gate), a round-trip fee buffer in margin
         # space, and the one-budget in-flight exposure figure.
         available: float | None = None
+        self._reads_degraded = False
         # T1.2: hot path prefers the cached margin variant only when
         # the CLI enabled it for a live run (scripted/drill dialogues
         # keep the exact one-REST-per-call contract).
@@ -670,8 +679,13 @@ class Session:
         if callable(account_margin):
             try:
                 margins = account_margin()
-            except (ValueError, KeyError, AttributeError):
+            except (ValueError, KeyError, AttributeError,
+                    VenueHttpError, UnknownOutcomeError):
+                # A#4: venue reads fail degraded (margin None skips the
+                # margin gate; leverage cap still applies; venue
+                # rejections backstop sizing), never fatal.
                 margins = None
+                self._reads_degraded = True
             if margins is not None:
                 available = float(margins[0])
         fee_buffer = 0.0
@@ -713,8 +727,13 @@ class Session:
         pending = 0.0
         try:
             statuses = self.engine.open_orders()
-        except (ValueError, KeyError, AttributeError):
+        except (ValueError, KeyError, AttributeError,
+                VenueHttpError, UnknownOutcomeError):
+            # A#4: unknown pending exposure degrades to ledger+booked
+            # only (venue rejects backstop any oversize); the health
+            # gate separately blocks entries on degraded reads.
             statuses = []
+            self._reads_degraded = True
         for status in statuses:
             role = getattr(status, "role", "entry")
             if role != "entry":
@@ -1253,6 +1272,63 @@ class Session:
                 pass
             self.policy.release(verdict.reservation_id)
             reason = f"execution:submit-rejected:{type(exc).__name__}"
+            self._note_reject(reason, intent.strategy, intent.instrument,
+                              intent.side.value)
+            self.store.record_intent(
+                self.run_id, intent.evidence_ref, intent.strategy,
+                intent.instrument, intent.side.value, "rejected",
+                reason, self.now_utc().isoformat())
+            return
+        except UnknownOutcomeError as exc:
+            # B#1: the submit MAY have executed (timeout/502/503/504).
+            # Fail-closed: KEEP the risk hold (re-entry blocked until
+            # lookup resolves), link the journaled engine id so
+            # _reconcile_commands + _drain_unknown_outcomes can adopt
+            # the outcome, and record submitted-unknown. Never raise:
+            # an ambiguous submit must not kill the run.
+            try:
+                self.store.update_command(
+                    cmd_id, "unknown",
+                    engine_client_id=exc.client_id)
+            except (ValueError, KeyError):
+                pass
+            reason = f"execution:submitted-unknown:{exc.client_id}"
+            self.store.record_intent(
+                self.run_id, intent.evidence_ref, intent.strategy,
+                intent.instrument, intent.side.value,
+                "submitted-unknown",
+                reason, self.now_utc().isoformat())
+            return
+        except VenueRejectedError as exc:
+            # B#1: deterministic venue rejection (incl. pre-send rate
+            # limits): NOTHING executed (adapter contract retry_safe).
+            # Free the hold, record rejected, continue the run.
+            try:
+                self.store.update_command(cmd_id, "failed")
+            except (ValueError, KeyError):
+                pass
+            self.policy.release(verdict.reservation_id)
+            kind = ("execution:rate-limited"
+                    if isinstance(exc, RateLimitedError)
+                    else "execution:venue-rejected")
+            reason = f"{kind}:{exc.status}:{exc.code}"
+            self._note_reject(reason, intent.strategy, intent.instrument,
+                              intent.side.value)
+            self.store.record_intent(
+                self.run_id, intent.evidence_ref, intent.strategy,
+                intent.instrument, intent.side.value, "rejected",
+                reason, self.now_utc().isoformat())
+            return
+        except VenueHttpError as exc:
+            # B#1: definitive venue failure that is neither a timeout
+            # (those surface as UnknownOutcomeError) nor a rejection:
+            # nothing executed. Free the hold, record rejected.
+            try:
+                self.store.update_command(cmd_id, "failed")
+            except (ValueError, KeyError):
+                pass
+            self.policy.release(verdict.reservation_id)
+            reason = f"execution:venue-error:{exc.status}:{exc.code}"
             self._note_reject(reason, intent.strategy, intent.instrument,
                               intent.side.value)
             self.store.record_intent(
@@ -1845,9 +1921,20 @@ class Session:
             self._set_state("ready", "health-recovered")
 
     def _health_tick(self) -> None:
-        """One account-snapshot health evaluation, level-applied (F2)."""
-        self._apply_health_gate(
-            self.policy.check_health(self._snapshot_account()))
+        """One account-snapshot health evaluation, level-applied (F2).
+
+        A#4: venue reads that failed degraded inside the snapshot
+        (margin/inflight unknown) latch a blocking gate reason instead
+        of killing the run; the level-wise gate releases it on the
+        next fresh snapshot.
+        """
+        snapshot = self._snapshot_account()
+        health = self.policy.check_health(snapshot)
+        if self._reads_degraded:
+            health = HealthStatus(
+                False, tuple(health.reasons) + ("health:degraded-reads",),
+                health.latched)
+        self._apply_health_gate(health)
 
     # -- command intentions (contract v1 §4) -------------------------------
     def _new_command(self, kind: str, payload: dict[str, Any]) -> str:
@@ -3153,7 +3240,11 @@ class Session:
         if "cancel_pending_orders" in actions:
             try:
                 orders = self.engine.open_orders()
-            except (ValueError, KeyError, AttributeError):
+            except (ValueError, KeyError, AttributeError,
+                    VenueHttpError, UnknownOutcomeError):
+                # B#5: a 429/5xx while listing must not kill stop
+                # processing mid-emergency; skip cancels this tick,
+                # retry next tick (exposure retained meanwhile).
                 orders = []
             for status in orders:
                 if getattr(status, "role", "entry") != "entry":
@@ -3168,8 +3259,12 @@ class Session:
         if "reduce_exposure" in actions:
             try:
                 self._flatten("stop-action")
-            except (ValueError, KeyError, RuntimeError):
-                pass  # reduction retried next tick; exposure retained.
+            except Exception as exc:  # noqa: BLE001 — B#5: reduction
+                # retried next tick (unknown closes stay in flight per
+                # A#1; nothing duplicates); exposure retained meanwhile.
+                self.store.checkpoint(
+                    self.run_id, "stop-action-flatten-deferred",
+                    {"reason": f"{type(exc).__name__}:{exc}"})
         if self._stop_alerted or self.policy.emergency_active():
             # A latch stood: probe reconciled recovery only when no
             # exposure actions remain (cheap bool gate off the hot path).
@@ -4040,7 +4135,13 @@ class Session:
             self._prime_call.wait(timeout=wait_s)
             self._poll_async_prime()
         if self._position is not None and end_reason == "duration-elapsed":
-            self._flatten("duration-end")
+            try:
+                self._flatten("duration-end")
+            except Exception as exc:  # noqa: BLE001 — B#1: an
+                # unknown/failed duration-end close must enter safe
+                # mode (halt + alert), never exit with exposure while
+                # the process reports a clean run.
+                self.enter_safe_mode(f"duration-end:{type(exc).__name__}")
             self._drain_engine()
         self._set_state("stopping", end_reason)
         # Final full drain: live wakes are bounded, so sweep the backlog
