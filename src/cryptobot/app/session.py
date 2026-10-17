@@ -254,11 +254,8 @@ class Session:
         self._in_flatten = False
         # Session-owned exit-only reasons (R3 halt independence).
         self._exit_only_reasons: set[str] = set()
-        # F2: health-gate reasons latched from the policy monitor. Unlike
-        # the policy's own latches (which persist in risk state), these
-        # are level-evaluated against every account snapshot: the gate
-        # releases exactly the strings it latched once a fresh snapshot
-        # proves the condition cleared. Empty == no health latch.
+        # Transient health reasons are level-evaluated from complete
+        # snapshots. Policy loss/profit stops remain persistent latches.
         self._health_halt_reasons: set[str] = set()
         self._user_stream_attachment: Any | None = None
         self._known_reservations: set[str] = set()
@@ -1493,46 +1490,6 @@ class Session:
     _TRANSIENT_MARK_HALTS = frozenset({
         "health:stale-mark", "health:mark-age-unknown"})
 
-    def _sync_health_halts(self, health: Any) -> None:
-        """Re-derive mark freshness; retain independently latched stops.
-
-        Call only with a health result evaluated against an account
-        snapshot. An intent-free, account-less tick cannot prove that
-        prices recovered. Malformed/unreconciled snapshots cannot lift
-        a freshness hold either.
-        """
-        reasons = set(health.reasons)
-        engine_reasons = getattr(self.engine, "exit_only_reasons", None)
-        if callable(engine_reasons):
-            # Recovered paper journals can contain an old mark hold.
-            # Adopt only our known transient reasons, never stream or
-            # other subsystems' holds.
-            self._exit_only_reasons.update(
-                self._TRANSIENT_MARK_HALTS.intersection(engine_reasons()))
-        previous = self._exit_only_reasons.intersection(
-            self._TRANSIENT_MARK_HALTS)
-        mark_checked = not any(
-            r.startswith("health:") and r not in self._TRANSIENT_MARK_HALTS
-            for r in reasons)
-        released = previous - reasons if mark_checked else set()
-        # Engage before releasing, so unknown -> stale cannot briefly
-        # enable entries in an adapter that observes halt transitions.
-        for reason in sorted(reasons):
-            self._halt_entries(reason)
-        for reason in sorted(released):
-            self._release_exit_only(reason)
-        if not health.ok:
-            self._set_state("halted", ";".join(health.reasons))
-        elif released and not self._exit_only_reasons \
-                and not (callable(engine_reasons) and engine_reasons()) \
-                and self._admission_hold() is None:
-            row = self.store.get_run(self.run_id) or {}
-            if row.get("state") == "halted" and self._stop_flag is None \
-                    and self.store.stop_requested(self.run_id) is None:
-                state = "holding" if self._position is not None else (
-                    "ready" if self._warmed else "warming")
-                self._set_state(state, "health:mark-recovered")
-
     def _halt_entries(self, reason: str) -> None:
         """Halt entries under a Session-owned reason (R3).
 
@@ -1576,9 +1533,6 @@ class Session:
         """
         for reason in sorted(self._exit_only_reasons):
             self._release_exit_only(reason)
-            setter = getattr(self.engine, "set_exit_only", None)
-            if callable(setter):
-                setter(False, reason)
         self._exit_only_reasons.clear()
         # F2: a wipe releases the health gate's tracking too, so a still-
         # failing condition re-latches on the next snapshot (fail-closed)
@@ -1600,9 +1554,8 @@ class Session:
 
         - a not-ok verdict latches its CURRENT reason string (idempotent:
           repeat verdicts write nothing);
-        - a reason string the gate latched before but no longer holds is
-          released, mirroring it out of the engine's reason-keyed
-          exit-only;
+        - a transient health reason no longer present is released;
+          policy loss/profit stops remain latched until reconciliation;
         - the run flips back to ready only when this gate released
           something AND nothing else blocks entries (other exit-only
           reasons, booking blocks, pending flattens).
@@ -1612,33 +1565,49 @@ class Session:
         fresh snapshot. No snapshot, no release — callers pass verdicts
         computed from a real account snapshot only.
         """
-        desired = None if health.ok else (";".join(health.reasons)
-                                          or "health:unknown")
-        if desired is not None:
-            self._health_halt_reasons.add(desired)
-            if desired not in self._exit_only_reasons:
-                self._halt_entries(desired)
-                self._set_state("halted", desired)
+        reasons = set(health.reasons) if not health.ok else set()
+        if not health.ok and not reasons:
+            reasons.add("health:unknown")
+        engine_reasons = getattr(self.engine, "exit_only_reasons", None)
+        recovered = self._TRANSIENT_MARK_HALTS.intersection(
+            engine_reasons() if callable(engine_reasons) else ())
+        self._exit_only_reasons.update(recovered)
+        self._health_halt_reasons.update(recovered)
+        desired = {r for r in reasons if r.startswith("health:")}
+        mark_checked = not (desired - self._TRANSIENT_MARK_HALTS)
+        if not mark_checked:
+            # An invalid/unreconciled account cannot prove mark recovery.
+            desired.update(self._health_halt_reasons.intersection(
+                self._TRANSIENT_MARK_HALTS))
+        added = reasons - self._exit_only_reasons
+        # Engage replacements before releasing old reasons. Persistent
+        # daily-loss/profit stops remain outside this gate's ownership.
+        for reason in sorted(reasons):
+            self._halt_entries(reason)
+        self._health_halt_reasons.update(desired)
         released = False
         for reason in sorted(self._health_halt_reasons):
-            if reason == desired:
+            if reason in desired:
                 continue
             self._health_halt_reasons.discard(reason)
             self._release_exit_only(reason)
             released = True
         if released and self._exit_only_reasons:
-            # Paper engines keep ONE bool: any lift clears it. Re-assert a
-            # surviving reason so the bool cannot fall while another halt
-            # still stands (keyed engines: idempotent re-add). Mirrors the
-            # paper-semantics decision in the parallel F2-MARK-HEALTH fix.
+            # Keep compatibility with legacy bool-shaped test adapters;
+            # production and paper adapters now retain individual keys.
             setter = getattr(self.engine, "set_exit_only", None)
             if callable(setter):
                 setter(True, sorted(self._exit_only_reasons)[0])
-        if released and desired is None \
+        if added:
+            self._set_state("halted", ";".join(sorted(reasons)))
+        if released and health.ok \
                 and not self._exit_only_reasons \
-                and self._booking_blocked is None \
-                and not self._flatten_pending:
-            self._set_state("ready", "health-recovered")
+                and not (callable(engine_reasons) and engine_reasons()) \
+                and self._admission_hold() is None \
+                and self._stop_flag is None \
+                and self.store.stop_requested(self.run_id) is None:
+            self._set_state("holding" if self._position is not None else
+                            "ready", "health-recovered")
 
     def _health_tick(self) -> None:
         """One account-snapshot health evaluation, level-applied (F2)."""
@@ -2834,7 +2803,7 @@ class Session:
         # Recover a transient mark hold before evaluating the next
         # eligible bar. Do not let one stale startup observation poison
         # every later, fresh economic submission.
-        self._sync_health_halts(
+        self._apply_health_gate(
             self.policy.check_health(self._snapshot_account()))
         if self._position is not None:
             # Time exits and flat inference run on market traffic too.
@@ -2892,7 +2861,6 @@ class Session:
                     self.protection.observe(self.now_utc(), reading, baseline)
                 except (KeyError, TypeError, ValueError):
                     pass
-        self._health_tick()
         self._run_stop_actions()
 
     @staticmethod
@@ -3686,7 +3654,7 @@ class Session:
         # ticks must detect stale prices AND observe later recovery.
         snapshot = self._snapshot_account()
         tick = self.policy.monitor_tick(account=snapshot)
-        self._sync_health_halts(tick)
+        self._apply_health_gate(tick)
         self._run_stop_actions(snapshot)
         self._drain_unknown_outcomes()
         self._refresh_filters_if_stale()

@@ -33,6 +33,7 @@ LIVE_STATUSES = frozenset({"open", "partial", "unknown"})
 
 _EPS = 1e-12
 _TOPUP_BOUND = 5
+_ENGINE_HALT_REASON = "runtime-trader"
 
 
 class RuntimeTrader:
@@ -73,7 +74,7 @@ class RuntimeTrader:
         self._topup_attempts: dict[str, int] = {}
         self._gap_terminal: set[str] = set()
         if exit_only:
-            engine.set_exit_only(True, "constructed-halted")
+            engine.set_exit_only(True, _ENGINE_HALT_REASON)
 
     # -- submission ------------------------------------------------------
     def submit_entry(
@@ -533,7 +534,10 @@ class RuntimeTrader:
         if halted == self.exit_only:
             return  # level-triggered: steady state, nothing to record.
         self.exit_only = halted
-        self.engine.set_exit_only(halted, reason)
+        # The engine key denotes ownership; caller-specific engage and
+        # recovery descriptions need not be the same string. Preserve
+        # unrelated Session/stream/risk reasons in reason-keyed adapters.
+        self.engine.set_exit_only(halted, _ENGINE_HALT_REASON)
         self._log("*", "halt-engaged" if halted else "halt-cleared", {"reason": reason})
 
     # -- restart recovery ---------------------------------------------------------
@@ -612,7 +616,7 @@ class RuntimeTrader:
                     detail["time_exit_utc"])
         if halted is not None:
             trader.exit_only = halted
-            engine.set_exit_only(halted, "recovered-level")
+            engine.set_exit_only(halted, _ENGINE_HALT_REASON)
         # Reconcile: ids the engine never saw are lost-on-restart, not assumed.
         lost: list[str] = []
         for client_id in list(trader._client_role):
