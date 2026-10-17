@@ -239,8 +239,8 @@ never read. Campaign `data/captures/campaign-1day-*` events never read
 | ID | Task | Status |
 |---|---|---|
 | F0.1 | Re-entry: worktree + read committed docs | DONE |
-| F0.2 | Hermetic suite: zone test via git object + guard test, full suite 0 failed | IN_PROGRESS |
-| F0.3 | Claim audit PASS/REOPEN table | TODO |
+| F0.2 | Hermetic suite: zone test via git object + guard test, full suite 0 failed | IN_PROGRESS (fix 1e96e80; full suite sh_14bf34aa running) |
+| F0.3 | Claim audit PASS/REOPEN table | DONE (21 items, 0 REOPEN; item 21 full-suite shared w/F0.2) |
 | F0.4a | Leverage-bracket gate into LIVE admission + stale reject | TODO |
 | F0.4b | Break-even re-derivation + tests + fix >60% statement | TODO |
 | F0.4c | Paper fill model parameterized + calibration path | TODO |
@@ -289,3 +289,41 @@ never read. Campaign `data/captures/campaign-1day-*` events never read
   suite runs with main-venv interpreter + PYTHONPATH=worktree/src so
   the tested code is the worktree's (verified
   cryptobot.__file__=worktree/src/...).
+- F0.3 CLAIM AUDIT (all DONE items in FINAL_STATUS.md re-run in
+  worktree @1e96e80; interpreter main-venv + PYTHONPATH=worktree/src):
+
+  | # | DONE claim (FINAL_STATUS) | Evidence cmd (re-run) | Result |
+  |---|---|---|---|
+  | 1 | T0.1 baseline 81 passed | `pytest test_binance_live_contract test_binance_live_v008 test_execution_orders test_execution_e2e acceptance/test_ledger acceptance/test_risk_sizing acceptance/test_risk_v008` | PASS (81 passed) |
+  | 2 | T0.2 F2+sizing 11 passed | `pytest test_session_health_recovery acceptance/test_sizing_funding_clamp` | PASS (11 passed) |
+  | 3 | T0.3 ruff/mypy configs + CI non-blocking | `ls .github/workflows/ci.yml; grep continue-on-error` (2 hits); `ruff check src tests` | PASS (CI non-blocking verified; ruff now 657 vs 628 baseline — count drift, see note A) |
+  | 4 | T0.4 doctor truth 28 passed | `pytest test_doctor_truth test_cli_readiness` | PASS (28 passed) |
+  | 5 | T1.1 venue seeding 84 passed | `pytest test_venue_seeding test_cli_readiness test_binance_live_contract test_binance_live_v008` | PASS (84 passed) |
+  | 6 | T1.5 shutdown flatten 34 w/regressions | `pytest test_shutdown_flatten` (2) + `test_cli_readiness` (25) | PASS-core (core green; exact 34-file set under-specified in STATE, covered by full suite; note B) |
+  | 7 | T1.6 client IDs unique 1000/5 restarts | `pytest test_client_ids` | PASS (2 passed, UUID+seq, zero collisions) |
+  | 8 | T1.7 funding booking 6 w/T1.8 | `pytest test_funding_booking test_margin_sizing` | PASS (6 passed) |
+  | 9 | P2-P6 batch 9 passed | `pytest test_hardening_batch` | PASS-functional (10 passed; was 9 @767650d, soak added later — count drift, note C) |
+  | 10 | P5 cost v2 table taker>60% | `breakeven_table()` 25/25 taker 1x → 86% req, 18bps RT | PASS (86%>60%; imprecision + missing INFEASIBLE flag → F0.4b TODO) |
+  | 11 | P5 prereg H1-H3 committed pre-eval | `ls research/prereg/` (3 files); `git log -- research/prereg/` (767650d, no eval after) | PASS |
+  | 12 | P5 verdict CLI PASS/FAIL/UNDER | `cryptobot verdict --help`; `test_verdict_underpowered_and_fail` in batch | PASS |
+  | 13 | P6 gate NO-GO + arm refuses exit 2 | `cryptobot gate --out` → NO-GO RC=2; `cryptobot arm` → REFUSED RC=2, no armed.json | PASS |
+  | 14 | P6 ladder+canary functions | `test_ladder_demotion_and_canary` in batch | PASS |
+  | 15 | Bench: hotpath ≤1/5s, debounce ≤1/s | `pytest test_hotpath_cache` | PASS (4 passed) |
+  | 16 | Bench: paper 1-tick adverse | `pytest test_fill_realism test_adapters_paper_engine` | PASS (55 passed) |
+  | 17 | Gate table: drill BLOCKED, latency UNDERPOWERED, paper NOT RUN | `cryptobot demo-drill --help`, `latency-probe --help` exist; no drill/latency JSONs in tree | PASS (correctly unmet) |
+  | 18 | No BLOCKED in STATE.md | grep BLOCKED in STATE task table (0) | PASS |
+  | 19 | Prod OFF default | `grep allow_live_submission configs/prod.toml` → false | PASS |
+  | 20 | Research: pilot 0/14 best −25.37bps; H-R2 −13.42bps | research/DATA_LEDGER.md cites as pre-takeover audit inputs | PASS-cited (raw data/pilot + datasets/benchmark_30d absent in committed worktree — uncommitted in main, never touched per rule; note D) |
+  | 21 | Full suite 1479/1/1 on 8b7f254 | Background full suite @1e96e80 running (sh_14bf34aa) | PENDING (required 0 failed; closes F0.2) |
+
+  Notes: (A) ruff 628→657 drift predates RUN2 (own files clean:
+  `ruff check` on both changed test files → All checks passed).
+  (B) T1.5/T1.3/T1.2 "with regressions" counts (34/28/77) lack exact
+  file lists in STATE; core files green, full suite is the closer.
+  (C) batch 9→10: `git show 767650d:...batch` has 9 defs, HEAD has 10
+  (soak added in 400a741); STATE/FINAL counts stale, function green.
+  (D) pilot/benchmark raw data not in committed tree — numbers are
+  ledger-cited audit inputs, not recomputed; F0.4d maps verdict
+  sentences to machine JSON.
+  REOPENs opened: NONE (0). F0.3 → DONE pending full-suite close of
+  item 21 (shared with F0.2).
