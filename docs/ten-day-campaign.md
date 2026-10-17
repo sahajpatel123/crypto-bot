@@ -69,31 +69,36 @@ screen's data list requires.
 
 ## Launched (2026-10-16, this host)
 
-**Live now**: `data/captures/campaign-20261016/` — BTCUSDT, profile
-`lean500`, 10 days, 1-hour chunks, `--min-free-gb 2`, started
-2026-10-16T15:13Z. Launched detached as:
+**2026-10-17 redirect (owner decision): 1 day, 10 GB budget, richest
+capture.** The 10-day BTC-only campaign ran 11 chunks cleanly (10
+complete + 1 honest partial, 72 MB, 0 gaps) and was stopped per the
+owner's new direction. It is preserved untouched at
+`data/captures/campaign-20261016/` (status `stopped`).
+
+**Live now**: `data/captures/campaign-1day-20261017/` — BTCUSDT+ETHUSDT,
+profile `full` (aggTrade + markPrice@1s + bookTicker + depth@100ms),
+1 day, 1-hour chunks, `--min-free-gb 2`, started 2026-10-17T12:13Z.
+A 1-day window inside a 10 GB budget affords the full channel set the
+10-day window could not: live preflight (120 s, measured) projected
+**1.2 GB settled / 2.4 GB peak against 14.5 GB free → verdict OK**
+(depth synced in probe; gzip 0.090 on full-profile bytes).
 
 ```sh
 cd /Users/sahajpatel/Code/cryto-bot
 nohup caffeinate -is .venv/bin/python <this-branch>/tools/capture_campaign.py start \
-  --dest /Users/sahajpatel/Code/cryto-bot/data/captures/campaign-20261016 \
-  --days 10 --chunk-hours 1 --symbols BTCUSDT --probe-s 180 --min-free-gb 2 \
-  >> data/captures/campaign-20261016.nohup.log 2>&1 &
+  --dest /Users/sahajpatel/Code/cryto-bot/data/captures/campaign-1day-20261017 \
+  --days 1 --chunk-hours 1 --symbols BTCUSDT,ETHUSDT --profile full \
+  --probe-s 120 --min-free-gb 2 \
+  >> data/captures/campaign-1day-20261017.nohup.log 2>&1 &
 ```
-
-Live preflight (180 s, measured): events 36.2 kB/s, raw 42.4 kB/s,
-gzip ratio **0.183**, projected settled **5.9 GB** / peak 6.2 GB against
-13.9 GB free → **verdict OK** (depth synced in probe; 94 % of depth
-diffs chain after the first minute, ~2 resyncs/min, books heal in
-~2.5 s; the eligibility layer records any spans honestly).
 
 Monitor / stop:
 
 ```sh
 .venv/bin/python <this-branch>/tools/capture_campaign.py status \
-  --dest data/captures/campaign-20261016
+  --dest data/captures/campaign-1day-20261017
 .venv/bin/python <this-branch>/tools/capture_campaign.py stop \
-  --dest data/captures/campaign-20261016
+  --dest data/captures/campaign-1day-20261017
 ```
 
 Notes: `status` shows the full chunk ledger once the first hourly chunk
