@@ -149,7 +149,7 @@ def test_rel_fill_fee_protection(tmp_path):
             " AND kind='fill'").fetchall()]
         assert len(fills) == 1, fills
         expect_fee = fills[0]["qty"] * fills[0]["price"] * 3.0 / 10000.0
-        assert fills[0]["fee"] == pytest.approx(expect_fee, rel=1e-9)
+        assert fills[0]["fee"] == pytest.approx(expect_fee, rel=1e-6)  # venue fee rounding (T1.9 slipped price)
         assert fills[0]["fee"] == pytest.approx(0.03, abs=5e-4)
         assert session.ledger.paid_costs() == pytest.approx(
             fills[0]["fee"]), "fee booked once"
