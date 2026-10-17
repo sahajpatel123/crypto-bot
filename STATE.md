@@ -246,11 +246,11 @@ never read. Campaign `data/captures/campaign-1day-*` events never read
 | F0.4c | Paper fill model parameterized + calibration path | DONE |
 | F0.4d | RESEARCH_VERDICTS sentences -> verdict JSON mapping | DONE |
 | F0.5 | Adversarial review (2 subagents or 30-item pre-mortem) | IN_PROGRESS (2 reviewers launched ses_eb3ff36d/ses_eb3ff369, read-only) |
-| F3.1 | Standalone recorder Binance USD-M + USDC check | IN_PROGRESS (builder ses_eb3fdca9) |
-| F3.2 | Venue plugins Bybit/OKX behind flags | IN_PROGRESS (builder ses_eb3fdca9) |
-| F3.3 | Durability: buffer, fsync, rotation, hash-chain, reports | IN_PROGRESS (builder ses_eb3fdca9) |
+| F3.1 | Standalone recorder Binance USD-M + USDC check | DONE (integrated) |
+| F3.2 | Venue plugins Bybit/OKX behind flags | DONE (stubs behind flags) |
+| F3.3 | Durability: buffer, fsync, rotation, hash-chain, reports | DONE (integrated) |
 | F3.4 | Campaign manifest metadata gap note | DONE |
-| F3.5 | Vault DEV/CONFIRM + token gate + import-lint | IN_PROGRESS (builder ses_eb3fdca8) |
+| F3.5 | Vault DEV/CONFIRM + token gate + import-lint | DONE (integrated) |
 | F3.6 | recorder CLI + systemd + compose | TODO |
 | F1.1 | Property tests (Hypothesis) | DONE |
 | F1.2 | Mutation testing risk/execution/adapters | TODO |
@@ -406,3 +406,17 @@ never read. Campaign `data/captures/campaign-1day-*` events never read
   1e9). Independently confirmed by reviewer A#11. Regression test in
   test_risk_rounding. 20 passed (properties+rounding), 30 passed
   (rounding/sizing/protected-entry regression).
+- F3.1-F3.3 DONE (builder ses_eb3fdca9, owner-verified): recorder
+  package (writer/streams/plugins/integrity/service, 1399 lines),
+  16 tests green (overflow loud-drop, tamper-evident chain,
+  integrity counts), systemd unit, README. forceOrder via
+  all-market !forceOrder@arr + client filter (no per-symbol stream
+  exists); Bybit/OKX STUBS behind flags with UNVERIFIED endpoint
+  refs. Ruff: only 7 UP017 (timezone.utc kept for codebase
+  consistency, matching E-006 convention).
+- F3.5 DONE (builder ses_eb3fdca8, owner-verified): vault package
+  (registry/tokens/loader/_common), 30 tests green (chain tamper,
+  one-shot tokens, CONFIRM token-gate, SYNTHETIC refuse,
+  import-lint). Review point (vault README): cross-hypothesis
+  DEV-for-H/CONFIRM-for-H2 nuance follows per-hypothesis classify;
+  accepted (documented).
