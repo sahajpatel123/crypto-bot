@@ -495,8 +495,14 @@ class Session:
                 break
             except Exception:  # noqa: BLE001 — safe mode must not raise
                 flatten_ok = False
+        # B#7: a non-raising _flatten can still leave unknown closes
+        # (in flight, unconfirmed). Verify before reporting success.
+        unknown_ids = self._unknown_tracked_ids()
+        if flatten_ok and (unknown_ids or not self._is_flat_confirmed()):
+            flatten_ok = False
         out = {"kind": "safe-mode", "reason": str(reason),
                "flatten_attempted": attempted, "flatten_ok": flatten_ok,
+               "unknown_ids": unknown_ids,
                "ts_utc": self.now_utc().isoformat()}
         self.alerts.append(out)
         try:
@@ -506,7 +512,12 @@ class Session:
         return out
 
     def _is_flat_confirmed(self) -> bool:
-        """Ledger flat and (when the engine can say) venue flat."""
+        """Ledger flat and (when the engine can say) venue flat.
+
+        B#8: venue-unreachable (snapshot None) is UNCONFIRMED, never
+        flat. Engines without account_snapshot fall back to the
+        ledger-only check (documented seam limitation).
+        """
         if self.ledger.has_position():
             return False
         snap_fn = getattr(self.engine, "account_snapshot", None)
@@ -515,9 +526,20 @@ class Session:
                 snap = snap_fn()
             except Exception:  # noqa: BLE001 — unconfirmed, not flat
                 return False
-            if snap is not None and getattr(snap, "positions", ()):
+            if snap is None:
+                return False  # venue unknown: cannot confirm flat.
+            if getattr(snap, "positions", ()):
                 return False
         return True
+
+    def _unknown_tracked_ids(self) -> list[str]:
+        """Tracked ids whose outcome is unknown (B#7 honest reporting)."""
+        try:
+            statuses = self._tracked_statuses_for(self._position)
+        except (ValueError, KeyError, AttributeError):
+            return []
+        return sorted(cid for cid, st in statuses.items()
+                      if getattr(st, "state", None) == "unknown")
 
     def shutdown_flatten(self, *, attempts: int = 3) -> dict[str, Any]:
         """Shutdown (T1.5): flatten + confirm flat, bounded retries.
@@ -2586,7 +2608,11 @@ class Session:
         close_live = False
         for cid in closes:
             st = statuses.get(cid)
-            if st is None or st.state in ("open", "partial"):
+            # A#1: live UNKNOWN/CANCEL_UNKNOWN surfaces as "unknown" and
+            # paper restart-lost too — both may have filled. Unknown
+            # counts as in flight: reconcile before retry, never
+            # duplicate (a second full-size close reverses the book).
+            if st is None or st.state in ("open", "partial", "unknown"):
                 close_live = True  # unknown counts as in flight.
                 break
         net = self.ledger.position_qty()
