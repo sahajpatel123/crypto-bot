@@ -124,7 +124,7 @@ def gzip_and_sha(src: Path) -> dict:
     gz_path = src.with_name(src.name + ".gz")
     h = hashlib.sha256()
     with open(src, "rb") as fin, gzip.open(gz_path, "wb",
-                                           compresslevel=6) as fout:
+                                           compresslevel=9) as fout:
         while True:
             block = fin.read(1 << 20)
             if not block:

@@ -98,6 +98,20 @@ def test_settle_gz_sha_delete_raw_idempotent(tmp_path):
     assert again == info  # idempotent marker
 
 
+def test_settle_gz_roundtrips_to_recorded_sha(tmp_path):
+    import gzip as _gzip
+    import hashlib as _hashlib
+    d = tmp_path / "chunk-001"
+    d.mkdir()
+    body = '{"channel":"aggTrade"}\n' * 500
+    (d / "events.jsonl").write_text(body)
+    info = cc.settle_chunk(d)
+    blob = _gzip.open(d / "events.jsonl.gz", "rb").read()
+    assert blob.decode() == body
+    assert _hashlib.sha256(blob).hexdigest() == \
+        info["files"]["events.jsonl"]["sha256"]
+
+
 def test_settle_partial_without_stats_is_honest(tmp_path):
     d = tmp_path / "chunk-001"
     d.mkdir()
