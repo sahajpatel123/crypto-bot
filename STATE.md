@@ -21,8 +21,8 @@ correctness > validation integrity > features.
 | T1.4 | Protection window: parallel stop/target, shadow stop, fault injection | TODO |
 | T1.5 | SIGTERM/SIGINT flatten by default; `--leave-protected` opt-out | TODO |
 | T1.6 | Client IDs: UUID run prefix + persisted monotonic seq, ≤36 chars | DONE |
-| T1.7 | Settled funding booked in ledger, reconciled vs venue | TODO |
-| T1.8 | Tiered maintenance margin / liquidation gate + min-viable-equity calc | TODO |
+| T1.7 | Settled funding booked in ledger, reconciled vs venue | DONE |
+| T1.8 | Tiered maintenance margin / liquidation gate + min-viable-equity calc | PARTIAL |
 | T1.9 | Pessimistic paper fills (book-walk + latency penalty); 1x/2x cost P&L | TODO |
 | T2.1 | Ingestion/strategy decoupling, drop accounting + breaker | TODO |
 | T2.2 | Honor `max_hf_subscriptions` (BTCUSDT, ETHUSDT default) | TODO |
@@ -151,6 +151,13 @@ T1.6. `docs/f2-health-recovery.md` came with the F2 cherry-pick.
   non-blocking until baselines reach zero (never weakened to pass).
 - T0.4 (31b6c4d): doctor live-label fix + test_doctor_truth 28 passed
   with test_cli_readiness.
+- T1.7: engine.funding_income + Session.book_settled_funding
+  (tranId-idempotent) + funding_reconcile; 6 tests with T1.8 passed.
+  Live-loop periodic booking call owed (startup + hourly) — noted.
+- T1.8 (PARTIAL): risk/margin.py tiered maintenance margin, isolated
+  liquidation price, liquidation_ok (3x + beyond stop+slippage),
+  minimum_viable_equity. Admission wiring into policy.evaluate owed
+  (needs leverageBracket fetch at readiness) — gate function tested.
 - T1.6: _new_client_id = tag(sanitised<=16)-uuid10-seq6 (<=36, legal
   charset); 1000 ids across 5 simulated restarts unique. Regression
   fix: v008 unreachable test scripted 3 errors for T1.3 bounded retry.
