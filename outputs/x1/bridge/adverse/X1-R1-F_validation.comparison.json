@@ -1,0 +1,12 @@
+{
+ "cells": {
+  "X1-F|validation": {
+   "closing_equity": 120.0,
+   "run_dir": "outputs/x1/bridge/adverse/X1-R1-F_validation.rundir"
+  }
+ },
+ "dataset_manifest_sha": "9008ba92ef88a8cf8f446f77fbe27983de16d780148a11fe6fd6971b0e8f1e31",
+ "splits": [
+  "validation"
+ ]
+}

@@ -1,0 +1,10 @@
+{"funding_rate": -1.022e-05, "funding_ts_ms": 1791936000001, "mark_price": 83125.7, "source": "GET /fapi/v1/fundingRate (public, no auth)", "symbol": "BTCUSDT"}
+{"funding_rate": 1.528e-05, "funding_ts_ms": 1791964800001, "mark_price": 83541.98573188, "source": "GET /fapi/v1/fundingRate (public, no auth)", "symbol": "BTCUSDT"}
+{"funding_rate": -1.788e-05, "funding_ts_ms": 1791993600002, "mark_price": 81603.10144203, "source": "GET /fapi/v1/fundingRate (public, no auth)", "symbol": "BTCUSDT"}
+{"funding_rate": -4.135e-05, "funding_ts_ms": 1792022400000, "mark_price": 81641.5, "source": "GET /fapi/v1/fundingRate (public, no auth)", "symbol": "BTCUSDT"}
+{"funding_rate": 6.617e-05, "funding_ts_ms": 1792051200000, "mark_price": 81492.97086957, "source": "GET /fapi/v1/fundingRate (public, no auth)", "symbol": "BTCUSDT"}
+{"funding_rate": 1.828e-05, "funding_ts_ms": 1792080000000, "mark_price": 82381.6792971, "source": "GET /fapi/v1/fundingRate (public, no auth)", "symbol": "BTCUSDT"}
+{"funding_rate": 5.429e-05, "funding_ts_ms": 1792108800001, "mark_price": 82199.21486957, "source": "GET /fapi/v1/fundingRate (public, no auth)", "symbol": "BTCUSDT"}
+{"funding_rate": 6.803e-05, "funding_ts_ms": 1792137600001, "mark_price": 82260.2, "source": "GET /fapi/v1/fundingRate (public, no auth)", "symbol": "BTCUSDT"}
+{"funding_rate": 4.313e-05, "funding_ts_ms": 1792166400000, "mark_price": 81325.6, "source": "GET /fapi/v1/fundingRate (public, no auth)", "symbol": "BTCUSDT"}
+{"funding_rate": 0.0001, "funding_ts_ms": 1792195200000, "mark_price": 81578.2, "source": "GET /fapi/v1/fundingRate (public, no auth)", "symbol": "BTCUSDT"}

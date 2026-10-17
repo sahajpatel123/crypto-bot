@@ -1,7 +1,8 @@
 """App config + store tests (manager-owned, A-001)."""
 import pytest
 
-from cryptobot.app.config import ConfigError, load_config
+from cryptobot.app.config import (ConfigError, load_config,
+                                  with_resolved_symbols)
 from cryptobot.app.store import RunStore
 
 SAMPLE = "configs/paper.toml"
@@ -71,3 +72,26 @@ def test_store_run_lifecycle(tmp_path):
         assert store.get_run("zz") is None
     finally:
         store.close()
+
+
+def test_with_resolved_symbols_recomputes_fingerprint():
+    cfg = load_config(SAMPLE)
+    assert list(cfg.symbols) == []
+    resolved = with_resolved_symbols(cfg, ["btcusdt", "ethusdt"])
+    assert list(resolved.symbols) == ["BTCUSDT", "ETHUSDT"]
+    assert len(resolved.fingerprint) == 16
+    assert resolved.fingerprint != cfg.fingerprint
+    # Same universe loaded from TOML gets the same fingerprint.
+    text = open(SAMPLE).read().replace(
+        "symbols = []", 'symbols = ["BTCUSDT", "ETHUSDT"]', 1)
+    import tempfile
+    with tempfile.NamedTemporaryFile("w", suffix=".toml",
+                                     delete=False) as fh:
+        fh.write(text)
+    try:
+        assert load_config(fh.name).fingerprint == resolved.fingerprint
+    finally:
+        import os
+        os.unlink(fh.name)
+    with pytest.raises(ConfigError, match="non-empty"):
+        with_resolved_symbols(cfg, [])

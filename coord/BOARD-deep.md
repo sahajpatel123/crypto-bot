@@ -43,6 +43,120 @@ Production submission DISABLED. No credentials requested at this stage.
 - EVAL options prepared without spend; owner decides purchase later.
 - X1 beta: pre-round estimation step, frozen in X1.md before round.
 
+## Integration log
+- W1 D1 ACCEPTED (cd42146 → 04c0bee): 6/6 proofs re-run green. Shared-tree
+  probe deletions broke units re-run; restored (tests require them).
+- W1 D2 ACCEPTED (6bc5af6 → 47a8c8c + fixup 9be4fb1): 3/3 re-run green
+  (14/14 matrix, 1071+1, 261). F1 fix covers W2 resume findings; F2–F5
+  filed. A1 gate: PASS. Units closed 1080+1 after transient I/O retry.
+- W2 D3 ACCEPTED (b72865a → c0e211f): A2 PASS, 6/6 phases, SANDBOX VALIDATED.
+  Caveat: drill works around two session resume defects driver-side
+  (reservation-None flatten fill unbookable; _position not rebuilt across
+  restart); relayed to W1 for D2 ownership. W5 must note the caveat.
+- W3 part 1 verified (1be3f33, manifest 9008ba92); relayed to W4.
+- W3 D5 ACCEPTED (0cdf1e4 → f28bb81): 5/5 proofs re-run green (cache
+  rebuilt rc3/518s as predicted; EVAL SCORABLE reproduced). Caveats:
+  merge script rewrites build timestamps (sha drift on fresh re-run;
+  restored frozen TOML after timestamps-only diff); audit --out needs
+  pre-existing dir. Both filed to W3 as follow-ups.
+- W4 freeze verified outcome-free (a96ed72); beta calibration overlaps DEV
+  idx1-5 (disclosed, trigger-neutral); W5 footnote.
+- W4 feasibility ruling (manager): full-split replay infeasible (6.3h+54GB
+  per cell vs 1500s/~6GB). Execute freeze literally: dev 30 wall-min and
+  val 2 wall-h caps per config, via chained bounded bench_run + resume
+  within caps; coverage reported honestly; screen descriptive/DATA BLOCKED
+  if unmet. No amendment, no dataset swap.
+- W4 vehicle authorization (manager): bench_run.py may gain --symbols
+  plural (heap merge, per-symbol cursors, ckpt v3 auto-migrate v2) +
+  --start-ms/--end-ms window filters. Backward compat + new tests green
+  before any round cell; freeze untouched; separate commit for review.
+- W4 vehicle authorization #2 (manager): --spread-bps in-stream modeled
+  spread (frozen iter_with_spread; default = frozen profile value; spec
+  in resume identity). Premises verified: spreadless bars convert to
+  None, cache lacks bookTicker, §8 already assumes the profile.
+
+## Round-1 outcome mechanism (manager analysis, pre-acceptance)
+- Selection NONE is mechanically correct AND weak as strategy evidence.
+- X1 family: 0 intents in 11/12 cells (1 in X1-T val) — 35bps double-gate
+  never co-occurred in capped windows. Strategies untested, not disproven.
+- S1 control: 391 dev + 6199 val intents admitted, 0 fills — all 5 val
+  submits status=failed (execution:submit-rejected under exit-only).
+  Root cause: health:stale-mark latched ~t+5s on quiet window opens and
+  never released (W1 F2, filed, fail-closed). 6084 gate trips in S1-val.
+- Verdict shape: RESEARCH UNRESOLVED with mechanism decomposed. F2 is the
+  binding constraint on any future measurement round (not authorized here).
+- Freeze integrity: only §9 IST clarification (pre-outcome, disclosed) +
+  authorized beta transcription; params/round/selection untouched.
+
+## W5 re-confirm requested (manager → board channel; peer msgs capped)
+- Chunked gates green here: A1 PASS (D1 8/8, D2 5/5), A3 PASS (D5 5/5,
+  D4 11/11), A2 PASS post-fixup. Filings at ec9257e + separator fix.
+- Chunk union proven identical (364+352+404=1120 collected). Pivot tests
+  scoped out with notes. Row11 marginality root-caused (load + clock
+  jump), green verbatim since, W1 follow-up filed.
+- W5: please re-run chunked A1/A3 + A2 on tip and amend DEEP-W5-VERDICT.
+
+## Integration log (continued)
+- W4 D4 ACCEPTED (d71b050 → af9c86a + fixup bd8d54c): economics/select/
+  bench-tests re-ran green; full-suite expect_rc adjusted for merged tree.
+- FULL ACCEPTANCE PASS (A1+A2+A3) on clean state. First attempt failed on
+  stale drill-out-sandbox + bench_d5 dirs (mine, documented fresh-dir
+  requirement) — no regressions. W5 called for independent verdict.
+
+## Manager completion audit (per-agent, vs dispatch acceptance)
+- W1 D1: PASS — strict refuse 125 + never-spawn + best-effort parity, all
+  re-ran green; no weakened assertions (reviewed). Docs pass done by manager.
+- W1 D2: PASS — 14/14 matrix re-ran green (incl. row 13 foreign-untouched);
+  F1 fix covers W2 findings; F2–F5 precisely filed.
+- W2 D3: PASS — 6/6 drill + 11/11 audit re-ran green; offline + secret-free
+  verified; demo command prepared-only; session-caveat documented.
+- W3 D5: PASS — 5/5 re-ran green; splits frozen/verified; EVAL sealed
+  (zero round refs); TEST burned (role=test idx23–30, status burned-round1).
+- W4 D4: PASS (execution) — 48/48 jobs + 24/24 bridges; freeze intact
+  (params/round untouched; beta 1.254028 = record = 8 TOMLs); selection
+  NONE mechanical; TEST untouched (val window ends exactly at TEST start
+  10-03T18:30Z exclusive; no TEST dates in jobs); EVAL sealed; all
+  attempts incl. zero-trade recorded. Outcome weak-as-evidence (see
+  mechanism section) — valid execution, RESEARCH UNRESOLVED.
+- W5: IN PROGRESS — started, ETA ~2h, watch armed.
+- Follow-ups messaged: W3 (merge timestamps, audit mkdir — filed at
+  acceptance); W2 (refuse occupied --dir loudly instead of crashing —
+  small bounded fixup, D3 stays accepted regardless). F2/F3/F4 fixes
+  deliberately NOT ordered (new phase; out of assignment scope).
+- W2 fixup LANDED (dcf80f9 → 1fe88d3): occupied dir → rc 2 loud BLOCKED;
+  fresh drill 6/6 PASS re-verified. W5 told to verify A2 on the new tip.
+
+## Stop-order incident (resolved)
+- W4 stopped round-1 at jobs 1–4 citing "owner order" (1cc77dd, evidence
+  preserved). Provenance: stale Oct 12–13 local-session stops, superseded
+  by Oct-14 "Continue" + the acked deep dispatch; re-surfaced by W4's
+  local context, not a new order. Owner in manager session confirmed no
+  stop. Manager ruled RESUME under existing authorizations; interruption
+  disclosed in W4's stopped.json record.
+  Resume acked with one disclosed mechanical redo (dev j1 rerun, journals
+  pruned pre-fix-bridge, MATCH-verified vs backup — allowed by freeze).
+- W4 /tmp wipe (~11h stall): worktree + job-10 partial chain lost; committed
+  evidence intact through 8024d13 (9/48 jobs). Recovery in progress (cache
+  copy + sha-verify, job-10 disclosed rerun). Filing ETA ~Oct-16 00:00 UTC.
+- W4 vehicle authorization #3 (manager): bench _restore must reseed
+  _cmd_seq + roll back commands table (job 19 duplicate cmd:000000;
+  both halves verified in code). Regression-tested, separate commit,
+  verbatim job-19 rerun disclosed. 18/48 jobs done through 71b369f.
+- W4 fix #3 compat ruling (manager): fix implemented, 15 failures claimed
+  pre-existing. W4 to push fix + with/without evidence now; may run ONLY
+  job-19 rerun while manager verifies; 20–48 held for confirm.
+- W4 fix #3 VERIFIED (manager): diff in-scope; 15 failures = stale tests +
+  strict wrapper on W4 branch (pass on flag-fixed tree); regression tests
+  fail pre-fix (observed). Jobs 20–48 CONFIRMED.
+- W4 SESSION SWAP (owner, Oct-15): whisper-redshift → granite-cetus. Old
+  session gone, job-19 process dead, no orphans running. New W4 briefed:
+  fresh worktree at f245331, cache copy + sha-verify, relaunch job-19
+  verbatim (disclosed mechanical rerun), then 20–48 as filed.
+- W4 jobs-19/20 ruling (manager): new W4 found 19+20 already ran terminal
+  pre-swap; independently corroborated (receipts, cursors, sha, dense cmds,
+  authorization timing). ACCEPTED as complete; bridge audit must clear the
+  replayed_tail=0 point; continue at 21. True state 20/48 run, 17 committed.
+
 ## Unresolved / risks
 - Linux reviewer-side proof needs a live Linux run (this host macOS); code-inspected only.
 - Sandbox fee/funding numbers must be re-recorded on testnet (fixtures hand-built).

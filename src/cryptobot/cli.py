@@ -218,10 +218,68 @@ def _run_paper(args: argparse.Namespace) -> int:
         print("Paper mode cannot run on the reference engine by design.",
               file=sys.stderr)
         return 2
-    from cryptobot.app.session import WallClock
-    store = RunStore(_store_path(config.storage_dir))
     run_id = args.run_id or _new_run_id("paper")
     workdir = Path(config.storage_dir) / run_id
+    discovery_record = None
+    if not config.symbols:
+        # Dynamic discovery resolves BEFORE the session exists (but AFTER
+        # the import gate, so a missing adapter refuses offline without a
+        # network call). The live bridge would otherwise choose symbols
+        # the session never learns, so `_prime_live_books` skips
+        # ("dynamic-symbols") and books stay `book:never-synced` for the
+        # whole run (observed: 3,646/18,230 rejections in a 10-minute
+        # paper session). Same rule the bridge uses (top-max_symbols by
+        # quote volume), recorded, never hardcoded.
+        # Resume reuses the recorded universe: fresh discovery could
+        # rotate symbols mid-run (observed live: TIAUSDT for AGTUSDT).
+        from cryptobot.app.config import with_resolved_symbols
+        resumed = False
+        if bool(args.resume):
+            try:
+                recorded = json.loads(
+                    (workdir / "discovery.json").read_text(
+                        encoding="utf-8"))
+                if isinstance(recorded.get("symbols"), list) \
+                        and recorded["symbols"]:
+                    config = with_resolved_symbols(
+                        config, recorded["symbols"])
+                    print(f"discovery: resumed universe "
+                          f"->{','.join(config.symbols)}")
+                    resumed = True
+            except (OSError, ValueError):
+                pass  # no usable record: fall through to fresh discovery.
+        if not resumed:
+            from cryptobot.market_data.collector import select_capture_set
+            from cryptobot.market_data.discovery import (
+                FAPI_BASE_URL, fetch_exchange_info, urllib_json_get)
+            try:
+                payload, _, _ = fetch_exchange_info(
+                    urllib_json_get, FAPI_BASE_URL)
+                chosen, rule, _ = select_capture_set(
+                    payload, urllib_json_get, FAPI_BASE_URL,
+                    top_n=config.max_symbols)
+            except Exception as exc:
+                print(f"live discovery failed: {type(exc).__name__}: {exc}",
+                      file=sys.stderr)
+                return 2
+            if not chosen:
+                print("live discovery returned no symbols", file=sys.stderr)
+                return 2
+            config = with_resolved_symbols(config, list(chosen))
+            print(f"discovery: {rule} -> {','.join(chosen)}")
+            discovery_record = {"rule": rule, "symbols": list(chosen)}
+    from cryptobot.app.session import WallClock
+    store = RunStore(_store_path(config.storage_dir))
+    if discovery_record is not None:
+        # Audit trail: the resolved universe lives with the run, not
+        # just on stdout (best-effort; never aborts the run).
+        try:
+            workdir.mkdir(parents=True, exist_ok=True)
+            (workdir / "discovery.json").write_text(
+                json.dumps(discovery_record, indent=1, sort_keys=True)
+                + "\n", encoding="utf-8")
+        except OSError as exc:
+            print(f"discovery record unwritten: {exc}", file=sys.stderr)
     clock = WallClock()
     if config.engine_kind == "live":
         # W3-24H P5 demo mode: config already enforces demo = true.
@@ -269,8 +327,19 @@ def _run_paper(args: argparse.Namespace) -> int:
             symbols=list(config.symbols) or None,
             max_symbols=config.max_symbols,
             ws_host=stream_host() if callable(stream_host) else None)
-        report = session.run_live(events, duration_s=duration,
-                                  resume=bool(args.resume))
+        try:
+            report = session.run_live(events, duration_s=duration,
+                                      resume=bool(args.resume))
+        except Exception as exc:
+            # Mirror _run_replay: a venue/connection death (e.g.
+            # routes-exhausted) must leave a resume hint, not a bare
+            # traceback with no report (observed on paper-proof-30m).
+            print(f"run {run_id} interrupted: "
+                  f"{type(exc).__name__}: {exc}", file=sys.stderr)
+            print(f"resume with: cryptobot run --mode paper --config "
+                  f"{args.config} --duration {args.duration or 'left'} "
+                  f"--run-id {run_id} --resume")
+            return 3
     finally:
         if user_stream is not None:
             user_stream.close()

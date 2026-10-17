@@ -9,7 +9,10 @@ was wrong for the Nautilus paper path and is superseded by this document.
 ## 1. Credential-free paper (public data, simulated fills)
 
 - Command (bounded, no keys in the environment):
-  `python3 tools/run_budget.py --budget-s 1500 --checkpoint-dir <ckpt> --report-out <report> -- cryptobot run --mode paper --config configs/r2.toml --duration 20m`
+  `python3 tools/run_budget.py --budget-s 1500 --checkpoint-dir <ckpt> --report-out <report> [--allow-best-effort] -- cryptobot run --mode paper --config configs/r2.toml --duration 20m`
+  (Strict preflight refuses hosts without verified subreaper+scan — exit
+  125, never spawns. Pass `--allow-best-effort` explicitly on macOS/dev
+  hosts to run the legacy best-effort path.)
 - Engine: `nautilus` (local simulation on live public websocket feeds).
   The Nautilus branch of `cli._run_paper` reads no credential variables.
 - Stops: entries stop early enough to close permitted exposure and
@@ -18,7 +21,9 @@ was wrong for the Nautilus paper path and is superseded by this document.
 ## 2. Credentialed demo (demo venue, real mechanics, fake money)
 
 - Command (bounded, keys from the OWNER'S environment only):
-  `BINANCE_DEMO_KEY=... BINANCE_DEMO_SECRET=... python3 tools/run_budget.py --budget-s 1500 --checkpoint-dir <ckpt> --report-out <report> -- cryptobot run --mode paper --config configs/demo.toml --duration 20m`
+  `BINANCE_DEMO_KEY=... BINANCE_DEMO_SECRET=... python3 tools/run_budget.py --budget-s 1500 --checkpoint-dir <ckpt> --report-out <report> [--allow-best-effort] -- cryptobot run --mode paper --config configs/demo.toml --duration 20m`
+  (Same strict-preflight rule as §1: add `--allow-best-effort` on hosts
+  without verified containment.)
 - Engine: `live` + `demo = true` → `https://demo-fapi.binance.com` only.
   The adapter refuses `demo=true` with the production host.
 - Missing keys → the CLI refuses with exit 2 (demo guard intact).

@@ -2,9 +2,19 @@
 
 Usage:
     run_budget.py --budget-s 1500 --checkpoint-dir DIR --report-out R.json
-        [--heartbeat-s 60] [--term-grace-s 10] -- <command...>
+        [--heartbeat-s 60] [--term-grace-s 10] [--allow-best-effort]
+        -- <command...>
 
 Contract:
+- Strict by default (enforce-or-refuse): a preflight runs BEFORE the
+  checkpoint write and BEFORE any spawn. Supported means Linux AND a
+  prctl child-subreaper acquired AND a process-table scan that works.
+  On an unsupported host strict mode writes REFUSED_UNSUPPORTED to
+  both checkpoint and report, prints REFUSED to stderr, exits 125,
+  and never spawns the child.
+- --allow-best-effort (default off) opts into the legacy best-effort
+  path explicitly; with the flag, rc and report shape reproduce the
+  legacy behavior bit-for-bit.
 - Absolute monotonic deadline enforced OUTSIDE the timed worker
   (this parent). Setup, retries, subprocesses and cleanup are inside it.
 - The child runs in its own process group; at the deadline the whole
@@ -17,8 +27,10 @@ Contract:
   itself) are ever signaled; unrelated processes are never touched, and
   the wrapper never signals itself.
 - On Linux the wrapper becomes a child subreaper, so orphaned descendants
-  reparent to it and stay visible. Other platforms (macOS) have no
-  subreaper: enforcement there is best-effort and the report says so.
+  reparent to it and stay visible. Hosts without a subreaper (macOS),
+  or where the table scan fails, are refused in strict mode; the
+  best-effort legacy path runs only under explicit --allow-best-effort,
+  and timeout reports there still disclose the gap (platform_note).
 - Enumeration reads /proc directly on Linux (no subprocess, no PATH or
   ps-format dependency); other platforms (and Linux /proc failure) fall
   back to `ps -eo pid,ppid`. The wrapper's own transient ps call is
@@ -60,6 +72,7 @@ import time
 from pathlib import Path
 
 EXIT_INCOMPLETE = 124
+EXIT_REFUSED = 125  # strict preflight refused: unsupported host, never spawn.
 ENV_DEADLINE = "CRYPTOBOT_DEADLINE_MONO"
 ENV_BUDGET = "CRYPTOBOT_BUDGET_S"
 SCAN_TICK_S = 0.25  # birth-registry refresh while waiting.
@@ -90,6 +103,27 @@ def _try_subreaper() -> bool:
         return libc.prctl(PR_SET_CHILD_SUBREAPER, 1, 0, 0, 0) == 0
     except Exception:
         return False
+
+
+def _preflight_supported() -> tuple[bool, dict]:
+    """Enforce-or-refuse preflight: can this host verify containment?
+
+    Supported means Linux AND a prctl child-subreaper acquired AND a
+    process-table scan that works. All three legs are evaluated so the
+    refusal reason is complete; the only side effects are the subreaper
+    request itself and one table scan. Runs in strict mode only: the
+    best-effort path never calls this (bit-for-bit legacy behavior).
+    """
+    linux = sys.platform == "linux"
+    subreaper = _try_subreaper() if linux else False
+    # The scan exercises the real enumeration path (including the
+    # CRYPTOBOT_BREAK_ENUMERATION hook): a host that cannot enumerate
+    # cannot verify a kill, so it cannot be supported. Fail closed.
+    _, scan_ok = _scan_descendants(os.getpid())
+    reason = {"platform": sys.platform, "linux": linux,
+              "subreaper_acquired": subreaper,
+              "table_scan_ok": scan_ok}
+    return bool(linux and subreaper and scan_ok), reason
 
 
 _ENUM_BREAK = os.environ.get("CRYPTOBOT_BREAK_ENUMERATION", "")
@@ -327,6 +361,9 @@ def main(argv: list[str]) -> int:
     ap.add_argument("--report-out", required=True)
     ap.add_argument("--heartbeat-s", type=float, default=60.0)
     ap.add_argument("--term-grace-s", type=float, default=10.0)
+    ap.add_argument("--allow-best-effort", action="store_true", default=False,
+                    help="run the legacy best-effort path on hosts where "
+                    "strict containment cannot be verified")
     ap.add_argument("command", nargs=argparse.REMAINDER)
     args = ap.parse_args(argv)
     if not args.command or args.command[0] != "--":
@@ -348,11 +385,35 @@ def main(argv: list[str]) -> int:
         if outer is not None and outer < deadline:
             deadline = outer  # nested runs never extend the outer deadline.
 
-    subreaper = _try_subreaper()
-
     ckpt_dir = Path(args.checkpoint_dir)
     ckpt_path = ckpt_dir / "budget_checkpoint.json"
     report_path = Path(args.report_out)
+
+    if not args.allow_best_effort:
+        supported, reason = _preflight_supported()
+        if not supported:
+            record = {"status": "REFUSED_UNSUPPORTED",
+                      "pid": os.getpid(),
+                      "budget_s": args.budget_s,
+                      "deadline_inherited": inherited is not None,
+                      "command": child_cmd,
+                      "reason": reason,
+                      "note": ("strict containment unverifiable on this "
+                               "host; refusing to spawn (pass "
+                               "--allow-best-effort to run the legacy "
+                               "best-effort path)")}
+            _write_checkpoint(ckpt_path, record)
+            report_path.parent.mkdir(parents=True, exist_ok=True)
+            report_path.write_text(json.dumps(record, indent=1) + "\n")
+            print(f"[run_budget] REFUSED: strict containment unsupported "
+                  f"on {reason['platform']} (linux={reason['linux']} "
+                  f"subreaper={reason['subreaper_acquired']} "
+                  f"table_scan_ok={reason['table_scan_ok']}); child never "
+                  f"spawned", file=sys.stderr, flush=True)
+            return EXIT_REFUSED
+
+    subreaper = _try_subreaper()
+
     _write_checkpoint(ckpt_path, {
         "status": "RUNNING", "pid": os.getpid(),
         "budget_s": args.budget_s,

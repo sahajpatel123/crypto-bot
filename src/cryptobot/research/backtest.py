@@ -37,6 +37,10 @@ SPLITS = {"dev": DEV_DAYS, "validation": VAL_DAYS, "test": TEST_DAYS}
 ARM_SETS = {
     "S1": ("S1",), "S2": ("S2",), "S3": ("S3",), "S4": ("S4",),
     "S5": ("S5",), "COMBINED": ("S1", "S2", "S3", "S4", "S5"), "CASH": (),
+    # X1 round-1 cells (X1.md §7): one single-arm run per config; the
+    # base TOML selects base-vs-variant via arms/arms_allowlist and
+    # --require-round/--require-config pins the registry config.
+    "X1": ("X1",), "X1-S": ("X1",), "X1-T": ("X1",), "X1-F": ("X1",),
 }
 FILTER_LABEL = "frozen-assumed"
 FROZEN_FILTERS = {

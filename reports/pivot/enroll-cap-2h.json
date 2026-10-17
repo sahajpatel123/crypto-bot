@@ -1,0 +1,58 @@
+{
+ "capture": "data/captures/cap-2h",
+ "events": 2838861,
+ "floor": {
+  "min_days": 10.0,
+  "per_symbol": [
+   "observed quotes (no modelled)",
+   "aggTrade",
+   "marks >=1s",
+   "funding settlements+provenance",
+   "monotonic seq"
+  ]
+ },
+ "reasons": [
+  "BTCUSDT: span 0.08d < 10.0d floor",
+  "BTCUSDT: no funding settlements with provenance (7199 funding-rate observations on marks are not settlements)",
+  "ETHUSDT: span 0.08d < 10.0d floor",
+  "ETHUSDT: no funding settlements with provenance (7199 funding-rate observations on marks are not settlements)"
+ ],
+ "run_id": "cap-2h",
+ "seq_disordered": 0,
+ "symbols": {
+  "BTCUSDT": {
+   "channels": {
+    "aggTrade": 33201,
+    "bookTicker": 1452065,
+    "depth": 70573,
+    "markPrice": 7199
+   },
+   "days": 0.0833,
+   "funding_settlements": 0,
+   "mark_max_gap_ms": 1009,
+   "modeled_quotes": 0,
+   "reasons": [
+    "span 0.08d < 10.0d floor",
+    "no funding settlements with provenance (7199 funding-rate observations on marks are not settlements)"
+   ]
+  },
+  "ETHUSDT": {
+   "channels": {
+    "aggTrade": 32339,
+    "bookTicker": 1165962,
+    "depth": 70323,
+    "markPrice": 7199
+   },
+   "days": 0.0833,
+   "funding_settlements": 0,
+   "mark_max_gap_ms": 1009,
+   "modeled_quotes": 0,
+   "reasons": [
+    "span 0.08d < 10.0d floor",
+    "no funding settlements with provenance (7199 funding-rate observations on marks are not settlements)"
+   ]
+  }
+ },
+ "untouched": true,
+ "verdict": "DEVELOPMENT-ONLY"
+}

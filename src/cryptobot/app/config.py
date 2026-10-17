@@ -8,7 +8,8 @@ import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
 
-__all__ = ["AppConfig", "ConfigError", "load_config"]
+__all__ = ["AppConfig", "ConfigError", "load_config",
+           "with_resolved_symbols"]
 
 PACKAGE_VERSION = "0.1.0"
 
@@ -35,6 +36,12 @@ def _unit_interval(value: object, name: str) -> float:
     if not 0.0 < number < 1.0:
         raise ConfigError(f"{name} must lie in (0, 1), got {value!r}")
     return number
+
+
+def _x1_beta(value: object) -> float | None:
+    if value is None:
+        return None
+    return _positive(value, "strategies.x1_beta")
 
 
 @dataclass(frozen=True)
@@ -92,6 +99,10 @@ class AppConfig:
     # None preserves legacy base/all behavior; when set, Session
     # evaluates only allowlisted arms and fails closed on unknown IDs.
     strategies_arms_allowlist: tuple[str, ...] | None = None
+    # X1 leader-laggard frozen beta (X1.md §9): None until the
+    # pre-round beta step transcribes the recorded value; X1
+    # no-fires while unset.
+    x1_beta: float | None = None
     cooldown_s: int = 300
     min_reward_multiple: float = 1.0
     allow_legacy_exit_rules: bool = True
@@ -197,7 +208,7 @@ def load_config(path: str | Path) -> AppConfig:
         raise ConfigError(f"strategies.arms must be 'base' or 'all', got {arms!r}")
     enabled = tuple(strategies.get("enabled", ["S1", "S2", "S3", "S4"]))
     for name in enabled:
-        if name not in ("S1", "S2", "S3", "S4", "S5"):
+        if name not in ("S1", "S2", "S3", "S4", "S5", "X1"):
             raise ConfigError(f"unknown strategy {name!r} in strategies.enabled")
     allowlist = strategies.get("arms_allowlist")
     if allowlist is not None:
@@ -272,6 +283,7 @@ def load_config(path: str | Path) -> AppConfig:
         strategies_enabled=enabled,
         strategies_arms=arms,
         strategies_arms_allowlist=allowlist,
+        x1_beta=_x1_beta(strategies.get("x1_beta")),
         cooldown_s=int(_finite(strategies.get("cooldown_s", 300), "strategies.cooldown_s")),
         min_reward_multiple=_positive(
             strategies.get("min_reward_multiple", 1.0), "strategies.min_reward_multiple"),
@@ -279,6 +291,11 @@ def load_config(path: str | Path) -> AppConfig:
         events_enabled=bool(run.get("events_enabled", False)),
         source_path=str(path),
     )
+    return AppConfig(**{**cfg.__dict__,
+                       "fingerprint": _fingerprint_config(cfg)})
+
+
+def _fingerprint_config(cfg: AppConfig) -> str:
     canonical_obj: dict = {
         "mode": cfg.mode, "capital": cfg.paper_capital_usdt, "risk": cfg.to_risk_kwargs(),
         "fees": {"label": cfg.fee_label, "taker_bps": cfg.taker_bps,
@@ -297,7 +314,26 @@ def load_config(path: str | Path) -> AppConfig:
     # Only fingerprinted when set, so legacy configs keep their hashes.
     if cfg.strategies_arms_allowlist is not None:
         canonical_obj["arms_allowlist"] = list(cfg.strategies_arms_allowlist)
+    if cfg.x1_beta is not None:
+        canonical_obj["x1_beta"] = cfg.x1_beta
     canonical = json.dumps(canonical_obj, sort_keys=True)
-    fingerprint = hashlib.sha256(
+    return hashlib.sha256(
         f"{PACKAGE_VERSION}|{canonical}".encode("utf-8")).hexdigest()[:16]
-    return AppConfig(**{**cfg.__dict__, "fingerprint": fingerprint})
+
+
+def with_resolved_symbols(cfg: AppConfig, symbols: list[str]) -> AppConfig:
+    """Copy with explicit symbols and a recomputed fingerprint.
+
+    Used when live discovery resolves an empty symbol list before the
+    session exists, so book priming and the run fingerprint both see
+    the actual universe. Symbols are upper-cased; the source TOML is
+    untouched.
+    """
+    import dataclasses
+
+    resolved = tuple(str(s).upper() for s in symbols if str(s).strip())
+    if not resolved:
+        raise ConfigError("resolved symbols must be non-empty")
+    new = dataclasses.replace(cfg, symbols=resolved)
+    return AppConfig(**{**new.__dict__,
+                       "fingerprint": _fingerprint_config(new)})

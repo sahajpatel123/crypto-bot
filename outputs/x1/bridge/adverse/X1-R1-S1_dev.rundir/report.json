@@ -1,0 +1,23 @@
+{
+ "bridge": {
+  "bench_reports": [
+   "outputs/x1/reports/adverse/X1-R1-S1_dev_j1.json"
+  ],
+  "bench_run_id": "x1-adverse-X1-R1-S1_dev",
+  "final_status": "INCOMPLETE_BUDGET",
+  "tool": "tools/x1_bench_bridge.py"
+ },
+ "closing_equity": 120.0,
+ "config_fingerprint": "63a92416a23ac50d",
+ "fee_schedule": {
+  "taker_bps": 10.0
+ },
+ "funding_net": 0.0,
+ "intents_admitted": 596,
+ "net_return_pct": 0.0,
+ "opening_equity": 120.0,
+ "paid_costs": 0.0,
+ "realised": 0.0,
+ "reject_counts": {},
+ "reject_counts_note": "unavailable from bench checkpoints (vehicle limitation; diagnostic only)"
+}

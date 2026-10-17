@@ -1,0 +1,45 @@
+{"ts_utc": "2026-10-16T14:15:50.615229+00:00", "phase": "preflight/clock", "verdict": "PASS", "detail": "sandbox server skew 0ms (seed 7)", "elapsed_s": 0.1}
+{"ts_utc": "2026-10-16T14:15:50.615974+00:00", "phase": "preflight/readiness", "verdict": "PASS", "detail": "filters+fees cached for ETHUSDT", "elapsed_s": 0.1}
+{"ts_utc": "2026-10-16T14:15:50.616065+00:00", "phase": "preflight/account", "verdict": "PASS", "detail": "virtual available=10000.0 free=10000.0", "elapsed_s": 0.1}
+{"ts_utc": "2026-10-16T14:15:50.616117+00:00", "phase": "preflight/fees", "verdict": "PASS", "detail": "taker=5.0bps (sandbox fixture)", "elapsed_s": 0.1}
+{"ts_utc": "2026-10-16T14:15:50.616303+00:00", "phase": "preflight/mark", "verdict": "PASS", "detail": "ETHUSDT mark 2499.875", "elapsed_s": 0.1}
+{"ts_utc": "2026-10-16T14:15:50.616370+00:00", "phase": "preflight/quote-fresh", "verdict": "PASS", "detail": "quote age 0.0s", "elapsed_s": 0.1}
+{"ts_utc": "2026-10-16T14:15:50.616638+00:00", "phase": "drill/quote-fresh", "verdict": "PASS", "detail": "quote age 0.0s", "elapsed_s": 0.1}
+{"ts_utc": "2026-10-16T14:15:50.673560+00:00", "phase": "drill/stream-heal", "verdict": "PASS", "detail": "sandbox stream healed in 0.0s", "elapsed_s": 0.2}
+{"ts_utc": "2026-10-16T14:15:50.682236+00:00", "phase": "drill/entry-ioc", "verdict": "PASS", "detail": "sandbox-000001-4590 -> filled filled=0.002", "elapsed_s": 0.2}
+{"ts_utc": "2026-10-16T14:15:50.682648+00:00", "phase": "drill/protection", "verdict": "PASS", "detail": "stop leg sandbox-000002-b06d state=open in 0.0s", "elapsed_s": 0.2}
+{"ts_utc": "2026-10-16T14:15:50.958916+00:00", "phase": "drill/reduce-only-exit", "verdict": "PASS", "detail": "flat in 0.3s (net=0.0)", "elapsed_s": 0.5}
+{"ts_utc": "2026-10-16T14:15:50.960858+00:00", "phase": "drill/ambiguous-submit", "verdict": "PASS", "detail": "UNKNOWN sandbox-000001-ea26 resolved; 1 submit intent, 0 open leg(s); no duplicate", "elapsed_s": 0.5}
+{"ts_utc": "2026-10-16T14:15:50.968047+00:00", "phase": "interrupt/restored", "verdict": "PASS", "detail": "ledger_net=0.0", "elapsed_s": 0.5}
+{"ts_utc": "2026-10-16T14:15:50.970350+00:00", "phase": "interrupt/exposure", "verdict": "PASS", "detail": "venue exposure +0.00200000 ETHUSDT unadopted (ledger flat, queue holds the TRADE)", "elapsed_s": 0.5}
+{"ts_utc": "2026-10-16T14:15:50.971580+00:00", "phase": "interrupt/crash", "verdict": "PASS", "detail": "state persisted; process 'died' with venue exposure unadopted", "elapsed_s": 0.5}
+{"ts_utc": "2026-10-16T14:15:50.978324+00:00", "phase": "resume/restored", "verdict": "PASS", "detail": "ledger_net=0.0", "elapsed_s": 0.5}
+{"ts_utc": "2026-10-16T14:15:50.978439+00:00", "phase": "resume/shell-rebuilt", "verdict": "PASS", "detail": "shell recovered for sandbox-000001-edc0 (venue filled 0.002; drill-side recovery, W1 D2 owns session-level)", "elapsed_s": 0.5}
+{"ts_utc": "2026-10-16T14:15:51.037141+00:00", "phase": "resume/heal", "verdict": "PASS", "detail": "sandbox stream healed in 0.1s", "elapsed_s": 0.5}
+{"ts_utc": "2026-10-16T14:15:51.044736+00:00", "phase": "resume/adopt-sweep", "verdict": "PASS", "detail": "looked up journaled orders (7 live)", "elapsed_s": 0.6}
+{"ts_utc": "2026-10-16T14:15:51.045846+00:00", "phase": "resume/adopt", "verdict": "PASS", "detail": "fresh objects resumed run sandbox-drill: ledger_net=0.002 store_events 7->8", "elapsed_s": 0.6}
+{"ts_utc": "2026-10-16T14:15:51.045930+00:00", "phase": "resume/fill-adopted", "verdict": "PASS", "detail": "ledger_net=0.002 store_events 7->8", "elapsed_s": 0.6}
+{"ts_utc": "2026-10-16T14:15:51.046020+00:00", "phase": "resume/unknowns", "verdict": "PASS", "detail": "unknown=[]", "elapsed_s": 0.6}
+{"ts_utc": "2026-10-16T14:15:51.048638+00:00", "phase": "resume/legs-unexpected", "verdict": "PASS", "detail": "no legs journaled-live or resting (pre-protection crash, as designed)", "elapsed_s": 0.6}
+{"ts_utc": "2026-10-16T14:15:51.055408+00:00", "phase": "resume/close", "verdict": "PASS", "detail": "net=0.0", "elapsed_s": 0.6}
+{"ts_utc": "2026-10-16T14:15:51.058578+00:00", "phase": "resume/durability", "verdict": "PASS", "detail": "0 journaled fills missing from store", "elapsed_s": 0.6}
+{"ts_utc": "2026-10-16T14:15:51.066843+00:00", "phase": "stream-gap/heal", "verdict": "PASS", "detail": "healed in 0.0s", "elapsed_s": 0.6}
+{"ts_utc": "2026-10-16T14:15:51.067129+00:00", "phase": "stream-gap/halt", "verdict": "PASS", "detail": "entries halted 0.0s after socket drop", "elapsed_s": 0.6}
+{"ts_utc": "2026-10-16T14:15:51.067203+00:00", "phase": "stream-gap/entry-refused", "verdict": "PASS", "detail": "exit-only: entries refused", "elapsed_s": 0.6}
+{"ts_utc": "2026-10-16T14:15:51.067891+00:00", "phase": "stream-gap/exit-works", "verdict": "PASS", "detail": "exit reached venue (venue verdict: VenueRejectedError('venue http 400 code=-2022: sandbox: ReduceOnly Order is rejected'))", "elapsed_s": 0.6}
+{"ts_utc": "2026-10-16T14:15:51.124644+00:00", "phase": "stream-gap/reheal", "verdict": "PASS", "detail": "halt released after heal in 0.1s", "elapsed_s": 0.6}
+{"ts_utc": "2026-10-16T14:15:51.126911+00:00", "phase": "reconcile/venue-positions", "verdict": "PASS", "detail": "nonzero=[]", "elapsed_s": 0.6}
+{"ts_utc": "2026-10-16T14:15:51.127007+00:00", "phase": "reconcile/venue-open-orders", "verdict": "PASS", "detail": "open=0", "elapsed_s": 0.6}
+{"ts_utc": "2026-10-16T14:15:51.127063+00:00", "phase": "reconcile/unknowns", "verdict": "PASS", "detail": "unknown=[]", "elapsed_s": 0.6}
+{"ts_utc": "2026-10-16T14:15:51.128017+00:00", "phase": "reconcile/order-sandbox-000001-4590", "verdict": "PASS", "detail": "venue state=filled", "elapsed_s": 0.6}
+{"ts_utc": "2026-10-16T14:15:51.128786+00:00", "phase": "reconcile/order-sandbox-000002-b06d", "verdict": "PASS", "detail": "venue state=cancelled", "elapsed_s": 0.6}
+{"ts_utc": "2026-10-16T14:15:51.129511+00:00", "phase": "reconcile/order-sandbox-000003-71b6", "verdict": "PASS", "detail": "venue state=cancelled", "elapsed_s": 0.6}
+{"ts_utc": "2026-10-16T14:15:51.130153+00:00", "phase": "reconcile/order-sandbox-000004-d339", "verdict": "PASS", "detail": "venue state=cancelled", "elapsed_s": 0.6}
+{"ts_utc": "2026-10-16T14:15:51.130858+00:00", "phase": "reconcile/order-sandbox-000005-5dc8", "verdict": "PASS", "detail": "venue state=cancelled", "elapsed_s": 0.6}
+{"ts_utc": "2026-10-16T14:15:51.132022+00:00", "phase": "reconcile/order-sandbox-000006-1d30", "verdict": "PASS", "detail": "venue state=filled", "elapsed_s": 0.6}
+{"ts_utc": "2026-10-16T14:15:51.132801+00:00", "phase": "reconcile/order-sandbox-000001-ea26", "verdict": "PASS", "detail": "venue state=cancelled", "elapsed_s": 0.6}
+{"ts_utc": "2026-10-16T14:15:51.133625+00:00", "phase": "reconcile/order-sandbox-000001-edc0", "verdict": "PASS", "detail": "venue state=filled", "elapsed_s": 0.6}
+{"ts_utc": "2026-10-16T14:15:51.134369+00:00", "phase": "reconcile/order-sandbox-000001-6fe6", "verdict": "PASS", "detail": "venue state=filled", "elapsed_s": 0.6}
+{"ts_utc": "2026-10-16T14:15:51.135057+00:00", "phase": "reconcile/order-sandbox-000001-8738", "verdict": "PASS", "detail": "void(zero-fill, venue-rejected-at-submit)", "elapsed_s": 0.6}
+{"ts_utc": "2026-10-16T14:15:51.135207+00:00", "phase": "reconcile/ledger", "verdict": "PASS", "detail": "ledger_net=0.0", "elapsed_s": 0.6}
+{"ts_utc": "2026-10-16T14:15:51.136267+00:00", "phase": "full", "verdict": "PASS", "detail": "all 6 phases passed; PASS; SANDBOX VALIDATED", "elapsed_s": 0.6}

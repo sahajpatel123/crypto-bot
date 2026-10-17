@@ -45,9 +45,12 @@ def test_splits_frozen_cover_30_days_disjoint():
 
 
 def test_arm_sets_exact():
-    assert set(ARM_SETS) == {"S1", "S2", "S3", "S4", "S5", "COMBINED", "CASH"}
+    assert set(ARM_SETS) == {"S1", "S2", "S3", "S4", "S5", "COMBINED", "CASH",
+                             "X1", "X1-S", "X1-T", "X1-F"}
     assert ARM_SETS["CASH"] == ()
     assert ARM_SETS["COMBINED"] == ("S1", "S2", "S3", "S4", "S5")
+    assert ARM_SETS["X1"] == ("X1",) and ARM_SETS["X1-S"] == ("X1",)
+    assert ARM_SETS["X1-T"] == ("X1",) and ARM_SETS["X1-F"] == ("X1",)
 
 
 def test_prepare_quotes_split_no_spread(tmp_path):

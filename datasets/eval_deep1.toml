@@ -1,0 +1,29 @@
+# The ONE untouched EVAL for DEEP round 1 (W3, D5). Minted by fresh
+# self-capture ($0, no vendor spend): 900s live capture, BTC+ETH operator
+# override, no chaos. Bulk is machine-local (data/captures/eval-deep1);
+# this record pins it. Status SEALED: score exactly once, then archive.
+
+[eval]
+run_id = "eval-deep1"
+status = "sealed-untouched"
+minted_utc = "2026-10-14T13:54:06.924099+00:00"
+period_utc = ["2026-10-14T13:54:06.924099+00:00", "2026-10-14T14:09:07.288910+00:00"]
+symbols = ["BTCUSDT", "ETHUSDT"]
+rule = "operator override: BTCUSDT,ETHUSDT (NOT dynamic selection)"
+events_sha256 = "300f61a0e8e36e908d705d233244da92d5315b05520bbe1b7090c0f6e265805d"
+events_bytes = 991262827
+events_total = 1848480
+channels = ["aggTrade", "bookTicker", "depth", "markPrice"]
+malformed = 0
+out_of_order = 0
+duplicates = 0
+natural_disconnects = 11
+injected_gaps = 0
+depth_resyncs = 17
+audit_verdict = "SCORABLE"
+audit_profile = "24h-1"
+audit_warnings = 4
+audit_note = "warn-level executable gaps only (trades <=63s, book <=41s from natural reconnects); zero fatal reasons"
+prior_use = "UNTOUCHED (minted for eval; never scored)"
+capture_cmd = "tools/capture_stream.py --symbols BTCUSDT,ETHUSDT --duration-s 900 --run-id eval-deep1 --run-base data/captures"
+audit_cmd = "tools/audit_dataset.py --capture data/captures/eval-deep1 --symbols BTCUSDT,ETHUSDT"
