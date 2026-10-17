@@ -2887,6 +2887,7 @@ class Session:
         }
         (self.workdir / "report.json").write_text(json.dumps(report, indent=2))
         (self.workdir / "report.md").write_text(self._render_report(report))
+        self.policy.flush_state()  # T1.2: debounced tick state lands at end
         self._stop_refresh()
         return report
 
@@ -3440,6 +3441,7 @@ class Session:
             json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8")
 
     def _persist_local_state(self) -> None:
+        self.policy.flush_state()  # T1.2: no stale tick state at commits
         self.ledger.save(self.workdir / "ledger.json")
         self._save_position_shell()
         self.store.checkpoint(self.run_id, "local-state",
@@ -4007,6 +4009,7 @@ class Session:
                                     mode=self.config.mode)
         (self.workdir / "report.json").write_text(json.dumps(report, indent=2))
         (self.workdir / "report.md").write_text(self._render_report(report))
+        self.policy.flush_state()  # T1.2: debounced tick state lands at end
         self._stop_refresh()
         return report
 

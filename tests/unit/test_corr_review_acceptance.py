@@ -72,7 +72,7 @@ def test_marketable_ioc_buy_cannot_use_later_quote():
         # Arrival ask 101.0 is inside the 101.50 cap with size: the IOC
         # fills at the arrival opportunity, not 10s later.
         assert len(fills) == 1, [e.kind for e in early]
-        assert fills[0].payload.price == pytest.approx(101.0)
+        assert fills[0].payload.price == pytest.approx(101.01)  # T1.9: arrival ask +1 tick adverse slip; timing unchanged
         assert fills[0].payload.client_order_id == cid
         _quote(engine, T0 + timedelta(seconds=10), 89.0, 90.0)
         late = _drain(engine)
@@ -95,7 +95,7 @@ def test_marketable_ioc_sell_mirror():
         early = _drain(engine)
         fills = [e for e in early if e.kind == "fill"]
         assert len(fills) == 1, [e.kind for e in early]
-        assert fills[0].payload.price == pytest.approx(99.0)
+        assert fills[0].payload.price == pytest.approx(98.99)  # T1.9: arrival bid -1 tick adverse slip; timing unchanged
         _quote(engine, T0 + timedelta(seconds=10), 110.0, 111.0)
         late = _drain(engine)
         late_prices = [getattr(e.payload, "price", None) for e in late]
@@ -124,7 +124,7 @@ def test_marketable_ioc_partial_remainder_cannot_revive():
         fills = [e for e in early if e.kind == "fill"]
         assert len(fills) == 1, [e.kind for e in early]
         assert 0.0 < fills[0].payload.qty < 0.002
-        assert fills[0].payload.price == pytest.approx(101.0)
+        assert fills[0].payload.price == pytest.approx(101.01)  # T1.9: arrival ask +1 tick adverse slip; timing unchanged
         part = engine.filled_qty(cid)
         assert part == pytest.approx(fills[0].payload.qty)
         cancels = [e for e in early if e.kind == "cancel"]

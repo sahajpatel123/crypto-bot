@@ -61,12 +61,25 @@ class RiskPolicy:
         self._last_tick_save_mono: float = 0.0
         self._tick_dirty: bool = False
 
-    def _persist_tick(self, *, force: bool = False) -> None:
-        """Debounced save for monitor_tick only (T1.2)."""
-        now = time.monotonic()
-        if force or now - self._last_tick_save_mono >= 1.0:
+    def _persist_tick(self, *, force: bool = False,
+                      now: datetime | None = None) -> None:
+        """Debounced save for monitor_tick only (T1.2).
+
+        Debounced on EVENT time (the tick's own clock), not wall time:
+        replay determinism — identical tapes persist identical state.
+        """
+        stamp = now or self._now_utc()
+        elapsed = None
+        if self._last_tick_save_mono:
+            try:
+                elapsed = (stamp - datetime.fromtimestamp(
+                    self._last_tick_save_mono, tz=timezone.utc)
+                    ).total_seconds()
+            except (TypeError, ValueError, OverflowError, OSError):
+                elapsed = None
+        if force or elapsed is None or elapsed >= 1.0:
             save_state(self.state_path, self._state)
-            self._last_tick_save_mono = now
+            self._last_tick_save_mono = stamp.timestamp()
             self._tick_dirty = False
         else:
             self._tick_dirty = True
@@ -223,7 +236,7 @@ class RiskPolicy:
             return HealthStatus(False, ("health:nonfinite-account",), ())
         if self._state.needs_reconciliation or self._state.day_start_equity is None:
             self._record_tick(now)
-            self._persist_tick(force=bool(latched))
+            self._persist_tick(force=bool(latched), now=now)
             return HealthStatus(False, ("health:day-open-needs-reconciliation",),
                                 tuple(latched))
         if account is None:
@@ -236,12 +249,12 @@ class RiskPolicy:
             if self._settle_expired(now):
                 latched.append("expiry-settled")
             self._record_tick(now)
-            self._persist_tick(force=bool(latched))
+            self._persist_tick(force=bool(latched), now=now)
             return HealthStatus(not reasons, tuple(reasons), tuple(latched))
         mark_block = self._check_mark_age(account)
         if mark_block is not None:
             self._record_tick(now)
-            self._persist_tick(force=True)
+            self._persist_tick(force=True, now=now)
             return HealthStatus(False, (mark_block,), tuple(latched))
         day_start = self._state.day_start_equity
         netliq_adj = self._adjust_day(account.net_liquidation, account.flows_cumulative)
@@ -264,7 +277,7 @@ class RiskPolicy:
         if self._settle_expired(now):
             latched.append("expiry-settled")
         self._record_tick(now)
-        self._persist_tick(force=bool(latched))
+        self._persist_tick(force=bool(latched), now=now)
         return HealthStatus(not reasons, tuple(reasons), tuple(latched))
 
     def _record_tick(self, now: datetime) -> None:

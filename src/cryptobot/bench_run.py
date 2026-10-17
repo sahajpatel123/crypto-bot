@@ -596,6 +596,7 @@ class BenchRunner:
         session._drain_engine()
         if not self._is_flat(session):
             return False  # not a flat boundary: cursor stays, tail grows.
+        session.policy.flush_state()  # T1.2: tick state current at commit
         record = self._snapshot(session, cursor)
         fsync_s = _atomic_write_json(self.ckpt_path, record)
         self._t_fsync += fsync_s
