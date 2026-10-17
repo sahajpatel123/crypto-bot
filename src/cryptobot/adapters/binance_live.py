@@ -1613,6 +1613,14 @@ class BinanceLiveEngine:
         """Venue taker rate in bps (cached at readiness)."""
         return self._fee_bps[symbol.upper()]
 
+    def funding_income(self, symbol: str) -> list[dict[str, Any]]:
+        """Raw FUNDING_FEE income rows (T1.7 booking/reconcile input)."""
+        self._guarded("funding_income")
+        rows = self._signed("GET", "/fapi/v1/income",
+                            {"symbol": symbol.upper(),
+                             "incomeType": "FUNDING_FEE", "limit": 1000})
+        return [dict(r) for r in rows] if isinstance(rows, list) else []
+
     def venue_funding_total(self, symbol: str) -> float:
         """Sum of FUNDING_FEE income (live funding-reconcile input)."""
         self._guarded("venue_funding_total")

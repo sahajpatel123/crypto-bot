@@ -469,6 +469,46 @@ class Session:
             pass
         return out
 
+    def book_settled_funding(self, symbol: str) -> int:
+        """Book settled venue funding into the ledger (T1.7).
+
+        Idempotent by venue tranId (fallback time+income): re-running
+        books nothing twice. Returns the number of newly booked rows.
+        """
+        fetch = getattr(self.engine, "funding_income", None)
+        if not callable(fetch):
+            raise ValueError("engine does not expose funding_income")
+        booked = 0
+        for row in fetch(symbol):
+            try:
+                amount = float(row.get("income", 0.0) or 0.0)
+                ts_ms = int(row.get("time", 0) or 0)
+                tran = row.get("tranId")
+                event_id = (f"funding:{symbol}:{tran}" if tran is not None
+                            else f"funding:{symbol}:{ts_ms}:{amount}")
+                ts = datetime.fromtimestamp(ts_ms / 1000,
+                                            tz=timezone.utc).isoformat()
+            except (TypeError, ValueError, OverflowError, OSError):
+                continue  # malformed row: reconcile diff will surface it
+            if self.ledger.note_funding(event_id, amount, ts):
+                booked += 1
+        return booked
+
+    def funding_reconcile(self, symbol: str) -> dict[str, Any]:
+        """Venue funding total vs booked ledger net (T1.7)."""
+        fetch = getattr(self.engine, "funding_income", None)
+        if not callable(fetch):
+            raise ValueError("engine does not expose funding_income")
+        venue_total = 0.0
+        for row in fetch(symbol):
+            try:
+                venue_total += float(row.get("income", 0.0) or 0.0)
+            except (TypeError, ValueError):
+                continue
+        booked = self.ledger.funding_net()
+        return {"symbol": symbol, "venue_total": venue_total,
+                "booked_net": booked, "diff": venue_total - booked}
+
     def _snapshot_account(self, symbol: str | None = None) -> AccountSnapshot:
         mark = self._reference_mark()
         close_bps = self.config.taker_bps
