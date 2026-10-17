@@ -214,12 +214,12 @@ T1.6. `docs/f2-health-recovery.md` came with the F2 cherry-pick.
 
 ## Open risks
 
-- R-1: Full suite ran end-of-P0: 1436 passed, 2 failed, 1 skipped
-  (925s). Zone failure proven concurrent: HEAD ZONES.json has
-  Z6-liveops evidence=[] (test expects EVIDENCE-EMPTY) while the
-  uncommitted working copy cites a drill PASS. test_public_paper
-  passes standalone + in targeted file; treat as order-dependent
-  until reproduced. Re-run full suite at end of P1.
+- R-1 CLOSED: definitive full suite on 8b7f254: 1479 passed,
+  1 failed, 1 skipped (1434s). The one failure
+  (test_zone_status::test_real_zones_manifest_shape) reads the
+  concurrent UNCOMMITTED coord/pivot/ZONES.json (Z6 cites a drill
+  PASS in the working copy); committed HEAD has Z6 evidence=[] as
+  the test expects. Not a hardening regression; pivot files untouched.
 - R-2: Pivot working-tree changes may interact with suite runs (pivot
   tests present); keep them out of hardening commits.
 - R-3: No credentials available (by design) — all venue-behaviour claims

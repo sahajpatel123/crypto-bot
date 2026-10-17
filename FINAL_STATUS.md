@@ -58,10 +58,15 @@ latency and venue evidence still belong to the owner (OWNER_ACTIONS).
 
 ## Tests
 
-Targeted per task (each commit message carries its count). Full
-suite: see STATE.md final entry (run at delivery; the only known
-non-green is the zone-manifest test, proven to read the concurrent
-uncommitted pivot `ZONES.json`, not committed code).
+Targeted per task (each commit message carries its count).
+Definitive full suite on 8b7f254: **1479 passed, 1 failed, 1 skipped
+in 1434s**. The single failure
+(test_zone_status::test_real_zones_manifest_shape) reads the
+concurrent UNCOMMITTED `coord/pivot/ZONES.json` — the working copy
+cites a drill PASS for Z6 while committed HEAD has Z6 evidence=[]
+exactly as the test expects (proven by `git show HEAD:` diff in
+STATE.md). It is not a hardening regression, and pivot files were
+never touched by this program.
 
 ## What still stands between now and live capital (ranked)
 
