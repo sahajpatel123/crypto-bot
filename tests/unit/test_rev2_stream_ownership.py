@@ -676,4 +676,7 @@ def test_adapter_reasons_release_independently(tmp_path):
     paper = NautilusPaperEngine(journal_path=tmp_path / "paper.jsonl")
     paper.set_exit_only(True, "halt:test")
     paper.set_exit_only(False, "cleared")
-    assert paper._exit_only is False  # bool lift, any label.
+    assert paper._exit_only is True  # An unrelated heal cannot lift risk.
+    paper.set_exit_only(False, "halt:test")
+    assert paper._exit_only is False
+    paper.close()
