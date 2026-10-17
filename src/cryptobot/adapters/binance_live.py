@@ -46,6 +46,7 @@ import hmac
 import json
 import os
 import random
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -171,6 +172,7 @@ class UrllibTransport:
     def __init__(self, base_url: str, timeout_s: float = 10.0) -> None:
         self._base = base_url.rstrip("/")
         self._timeout = timeout_s
+        self.last_used_weight_1m: int | None = None
 
     def _effective_timeout(self) -> float:
         """Configured timeout bounded by the remaining job budget."""
@@ -199,6 +201,13 @@ class UrllibTransport:
             method=method)
         try:
             with urllib.request.urlopen(req, timeout=timeout) as resp:
+                # T1.2: request-weight accounting for the budget governor.
+                try:
+                    self.last_used_weight_1m = int(
+                        resp.headers.get("X-MBX-USED-WEIGHT-1M", "") or 0) \
+                        or getattr(self, "last_used_weight_1m", None)
+                except (TypeError, ValueError):
+                    pass
                 return json.loads(resp.read().decode("utf-8"))
         except urllib.error.HTTPError as exc:
             try:
@@ -319,6 +328,13 @@ class BinanceLiveEngine:
         self._marks: dict[str, float] = {}
         self._mark_ts: dict[str, datetime] = {}
         self._orders_cache: tuple[float, list[EngineOrderStatus]] | None = None
+        # T1.2: account cache (TTL 5s) — hot path must not signed-REST
+        # per event. Updated by REST snapshot/margin reads and by
+        # user-stream ACCOUNT_UPDATE; stale entries force a REST refresh.
+        self._account_cache: AccountSnapshot | None = None
+        self._margin_cache: tuple[float, float] | None = None
+        self._account_cached_at: float = 0.0
+        self.ACCOUNT_CACHE_TTL_S = 5.0
         self._listen_key: str | None = None
         # Contract v1 tracked truth: per-order versions, submit-intent
         # qty/symbol cache, adopted fill qty, emitted terminals.
@@ -1201,6 +1217,30 @@ class BinanceLiveEngine:
             self._note_algo_update(payload.get("o", {}), payload)
         elif kind == "ACCOUNT_UPDATE":
             self._journal("account-update", {"event_time": payload.get("E")})
+            # T1.2: keep the account cache fresh from the stream so the
+            # hot path avoids signed REST. USDT wallet balance (wb)
+            # updates wallet equity; available margin is refreshed by
+            # the next TTL-bound REST read (stream carries no avail).
+            try:
+                balances = (payload.get("a") or {}).get("B") or []
+                for entry in balances:
+                    if str(entry.get("a")) == "USDT":
+                        wallet = float(entry.get("wb"))
+                        if self._account_cache is not None:
+                            old = self._account_cache
+                            self._account_cache = AccountSnapshot(
+                                wallet_equity_usdt=wallet,
+                                available_margin_usdt=old.available_margin_usdt,
+                                margin_balance_usdt=wallet,
+                                positions=old.positions,
+                                asof_utc=self._now_utc(),
+                                complete=old.complete)
+                        if self._margin_cache is not None:
+                            self._margin_cache = (self._margin_cache[0],
+                                                  wallet)
+                        self._account_cached_at = time.monotonic()
+            except (TypeError, ValueError, AttributeError):
+                pass  # cache stays stale -> TTL REST refresh covers it
         elif kind == "listenKeyExpired":
             self._listen_key = None
             self._journal("listen-key-expired", {})
@@ -1380,19 +1420,66 @@ class BinanceLiveEngine:
                 margin_raw = view.get("totalMarginBalance")
             except (TypeError, ValueError):
                 return None
-            return AccountSnapshot(
+            snap = AccountSnapshot(
                 wallet_equity_usdt=wallet,
                 available_margin_usdt=available,
                 margin_balance_usdt=(
                     float(margin_raw) if margin_raw is not None else None),
                 positions=self._snapshot_positions(view.get("positions", [])),
                 asof_utc=now, complete=False)
-        return AccountSnapshot(
+            self._store_account_cache(snap, view)
+            return snap
+        snap = AccountSnapshot(
             wallet_equity_usdt=wallet,
             available_margin_usdt=available,
             margin_balance_usdt=margin,
             positions=self._snapshot_positions(view.get("positions", [])),
             asof_utc=now, complete=True)
+        self._store_account_cache(snap, view)
+        return snap
+
+    # -- T1.2 account cache ------------------------------------------------
+    def _store_account_cache(self, snap: AccountSnapshot,
+                             view: dict | None = None) -> None:
+        self._account_cache = snap
+        self._account_cached_at = time.monotonic()
+        if view is not None:
+            try:
+                free = float(view.get("totalMarginBalance", 0.0) or 0.0) \
+                    - float(view.get("totalInitialMargin", 0.0) or 0.0)
+                self._margin_cache = (snap.available_margin_usdt, free)
+            except (TypeError, ValueError):
+                pass
+
+    def account_cache_age_s(self) -> float | None:
+        if self._account_cache is None:
+            return None
+        return max(0.0, time.monotonic() - self._account_cached_at)
+
+    def account_snapshot_cached(
+            self, max_age_s: float = 5.0) -> AccountSnapshot | None:
+        """Cached snapshot within TTL; REST refresh when stale (T1.2)."""
+        age = self.account_cache_age_s()
+        if self._account_cache is not None and age is not None \
+                and age <= max_age_s:
+            return self._account_cache
+        return self.account_snapshot()
+
+    def weight_used_1m(self) -> int | None:
+        """Last X-MBX-USED-WEIGHT-1M seen by the transport (T1.2)."""
+        raw = getattr(self._transport, "last_used_weight_1m", None)
+        try:
+            return int(raw) if raw is not None else None
+        except (TypeError, ValueError):
+            return None
+
+    def weight_budget_ok(self, *, limit: int = 2400,
+                         reserve_frac: float = 0.1) -> bool:
+        """True while used weight leaves the reserve headroom (T1.2)."""
+        used = self.weight_used_1m()
+        if used is None:
+            return True  # unknown: refuse-fast window still guards bursts
+        return used <= int(limit * (1.0 - reserve_frac))
 
     @staticmethod
     def _snapshot_positions(views: Any) -> tuple[AccountPosition, ...]:
@@ -1437,11 +1524,33 @@ class BinanceLiveEngine:
         return self._mark_ts.get(instrument.upper())
 
     def account_margin(self) -> tuple[float, float]:
-        """(availableBalance, marginBalance − initialMargin) from the venue."""
+        """(availableBalance, marginBalance − initialMargin).
+
+        T1.2: served from the <=5s account cache on the hot path; a
+        stale/missing cache does ONE signed REST refresh and re-caches.
+        """
+        age = self.account_cache_age_s()
+        if self._margin_cache is not None and age is not None \
+                and age <= self.ACCOUNT_CACHE_TTL_S:
+            return self._margin_cache
         account = self._signed("GET", "/fapi/v2/account")
         available = float(account.get("availableBalance", 0.0) or 0.0)
         free = float(account.get("totalMarginBalance", 0.0) or 0.0) - float(
             account.get("totalInitialMargin", 0.0) or 0.0)
+        self._margin_cache = (available, free)
+        self._account_cached_at = time.monotonic()
+        try:
+            self._account_cache = AccountSnapshot(
+                wallet_equity_usdt=float(
+                    account.get("totalWalletBalance", 0.0) or 0.0),
+                available_margin_usdt=available,
+                margin_balance_usdt=float(
+                    account.get("totalMarginBalance", 0.0) or 0.0),
+                positions=self._snapshot_positions(
+                    account.get("positions", [])),
+                asof_utc=self._now_utc(), complete=True)
+        except (TypeError, ValueError):
+            pass
         return available, free
 
     def fee_bps(self, symbol: str) -> float:

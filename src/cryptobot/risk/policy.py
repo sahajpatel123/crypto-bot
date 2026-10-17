@@ -14,6 +14,7 @@ as unresolved until reconciled (F-CEO-03), flow-adjusted day/global refs
 from __future__ import annotations
 
 import math
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable
@@ -54,6 +55,28 @@ class RiskPolicy:
         # risk-budgeted request; executable is what was actually submitted;
         # booked/fill ledger is what executed. Popped on lifecycle end.
         self._executable: dict[str, float] = {}
+        # T1.2: debounced tick persistence. monitor_tick fsyncs at most
+        # once per second unless a state transition latched; transitions
+        # (evaluate/halt/reservation paths) keep synchronous save_state.
+        self._last_tick_save_mono: float = 0.0
+        self._tick_dirty: bool = False
+
+    def _persist_tick(self, *, force: bool = False) -> None:
+        """Debounced save for monitor_tick only (T1.2)."""
+        now = time.monotonic()
+        if force or now - self._last_tick_save_mono >= 1.0:
+            save_state(self.state_path, self._state)
+            self._last_tick_save_mono = now
+            self._tick_dirty = False
+        else:
+            self._tick_dirty = True
+
+    def flush_state(self) -> None:
+        """Force any debounced tick state to disk (shutdown/transitions)."""
+        if self._tick_dirty:
+            save_state(self.state_path, self._state)
+            self._last_tick_save_mono = time.monotonic()
+            self._tick_dirty = False
 
     # -- day lifecycle ---------------------------------------------------
     def reconcile_day(self, day_start_equity: float, flows_cumulative: float = 0.0) -> str:
@@ -200,7 +223,7 @@ class RiskPolicy:
             return HealthStatus(False, ("health:nonfinite-account",), ())
         if self._state.needs_reconciliation or self._state.day_start_equity is None:
             self._record_tick(now)
-            save_state(self.state_path, self._state)
+            self._persist_tick(force=bool(latched))
             return HealthStatus(False, ("health:day-open-needs-reconciliation",),
                                 tuple(latched))
         if account is None:
@@ -213,12 +236,12 @@ class RiskPolicy:
             if self._settle_expired(now):
                 latched.append("expiry-settled")
             self._record_tick(now)
-            save_state(self.state_path, self._state)
+            self._persist_tick(force=bool(latched))
             return HealthStatus(not reasons, tuple(reasons), tuple(latched))
         mark_block = self._check_mark_age(account)
         if mark_block is not None:
             self._record_tick(now)
-            save_state(self.state_path, self._state)
+            self._persist_tick(force=True)
             return HealthStatus(False, (mark_block,), tuple(latched))
         day_start = self._state.day_start_equity
         netliq_adj = self._adjust_day(account.net_liquidation, account.flows_cumulative)
@@ -241,7 +264,7 @@ class RiskPolicy:
         if self._settle_expired(now):
             latched.append("expiry-settled")
         self._record_tick(now)
-        save_state(self.state_path, self._state)
+        self._persist_tick(force=bool(latched))
         return HealthStatus(not reasons, tuple(reasons), tuple(latched))
 
     def _record_tick(self, now: datetime) -> None:

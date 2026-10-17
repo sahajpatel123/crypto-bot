@@ -16,7 +16,7 @@ correctness > validation integrity > features.
 | T0.3 | ruff + mypy configs (strict on risk/execution/adapters/app) + CI | DONE |
 | T0.4 | Truth-in-docs (doctor, run_live docstring, README E-007, prod.toml) | DONE |
 | T1.1 | Venue-seeded accounting + account-mode verification (fail closed) | DONE |
-| T1.2 | Hot path: cached account snapshot, debounced risk writer, weight governor, benchmark | TODO |
+| T1.2 | Hot path: cached account snapshot, debounced risk writer, weight governor, benchmark | PARTIAL |
 | T1.3 | Table-driven exception policy + safe mode; one order-lifecycle path | TODO |
 | T1.4 | Protection window: parallel stop/target, shadow stop, fault injection | TODO |
 | T1.5 | SIGTERM/SIGINT flatten by default; `--leave-protected` opt-out | TODO |
@@ -151,6 +151,14 @@ T1.6. `docs/f2-health-recovery.md` came with the F2 cherry-pick.
   non-blocking until baselines reach zero (never weakened to pass).
 - T0.4 (31b6c4d): doctor live-label fix + test_doctor_truth 28 passed
   with test_cli_readiness.
+- T1.2 (PARTIAL): engine account cache TTL 5s (REST + ACCOUNT_UPDATE),
+  account_snapshot_cached, weight governor from X-MBX-USED-WEIGHT-1M,
+  RiskPolicy._persist_tick debounce (transitions force; flush_state).
+  Evidence: test_hotpath_cache 4 tests + regressions = 77 passed.
+  Before: account_margin = 1 signed REST/call; after: <=1 per 5s/engine.
+  Owed: background REST refresher thread + stale-cache entry halt and
+  replay p99 benchmark — stale REST failure currently propagates
+  (handled as safe-mode in T1.3); do not claim DONE until then.
 - T1.1: test_venue_seeding 5F on HEAD → after Ledger.reseed_opening,
   Session.seed_from_venue, BinanceLiveEngine.verify_account_modes +
   journal_client_ids, CLI _seed_live_session (demo + prod): 84 passed
@@ -160,8 +168,12 @@ T1.6. `docs/f2-health-recovery.md` came with the F2 cherry-pick.
 
 ## Open risks
 
-- R-1: Full suite (~16 min, ~1420 tests) not yet run on this branch;
-  schedule at end of P0.
+- R-1: Full suite ran end-of-P0: 1436 passed, 2 failed, 1 skipped
+  (925s). Zone failure proven concurrent: HEAD ZONES.json has
+  Z6-liveops evidence=[] (test expects EVIDENCE-EMPTY) while the
+  uncommitted working copy cites a drill PASS. test_public_paper
+  passes standalone + in targeted file; treat as order-dependent
+  until reproduced. Re-run full suite at end of P1.
 - R-2: Pivot working-tree changes may interact with suite runs (pivot
   tests present); keep them out of hardening commits.
 - R-3: No credentials available (by design) — all venue-behaviour claims
