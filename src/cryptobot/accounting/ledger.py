@@ -72,6 +72,23 @@ class Ledger:
         self._seen_ids: set[str] = set()
         self._seq = 0
 
+    def reseed_opening(self, equity: float) -> None:
+        """Replace the opening equity with venue truth (T1.1).
+
+        Only valid on a fresh ledger (no fills/funding/flows booked and
+        flat): live startup seeds from the venue wallet instead of the
+        paper config number. Refuses otherwise — reseeding over booked
+        history would silently rewrite realised P&L.
+        """
+        equity = _require_finite(equity, "venue equity")
+        if equity < 0:
+            raise ValueError(f"venue equity must be >= 0, got {equity!r}")
+        if self._journal or self._qty != 0.0:
+            raise ValueError("reseed refused: ledger already has booked "
+                             "history or an open position")
+        self._pilot_equity = float(equity)
+        self._cash = float(equity)
+
     # -- recording (idempotent by event identity) --------------------------
     def note_fill(
         self, exec_id: str, symbol: str, side: str,

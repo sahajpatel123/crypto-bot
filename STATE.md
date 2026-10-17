@@ -13,9 +13,9 @@ correctness > validation integrity > features.
 |---|---|---|
 | T0.1 | Baseline targeted tests + this file | DONE |
 | T0.2 | Consolidate F2 health recovery + F-SIZING-01 (+ client-ID if present); restore F2 tests; prove `_release_exit_only` callers | DONE |
-| T0.3 | ruff + mypy configs (strict on risk/execution/adapters/app) + CI | TODO |
-| T0.4 | Truth-in-docs (doctor, run_live docstring, README E-007, prod.toml) | TODO |
-| T1.1 | Venue-seeded accounting + account-mode verification (fail closed) | TODO |
+| T0.3 | ruff + mypy configs (strict on risk/execution/adapters/app) + CI | DONE |
+| T0.4 | Truth-in-docs (doctor, run_live docstring, README E-007, prod.toml) | DONE |
+| T1.1 | Venue-seeded accounting + account-mode verification (fail closed) | DONE |
 | T1.2 | Hot path: cached account snapshot, debounced risk writer, weight governor, benchmark | TODO |
 | T1.3 | Table-driven exception policy + safe mode; one order-lifecycle path | TODO |
 | T1.4 | Protection window: parallel stop/target, shadow stop, fault injection | TODO |
@@ -146,6 +146,17 @@ T1.6. `docs/f2-health-recovery.md` came with the F2 cherry-pick.
 - T0.2: `pytest /tmp/test_session_health_recovery.py` → 6F/1P on HEAD;
   `pytest tests/acceptance/test_sizing_funding_clamp.py` → 2F/2P on HEAD;
   after cherry-picks → 11 passed; regression set → 84 passed
+- T0.3 (ff1b184): ruff 0.17.1 baseline 628 errors, mypy 2.4.0 baseline 464
+  errors/58 files — configs committed, CI lint/type jobs report
+  non-blocking until baselines reach zero (never weakened to pass).
+- T0.4 (31b6c4d): doctor live-label fix + test_doctor_truth 28 passed
+  with test_cli_readiness.
+- T1.1: test_venue_seeding 5F on HEAD → after Ledger.reseed_opening,
+  Session.seed_from_venue, BinanceLiveEngine.verify_account_modes +
+  journal_client_ids, CLI _seed_live_session (demo + prod): 84 passed
+  (venue_seeding + cli_readiness + binance_live x2). Recent-income
+  fetching at startup deferred to T1.7 (funding booking); seed uses
+  wallet/positions/orders now. Full P0 suite still owed (R-1).
 
 ## Open risks
 

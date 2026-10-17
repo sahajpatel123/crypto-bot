@@ -212,6 +212,24 @@ def _ws_socket_factory_for(engine):
     return _factory
 
 
+def _seed_live_session(session, engine, config) -> float:
+    """T1.1 startup: verify account modes, then seed from venue truth.
+
+    Raises ValueError on any refusal (fail closed); callers print REFUSED
+    and exit non-zero. Fetches wallet/positions/open orders (incl. algo
+    via engine.open_orders) — never the config paper number.
+    """
+    symbols = list(config.symbols or [])
+    modes = engine.verify_account_modes(symbols,
+                                        leverage_cap=config.leverage_cap)
+    print(f"account modes: {modes}")
+    snapshot = engine.account_snapshot()
+    open_ids = [str(o.client_order_id) for o in engine.open_orders()]
+    journal_ids = [str(c) for c in engine.journal_client_ids()]
+    return session.seed_from_venue(snapshot, open_client_ids=open_ids,
+                                   journal_client_ids=journal_ids)
+
+
 def _run_paper(args: argparse.Namespace) -> int:
     try:
         config = load_config(args.config)
@@ -321,6 +339,17 @@ def _run_paper(args: argparse.Namespace) -> int:
             starting_balance_usdt=config.paper_capital_usdt)
     session = Session(config, store, workdir, run_id, pid=os.getpid(),
                       clock=clock, engine=engine)
+    if config.engine_kind == "live" and not args.resume:
+        # T1.1: seed accounting from the venue before any trading.
+        try:
+            seeded = _seed_live_session(session, engine, config)
+        except Exception as exc:
+            print(f"run {run_id} REFUSED (venue seed: "
+                  f"{type(exc).__name__}: {exc})", file=sys.stderr)
+            store.close()
+            engine.close()
+            return 2
+        print(f"venue seed: equity {seeded:.2f} USDT (venue wallet)")
     # Contract v1: Session.__init__ binds the ONE booking handler;
     # no rebind here (a policy is not an EngineEvent callable).
     _install_stop_handler(session)
@@ -733,6 +762,15 @@ def _run_prod(args: argparse.Namespace, _engine_factory=None) -> int:
             session = Session(config, store, workdir, run_id,
                               pid=os.getpid(), clock=WallClock(),
                               engine=engine)
+            # T1.1: validate venue seeding on the constructed driver
+            # (no event loop starts; submission stays OFF).
+            try:
+                seeded = _seed_live_session(session, engine, config)
+            except Exception as exc:
+                print(f"prod: REFUSED (venue seed: "
+                      f"{type(exc).__name__}: {exc})", file=sys.stderr)
+                return 2
+            print(f"prod venue seed: equity {seeded:.2f} USDT")
             print(f"prod driver: Session {run_id} constructed over "
                   f"live engine (workdir={workdir}); submission switch "
                   f"is OFF so no event loop starts.")

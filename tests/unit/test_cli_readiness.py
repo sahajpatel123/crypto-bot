@@ -221,6 +221,15 @@ class _StubLiveEngine:
     def open_orders(self):
         return []
 
+    def verify_account_modes(self, symbols, *, leverage_cap):
+        # T1.1 stub: account already in the required modes.
+        return {"position_mode": "one-way", "multi_assets": False,
+                "margin_type": "ISOLATED", "leverage": 3,
+                "symbols": list(symbols)}
+
+    def journal_client_ids(self):
+        return ()
+
     def close(self):
         pass
 

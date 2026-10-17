@@ -187,6 +187,9 @@ class Session:
         self.clock = clock or ReplayClock()
         self.now_utc: Callable[[], datetime] = self.clock.now
         self.ledger = Ledger(config.paper_capital_usdt)
+        # T1.1: venue-seeded equity for live (demo/prod) startup; None
+        # until seed_from_venue() runs. Paper/replay keep the config seed.
+        self.venue_seed_equity: float | None = None
         self.policy = RiskPolicy(RiskConfig(**config.to_risk_kwargs()),
                                  state_path=self.workdir / "risk_state.json",
                                  now_utc=self.now_utc)
@@ -396,6 +399,41 @@ class Session:
         if now.tzinfo is None:
             return None
         return max(0.0, (now - ts).total_seconds() * 1000.0)
+
+    def seed_from_venue(self, snapshot: Any, *,
+                          open_client_ids: Any = (),
+                          journal_client_ids: Any = ()) -> float:
+        """Seed ledger + day basis from VENUE equity (T1.1, fail closed).
+
+        Live (demo/prod) startup only; paper/replay keep the config seed.
+        Refuses (ValueError) when the snapshot is missing/incomplete, when
+        the venue holds any position (a position cannot be attributed to
+        this bot's journal at seed time — recovered exposure belongs to
+        the resume path, which flattens it), or when any open order
+        (incl. conditional/algo ids passed by the caller) is not in
+        ``journal_client_ids``. On success the day-start net-liquidation
+        and profit-protection basis come from the venue wallet.
+        """
+        if snapshot is None or not getattr(snapshot, "complete", False):
+            raise ValueError("venue seed refused: account snapshot "
+                             "missing or incomplete (unknown, never flat)")
+        positions = [p for p in getattr(snapshot, "positions", ())
+                     if float(getattr(p, "qty", 0.0) or 0.0) != 0.0]
+        if positions:
+            names = ",".join(str(getattr(p, "instrument", "?"))
+                             for p in positions)
+            raise ValueError(f"venue seed refused: venue position(s) "
+                             f"not in bot journal: {names}")
+        journal = {str(c) for c in journal_client_ids}
+        foreign = [str(c) for c in open_client_ids if str(c) not in journal]
+        if foreign:
+            raise ValueError(f"venue seed refused: open order(s) not in "
+                             f"bot journal: {','.join(foreign)}")
+        wallet = float(snapshot.wallet_equity_usdt)
+        self.ledger.reseed_opening(wallet)
+        self.policy.reconcile_day(wallet, self.ledger.total_flows())
+        self.venue_seed_equity = wallet
+        return wallet
 
     def _snapshot_account(self, symbol: str | None = None) -> AccountSnapshot:
         mark = self._reference_mark()
@@ -3672,11 +3710,16 @@ class Session:
             self.store.create_run(self.run_id, self.config.mode,
                                   self.config.fingerprint,
                                   str(self.workdir), self._pid)
-            self.policy.reconcile_day(self.config.paper_capital_usdt, 0.0)
+            # T1.1: live runs seeded from the venue use venue equity;
+            # paper/replay keep the config seed.
+            _opening = (self.venue_seed_equity
+                        if self.venue_seed_equity is not None
+                        else self.config.paper_capital_usdt)
+            self.policy.reconcile_day(_opening, 0.0)
             self._day = accounting_date(self.now_utc()).isoformat()
             self._run_start_utc = self.now_utc()
             self.store.checkpoint(self.run_id, "open",
-                                  {"equity": self.config.paper_capital_usdt})
+                                  {"equity": _opening})
         self._init_run_files()
         prime = self._prime_live_books()
         self.store.checkpoint(self.run_id, "depth-prime", prime)
@@ -3760,9 +3803,14 @@ class Session:
                              "funding_bps_per_8h": self.config.funding_bps_per_8h},
             "execution_model": self.engine.model_label,
             "simulator_assumptions": list(self.engine.assumptions),
-            "opening_equity": self.config.paper_capital_usdt,
+            "opening_equity": (self.venue_seed_equity
+                               if self.venue_seed_equity is not None
+                               else self.config.paper_capital_usdt),
             "closing_equity": closing,
-            "net_return_pct": (closing / self.config.paper_capital_usdt - 1) * 100,
+            "net_return_pct": (closing / (self.venue_seed_equity
+                                          if self.venue_seed_equity is not None
+                                          else self.config.paper_capital_usdt)
+                               - 1) * 100,
             "paid_costs": self.ledger.paid_costs(),
             "funding_net": self.ledger.funding_net(),
             "realised": self.ledger.net_realised(),

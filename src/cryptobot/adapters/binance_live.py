@@ -880,6 +880,59 @@ class BinanceLiveEngine:
                 return None
             raise
 
+    def journal_client_ids(self) -> tuple[str, ...]:
+        """Client ids this engine has journaled (bot-owned venue orders)."""
+        return tuple(sorted(self._reservations))
+
+    def verify_account_modes(self, symbols: list[str], *,
+                               leverage_cap: float) -> dict[str, Any]:
+        """Verify + set account modes at startup (T1.1, fail closed).
+
+        One-way position mode, multi-assets mode OFF, per-symbol ISOLATED
+        margin and leverage <= cap. Any venue refusal or unexpected state
+        raises VenueRejectedError — startup must not proceed on an
+        unverified account. Returns a summary dict for the run record.
+        """
+        if float(leverage_cap) < 1:
+            raise VenueRejectedError(0, None, "leverage cap < 1")
+        if self._leverage > float(leverage_cap):
+            raise VenueRejectedError(
+                0, None, f"configured leverage {self._leverage} exceeds "
+                         f"cap {leverage_cap}")
+        dual = self._signed("GET", "/fapi/v1/positionSide/dual")
+        if bool(dual.get("dualSidePosition")):
+            self._signed("POST", "/fapi/v1/positionSide/dual",
+                         {"dualSidePosition": "false"})
+            dual = self._signed("GET", "/fapi/v1/positionSide/dual")
+            if bool(dual.get("dualSidePosition")):
+                raise VenueRejectedError(0, None, "hedge mode still on "
+                                         "after one-way set attempt")
+        multi = self._signed("GET", "/fapi/v1/multiAssetsMargin")
+        if bool(multi.get("multiAssetsMargin")):
+            self._signed("POST", "/fapi/v1/multiAssetsMargin",
+                         {"multiAssetsMargin": "false"})
+            multi = self._signed("GET", "/fapi/v1/multiAssetsMargin")
+            if bool(multi.get("multiAssetsMargin")):
+                raise VenueRejectedError(0, None, "multi-assets mode "
+                                         "still on after disable attempt")
+        for symbol in symbols:
+            sym = symbol.upper()
+            try:
+                self._signed("POST", "/fapi/v1/marginType",
+                             {"symbol": sym, "marginType": "ISOLATED"})
+            except VenueHttpError as exc:
+                if exc.code != -4046:  # -4046: already ISOLATED, no change
+                    raise
+            lev = self._signed("POST", "/fapi/v1/leverage",
+                               {"symbol": sym, "leverage": self._leverage})
+            if int(lev.get("leverage", 0)) != self._leverage:
+                raise VenueRejectedError(
+                    0, None, f"{sym} leverage {lev.get('leverage')} != "
+                             f"expected {self._leverage}")
+        return {"position_mode": "one-way", "multi_assets": False,
+                "margin_type": "ISOLATED", "leverage": self._leverage,
+                "symbols": [s.upper() for s in symbols]}
+
     def unknown_ids(self) -> tuple[str, ...]:
         """Client ids needing lookup/reconciliation (contract v1 §2).
 
