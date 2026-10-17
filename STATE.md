@@ -245,7 +245,7 @@ never read. Campaign `data/captures/campaign-1day-*` events never read
 | F0.4b | Break-even re-derivation + tests + fix >60% statement | DONE |
 | F0.4c | Paper fill model parameterized + calibration path | DONE |
 | F0.4d | RESEARCH_VERDICTS sentences -> verdict JSON mapping | DONE |
-| F0.5 | Adversarial review (2 subagents or 30-item pre-mortem) | IN_PROGRESS (2 reviewers launched ses_eb3ff36d/ses_eb3ff369, read-only) |
+| F0.5 | Adversarial review (2 subagents or 30-item pre-mortem) | IN PROGRESS (triage batches; batch1 committed) |
 | F3.1 | Standalone recorder Binance USD-M + USDC check | DONE (integrated) |
 | F3.2 | Venue plugins Bybit/OKX behind flags | DONE (stubs behind flags) |
 | F3.3 | Durability: buffer, fsync, rotation, hash-chain, reports | DONE (integrated) |
@@ -377,11 +377,47 @@ never read. Campaign `data/captures/campaign-1day-*` events never read
 - F0.5 IN_PROGRESS: 2 read-only adversarial reviewers launched
   (ses_eb3ff36d lens A risk/exec, ses_eb3ff369 lens B adapters/live;
   briefed WITHOUT STATE/decisions; triage on return).
-- FULL SUITE pre-F0.4 (stale-mixed, sh_14bf34aa): 1473 passed,
-  1 skipped, 0 failed in 998s. Started @1e96e80; F0.4a-d landed
-  mid-run (imports mixed) so NOT authoritative; fresh suite
-  sh_14c02e4f started @0f86687. Counts differ from prior 1479
-  because base is 3100266 (not 8b7f254) + 2 hermetic tests.
+- FULL SUITE fresh @0f86687 (sh_14c02e4f): 1494 passed, 1 skipped,
+  0 failed in 1107s. STILL mixed-collect (F1.1/recorder/vault/triage
+  landed mid-run, uncollected) → final authoritative suite re-runs at
+  F0 end.
+- F0.5 TRIAGE (A: 11 findings, B: 22 findings; overlaps noted):
+
+  | ID | Severity | Finding | Verdict |
+  |---|---|---|---|
+  | A#1 | CRITICAL | Duplicate close over unknown | FIXED (batch1: unknown=in-flight) |
+  | A#2 | CRITICAL | Orphaned exposure unsupervised | TODO |
+  | A#3 | HIGH | shutdown_flatten exits naked | TODO |
+  | A#4 | HIGH | Venue exc crash/flatten (=B#5) | TODO |
+  | A#5 | HIGH | Paper funding restart mismatch | TODO |
+  | A#6 | HIGH | Mark-missing fail-open (short) | TODO |
+  | A#7 | MEDIUM | Dust deadlock (exact-zero) | TODO |
+  | A#8 | MEDIUM | Reconcile symbol-vs-global + silent skip | TODO |
+  | A#9 | MEDIUM | Hot-path REST while holding (=B#16) | TODO |
+  | A#10 | LOW | OrderManager/paper ID recovery | TODO |
+  | A#11 | LOW | Rounding epsilon round-up | FIXED (F1.1 scale-aware eps) |
+  | B#1 | CRITICAL | Submit exc escapes admit + latch | TODO |
+  | B#2 | CRITICAL | Sibling double-fill reversal | TODO |
+  | B#3 | HIGH | Shadow stop dead code | TODO |
+  | B#4 | HIGH | Supervision feed-dependent | TODO |
+  | B#5 | HIGH | 429 kills stop processing (=A#4) | TODO |
+  | B#6 | HIGH | Flatten-then-cancel race | TODO |
+  | B#7 | HIGH | Safe-mode misreport | FIXED (batch1: verify+unknown_ids) |
+  | B#8 | HIGH | Flat-confirm fail-open | FIXED (batch1: None→False) |
+  | B#9 | HIGH | Paper fills raw (audit unwired) | TODO |
+  | B#10 | HIGH | Live funding unwired | TODO |
+  | B#11 | MEDIUM | Orphan leg on partial attach | TODO |
+  | B#12 | MEDIUM | Re-protection wrong-way (=B#2) | TODO |
+  | B#13 | MEDIUM | Seed foreign-order gate vacuous | TODO |
+  | B#14 | MEDIUM | run_mode brackets livelock (paper) | TODO |
+  | B#15 | MEDIUM | ACCOUNT_UPDATE freshness lie | TODO |
+  | B#16 | MEDIUM | Snapshot-per-event (=A#9) | TODO |
+  | B#17 | MEDIUM | Triggered-algo misattribute | TODO |
+  | B#18 | MEDIUM | Watchdog/supervisor unwired | TODO |
+  | B#19 | MEDIUM | Resume flatten skips note_flat | TODO |
+  | B#20 | LOW | Cancel lookup throttled in window | TODO |
+  | B#21 | LOW | Paper MARKET GTC vs live IOC | TODO |
+  | B#22 | LOW | Funding fallback-id collision | TODO |
 - F3 BUILDERS launched: recorder (ses_eb3fdca9: writer/streams/
   plugins/integrity/service + tests + systemd) and vault
   (ses_eb3fdca8: registry/tokens/loader + 4 tests + import-lint).
