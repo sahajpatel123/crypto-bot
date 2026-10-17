@@ -1,0 +1,62 @@
+{
+  "study": "STUDY-04",
+  "title": "P1 maker/post-only economics — preregistered BEFORE its data exists (descriptive, NOT a strategy)",
+  "frozen_utc": "2026-10-16T18:20:00Z",
+  "author_lane": "independent 4th agent (owner-directed); filed to manager for review",
+  "role": "P1 is the only PIVOT-01 family never measurable for $0 — it needs L2/book data. This preregistration is frozen BEFORE any qualifying capture exists (purest possible freeze: the data does not exist yet). It creates NO strategy, NO candidate, consumes NO attempt budget. After the 10-day capture lands, this document governs the measurement; no parameter may change after first data contact.",
+  "data_requirement_frozen": {
+    "source": "owner-run self-capture per coord/pivot/CAPTURE-RUNBOOK.md (pilot cap-pilot-1h started 2026-10-16 by this lane to measure bytes/hour) or Tardis Solo (owner purchase decision)",
+    "floor": ">=10 days untouched tick, per symbol: L2 book (depth snapshot+diff, synced per the repo's depth protocol) + aggTrades + marks >=1s + funding settlements + monotonic seq — identical to the PIVOT-01 enrollment floor",
+    "symbols": "the pilot's pinned pair (expected BTCUSDT+ETHUSDT; continuity rule per runbook section 2)",
+    "absent_data_rule": "if the capture does not complete or fails audit, verdict is DATA BLOCKED — never scored on partial windows for decision purposes"
+  },
+  "hypothesis_frozen": "Post-only maker orders on BTC/ETH USDT-perps earn the quoted spread net of adverse selection and maker fees; the edge is queue position plus a short-horizon toxicity filter, not directional prediction.",
+  "fill_model_frozen": {
+    "why_bracket": "Queue position is unobservable in public data; any single fill model is an assumption. The honest measurement brackets the truth with two declared bounds — no fitted queue model, no parameter tuning.",
+    "optimistic_join": "a resting post-only order at the best bid (buy) fills when any trade prints at price <= order price (trade-through-or-touch fills you; zero queue ahead assumed)",
+    "conservative_through": "the order fills only when a trade prints STRICTLY THROUGH the order price (price < order price for buy; full queue ahead assumed)",
+    "truth_statement": "realized fill rate and adverse selection lie between the bounds; both are reported, decisions use BOTH"
+  },
+  "quote_policy_frozen": {
+    "side": "always BOTH sides quoted (join best bid and best ask, post-only, one order per side per symbol)",
+    "requote": "re-quote when the best price moves away from the order by >= 1 tick; cancel-and-rejoin",
+    "toxicity_filter_declared": "cancel the quoted side when trailing-10s trade flow against that side exceeds buy_frac >= 0.6 (or <= 0.4 for the bid side); re-quote after 5s calm. Threshold declared a priori from the S5 flow convention (0.58 arm gate), not fitted.",
+    "inventory_rule": "flat-biased: any filled inventory is exited at touch (taker) after 60s or when the opposite side fills (spread captured round-trip); no directional carry"
+  },
+  "economics_frozen": {
+    "captured_spread": "for a buy fill at p with mid m at fill time: (m - p); round-trip capture = sell-leg touch fill minus taker fee",
+    "fees": "Binance USDT-M VIP0 maker 2.0 bps, taker 5.0 bps (list; BNB -10% labeled post-hoc)",
+    "markouts": "mark-price move vs fill side at +5s, +30s, +60s, +300s (adverse selection measure; negative = toxic flow)",
+    "funding": "settled funding over any inventory hold, attributed signed"
+  },
+  "decision_rules_frozen": {
+    "family_kill_inherited": "adverse markout at fill+5s worse than -spread/2 on average, OR realized spread capture < 0 after fees (PIVOT-01 P1 kill criteria, unchanged)",
+    "merits_candidate": ">= 200 maker fill events across the window AND optimistic-model mean net capture >= +0.5 bp/order AND conservative-model mean net capture >= -2.0 bp/order AND fill+5s markout >= -spread/2 — all three models' conditions must hold",
+    "else": "P1 NOT-MERITED on this data; the 10-day capture question closes with a measured answer either way",
+    "no_candidate_creation": "a MERITS-CANDIDATE verdict goes to the owner as a decision, never auto-advances; any candidate config is a separate preregistration"
+  },
+  "posthoc_sensitivity_declared": "toxicity threshold {0.55, 0.65}; requote tick {1, 2}; inventory exit {30s, 120s} — all labeled POST-HOC, never decision-relevant",
+  "amendments_pre_data": [
+    {
+      "id": "A1",
+      "utc": "2026-10-16T18:50:00Z",
+      "what": "toxicity filter density floor + requote symmetry clarified",
+      "why": "Tool construction (before ANY capture data was examined) showed the trailing-10s buy_frac is degenerate on thin flow: a single aggressive trade in a quiet window trips the fraction and cancels the resting order, biasing fill counts toward zero for reasons unrelated to adverse selection. Likewise 'moves away' was ambiguous for the ask side when the touch moves toward/through the order price.",
+      "change": "1) The toxicity filter engages only when the trailing-10s window contains >= 20 aggressive trades; below that density the fraction is noise and the order rests. 2) Re-quote is symmetric: the order re-joins the observed touch whenever |touch - order| >= 1 tick in either direction (rest-at-touch). 3) A consumed (filled) order re-quotes only after the same 5s calm gate - a fresh quote is never instantly re-exposed into the flow that just filled it.",
+      "status": "No outcome data existed at amendment time; the 10-day capture had not started. This is the only planned amendment; any further change voids the study."
+    },
+    {
+      "id": "A2",
+      "utc": "2026-10-17T18:05:00Z",
+      "what": "data source redirected by OWNER decision: 1-day live capture within a 10GB budget replaces the 10-day capture/Tardis paths",
+      "why": "Owner directive 2026-10-17: no 10-day continuous capture; 1 day only, 10GB limit, prefer selective use of data. Verified facts: (a) Binance Vision has NO futures bookTicker/book archives (404; repo suitability audit agrees - bookDepth is 30s aggregate bands, not a book), so past-data selection is impossible for the perp touch; (b) the owner-runbook pilot measured 8.3GB/hour at full fidelity - a 1-day full-fidelity capture is ~200GB, 20x over budget; (c) the budget is met by engineering the capture to the measurement's actual information needs: bookTicker emitted on touch PRICE change only (quantity churn was ~99% of bookTicker volume and is unused by the fill models), no raw duplicate, gzip streaming. Weekend-quiet measured rates put the 24h size well under 1GB; weekday rates keep it under ~2GB.",
+      "change": "Data source = fresh 1-day live capture (tools/capture_maker_1d.py, run cap-maker-1d-ownerexec) of BTCUSDT+ETHUSDT bookTicker/aggTrades/markPrice@1s. Fidelity disclosure: between emitted touch updates the consumer sees the last emitted touch; a touch excursion inside the 50ms per-symbol minimum interval is unobserved (second-order for touch-following fill models, bounded, disclosed). Regime segmentation (owner's 'filter out sideways' instinct, made honest): economics are reported SEPARATELY for high/median/low volatility hours within the day (terciles by 1h realized vol, declared here before any maker outcome exists) - regime-conditional reporting, never outcome-cherry-picking. VERDICT CEILING: with 1 day of data the outcome is DEVELOPMENT-ONLY (does maker capture look alive on real book data - a go/no-go for investing in longer capture), never a PIVOT-01 qualification (the >=10d/100-position floor stands for qualification).",
+      "status": "Amended before the capture produced any maker outcome (capture started 2026-10-17T18:07 UTC, this amendment same turn)."
+    }
+  ],
+  "non_goals": [
+    "No strategy/spec/code changes in any worker lane",
+    "No credentials, no orders, live submission stays disabled",
+    "No claim of profitability; the capture pilot measures bytes/hour only"
+  ]
+}
