@@ -291,18 +291,18 @@
  ],
  "inputs": {
   "comparisons": [
-   "outputs/x1/bridge/adverse/X1-R1_dev.comparison.json",
-   "outputs/x1/bridge/adverse/X1-R1_validation.comparison.json",
    "outputs/x1/bridge/adverse/X1-R1-CASH_dev.comparison.json",
    "outputs/x1/bridge/adverse/X1-R1-CASH_validation.comparison.json",
    "outputs/x1/bridge/adverse/X1-R1-F_dev.comparison.json",
    "outputs/x1/bridge/adverse/X1-R1-F_validation.comparison.json",
-   "outputs/x1/bridge/adverse/X1-R1-S_dev.comparison.json",
-   "outputs/x1/bridge/adverse/X1-R1-S_validation.comparison.json",
    "outputs/x1/bridge/adverse/X1-R1-S1_dev.comparison.json",
    "outputs/x1/bridge/adverse/X1-R1-S1_validation.comparison.json",
+   "outputs/x1/bridge/adverse/X1-R1-S_dev.comparison.json",
+   "outputs/x1/bridge/adverse/X1-R1-S_validation.comparison.json",
    "outputs/x1/bridge/adverse/X1-R1-T_dev.comparison.json",
-   "outputs/x1/bridge/adverse/X1-R1-T_validation.comparison.json"
+   "outputs/x1/bridge/adverse/X1-R1-T_validation.comparison.json",
+   "outputs/x1/bridge/adverse/X1-R1_dev.comparison.json",
+   "outputs/x1/bridge/adverse/X1-R1_validation.comparison.json"
   ],
   "registry": "outputs/x1/meta/x1_registry.json"
  },

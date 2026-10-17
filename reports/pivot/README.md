@@ -101,6 +101,16 @@ loudly. This gives the data lane a target format without editing its
 tools. Tests: `test_funding_sidecar_*` (3, incl. outside-span and
 missing-provenance rejection).
 
+Recorder: `python tools/pivot_funding_capture.py --symbols BTCUSDT,ETHUSDT
+--out settlements.jsonl [--mode watch --interval-s 3600 --duration-s N]`
+polls public `GET /fapi/v1/fundingRate` (no auth) and appends only
+venue-returned settlements newer than the per-symbol file max
+(idempotent reruns; proven live 20/20 across BTC+ETH, watch mode
+proven over 65s). Tests: `tests/unit/test_pivot_funding_capture.py`
+(5, socket-free: the suite collection permanently disables real
+sockets via an imported probe module, so HTTP is stubbed at the
+fetch boundary and live behavior is proven by running the tool).
+
 ## Capture sizing (measured 2026-10-16, this host)
 
 From `data/captures/cap-2h` (BTC+ETH, 2h): events.jsonl 1.55GB,

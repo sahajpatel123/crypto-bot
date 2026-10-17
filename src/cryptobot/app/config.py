@@ -8,7 +8,8 @@ import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
 
-__all__ = ["AppConfig", "ConfigError", "load_config"]
+__all__ = ["AppConfig", "ConfigError", "load_config",
+           "with_resolved_symbols"]
 
 PACKAGE_VERSION = "0.1.0"
 
@@ -290,6 +291,11 @@ def load_config(path: str | Path) -> AppConfig:
         events_enabled=bool(run.get("events_enabled", False)),
         source_path=str(path),
     )
+    return AppConfig(**{**cfg.__dict__,
+                       "fingerprint": _fingerprint_config(cfg)})
+
+
+def _fingerprint_config(cfg: AppConfig) -> str:
     canonical_obj: dict = {
         "mode": cfg.mode, "capital": cfg.paper_capital_usdt, "risk": cfg.to_risk_kwargs(),
         "fees": {"label": cfg.fee_label, "taker_bps": cfg.taker_bps,
@@ -311,6 +317,23 @@ def load_config(path: str | Path) -> AppConfig:
     if cfg.x1_beta is not None:
         canonical_obj["x1_beta"] = cfg.x1_beta
     canonical = json.dumps(canonical_obj, sort_keys=True)
-    fingerprint = hashlib.sha256(
+    return hashlib.sha256(
         f"{PACKAGE_VERSION}|{canonical}".encode("utf-8")).hexdigest()[:16]
-    return AppConfig(**{**cfg.__dict__, "fingerprint": fingerprint})
+
+
+def with_resolved_symbols(cfg: AppConfig, symbols: list[str]) -> AppConfig:
+    """Copy with explicit symbols and a recomputed fingerprint.
+
+    Used when live discovery resolves an empty symbol list before the
+    session exists, so book priming and the run fingerprint both see
+    the actual universe. Symbols are upper-cased; the source TOML is
+    untouched.
+    """
+    import dataclasses
+
+    resolved = tuple(str(s).upper() for s in symbols if str(s).strip())
+    if not resolved:
+        raise ConfigError("resolved symbols must be non-empty")
+    new = dataclasses.replace(cfg, symbols=resolved)
+    return AppConfig(**{**new.__dict__,
+                       "fingerprint": _fingerprint_config(new)})

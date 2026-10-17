@@ -1,7 +1,7 @@
 {
  "status": "CHILD_EXIT",
  "child_rc": 0,
- "elapsed_s": 190.171,
+ "elapsed_s": 187.363,
  "budget_s": 600.0,
  "command": [
   "env",

@@ -137,6 +137,68 @@ def test_funding_sidecar_outside_span_does_not_count(tmp_path):
     assert any("outside capture span" in r for r in res["reasons"])
 
 
+def _campaign(tmp_path, chunks, symbols=("BTCUSDT",)):
+    import gzip
+
+    camp = tmp_path / "camp"
+    camp.mkdir()
+    state = {"symbols": list(symbols), "chunks": []}
+    for i, events in enumerate(chunks):
+        name = f"chunk-{i:03d}"
+        cdir = camp / name
+        cdir.mkdir()
+        with gzip.open(cdir / "events.jsonl.gz", "wt",
+                       encoding="utf-8") as fh:
+            for e in events:
+                fh.write(json.dumps(e) + "\n")
+        (cdir / "SETTLED.json").write_text("{}")
+        state["chunks"].append({"idx": i, "dir": name,
+                                "status": "settled"})
+    (camp / "campaign_state.json").write_text(json.dumps(state))
+    return camp
+
+
+def _seg_events(base_ts, n_each=3):
+    evs = []
+    seq = 0
+
+    def add(chan, ts, payload=None):
+        nonlocal seq
+        seq += 1
+        evs.append(_ev(seq, chan, ts=ts, payload=payload))
+
+    for k in range(n_each):
+        add("bookTicker", base_ts + k * 1000, {"bid": 1.0, "ask": 1.1})
+        add("aggTrade", base_ts + k * 1000 + 1, {"price": 1.0})
+        add("markPrice", base_ts + k * 1000 + 2, {"mark": 1.0})
+    return evs
+
+
+def test_campaign_streams_gz_and_resets_seq(tmp_path):
+    camp = _campaign(tmp_path, [_seg_events(T0),
+                                _seg_events(T0 + 3600_000)])
+    res = pivot_enroll.audit_campaign(camp, True, min_chunk_events=1)
+    # Short span + no funding fail; seq restart must NOT count.
+    assert res["verdict"] == "DEVELOPMENT-ONLY"
+    assert res["seq_disordered"] == 0
+    assert res["events"] == 18
+    assert len(res["chunks"]) == 2
+    assert not any("seq" in r for r in res["reasons"])
+
+
+def test_campaign_flags_empty_chunk(tmp_path):
+    camp = _campaign(tmp_path, [_seg_events(T0), []])
+    res = pivot_enroll.audit_campaign(camp, True)
+    assert any("near-empty chunk" in r for r in res["reasons"])
+
+
+def test_campaign_flags_unsettled_chunk(tmp_path):
+    camp = _campaign(tmp_path, [_seg_events(T0)])
+    (camp / "chunk-000" / "SETTLED.json").unlink()
+    res = pivot_enroll.audit_campaign(camp, True)
+    assert any("not settled" in r for r in res["reasons"])
+
+
 def test_unattested_prior_use_blocks_enrollment(tmp_path):
     cap = _capture(tmp_path, _qualifying_events(),
                    {"run_id": "seen", "symbols": ["BTCUSDT"],

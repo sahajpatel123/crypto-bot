@@ -1,0 +1,6 @@
+{"symbol": "BTCUSDT", "funding_ts_ms": 1792080000000, "funding_rate": 1.828e-05, "mark_price": 82381.6792971, "source": "GET /fapi/v1/fundingRate (public, no auth)", "fetched_via": "/tmp/fetch_funding.py key-data 1d"}
+{"symbol": "BTCUSDT", "funding_ts_ms": 1792108800001, "funding_rate": 5.429e-05, "mark_price": 82199.21486957, "source": "GET /fapi/v1/fundingRate (public, no auth)", "fetched_via": "/tmp/fetch_funding.py key-data 1d"}
+{"symbol": "BTCUSDT", "funding_ts_ms": 1792137600001, "funding_rate": 6.803e-05, "mark_price": 82260.2, "source": "GET /fapi/v1/fundingRate (public, no auth)", "fetched_via": "/tmp/fetch_funding.py key-data 1d"}
+{"symbol": "ETHUSDT", "funding_ts_ms": 1792080000000, "funding_rate": 5.355e-05, "mark_price": 2439.89362791, "source": "GET /fapi/v1/fundingRate (public, no auth)", "fetched_via": "/tmp/fetch_funding.py key-data 1d"}
+{"symbol": "ETHUSDT", "funding_ts_ms": 1792108800001, "funding_rate": 7.466e-05, "mark_price": 2441.0556124, "source": "GET /fapi/v1/fundingRate (public, no auth)", "fetched_via": "/tmp/fetch_funding.py key-data 1d"}
+{"symbol": "ETHUSDT", "funding_ts_ms": 1792137600001, "funding_rate": 4.648e-05, "mark_price": 2454.27, "source": "GET /fapi/v1/fundingRate (public, no auth)", "fetched_via": "/tmp/fetch_funding.py key-data 1d"}

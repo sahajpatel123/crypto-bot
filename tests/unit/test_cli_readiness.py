@@ -379,6 +379,110 @@ def test_prod_signed_failure_refuses(monkeypatch, tmp_path, capsys):
     assert "signed-check failures" in capsys.readouterr().err
 
 
+def test_paper_run_interrupted_prints_resume_hint(monkeypatch, tmp_path,
+                                                  capsys):
+    # A venue/connection death mid-run (e.g. routes-exhausted, observed
+    # on paper-proof-30m) must leave a resume hint, not a bare traceback.
+    text = open("configs/paper-protected.toml").read()
+    text = text.replace('symbols = []',
+                        'symbols = ["BTCUSDT"]', 1)
+    text = text.replace('dir = "runs"', f'dir = "{tmp_path}"', 1)
+    cfg_path = tmp_path / "paper.toml"
+    cfg_path.write_text(text)
+    from cryptobot.app.session import Session
+
+    def _dead(self, *a, **k):
+        raise ConnectionError("routes-exhausted: test")
+    monkeypatch.setattr(Session, "run_live", _dead)
+    # Explicit symbols must skip discovery entirely (no network).
+    import cryptobot.market_data.collector as collector_mod
+
+    def _no_discovery(*a, **k):
+        raise AssertionError("discovery must not run with explicit symbols")
+    monkeypatch.setattr(collector_mod, "select_capture_set",
+                        _no_discovery)
+    rc = cli._run_paper(argparse.Namespace(
+        config=str(cfg_path), duration="60s",
+        run_id="crash-1", resume=False))
+    out = capsys.readouterr()
+    assert rc == 3
+    assert "interrupted" in out.err and "ConnectionError" in out.err
+    assert "--resume" in out.out and "crash-1" in out.out
+
+
+def test_paper_run_records_discovery(monkeypatch, tmp_path, capsys):
+    # Empty symbols resolve via discovery (stubbed, no network) and the
+    # resolved universe is recorded in the run dir for audit.
+    import json
+
+    import cryptobot.market_data.collector as collector_mod
+    import cryptobot.market_data.discovery as discovery_mod
+    from cryptobot.app.session import Session
+
+    text = open("configs/paper-protected.toml").read()
+    text = text.replace('dir = "runs"', f'dir = "{tmp_path}"', 1)
+    cfg_path = tmp_path / "paper.toml"
+    cfg_path.write_text(text)
+    monkeypatch.setattr(
+        discovery_mod, "fetch_exchange_info",
+        lambda *a, **k: ({"symbols": []}, 1.0, "t"))
+    monkeypatch.setattr(
+        collector_mod, "select_capture_set",
+        lambda *a, **k: (("BTCUSDT",), "top-1 test", {}))
+
+    def _ok(self, *a, **k):
+        return {"opening_equity": 120.0, "closing_equity": 120.0,
+                "net_return_pct": 0.0, "intents_admitted": 0,
+                "events_seen": 0}
+    monkeypatch.setattr(Session, "run_live", _ok)
+    rc = cli._run_paper(argparse.Namespace(
+        config=str(cfg_path), duration="60s",
+        run_id="disc-1", resume=False))
+    assert rc == 0, capsys.readouterr().err
+    record = json.loads(
+        (tmp_path / "disc-1" / "discovery.json").read_text())
+    assert record["symbols"] == ["BTCUSDT"]
+    assert "top-1" in record["rule"]
+
+
+def test_paper_resume_reuses_recorded_universe(monkeypatch, tmp_path,
+                                               capsys):
+    # Resume must not re-discover: rotation mid-run would desync books
+    # from the store. Recorded discovery.json wins; discovery raising
+    # proves it is never called.
+    import json
+
+    import cryptobot.market_data.collector as collector_mod
+    from cryptobot.app.session import Session
+
+    text = open("configs/paper-protected.toml").read()
+    text = text.replace('dir = "runs"', f'dir = "{tmp_path}"', 1)
+    cfg_path = tmp_path / "paper.toml"
+    cfg_path.write_text(text)
+    rundir = tmp_path / "res-1"
+    rundir.mkdir()
+    (rundir / "discovery.json").write_text(json.dumps(
+        {"rule": "recorded", "symbols": ["BTCUSDT", "ETHUSDT"]}))
+    monkeypatch.setattr(
+        collector_mod, "select_capture_set",
+        lambda *a, **k: (_ for _ in ()).throw(
+            AssertionError("fresh discovery on resume")))
+    seen = {}
+
+    def _ok(self, *a, **k):
+        seen["symbols"] = list(self.config.symbols)
+        return {"opening_equity": 120.0, "closing_equity": 120.0,
+                "net_return_pct": 0.0, "intents_admitted": 0,
+                "events_seen": 0}
+    monkeypatch.setattr(Session, "run_live", _ok)
+    rc = cli._run_paper(argparse.Namespace(
+        config=str(cfg_path), duration="60s",
+        run_id="res-1", resume=True))
+    assert rc == 0, capsys.readouterr().err
+    assert seen["symbols"] == ["BTCUSDT", "ETHUSDT"]
+    assert "resumed universe" in capsys.readouterr().out
+
+
 def test_reconcile_exposed_expect_flat_fails(monkeypatch, capsys):
     monkeypatch.setenv("BINANCE_DEMO_KEY", "k")
     monkeypatch.setenv("BINANCE_DEMO_SECRET", "s")
