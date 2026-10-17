@@ -252,7 +252,7 @@ never read. Campaign `data/captures/campaign-1day-*` events never read
 | F3.4 | Campaign manifest metadata gap note | DONE |
 | F3.5 | Vault DEV/CONFIRM + token gate + import-lint | IN_PROGRESS (builder ses_eb3fdca8) |
 | F3.6 | recorder CLI + systemd + compose | TODO |
-| F1.1 | Property tests (Hypothesis) | TODO |
+| F1.1 | Property tests (Hypothesis) | DONE |
 | F1.2 | Mutation testing risk/execution/adapters | TODO |
 | F1.3 | Chaos matrix sandbox venue | TODO |
 | F1.4 | Determinism replay byte-identical | TODO |
@@ -395,3 +395,14 @@ never read. Campaign `data/captures/campaign-1day-*` events never read
 - ENV: hypothesis 6.170.1 + mutmut installed into the shared test
   interpreter (main-venv site-packages; ignored, not source) for
   F1.1/F1.2. No source files touched outside the worktree.
+- F1.1 DONE: test_properties_risk (7: sizing-in-budget incl. negative
+  funding, rounding safe+idempotent, liq monotonic in leverage,
+  client-ID legal/unique incl. random tags, protection covers fills)
+  + test_properties_ledger (4: conservation, dup idempotency,
+  booked-net reorder, same-side replay). REAL BUG FOUND + FIXED:
+  floor_to_step/ceil/floor_to_tick multiplicative epsilon rounded UP
+  at large qty/step ratios (10.0/1e-8→10.00000001); replaced with
+  scale-aware 2ulp-capped epsilon (safe direction, idempotent to
+  1e9). Independently confirmed by reviewer A#11. Regression test in
+  test_risk_rounding. 20 passed (properties+rounding), 30 passed
+  (rounding/sizing/protected-entry regression).
