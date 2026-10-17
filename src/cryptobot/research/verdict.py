@@ -57,7 +57,7 @@ def evaluate_trades(trades_bps: list[float], *, adverse_bps: list[float],
     lo, hi = _bootstrap_ci(trades_bps)
     exp_adv = statistics.fmean(adverse_bps) if adverse_bps else None
     by_day: dict[str, float] = {}
-    for day, val in zip(days, trades_bps):
+    for day, val in zip(days, trades_bps, strict=False):
         by_day[day] = by_day.get(day, 0.0) + val
     nonneg = (sum(1 for v in by_day.values() if v >= 0) / len(by_day)
               if by_day else 0.0)

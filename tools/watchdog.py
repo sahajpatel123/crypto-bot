@@ -18,13 +18,13 @@ import json
 import subprocess
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 
 def heartbeat_status(path: Path, *, max_age_s: float,
                      now: datetime | None = None) -> dict:
-    now = now or datetime.now(timezone.utc)
+    now = now or datetime.now(UTC)
     try:
         doc = json.loads(Path(path).read_text())
         ts = datetime.fromisoformat(str(doc["ts_utc"]))

@@ -12,7 +12,8 @@ import os
 import sys
 import time
 import urllib.request
-from typing import Any, Callable, Protocol
+from collections.abc import Callable
+from typing import Any, Protocol
 
 ALERT_KINDS = ("emergency-stop", "unknown-outcome", "protection-gap",
                "drop-breaker", "daily-stop", "watchdog", "crash-restart",
