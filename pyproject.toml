@@ -9,7 +9,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0"]
+dev = ["pytest>=8.0", "ruff>=0.6", "mypy>=1.11"]
 
 [project.scripts]
 cryptobot = "cryptobot.cli:main"
@@ -23,3 +23,37 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+# T0.3: lint + type gates. Ruff applies everywhere; mypy is strict ONLY on
+# the money-handling packages (risk/, execution/, adapters/, app/) per the
+# hardening plan — other packages stay at the lenient base until they are
+# cleaned up. Do not weaken these to go green; fix code or record a
+# justified exception in DECISIONS.md.
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = ["E501"]  # line length handled by formatter-era code; keep gate on logic
+
+[tool.mypy]
+python_version = "3.12"
+mypy_path = "src"
+packages = ["cryptobot"]
+warn_unused_configs = true
+show_error_codes = true
+
+[[tool.mypy.overrides]]
+module = ["cryptobot.risk.*", "cryptobot.execution.*",
+          "cryptobot.adapters.*", "cryptobot.app.*"]
+strict = true
+# NautilusTrader ships no py.typed in the pinned build; strict must not
+# drown in third-party stub noise.
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["cryptobot.*"]
+ignore_missing_imports = true
+check_untyped_defs = false
