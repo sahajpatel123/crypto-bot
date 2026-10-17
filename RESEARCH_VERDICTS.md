@@ -17,14 +17,18 @@ successful outcome here; nothing below is dressed up as a pass.
 
 ## Why taker scalps fail structurally (T5.1, cost_model_v2)
 
-`cryptobot research cost_model_v2.breakeven_table()`: at 25/25bps
-stop/target with a taker entry (~13–18bps round-trip at 1x, more at
-1.5x/2x stress), the required win rate exceeds 60–65% before any
-alpha — the pilot's best cell (−25.37bps) is what that arithmetic
-predicts without a real signal. Maker entry cuts the fee leg
-(~2bps/side) but adds queue/adverse-selection risk, which the
-conservative queue model in `execution/fill_realism.maker_fill`
-(no credit for touches) prices honestly.
+`cost_model_v2.breakeven_table()` (F0.4b re-derived from EV =
+p*T − (1−p)*S − c, p* = (S+c)/(T+S); every row cross-checked by
+tests/unit/test_breakeven_derivation.py): at 25/25bps stop/target
+with a taker entry, round-trip is 18bps at 1x (5+5 fee, 2 spread, 6
+slippage) requiring 86% wins; at 1.5x/2x stress (27/36bps) it needs
+104%/122% — mathematically INFEASIBLE (feasible=False). The pilot's
+best cell (−25.37bps at 26bps cost) is what that arithmetic predicts
+without a real signal (at 26bps a 25/25 needs 102% — infeasible).
+Maker entry (15bps at 1x, 80% required at 25/25) cuts the fee leg
+but adds queue/adverse-selection risk, which the conservative queue
+model in `execution/fill_realism.maker_fill` (no credit for touches)
+prices honestly.
 
 ## Protocol for any future claim (T5.4/T5.5)
 

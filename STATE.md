@@ -242,7 +242,7 @@ never read. Campaign `data/captures/campaign-1day-*` events never read
 | F0.2 | Hermetic suite: zone test via git object + guard test, full suite 0 failed | IN_PROGRESS (fix 1e96e80; full suite sh_14bf34aa running) |
 | F0.3 | Claim audit PASS/REOPEN table | DONE (21 items, 0 REOPEN; item 21 full-suite shared w/F0.2) |
 | F0.4a | Leverage-bracket gate into LIVE admission + stale reject | DONE |
-| F0.4b | Break-even re-derivation + tests + fix >60% statement | TODO |
+| F0.4b | Break-even re-derivation + tests + fix >60% statement | DONE |
 | F0.4c | Paper fill model parameterized + calibration path | TODO |
 | F0.4d | RESEARCH_VERDICTS sentences -> verdict JSON mapping | TODO |
 | F0.5 | Adversarial review (2 subagents or 30-item pre-mortem) | TODO |
@@ -340,3 +340,12 @@ never read. Campaign `data/captures/campaign-1day-*` events never read
   test_risk_v006 run_mode Approve tests now supply fresh brackets via
   _run_policy. Regression: risk v004/v006/v007/v008/gates + bracket +
   margin + replay + app_filters + hardening_batch → 158 passed.
+- F0.4b DONE: break-even re-derived (EV=p*T−(1−p)*S−c, p*=(S+c)/(T+S)).
+  Formula was already correct; table lacked INFEASIBLE flag. Added
+  `feasible` per row (p*≤1). Tests: test_breakeven_derivation 4
+  (failed 4 first on missing flag; plain-arithmetic cross-check of all
+  30 rows, EV=0 at p*, 25/25@26bps→102% infeasible). Script
+  tools/verify_breakeven.py → 30 rows OK, 3 infeasible (25/25 taker
+  1.5x/2x, maker 2x), RC=0. Fixed RESEARCH_VERDICTS ">60–65%" to exact:
+  25/25 taker 18bps/86% @1x, 104%/122% infeasible @1.5x/2x; maker
+  15bps/80% @1x. hardening_batch (>0.6) untouched, still passes.
