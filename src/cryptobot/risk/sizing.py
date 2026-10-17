@@ -90,7 +90,14 @@ def plan_size(
     stop_dist = abs(adverse - intent.invalidation_price)
     if stop_dist <= 0:
         raise SizeRejected("sizing:undefined-risk")
-    stressed = sum(legs) / 10000 * config.stress_multiplier
+    # F-SIZING-01: the loss budget must cover the stop plus NON-NEGATIVE
+    # stressed costs. A forecast funding CREDIT (negative funding_bps,
+    # permitted by ForecastCost) must never enlarge the position: clamping
+    # the bps sum at zero can only shrink or preserve size versus the
+    # unclamped path, never grow it. Funding credit is a P&L hope, not
+    # collateral; if funding flips before the stop fires, the unclamped
+    # size loses multiples of the budget (deep-research audit finding W1).
+    stressed = max(sum(legs), 0.0) / 10000 * config.stress_multiplier
     budget = config.max_loss_budget_pct * reconciled_equity
     if risk_budget_cap_usdt is not None:
         # F-W5R1: smallest feasible budget across per-position,

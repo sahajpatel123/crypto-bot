@@ -29,7 +29,8 @@ from cryptobot.market_data.replayer import assert_input_class
 from cryptobot.market_data.views import DepthStore, book_flow_for
 from cryptobot.risk.policy import RiskPolicy
 from cryptobot.risk.rounding import ceil_to_tick, floor_to_step, floor_to_tick
-from cryptobot.risk.types import AccountSnapshot, Approved, RiskConfig
+from cryptobot.risk.types import (AccountSnapshot, Approved, HealthStatus,
+                                  RiskConfig)
 
 from .config import AppConfig
 from .engine import EngineEvent, EngineOrder
@@ -253,6 +254,12 @@ class Session:
         self._in_flatten = False
         # Session-owned exit-only reasons (R3 halt independence).
         self._exit_only_reasons: set[str] = set()
+        # F2: health-gate reasons latched from the policy monitor. Unlike
+        # the policy's own latches (which persist in risk state), these
+        # are level-evaluated against every account snapshot: the gate
+        # releases exactly the strings it latched once a fresh snapshot
+        # proves the condition cleared. Empty == no health latch.
+        self._health_halt_reasons: set[str] = set()
         self._user_stream_attachment: Any | None = None
         self._known_reservations: set[str] = set()
         self._cmd_seq = 0
@@ -1127,8 +1134,14 @@ class Session:
             return "skip:min-notional"
         stop_dist = abs(adverse - intent.invalidation_price)
         fc = intent.forecast_cost
-        stressed = ((fc.fee_bps + fc.spread_bps + fc.slippage_bps
-                     + fc.funding_bps) / 10000 * cfg.stress_multiplier)
+        # F-SIZING-01: same non-negative clamp as risk/sizing.py — the
+        # post-rounding recheck must judge the budget against the same
+        # convention the sizer used, or a clamped admission would be
+        # re-judged with funding credit and falsely rejected (or an
+        # unclamped one falsely admitted).
+        stressed = (max(fc.fee_bps + fc.spread_bps + fc.slippage_bps
+                        + fc.funding_bps, 0.0)
+                    / 10000 * cfg.stress_multiplier)
         if qty * stop_dist + qty * adverse * stressed > budget * (1 + 1e-9):
             return "sizing:budget-exceeded"
         notional = qty * adverse
@@ -1509,8 +1522,70 @@ class Session:
             if callable(setter):
                 setter(False, reason)
         self._exit_only_reasons.clear()
+        # F2: a wipe releases the health gate's tracking too, so a still-
+        # failing condition re-latches on the next snapshot (fail-closed)
+        # instead of being suppressed by stale bookkeeping.
+        self._health_halt_reasons.clear()
         self.store.checkpoint(self.run_id, "exit-only-released",
                               {"why": why})
+
+    # -- F2: level-driven health halt (release-on-clear) -------------------
+    def _apply_health_gate(self, health: HealthStatus) -> None:
+        """Latch/release the policy health verdict from one snapshot.
+
+        F2 fix: the health gate used to latch entry blocking once and
+        never release it until a day roll or emergency recovery — a
+        transient stale-mark window on quiet feeds latched exit-only for
+        the rest of the run (round X1-R1 measured the latch, not the
+        strategies; 0 fills in 24 cells). The verdict is now applied
+        level-wise:
+
+        - a not-ok verdict latches its CURRENT reason string (idempotent:
+          repeat verdicts write nothing);
+        - a reason string the gate latched before but no longer holds is
+          released, mirroring it out of the engine's reason-keyed
+          exit-only;
+        - the run flips back to ready only when this gate released
+          something AND nothing else blocks entries (other exit-only
+          reasons, booking blocks, pending flattens).
+
+        Fail-closed direction is unchanged: while the condition holds,
+        entries stay blocked; a recovered feed re-opens them on the first
+        fresh snapshot. No snapshot, no release — callers pass verdicts
+        computed from a real account snapshot only.
+        """
+        desired = None if health.ok else (";".join(health.reasons)
+                                          or "health:unknown")
+        if desired is not None:
+            self._health_halt_reasons.add(desired)
+            if desired not in self._exit_only_reasons:
+                self._halt_entries(desired)
+                self._set_state("halted", desired)
+        released = False
+        for reason in sorted(self._health_halt_reasons):
+            if reason == desired:
+                continue
+            self._health_halt_reasons.discard(reason)
+            self._release_exit_only(reason)
+            released = True
+        if released and self._exit_only_reasons:
+            # Paper engines keep ONE bool: any lift clears it. Re-assert a
+            # surviving reason so the bool cannot fall while another halt
+            # still stands (keyed engines: idempotent re-add). Mirrors the
+            # paper-semantics decision in the parallel F2-MARK-HEALTH fix.
+            setter = getattr(self.engine, "set_exit_only", None)
+            if callable(setter):
+                setter(True, sorted(self._exit_only_reasons)[0])
+        if released and desired is None \
+                and not self._exit_only_reasons \
+                and self._booking_blocked is None \
+                and not self._flatten_pending:
+            self._set_state("ready", "health-recovered")
+
+    def _health_tick(self) -> None:
+        """One account-snapshot health evaluation, level-applied (F2)."""
+        self._apply_health_gate(
+            self.policy.check_health(self._snapshot_account()))
 
     # -- command intentions (contract v1 §4) -------------------------------
     def _new_command(self, kind: str, payload: dict[str, Any]) -> str:
@@ -2754,10 +2829,7 @@ class Session:
                     self.protection.observe(self.now_utc(), reading, baseline)
                 except (KeyError, TypeError, ValueError):
                     pass
-        health = self.policy.check_health(self._snapshot_account())
-        if not health.ok:
-            self._halt_entries(";".join(health.reasons))
-            self._set_state("halted", ";".join(health.reasons))
+        self._health_tick()
         self._run_stop_actions()
 
     @staticmethod
