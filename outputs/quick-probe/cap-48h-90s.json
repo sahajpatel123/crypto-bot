@@ -1,0 +1,89 @@
+{
+ "capture": "/Users/sahajpatel/Code/cryto-bot/data/captures/cap-48h-90s/events.jsonl",
+ "symbols": [
+  "BTCUSDT",
+  "ETHUSDT"
+ ],
+ "through": {
+  "counts": {
+   "candidates": 12,
+   "stale_book": 0,
+   "unfilled_entry": 0,
+   "filled": 0,
+   "filled_unresolved_eof": 0,
+   "unresolved_eof": 0
+  },
+  "exits": {
+   "target-maker": 0,
+   "stop": 0,
+   "horizon": 0,
+   "exit-expiry": 0
+  },
+  "unresolved": 0,
+  "aggregate": {
+   "overall": {
+    "n": 0
+   },
+   "primary_disp_ge_5": {
+    "n": 0
+   },
+   "by_bucket": {
+    "[3,5)": {
+     "n": 0
+    },
+    "[5,8)": {
+     "n": 0
+    },
+    "[8,12)": {
+     "n": 0
+    },
+    "[12,inf)": {
+     "n": 0
+    }
+   },
+   "by_sym": {},
+   "by_exit": {}
+  }
+ },
+ "touch": {
+  "counts": {
+   "candidates": 12,
+   "stale_book": 0,
+   "unfilled_entry": 0,
+   "filled": 0,
+   "filled_unresolved_eof": 0,
+   "unresolved_eof": 0
+  },
+  "exits": {
+   "target-maker": 0,
+   "stop": 0,
+   "horizon": 0,
+   "exit-expiry": 0
+  },
+  "unresolved": 0,
+  "aggregate": {
+   "overall": {
+    "n": 0
+   },
+   "primary_disp_ge_5": {
+    "n": 0
+   },
+   "by_bucket": {
+    "[3,5)": {
+     "n": 0
+    },
+    "[5,8)": {
+     "n": 0
+    },
+    "[8,12)": {
+     "n": 0
+    },
+    "[12,inf)": {
+     "n": 0
+    }
+   },
+   "by_sym": {},
+   "by_exit": {}
+  }
+ }
+}

@@ -1,0 +1,309 @@
+{
+ "capture": "/Users/sahajpatel/Code/cryto-bot/data/captures/cap-2h/events.jsonl",
+ "symbols": [
+  "BTCUSDT",
+  "ETHUSDT"
+ ],
+ "through": {
+  "counts": {
+   "candidates": 7863,
+   "stale_book": 0,
+   "unfilled_entry": 8,
+   "filled": 19,
+   "filled_unresolved_eof": 0,
+   "unresolved_eof": 0
+  },
+  "exits": {
+   "target-maker": 8,
+   "stop": 0,
+   "horizon": 0,
+   "exit-expiry": 11
+  },
+  "unresolved": 0,
+  "aggregate": {
+   "overall": {
+    "n": 19,
+    "gross_mean_bps": -0.805,
+    "gross_median_bps": -0.634,
+    "net_actual_mean_bps": -6.542,
+    "net_actual_median_bps": -7.634,
+    "net_allmaker_mean_bps": -4.805,
+    "net_alltaker_mean_bps": -10.805,
+    "net_bnb_mean_bps": -5.968,
+    "net_adverse_mean_bps": -12.279,
+    "win_rate_pct": 0.0,
+    "hold_ms_mean": 7559.0,
+    "markout_5s_mean_bps": -0.47,
+    "markout_30s_mean_bps": 0.182
+   },
+   "primary_disp_ge_5": {
+    "n": 1,
+    "gross_mean_bps": -0.71,
+    "gross_median_bps": -0.71,
+    "net_actual_mean_bps": -7.71,
+    "net_actual_median_bps": -7.71,
+    "net_allmaker_mean_bps": -4.71,
+    "net_alltaker_mean_bps": -10.71,
+    "net_bnb_mean_bps": -7.01,
+    "net_adverse_mean_bps": -14.71,
+    "win_rate_pct": 0.0,
+    "hold_ms_mean": 10100,
+    "markout_5s_mean_bps": -1.835,
+    "markout_30s_mean_bps": 1.638
+   },
+   "by_bucket": {
+    "[3,5)": {
+     "n": 18,
+     "gross_mean_bps": -0.811,
+     "gross_median_bps": -0.534,
+     "net_actual_mean_bps": -6.477,
+     "net_actual_median_bps": -7.494,
+     "net_allmaker_mean_bps": -4.811,
+     "net_alltaker_mean_bps": -10.811,
+     "net_bnb_mean_bps": -5.911,
+     "net_adverse_mean_bps": -12.144,
+     "win_rate_pct": 0.0,
+     "hold_ms_mean": 7417.0,
+     "markout_5s_mean_bps": -0.395,
+     "markout_30s_mean_bps": 0.101
+    },
+    "[5,8)": {
+     "n": 1,
+     "gross_mean_bps": -0.71,
+     "gross_median_bps": -0.71,
+     "net_actual_mean_bps": -7.71,
+     "net_actual_median_bps": -7.71,
+     "net_allmaker_mean_bps": -4.71,
+     "net_alltaker_mean_bps": -10.71,
+     "net_bnb_mean_bps": -7.01,
+     "net_adverse_mean_bps": -14.71,
+     "win_rate_pct": 0.0,
+     "hold_ms_mean": 10100,
+     "markout_5s_mean_bps": -1.835,
+     "markout_30s_mean_bps": 1.638
+    },
+    "[8,12)": {
+     "n": 0
+    },
+    "[12,inf)": {
+     "n": 0
+    }
+   },
+   "by_sym": {
+    "BTCUSDT": {
+     "n": 3,
+     "gross_mean_bps": -1.103,
+     "gross_median_bps": -1.171,
+     "net_actual_mean_bps": -8.103,
+     "net_actual_median_bps": -8.171,
+     "net_allmaker_mean_bps": -5.103,
+     "net_alltaker_mean_bps": -11.103,
+     "net_bnb_mean_bps": -7.403,
+     "net_adverse_mean_bps": -15.103,
+     "win_rate_pct": 0.0,
+     "hold_ms_mean": 10176.0,
+     "markout_5s_mean_bps": -1.44,
+     "markout_30s_mean_bps": -1.396
+    },
+    "ETHUSDT": {
+     "n": 16,
+     "gross_mean_bps": -0.749,
+     "gross_median_bps": -0.395,
+     "net_actual_mean_bps": -6.249,
+     "net_actual_median_bps": -5.895,
+     "net_allmaker_mean_bps": -4.749,
+     "net_alltaker_mean_bps": -10.749,
+     "net_bnb_mean_bps": -5.699,
+     "net_adverse_mean_bps": -11.749,
+     "win_rate_pct": 0.0,
+     "hold_ms_mean": 7068.0,
+     "markout_5s_mean_bps": -0.289,
+     "markout_30s_mean_bps": 0.478
+    }
+   },
+   "by_exit": {
+    "exit-expiry": {
+     "n": 11,
+     "gross_mean_bps": -1.387,
+     "gross_median_bps": -1.224,
+     "net_actual_mean_bps": -8.387,
+     "net_actual_median_bps": -8.224,
+     "net_allmaker_mean_bps": -5.387,
+     "net_alltaker_mean_bps": -11.387,
+     "net_bnb_mean_bps": -7.687,
+     "net_adverse_mean_bps": -15.387,
+     "win_rate_pct": 0.0,
+     "hold_ms_mean": 10154.0,
+     "markout_5s_mean_bps": -1.443,
+     "markout_30s_mean_bps": -0.919
+    },
+    "target-maker": {
+     "n": 8,
+     "gross_mean_bps": -0.005,
+     "gross_median_bps": 0.039,
+     "net_actual_mean_bps": -4.005,
+     "net_actual_median_bps": -3.961,
+     "net_allmaker_mean_bps": -4.005,
+     "net_alltaker_mean_bps": -10.005,
+     "net_bnb_mean_bps": -3.605,
+     "net_adverse_mean_bps": -8.005,
+     "win_rate_pct": 0.0,
+     "hold_ms_mean": 3989.0,
+     "markout_5s_mean_bps": 0.867,
+     "markout_30s_mean_bps": 1.696
+    }
+   }
+  }
+ },
+ "touch": {
+  "counts": {
+   "candidates": 7902,
+   "stale_book": 0,
+   "unfilled_entry": 1,
+   "filled": 30,
+   "filled_unresolved_eof": 0,
+   "unresolved_eof": 0
+  },
+  "exits": {
+   "target-maker": 20,
+   "stop": 0,
+   "horizon": 0,
+   "exit-expiry": 10
+  },
+  "unresolved": 0,
+  "aggregate": {
+   "overall": {
+    "n": 30,
+    "gross_mean_bps": -0.443,
+    "gross_median_bps": 0.039,
+    "net_actual_mean_bps": -5.443,
+    "net_actual_median_bps": -3.961,
+    "net_allmaker_mean_bps": -4.443,
+    "net_alltaker_mean_bps": -10.443,
+    "net_bnb_mean_bps": -4.943,
+    "net_adverse_mean_bps": -10.443,
+    "win_rate_pct": 0.0,
+    "hold_ms_mean": 4052.0,
+    "markout_5s_mean_bps": -0.086,
+    "markout_30s_mean_bps": 0.754
+   },
+   "primary_disp_ge_5": {
+    "n": 1,
+    "gross_mean_bps": -0.71,
+    "gross_median_bps": -0.71,
+    "net_actual_mean_bps": -7.71,
+    "net_actual_median_bps": -7.71,
+    "net_allmaker_mean_bps": -4.71,
+    "net_alltaker_mean_bps": -10.71,
+    "net_bnb_mean_bps": -7.01,
+    "net_adverse_mean_bps": -14.71,
+    "win_rate_pct": 0.0,
+    "hold_ms_mean": 10100,
+    "markout_5s_mean_bps": -1.835,
+    "markout_30s_mean_bps": 1.638
+   },
+   "by_bucket": {
+    "[3,5)": {
+     "n": 29,
+     "gross_mean_bps": -0.434,
+     "gross_median_bps": 0.039,
+     "net_actual_mean_bps": -5.365,
+     "net_actual_median_bps": -3.961,
+     "net_allmaker_mean_bps": -4.434,
+     "net_alltaker_mean_bps": -10.434,
+     "net_bnb_mean_bps": -4.872,
+     "net_adverse_mean_bps": -10.296,
+     "win_rate_pct": 0.0,
+     "hold_ms_mean": 3844.0,
+     "markout_5s_mean_bps": -0.026,
+     "markout_30s_mean_bps": 0.723
+    },
+    "[5,8)": {
+     "n": 1,
+     "gross_mean_bps": -0.71,
+     "gross_median_bps": -0.71,
+     "net_actual_mean_bps": -7.71,
+     "net_actual_median_bps": -7.71,
+     "net_allmaker_mean_bps": -4.71,
+     "net_alltaker_mean_bps": -10.71,
+     "net_bnb_mean_bps": -7.01,
+     "net_adverse_mean_bps": -14.71,
+     "win_rate_pct": 0.0,
+     "hold_ms_mean": 10100,
+     "markout_5s_mean_bps": -1.835,
+     "markout_30s_mean_bps": 1.638
+    },
+    "[8,12)": {
+     "n": 0
+    },
+    "[12,inf)": {
+     "n": 0
+    }
+   },
+   "by_sym": {
+    "BTCUSDT": {
+     "n": 5,
+     "gross_mean_bps": -0.657,
+     "gross_median_bps": -0.634,
+     "net_actual_mean_bps": -6.457,
+     "net_actual_median_bps": -7.634,
+     "net_allmaker_mean_bps": -4.657,
+     "net_alltaker_mean_bps": -10.657,
+     "net_bnb_mean_bps": -5.877,
+     "net_adverse_mean_bps": -12.257,
+     "win_rate_pct": 0.0,
+     "hold_ms_mean": 6227.0,
+     "markout_5s_mean_bps": -0.613,
+     "markout_30s_mean_bps": -0.608
+    },
+    "ETHUSDT": {
+     "n": 25,
+     "gross_mean_bps": -0.401,
+     "gross_median_bps": 0.039,
+     "net_actual_mean_bps": -5.241,
+     "net_actual_median_bps": -3.961,
+     "net_allmaker_mean_bps": -4.401,
+     "net_alltaker_mean_bps": -10.401,
+     "net_bnb_mean_bps": -4.757,
+     "net_adverse_mean_bps": -10.081,
+     "win_rate_pct": 0.0,
+     "hold_ms_mean": 3617.0,
+     "markout_5s_mean_bps": 0.02,
+     "markout_30s_mean_bps": 1.026
+    }
+   },
+   "by_exit": {
+    "exit-expiry": {
+     "n": 10,
+     "gross_mean_bps": -1.368,
+     "gross_median_bps": -1.197,
+     "net_actual_mean_bps": -8.368,
+     "net_actual_median_bps": -8.197,
+     "net_allmaker_mean_bps": -5.368,
+     "net_alltaker_mean_bps": -11.368,
+     "net_bnb_mean_bps": -7.668,
+     "net_adverse_mean_bps": -15.368,
+     "win_rate_pct": 0.0,
+     "hold_ms_mean": 10133.0,
+     "markout_5s_mean_bps": -1.554,
+     "markout_30s_mean_bps": -1.099
+    },
+    "target-maker": {
+     "n": 20,
+     "gross_mean_bps": 0.019,
+     "gross_median_bps": 0.039,
+     "net_actual_mean_bps": -3.981,
+     "net_actual_median_bps": -3.961,
+     "net_allmaker_mean_bps": -3.981,
+     "net_alltaker_mean_bps": -9.981,
+     "net_bnb_mean_bps": -3.581,
+     "net_adverse_mean_bps": -7.981,
+     "win_rate_pct": 0.0,
+     "hold_ms_mean": 1012.0,
+     "markout_5s_mean_bps": 0.648,
+     "markout_30s_mean_bps": 1.68
+    }
+   }
+  }
+ }
+}
