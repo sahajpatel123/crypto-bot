@@ -183,6 +183,14 @@ class Ledger:
         elif self._qty == 0.0:
             self._avg_entry = 0.0
         # else: partial reduction — entry basis of the remainder is preserved.
+        # A#7: snap representation dust to exactly flat (matches the
+        # policy 1e-9 booked epsilon; no real position is sub-1e-9 and
+        # venue steps are >= 1e-8, so this only kills float noise —
+        # never economic exposure). Without the snap, 0.1+0.2-0.3
+        # leaves 5.5e-17 "open" forever (dust deadlock).
+        if abs(self._qty) <= 1e-9:
+            self._qty = 0.0
+            self._avg_entry = 0.0
         return True
 
     def record_funding(self, amount: float, ts: datetime, event_id: str | None = None,

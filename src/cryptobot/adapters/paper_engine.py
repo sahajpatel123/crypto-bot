@@ -469,6 +469,42 @@ class NautilusPaperEngine:
                 "params_version": self.fill_params.version,
                 "provenance": self.fill_params.provenance}
 
+    def _fill_drift_bps(self, symbol: str, side: str,
+                        qty: float, price: float) -> float:
+        """Pessimistic drift for one fill (B#9; never negative).
+
+        BBO single-level book-walk when tracked; last-print level
+        when only prints exist; flat params cost (spread + slippage
+        + latency) when no book evidence exists at all. Audit
+        failures fail CLOSED to the flat params cost (never 0 by
+        accident — an unaudited fill must not read as perfect).
+        """
+        params = self.fill_params
+        flat = params.spread_bps + params.slippage_bps + params.latency_bps
+        if qty <= 0 or price <= 0:
+            return flat
+        levels: list[tuple[float, float]] | None = None
+        bbo = self._bbo.get(symbol.upper())
+        if bbo is not None:
+            bid, ask, bid_size, ask_size = bbo
+            if side == "BUY" and ask > 0 and ask_size > 0:
+                levels = [(ask, ask_size)]
+            elif side == "SELL" and bid > 0 and bid_size > 0:
+                levels = [(bid, bid_size)]
+        if levels is None:
+            last = self._last_print.get(symbol.upper())
+            if last is not None and last[0] > 0 and last[1] > 0:
+                levels = [(last[0], last[1])]
+        if levels is None:
+            return flat
+        try:
+            audit = self.slippage_audit(
+                side=side, qty=qty, nautilus_price=price,
+                levels=levels, symbol=symbol)
+        except (ValueError, ArithmeticError):
+            return flat
+        return max(0.0, float(audit["drift_bps"]))
+
     # -- S3 seam ----------------------------------------------------------
     def _new_client_id(self) -> str:
         self._seq += 1
@@ -1681,6 +1717,13 @@ class NautilusPaperEngine:
                         f"non-taker fill for {coid}: {event.liquidity_side} "
                         f"(taker-only model; refusing to book mislabeled costs)")
             self._fill_seq += 1
+            # B#9: price the pessimistic drift NOW (book evidence is
+            # freshest at fill time): BBO single-level walk, last-print
+            # fallback, else flat params cost (no book evidence).
+            drift_bps = self._fill_drift_bps(
+                symbol,
+                "BUY" if event.order_side == OrderSide.BUY else "SELL",
+                float(event.last_qty), float(event.last_px))
             return EngineEvent("fill", EngineFill(
                 execution_id=f"paper/{self._run_tag}/{symbol}/{self._fill_seq:06d}",
                 client_order_id=coid,
@@ -1691,6 +1734,7 @@ class NautilusPaperEngine:
                 fee=float(event.commission),
                 ts_utc=ts_utc,
                 liquidity="taker",
+                slippage_drift_bps=drift_bps,
             ), ts_utc)
         if isinstance(event, OrderCanceled):
             return EngineEvent("cancel", EngineCancel(

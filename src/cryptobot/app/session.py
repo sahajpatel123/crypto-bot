@@ -1803,7 +1803,9 @@ class Session:
                 execution_id=payload.execution_id,
                 instrument=payload.instrument, side=payload.side,
                 qty=payload.qty, price=payload.price, fee=payload.fee,
-                ts_utc=payload.ts_utc, liquidity=payload.liquidity)
+                ts_utc=payload.ts_utc, liquidity=payload.liquidity,
+                slippage_drift_bps=getattr(payload,
+                                           "slippage_drift_bps", 0.0))
         elif event.kind in ("cancel", "reject", "expire"):
             if self.store.record_event(
                     self.run_id, payload.client_order_id, event.kind,
@@ -1872,13 +1874,19 @@ class Session:
 
     def _apply_fill(self, *, client_order_id: str, execution_id: str,
                     instrument: str, side: str, qty: float, price: float,
-                    fee: float, ts_utc: Any, liquidity: str) -> str:
+                    fee: float, ts_utc: Any, liquidity: str,
+                    slippage_drift_bps: float = 0.0) -> str:
         """Book one fill increment exactly once (contract v1 §3).
 
         Returns applied|duplicate|unbooked|rejected. A staged legacy
         sink delta for the same execution_id is consumed (its client
         id comes from this event). Max-applied cumulative qty per
         order never rolls back.
+
+        B#9: paper fills carry slippage_drift_bps from the engine's
+        pessimistic audit; the drift notional books as a conservative
+        fee top-up (never better than pessimistic). Live fills carry
+        0 (real executions, already complete).
         """
         self._staged_deltas.pop(execution_id, None)
         ts_iso = ts_utc.isoformat() if hasattr(ts_utc, "isoformat") else str(ts_utc)
@@ -1901,10 +1909,15 @@ class Session:
                 "instrument": instrument, "qty": qty})
             self._block_booking(f"unknown-fill:{client_order_id}")
             return "unbooked"
+        drift_bps = float(slippage_drift_bps or 0.0)
+        if drift_bps < 0:
+            drift_bps = 0.0
+        drift_fee = float(qty or 0.0) * float(price or 0.0) * drift_bps / 10000.0
+        booked_fee = float(fee or 0.0) + drift_fee
         try:
             self.policy.note_fill_delta(
                 reservation_id, execution_id, instrument, side, qty,
-                price, fee, ts_iso)
+                price, booked_fee, ts_iso)
         except ValueError as exc:
             self.store.checkpoint(self.run_id, "booking-rejected", {
                 "exec_id": execution_id, "reason": str(exc)})
@@ -1913,12 +1926,22 @@ class Session:
         self._applied_exec.add(execution_id)
         self._order_cum[client_order_id] = self._order_cum.get(
             client_order_id, 0.0) + float(qty or 0.0)
+        # B#9: fills.jsonl keeps its FROZEN schema (fee := total modeled
+        # cost incl. drift, so reporting matches the ledger); the
+        # drift breakdown lives in fills_drift.jsonl (new file, keyed
+        # by execution_id) for F2.2 calibration + F5.4 attribution.
         self._append_run_file("fills.jsonl", {
             "execution_id": execution_id,
             "client_order_id": client_order_id,
             "instrument": instrument, "side": side,
-            "qty": qty, "price": price, "fee": fee,
+            "qty": qty, "price": price, "fee": booked_fee,
             "liquidity": liquidity, "ts_utc": ts_iso})
+        self._append_run_file("fills_drift.jsonl", {
+            "execution_id": execution_id,
+            "instrument": instrument,
+            "raw_fee": float(fee or 0.0),
+            "slippage_drift_bps": drift_bps, "drift_fee": drift_fee,
+            "booked_fee": booked_fee, "ts_utc": ts_iso})
         self._equity_dirty = True
         self._note_fill_exposure(client_order_id, execution_id)
         status = self._tracked_status(client_order_id)
