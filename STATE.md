@@ -245,12 +245,12 @@ never read. Campaign `data/captures/campaign-1day-*` events never read
 | F0.4b | Break-even re-derivation + tests + fix >60% statement | DONE |
 | F0.4c | Paper fill model parameterized + calibration path | DONE |
 | F0.4d | RESEARCH_VERDICTS sentences -> verdict JSON mapping | DONE |
-| F0.5 | Adversarial review (2 subagents or 30-item pre-mortem) | TODO |
-| F3.1 | Standalone recorder Binance USD-M + USDC check | TODO |
-| F3.2 | Venue plugins Bybit/OKX behind flags | TODO |
-| F3.3 | Durability: buffer, fsync, rotation, hash-chain, reports | TODO |
-| F3.4 | Campaign manifest metadata gap note | TODO |
-| F3.5 | Vault DEV/CONFIRM + token gate + import-lint | TODO |
+| F0.5 | Adversarial review (2 subagents or 30-item pre-mortem) | IN_PROGRESS (2 reviewers launched ses_eb3ff36d/ses_eb3ff369, read-only) |
+| F3.1 | Standalone recorder Binance USD-M + USDC check | IN_PROGRESS (builder ses_eb3fdca9) |
+| F3.2 | Venue plugins Bybit/OKX behind flags | IN_PROGRESS (builder ses_eb3fdca9) |
+| F3.3 | Durability: buffer, fsync, rotation, hash-chain, reports | IN_PROGRESS (builder ses_eb3fdca9) |
+| F3.4 | Campaign manifest metadata gap note | DONE |
+| F3.5 | Vault DEV/CONFIRM + token gate + import-lint | IN_PROGRESS (builder ses_eb3fdca8) |
 | F3.6 | recorder CLI + systemd + compose | TODO |
 | F1.1 | Property tests (Hypothesis) | TODO |
 | F1.2 | Mutation testing risk/execution/adapters | TODO |
@@ -374,3 +374,24 @@ never read. Campaign `data/captures/campaign-1day-*` events never read
   next steps rebuild in F4 autopilot queue). Test:
   test_verdicts_mapping 4 (failed 4 first; enforces row→JSON,
   hash-binding, no uncited claims, no recommendations).
+- F0.5 IN_PROGRESS: 2 read-only adversarial reviewers launched
+  (ses_eb3ff36d lens A risk/exec, ses_eb3ff369 lens B adapters/live;
+  briefed WITHOUT STATE/decisions; triage on return).
+- FULL SUITE pre-F0.4 (stale-mixed, sh_14bf34aa): 1473 passed,
+  1 skipped, 0 failed in 998s. Started @1e96e80; F0.4a-d landed
+  mid-run (imports mixed) so NOT authoritative; fresh suite
+  sh_14c02e4f started @0f86687. Counts differ from prior 1479
+  because base is 3100266 (not 8b7f254) + 2 hermetic tests.
+- F3 BUILDERS launched: recorder (ses_eb3fdca9: writer/streams/
+  plugins/integrity/service + tests + systemd) and vault
+  (ses_eb3fdca8: registry/tokens/loader + 4 tests + import-lint).
+  File ownership explicit; owner integrates + wires CLI.
+- F3.4 DONE: campaign absent in worktree (gitignored, main-checkout
+  only); rule 3 dominates F3.4 read permission → no read attempted.
+  Gap note data/recorder/CAMPAIGN-GAP-F0.md records E-006 vs F3.1-3.3
+  gaps (verified by grep: no forceOrder/OI/funding/premium/USDC/
+  rotation/compression/hash-chain/parquet/plugins/disk-alerts) +
+  owner reconciliation path.
+- ENV: hypothesis 6.170.1 + mutmut installed into the shared test
+  interpreter (main-venv site-packages; ignored, not source) for
+  F1.1/F1.2. No source files touched outside the worktree.
