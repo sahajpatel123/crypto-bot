@@ -266,6 +266,7 @@ class NautilusPaperEngine:
         self._dead: dict[str, dict[str, Any]] = {}
         self._closed = False
         self._exit_only = False
+        self._exit_only_reasons: set[str] = set()
         # IOC no-rest enforcement (30MIN §4): causally-available book per
         # symbol (BBO from quotes, last print fallback for trade-only),
         # data-tick clock, and tracked IOC arrivals for remainder-cancel.
@@ -857,9 +858,20 @@ class NautilusPaperEngine:
         return self._recovered_fills.get(client_order_id, 0.0)
 
     def set_exit_only(self, halted: bool, reason: str = "") -> None:
-        """Level-triggered halt: entries refuse while set; exits still submit."""
-        self._exit_only = halted
-        self._journal("exit-only", {"halted": halted, "reason": reason})
+        """Reason-keyed halt: a recovered feed cannot lift a risk stop."""
+        if halted:
+            self._exit_only_reasons.add(reason or "unspecified")
+        elif reason:
+            self._exit_only_reasons.discard(reason)
+        else:
+            self._exit_only_reasons.clear()
+        self._exit_only = bool(self._exit_only_reasons)
+        self._journal("exit-only", {
+            "halted": self._exit_only, "engaged": halted, "reason": reason,
+            "reasons": sorted(self._exit_only_reasons)})
+
+    def exit_only_reasons(self) -> tuple[str, ...]:
+        return tuple(sorted(self._exit_only_reasons))
 
     def note_mark(self, instrument: str, price: float,
                 ts_utc: datetime | None = None) -> None:
@@ -1071,6 +1083,7 @@ class NautilusPaperEngine:
         terminal: dict[str, str] = {}
         fills: list[dict[str, Any]] = []
         halted: bool | None = None
+        halt_reasons: set[str] = set()
         for line in path.read_text(encoding="utf-8").splitlines():
             if not line.strip():
                 continue
@@ -1090,6 +1103,15 @@ class NautilusPaperEngine:
                 terminal[detail["client_id"]] = str(detail.get("kind", "cancel"))
             elif event == "exit-only":
                 halted = bool(detail.get("halted"))
+                if "reasons" in detail:
+                    halt_reasons = set(detail["reasons"])
+                elif halted:
+                    # Legacy journals recorded only one aggregate bool.
+                    # Preserve that hold with its last known reason.
+                    halt_reasons = {detail.get("reason") or
+                                    "recovered:exit-only"}
+                else:
+                    halt_reasons.clear()
         for client_id, detail in submitted.items():
             if client_id not in terminal:
                 self._lost[client_id] = detail  # sim orders never survive restart.
@@ -1127,7 +1149,8 @@ class NautilusPaperEngine:
         for _ in range(self._seq):  # advance seeded RNG past journaled ids.
             self._rng.getrandbits(64)
         if halted is not None:
-            self._exit_only = halted
+            self._exit_only_reasons = halt_reasons
+            self._exit_only = bool(halt_reasons)
         replayed = 0
         for record in fills:
             # At-least-once: re-push every journaled fill (reservation
