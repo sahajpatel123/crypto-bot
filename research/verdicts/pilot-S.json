@@ -1,0 +1,14 @@
+{
+ "document_sha256": "bf8fc53f681de789927d566f7012959c039db02d7f2a7f1d7ab7cdb2066b8ec2",
+ "expectancy_bps": null,
+ "family_size": 6,
+ "hashes": {
+  "code_commit": "9d05ff63a3de0965bdb1f713c38855cdce80a004",
+  "config_sha256_16": "0269a62713913f0d",
+  "data_manifest": "research/verdicts/trades/pilot-S.jsonl"
+ },
+ "hypothesis": "S-family-pilot",
+ "n_trades": 0,
+ "reason": "n=0 < min_trades=300",
+ "verdict": "UNDERPOWERED"
+}

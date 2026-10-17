@@ -244,7 +244,7 @@ never read. Campaign `data/captures/campaign-1day-*` events never read
 | F0.4a | Leverage-bracket gate into LIVE admission + stale reject | DONE |
 | F0.4b | Break-even re-derivation + tests + fix >60% statement | DONE |
 | F0.4c | Paper fill model parameterized + calibration path | DONE |
-| F0.4d | RESEARCH_VERDICTS sentences -> verdict JSON mapping | TODO |
+| F0.4d | RESEARCH_VERDICTS sentences -> verdict JSON mapping | DONE |
 | F0.5 | Adversarial review (2 subagents or 30-item pre-mortem) | TODO |
 | F3.1 | Standalone recorder Binance USD-M + USDC check | TODO |
 | F3.2 | Venue plugins Bybit/OKX behind flags | TODO |
@@ -362,3 +362,15 @@ never read. Campaign `data/captures/campaign-1day-*` events never read
   200-seed never-improves property). Regression: fill_params +
   fill_realism + paper_engine → 60 passed. FINAL_STATUS benchmark
   line "always 1 tick adverse" now stale (rewritten in F9).
+- F0.4d DONE: every RESEARCH_VERDICTS sentence maps to machine JSON.
+  Generated via CLI only (never hand-edited): 6 verdict JSONs in
+  research/verdicts/ (all UNDERPOWERED n=0 — raw pilot/benchmark
+  vectors absent from committed tree, honestly encoded as empty
+  trades inputs; ledger citations preserved as audit input) +
+  cost-model.json via verify_breakeven --out (30 rows, 3 infeasible).
+  Pilot/H-R2 corrected FAIL→UNDERPOWERED (in-tree machine evidence;
+  ledger FAIL citations retained as audit input, not machine
+  verdicts). Recommendations section REMOVED (no machine mapping;
+  next steps rebuild in F4 autopilot queue). Test:
+  test_verdicts_mapping 4 (failed 4 first; enforces row→JSON,
+  hash-binding, no uncited claims, no recommendations).

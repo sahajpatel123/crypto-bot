@@ -1,0 +1,14 @@
+{
+ "document_sha256": "97cc500ea10d18ed35c9b6f6da8fbfdb5aad68f3d9883dacabe3e936bb0ec1e3",
+ "expectancy_bps": null,
+ "family_size": 6,
+ "hashes": {
+  "code_commit": "9d05ff63a3de0965bdb1f713c38855cdce80a004",
+  "config_sha256_16": "441119bf7750ec40",
+  "data_manifest": "research/verdicts/trades/H3.jsonl"
+ },
+ "hypothesis": "H3-funding-skew-tilt",
+ "n_trades": 0,
+ "reason": "n=0 < min_trades=300",
+ "verdict": "UNDERPOWERED"
+}
