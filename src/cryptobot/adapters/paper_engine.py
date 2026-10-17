@@ -1110,6 +1110,11 @@ class NautilusPaperEngine:
         ts_utc = datetime.fromtimestamp(funding_ms / 1000, tz=timezone.utc)
         self._settled_funding[symbol] = \
             self._settled_funding.get(symbol, 0.0) + amount
+        # A#5: journal every settlement so recover() restores the
+        # cumulative totals (else the first post-restart settlement
+        # false-trips funding-mismatch and halts the run).
+        self._journal("funding-settled", {"symbol": symbol, "amount": amount,
+                                          "funding_ms": funding_ms})
         self._emit(EngineEvent(
             "funding",
             EngineFunding(event_id=f"funding:{symbol}:{funding_ms}",
@@ -1158,6 +1163,17 @@ class NautilusPaperEngine:
                 terminal[detail["client_id"]] = str(detail.get("kind", "cancel"))
             elif event == "exit-only":
                 halted = bool(detail.get("halted"))
+            elif event == "funding-settled":
+                # A#5: restore cumulative settled totals WITHOUT
+                # re-emitting (the ledger already holds these via its
+                # own journal/store replay; totals only feed reconcile).
+                try:
+                    symbol = str(detail["symbol"]).upper()
+                    amount = float(detail["amount"])
+                except (KeyError, TypeError, ValueError):
+                    continue
+                self._settled_funding[symbol] = \
+                    self._settled_funding.get(symbol, 0.0) + amount
         for client_id, detail in submitted.items():
             if client_id not in terminal:
                 self._lost[client_id] = detail  # sim orders never survive restart.

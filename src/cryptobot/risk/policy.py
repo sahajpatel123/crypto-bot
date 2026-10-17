@@ -351,7 +351,8 @@ class RiskPolicy:
             # Validated above: ledger inputs are implied valid, booking cannot fail.
             self._ledger.note_fill(exec_id, symbol, venue_side, qty, price, fee, ts_utc)
 
-    def note_funding(self, event_id: str, amount: float, ts_utc: str) -> None:
+    def note_funding(self, event_id: str, amount: float, ts_utc: str,
+                     symbol: str = "") -> None:
         """Route one engine funding event to the bound ledger (V-006, S4).
 
         Fail-closed: raises when no ledger is bound (funding must never
@@ -371,7 +372,7 @@ class RiskPolicy:
             raise ValueError(f"ts_utc must be ISO-8601, got {ts_utc!r}") from None
         if ts.tzinfo is None or ts.utcoffset() is None or ts.utcoffset().total_seconds() != 0:
             raise ValueError(f"ts_utc must carry a UTC offset, got {ts_utc!r}")
-        self._ledger.record_funding(amount, ts, event_id)
+        self._ledger.record_funding(amount, ts, event_id, symbol=symbol)
 
     def release(self, reservation_id: str) -> bool:
         """Free a reservation only when its booked exposure reconciles zero.

@@ -701,42 +701,109 @@ class Session:
     def book_settled_funding(self, symbol: str) -> int:
         """Book settled venue funding into the ledger (T1.7).
 
-        Idempotent by venue tranId (fallback time+income): re-running
-        books nothing twice. Returns the number of newly booked rows.
+        Idempotent by venue tranId (fallback time+income+row-index:
+        B#22 identical rows no longer collide). Returns the number of
+        newly booked rows. Malformed rows are skipped but LOUD
+        (funding-skipped checkpoint with count, never silent).
         """
         fetch = getattr(self.engine, "funding_income", None)
         if not callable(fetch):
             raise ValueError("engine does not expose funding_income")
         booked = 0
-        for row in fetch(symbol):
+        skipped = 0
+        for i, row in enumerate(fetch(symbol)):
             try:
                 amount = float(row.get("income", 0.0) or 0.0)
                 ts_ms = int(row.get("time", 0) or 0)
                 tran = row.get("tranId")
                 event_id = (f"funding:{symbol}:{tran}" if tran is not None
-                            else f"funding:{symbol}:{ts_ms}:{amount}")
+                            else f"funding:{symbol}:{ts_ms}:{amount}:{i}")
                 ts = datetime.fromtimestamp(ts_ms / 1000,
                                             tz=timezone.utc).isoformat()
             except (TypeError, ValueError, OverflowError, OSError):
-                continue  # malformed row: reconcile diff will surface it
-            if self.ledger.note_funding(event_id, amount, ts):
+                skipped += 1
+                continue
+            if self.ledger.note_funding(event_id, amount, ts,
+                                        symbol=symbol):
                 booked += 1
+        if skipped:
+            self.store.checkpoint(self.run_id, "funding-skipped",
+                                   {"symbol": symbol, "skipped": skipped})
         return booked
 
     def funding_reconcile(self, symbol: str) -> dict[str, Any]:
-        """Venue funding total vs booked ledger net (T1.7)."""
+        """Venue funding total vs booked ledger net, per symbol (T1.7/A#8).
+
+        Compares the venue symbol total against the ledger's
+        per-symbol booked total (A#8: the old global compare
+        misreported every multi-symbol run). Malformed venue rows are
+        counted in skipped_venue (loud, never silent agreement).
+        booked_net/diff stay global for back-compat; booked_symbol/
+        diff_symbol are the decision fields.
+        """
         fetch = getattr(self.engine, "funding_income", None)
         if not callable(fetch):
             raise ValueError("engine does not expose funding_income")
         venue_total = 0.0
+        skipped = 0
         for row in fetch(symbol):
             try:
                 venue_total += float(row.get("income", 0.0) or 0.0)
             except (TypeError, ValueError):
+                skipped += 1
                 continue
         booked = self.ledger.funding_net()
+        booked_symbol = self.ledger.funding_for(symbol)
         return {"symbol": symbol, "venue_total": venue_total,
-                "booked_net": booked, "diff": venue_total - booked}
+                "booked_net": booked, "diff": venue_total - booked,
+                "booked_symbol": booked_symbol,
+                "diff_symbol": venue_total - booked_symbol,
+                "skipped_venue": skipped,
+                "unattributed": self.ledger.unattributed_funding()}
+
+    def _book_live_funding(self) -> dict[str, int]:
+        """Book settled venue funding for every traded symbol (B#10).
+
+        Live engines expose funding_income (venue income endpoint);
+        paper/replay book funding via EngineFunding events instead.
+        Capability-guarded: engines without the endpoint return {}.
+        Per symbol: book new rows, reconcile vs booked, halt loudly on
+        any diff/skips (stops evaluate on booked equity — fiction is
+        worse than a halt). Venue faults degrade to next tick.
+        """
+        fetch = getattr(self.engine, "funding_income", None)
+        if not callable(fetch):
+            return {}
+        # Paper settles via EngineFunding events (double vision if we
+        # also pulled venue income here); live pulls the endpoint.
+        if getattr(self.engine, "model_label", "") == "nautilus-paper":
+            return {}
+        symbols: list[str] = []
+        if self._position is not None:
+            symbols.append(self._position["instrument"])
+        symbols.extend(s for s in self._feeds if s not in symbols)
+        booked: dict[str, int] = {}
+        for symbol in symbols:
+            try:
+                count = self.book_settled_funding(symbol)
+            except (ValueError, KeyError, AttributeError,
+                    VenueHttpError, UnknownOutcomeError):
+                continue  # venue fault: retry next throttle window.
+            booked[symbol] = count
+            try:
+                rec = self.funding_reconcile(symbol)
+            except (ValueError, KeyError, AttributeError,
+                    VenueHttpError, UnknownOutcomeError):
+                continue
+            if abs(rec["diff_symbol"]) > 1e-9 or rec["skipped_venue"]:
+                self.store.checkpoint(self.run_id, "funding-mismatch",
+                                       {"engine_total": rec["venue_total"],
+                                        "ledger_total": rec["booked_symbol"],
+                                        "symbol": symbol,
+                                        "skipped": rec["skipped_venue"]})
+                self._halt_entries("funding-mismatch")
+                self._set_state("halted", "funding-mismatch")
+        return booked
 
     def _snapshot_account(self, symbol: str | None = None) -> AccountSnapshot:
         mark = self._reference_mark()
@@ -1761,7 +1828,8 @@ class Session:
             else:
                 try:
                     self.policy.note_funding(payload.event_id, payload.amount,
-                                             payload.ts_utc.isoformat())
+                                             payload.ts_utc.isoformat(),
+                                             symbol=payload.instrument)
                 except ValueError as exc:
                     self._block_booking(f"funding-rejected:{exc}")
                     outcome = "rejected"
@@ -3986,7 +4054,8 @@ class Session:
                 try:
                     self.policy.note_funding(
                         row.get("execution_id"), payload.get("amount", 0.0),
-                        row.get("ts_utc", ""))
+                        row.get("ts_utc", ""),
+                        symbol=payload.get("instrument", ""))
                 except ValueError:
                     pass  # already booked, or invalid row: gates decide.
         try:
@@ -4188,6 +4257,15 @@ class Session:
         self._run_stop_actions()
         self._run_shadow_stop()
         self._run_orphan_watch(ctx)
+        # B#10: live venue funding booking (throttled: settlements are
+        # 8h apart; a 10min pull keeps booked equity fresh for stops).
+        last_fund = ctx.get("last_funding_mono")
+        if last_fund is None or now_mono - last_fund >= 600.0:
+            ctx["last_funding_mono"] = now_mono
+            try:
+                self._book_live_funding()
+            except Exception:  # noqa: BLE001 — booking never kills
+                pass  # supervision; faults retry next window.
         self._drain_unknown_outcomes()
         self._refresh_filters_if_stale()
         if now_mono - ctx["last_beat"] >= 30.0:

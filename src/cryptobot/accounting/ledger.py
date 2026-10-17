@@ -38,6 +38,7 @@ class _Funding:
     ts_utc: datetime
     amount: float
     event_id: str
+    symbol: str = ""
 
 
 @dataclass
@@ -114,7 +115,8 @@ class Ledger:
             raise ValueError(f"ts_utc must carry a UTC offset, got {ts_utc!r}")
         return self.record_fill(side, qty, price, fee, ts, exec_id, symbol=symbol)
 
-    def note_funding(self, event_id: str, amount: float, ts_utc: str) -> bool:
+    def note_funding(self, event_id: str, amount: float, ts_utc: str,
+                     symbol: str = "") -> bool:
         """Engine-facing funding ingestion (V-006 S4 seam for E-007)."""
         if not event_id or not isinstance(event_id, str):
             raise ValueError("event_id must be a non-empty string")
@@ -124,7 +126,7 @@ class Ledger:
             raise ValueError(f"ts_utc must be ISO-8601, got {ts_utc!r}") from None
         if ts.tzinfo is None or ts.utcoffset() is None or ts.utcoffset().total_seconds() != 0:
             raise ValueError(f"ts_utc must carry a UTC offset, got {ts_utc!r}")
-        return self.record_funding(amount, ts, event_id)
+        return self.record_funding(amount, ts, event_id, symbol=symbol)
 
     def record_fill(
         self, side: str, qty: float, price: float, fee: float, ts: datetime,
@@ -183,15 +185,22 @@ class Ledger:
         # else: partial reduction — entry basis of the remainder is preserved.
         return True
 
-    def record_funding(self, amount: float, ts: datetime, event_id: str | None = None) -> bool:
-        """Book a signed funding cash flow (affects cash and realised P&L)."""
+    def record_funding(self, amount: float, ts: datetime, event_id: str | None = None,
+                       symbol: str = "") -> bool:
+        """Book a signed funding cash flow (affects cash and realised P&L).
+
+        A#8: the instrument is journaled for per-symbol reconcile
+        (funding_for); "" means unattributed (pre-symbol rows).
+        """
         amount = _require_finite(amount, "funding amount")
         event_id = self._claim_id(event_id, "funding")
         if event_id is None:
             return False
-        self._funding.append(_Funding(ts, amount, event_id))
+        sym = str(symbol or "").upper()
+        self._funding.append(_Funding(ts, amount, event_id, sym))
         self._journal.append({"kind": "funding", "amount": amount,
-                              "ts_utc": ts.isoformat(), "event_id": event_id})
+                              "ts_utc": ts.isoformat(), "event_id": event_id,
+                              "symbol": sym})
         self._cash += amount
         self._realised += amount
         self._funding_net += amount
@@ -238,6 +247,20 @@ class Ledger:
     def funding_net(self) -> float:
         return self._funding_net
 
+    def funding_for(self, symbol: str) -> float:
+        """Net booked funding for one instrument (A#8 reconcile leg).
+
+        Sums journaled funding rows for the symbol; "" rows (pre-
+        symbol history) are excluded — reconcile reports them via
+        unattributed_funding so nothing hides in the total.
+        """
+        want = str(symbol or "").upper()
+        return sum(f.amount for f in self._funding if f.symbol == want)
+
+    def unattributed_funding(self) -> float:
+        """Booked funding with no instrument (pre-symbol rows)."""
+        return sum(f.amount for f in self._funding if not f.symbol)
+
     def total_flows(self) -> float:
         """Lifetime net external flows (cumulative, for flow baselines)."""
         return sum(f.amount for f in self._flows)
@@ -279,7 +302,8 @@ class Ledger:
                                         entry["fee"], ts, entry["exec_id"],
                                         symbol=entry.get("symbol", ""))
             elif kind == "funding":
-                ok = ledger.record_funding(entry["amount"], ts, entry["event_id"])
+                ok = ledger.record_funding(entry["amount"], ts, entry["event_id"],
+                                           symbol=entry.get("symbol", ""))
             elif kind == "flow":
                 ok = ledger.record_flow(entry["amount"], entry["flow_kind"], ts,
                                         entry["event_id"])
