@@ -48,6 +48,38 @@ def pessimistic_fill_price(side: str, *, qty: float,
     return vwap * latency
 
 
+def maker_fill(*, side: str, limit_price: float, qty: float,
+               queue_ahead_qty: float,
+               trades: list[tuple[float, float]]) -> float:
+    """Conservative maker queue fill quantity (T5.2).
+
+    ``trades`` are (price, qty) prints after placement. A print AT the
+    limit only consumes queue ahead; a fill is credited solely for
+    volume traded THROUGH the limit, or volume beyond the estimated
+    queue once the queue is consumed. Touches earn nothing.
+    """
+    if side not in ("BUY", "SELL"):
+        raise ValueError(f"side must be BUY or SELL, got {side!r}")
+    ahead = float(queue_ahead_qty)
+    filled = 0.0
+    for price, tqty in trades:
+        if filled >= qty:
+            break
+        through = (price < limit_price) if side == "BUY" \
+            else (price > limit_price)
+        at = price == limit_price
+        if through:
+            take = min(float(tqty), qty - filled)
+            filled += take
+        elif at:
+            consume = min(float(tqty), ahead)
+            ahead -= consume
+            excess = float(tqty) - consume
+            if excess > 0:
+                filled += min(excess, qty - filled)
+    return filled
+
+
 def stressed_pnl(*, gross_pnl: float, costs_1x: float) -> dict[str, float]:
     """Report P&L at 1x and 2x costs (T1.9): 2x subtracts costs twice."""
     return {"gross": float(gross_pnl), "costs_1x": float(costs_1x),

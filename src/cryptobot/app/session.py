@@ -34,7 +34,8 @@ from cryptobot.risk.types import (AccountSnapshot, Approved, HealthStatus,
 
 from .config import AppConfig
 from .engine import EngineEvent, EngineOrder
-from .producer import TIMEOUT, AsyncCall, BoundedProducer, deadline_remaining_s
+from .producer import (TIMEOUT, AsyncCall, BoundedProducer, DropBreaker,
+                       deadline_remaining_s)
 from .reference import ReferenceEngine
 from .store import RunStore
 
@@ -199,6 +200,8 @@ class Session:
         # T1.4: max seconds a filled position may sit unprotected
         # before the gap budget flattens it (attempts bound also fires).
         self.protection_budget_s: float = 30.0
+        self._drop_breaker = DropBreaker()
+        self._last_dropped_seen = 0
         self.policy = RiskPolicy(RiskConfig(**config.to_risk_kwargs()),
                                  state_path=self.workdir / "risk_state.json",
                                  now_utc=self.now_utc)
@@ -3777,6 +3780,20 @@ class Session:
         if producer is not None:
             producer.raise_if_failed()
             self._dropped_feed = producer.dropped
+            # T2.1: drop-rate breaker halts entries (hysteresis resume).
+            _db = self._drop_breaker
+            _dropped_delta = producer.dropped - self._last_dropped_seen
+            self._last_dropped_seen = producer.dropped
+            _db.observe(0 if event is TIMEOUT else 1, _dropped_delta)
+            if _db.tripped and "feed-drop-breaker" not in \
+                    self._exit_only_reasons:
+                self._halt_entries("feed-drop-breaker")
+                self.alerts.append({"kind": "drop-breaker",
+                                    "drop_rate": _db.drop_rate,
+                                    "ts_utc": self.now_utc().isoformat()})
+            elif not _db.tripped and "feed-drop-breaker" in \
+                    self._exit_only_reasons:
+                self._release_exit_only("feed-drop-breaker")
             if event is TIMEOUT:
                 # Tick wake (no queued item). Feed-ended only when the
                 # pump is done AND the queue is drained; an item that

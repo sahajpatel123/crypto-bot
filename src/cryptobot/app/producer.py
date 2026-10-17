@@ -19,8 +19,42 @@ import threading
 import time
 from typing import Any, Callable, Iterator
 
-__all__ = ["TIMEOUT", "AsyncCall", "BoundedProducer",
+__all__ = ["TIMEOUT", "AsyncCall", "BoundedProducer", "DropBreaker",
            "deadline_remaining_s"]
+
+
+class DropBreaker:
+    """Drop-rate circuit breaker with hysteresis (T2.1).
+
+    Trips when drops exceed ``trip_rate`` of seen events (after a
+    minimum sample), resumes only below ``resume_rate`` — entries halt
+    while tripped, so a lossy feed cannot silently degrade fills.
+    """
+
+    def __init__(self, *, trip_rate: float = 0.01,
+                 resume_rate: float = 0.005, min_sample: int = 100) -> None:
+        self.trip_rate = float(trip_rate)
+        self.resume_rate = float(resume_rate)
+        self.min_sample = int(min_sample)
+        self.seen = 0
+        self.dropped = 0
+        self.tripped = False
+
+    def observe(self, seen_delta: int, dropped_delta: int) -> bool:
+        """Feed cumulative deltas; returns the tripped state."""
+        self.seen += max(0, int(seen_delta))
+        self.dropped += max(0, int(dropped_delta))
+        if self.seen >= self.min_sample:
+            rate = self.dropped / self.seen if self.seen else 0.0
+            if not self.tripped and rate > self.trip_rate:
+                self.tripped = True
+            elif self.tripped and rate < self.resume_rate:
+                self.tripped = False
+        return self.tripped
+
+    @property
+    def drop_rate(self) -> float:
+        return self.dropped / self.seen if self.seen else 0.0
 
 
 class _Timeout:
@@ -76,6 +110,7 @@ class BoundedProducer:
         self._queue: queue.Queue = queue.Queue()
         self._maxsize = maxsize
         self._dropped = 0
+        self._dropped_by_type: dict[str, int] = {}
         self._finished = threading.Event()
         self._error: BaseException | None = None
         self._stop = threading.Event()
@@ -93,10 +128,17 @@ class BoundedProducer:
                 self._queue.put_nowait((event,))
                 while self._queue.qsize() > self._maxsize:
                     try:
-                        self._queue.get_nowait()
+                        (old,) = self._queue.get_nowait()
                     except queue.Empty:
                         break
                     self._dropped += 1
+                    # T2.1: drop accounting per event type (never silent).
+                    kind = "heartbeat"
+                    if isinstance(old, dict):
+                        kind = str(old.get("channel")
+                                   or old.get("type") or "unknown")
+                    self._dropped_by_type[kind] = \
+                        self._dropped_by_type.get(kind, 0) + 1
         except BaseException as exc:  # noqa: BLE001 - ferried to control.
             self._error = exc
         finally:
@@ -119,6 +161,11 @@ class BoundedProducer:
     def dropped(self) -> int:
         """Events dropped by the bound (loud overflow counter)."""
         return self._dropped
+
+    @property
+    def dropped_by_type(self) -> dict[str, int]:
+        """Per-event-type drop accounting (T2.1)."""
+        return dict(self._dropped_by_type)
 
     @property
     def finished(self) -> bool:

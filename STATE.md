@@ -24,27 +24,27 @@ correctness > validation integrity > features.
 | T1.7 | Settled funding booked in ledger, reconciled vs venue | DONE |
 | T1.8 | Tiered maintenance margin / liquidation gate + min-viable-equity calc | PARTIAL |
 | T1.9 | Pessimistic paper fills (book-walk + latency penalty); 1x/2x cost P&L | PARTIAL |
-| T2.1 | Ingestion/strategy decoupling, drop accounting + breaker | TODO |
-| T2.2 | Honor `max_hf_subscriptions` (BTCUSDT, ETHUSDT default) | TODO |
-| T2.3 | `cryptobot latency-probe` (gate: p99 feed age <250ms, drops <0.1%) | TODO |
-| T2.4 | 5x-burst soak test (bounded memory, drop budget) | TODO |
-| T3.1 | systemd unit + Dockerfile, crash-loop breaker, resume-on-restart | TODO |
-| T3.2 | External watchdog (flatten on stale heartbeat + exposure) | TODO |
-| T3.3 | Pluggable alerts (rate-limited, fake-sink tested) | TODO |
-| T3.4 | JSON logging + rotation, metrics export, FULL-sync cost report | TODO |
-| T3.5 | `cryptobot data verify`; gz replay docs | TODO |
-| T4.1 | Fixture recorder (redacted) + recorded-fixture contract tests | TODO |
-| T4.2 | `cryptobot demo-drill` (hashed JSON report) | TODO |
+| T2.1 | Ingestion/strategy decoupling, drop accounting + breaker | PARTIAL |
+| T2.2 | Honor `max_hf_subscriptions` (BTCUSDT, ETHUSDT default) | PARTIAL |
+| T2.3 | `cryptobot latency-probe` (gate: p99 feed age <250ms, drops <0.1%) | PARTIAL |
+| T2.4 | 5x-burst soak test (bounded memory, drop budget) | PARTIAL |
+| T3.1 | systemd unit + Dockerfile, crash-loop breaker, resume-on-restart | PARTIAL |
+| T3.2 | External watchdog (flatten on stale heartbeat + exposure) | PARTIAL |
+| T3.3 | Pluggable alerts (rate-limited, fake-sink tested) | PARTIAL |
+| T3.4 | JSON logging + rotation, metrics export, FULL-sync cost report | PARTIAL |
+| T3.5 | `cryptobot data verify`; gz replay docs | PARTIAL |
+| T4.1 | Fixture recorder (redacted) + recorded-fixture contract tests | PARTIAL |
+| T4.2 | `cryptobot demo-drill` (hashed JSON report) | PARTIAL |
 | T4.3 | OWNER_ACTIONS.md (exact commands + expected outputs) | TODO |
-| T5.1 | Cost model v2 + break-even / required-win-rate tables | TODO |
-| T5.2 | Maker-capable replay/paper execution (conservative queue model) | TODO |
-| T5.3 | Hypothesis registry ≤6, preregistered + committed pre-evaluation | TODO |
-| T5.4 | Evaluation protocol (walk-forward, purge/embargo, bootstrap, Holm) | TODO |
-| T5.5 | `cryptobot verdict` PASS/FAIL/UNDERPOWERED JSON (hash-bound) | TODO |
+| T5.1 | Cost model v2 + break-even / required-win-rate tables | PARTIAL |
+| T5.2 | Maker-capable replay/paper execution (conservative queue model) | PARTIAL |
+| T5.3 | Hypothesis registry ≤6, preregistered + committed pre-evaluation | DONE |
+| T5.4 | Evaluation protocol (walk-forward, purge/embargo, bootstrap, Holm) | PARTIAL |
+| T5.5 | `cryptobot verdict` PASS/FAIL/UNDERPOWERED JSON (hash-bound) | PARTIAL |
 | T5.6 | ≥14d pessimistic paper if any PASS | TODO |
-| T6.1 | `cryptobot gate` + `cryptobot arm` two-step prod enablement (built OFF) | TODO |
-| T6.2 | Capital ladder + automatic demotion/halt | TODO |
-| T6.3 | Live canary: first N trades at minimum size | TODO |
+| T6.1 | `cryptobot gate` + `cryptobot arm` two-step prod enablement (built OFF) | DONE |
+| T6.2 | Capital ladder + automatic demotion/halt | PARTIAL |
+| T6.3 | Live canary: first N trades at minimum size | PARTIAL |
 
 Status values: TODO / IN_PROGRESS / DONE / BLOCKED / PARTIAL.
 
@@ -151,6 +151,16 @@ T1.6. `docs/f2-health-recovery.md` came with the F2 cherry-pick.
   non-blocking until baselines reach zero (never weakened to pass).
 - T0.4 (31b6c4d): doctor live-label fix + test_doctor_truth 28 passed
   with test_cli_readiness.
+- P2-P6 batch (test_hardening_batch 9 passed): DropBreaker+hysteresis
+  wired in _control_step, per-type producer drops, HF cap in bridge +
+  CLI BTC/ETH default; latency-probe/data-verify/verdict/gate/arm/
+  demo-drill CLI (arm refuses without GO+env ack+typed phrase);
+  alerts (Memory/Log/Webhook + rate limit), metrics counters;
+  systemd+Dockerfile (crash-loop via StartLimitBurst), watchdog tool
+  (no countdownCancelAll); cost_model_v2 tables, maker queue model,
+  verdict engine (bootstrap/Holm/UNDERPOWERED), ladder+canary.
+  PARTIAL = owner-run live evidence still owed (latency p99, drill,
+  soak at venue scale, FULL-sync measurement) — see FINAL_STATUS.
 - T1.4 (PARTIAL): existing attach (stop-first, verified, 3-attempt
   emergency flatten) + new shadow_stop_breached + protection time
   budget (30s -> flatten + protection-gap alert) wired in

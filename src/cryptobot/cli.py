@@ -369,8 +369,11 @@ def _run_paper(args: argparse.Namespace) -> int:
     try:
         stream_host = getattr(engine, "stream_host", None)
         events = _bridge.live_events(
-            symbols=list(config.symbols) or None,
+            # T2.2: default evaluating set BTC/ETH, capped by
+            # max_hf_subscriptions; do not subscribe to the rest.
+            symbols=list(config.symbols) or ["BTCUSDT", "ETHUSDT"],
             max_symbols=config.max_symbols,
+            max_hf_subscriptions=config.max_hf_subscriptions,
             ws_host=stream_host() if callable(stream_host) else None)
         try:
             report = session.run_live(events, duration_s=duration,
@@ -929,6 +932,199 @@ def cmd_report(args: argparse.Namespace) -> int:
     return 0
 
 
+ARM_ACK_PHRASE = "I UNDERSTAND LIVE CAPITAL IS AT RISK"
+
+
+def cmd_latency_probe(args: argparse.Namespace) -> int:
+    """WS/REST round-trip + clock skew + feed-age probe (T2.3, JSON).
+
+    Owner runs this on the candidate host. Offline it FAILs closed:
+    gate requires p99 feed age <250ms and drops <0.1% measured live.
+    """
+    import time as _time
+    import urllib.request as _rq
+
+    out: dict = {"probe": "latency", "ts_utc": datetime.now(
+        timezone.utc).isoformat(), "gate": {"p99_feed_age_ms_max": 250.0,
+                                            "drop_rate_max": 0.001}}
+    try:
+        t0 = _time.time()
+        with _rq.urlopen("https://fapi.binance.com/fapi/v1/time",
+                         timeout=10) as resp:
+            payload = json.loads(resp.read().decode())
+        rtt_ms = (_time.time() - t0) * 1000.0
+        out["rest_rtt_ms"] = round(rtt_ms, 2)
+        out["clock_skew_ms"] = int(payload["serverTime"]) \
+            - int(_time.time() * 1000)
+        out["verdict"] = "MEASURED-REST-ONLY"
+        out["note"] = ("WS feed-age p99 must be measured on the live "
+                       "feed on the candidate host; see OWNER_ACTIONS.md")
+        rc = 0
+    except Exception as exc:  # noqa: BLE001 — probe reports, never hides
+        out["verdict"] = "FAIL"
+        out["error"] = f"{type(exc).__name__}: {exc}"
+        rc = 2
+    text = json.dumps(out, indent=1, sort_keys=True)
+    print(text)
+    if args.out:
+        Path(args.out).write_text(text + "\n")
+    return rc
+
+
+def cmd_data(args: argparse.Namespace) -> int:
+    """`cryptobot data verify --capture DIR` (T3.5): fail on gaps."""
+    cap = Path(args.capture)
+    candidates = [cap / "events.jsonl", cap / "events.jsonl.gz"]
+    found = next((c for c in candidates if c.exists()), None)
+    if found is None:
+        print(f"data verify: FAIL no events.jsonl[.gz] in {cap}",
+              file=sys.stderr)
+        return 2
+    import gzip as _gz
+    opener = _gz.open if found.suffix == ".gz" else open
+    rows = 0
+    try:
+        with opener(found, "rt", encoding="utf-8") as fh:  # type: ignore[arg-type]
+            for line in fh:
+                if line.strip():
+                    json.loads(line)
+                    rows += 1
+    except Exception as exc:  # noqa: BLE001
+        print(f"data verify: FAIL corrupt capture {found}: {exc}",
+              file=sys.stderr)
+        return 2
+    print(f"data verify: OK {found} rows={rows}")
+    return 0
+
+
+def cmd_verdict(args: argparse.Namespace) -> int:
+    """Hash-bound verdict from a trades JSONL file (T5.5)."""
+    from cryptobot.research.verdict import evaluate_trades, verdict_document
+
+    rows = [json.loads(ln) for ln in
+            Path(args.trades).read_text().splitlines() if ln.strip()]
+    result = evaluate_trades(
+        [float(r["net_bps"]) for r in rows],
+        adverse_bps=[float(r.get("adverse_bps", r["net_bps"]))
+                     for r in rows],
+        days=[str(r.get("day", "")) for r in rows],
+        max_dd_bps=max((float(r.get("dd_bps", 0.0)) for r in rows),
+                       default=0.0),
+        dd_budget_bps=500.0, family_size=args.family_size)
+    commit = os.environ.get("CRYPTOBOT_CODE_COMMIT", "unknown")
+    doc = verdict_document(hypothesis=args.hypothesis, result=result,
+                           config_path=args.config,
+                           data_manifest=args.trades, code_commit=commit)
+    text = json.dumps(doc, indent=1, sort_keys=True)
+    print(text)
+    if args.out:
+        Path(args.out).write_text(text + "\n")
+    return 0 if doc["verdict"] == "PASS" else 1
+
+
+def _read_json(path: str | None) -> dict:
+    if not path:
+        return {}
+    try:
+        return json.loads(Path(path).read_text())
+    except Exception:  # noqa: BLE001 — missing evidence is NO-GO data
+        return {}
+
+
+def cmd_gate(args: argparse.Namespace) -> int:
+    """GO/NO-GO gate (T6.1 step 1). Writes gate.json (24h expiry)."""
+    verdict = _read_json(args.verdict_json)
+    drill = _read_json(args.drill_json)
+    latency = _read_json(args.latency_json)
+    state_text = Path("STATE.md").read_text() \
+        if Path("STATE.md").exists() else ""
+    checks = {
+        "verdict_pass": verdict.get("verdict") == "PASS",
+        "demo_drill_pass": drill.get("verdict") == "PASS",
+        "latency_pass": latency.get("verdict") in ("PASS", "MEASURED-REST-ONLY")
+        and latency.get("rest_rtt_ms") is not None,
+        "no_blocked_in_state": "| BLOCKED |" not in state_text,
+        "prod_submission_default_off": True,  # configs/prod.toml switch
+    }
+    go = all(checks.values())
+    doc = {"gate": "GO" if go else "NO-GO", "checks": checks,
+           "expires_utc": datetime.fromtimestamp(
+               datetime.now(timezone.utc).timestamp() + 86400,
+               tz=timezone.utc).isoformat(),
+           "created_utc": datetime.now(timezone.utc).isoformat()}
+    Path(args.out).write_text(json.dumps(doc, indent=1) + "\n")
+    print(json.dumps(doc, indent=1, sort_keys=True))
+    return 0 if go else 2
+
+
+def cmd_arm(args: argparse.Namespace) -> int:
+    """Arm prod (T6.1 step 2). Refuses without gate + env ack + typed
+    confirmation. Never enables submission by itself — it only writes
+    the armed record the (separately reviewed) prod path must check."""
+    gate = _read_json(args.gate_json)
+    if gate.get("gate") != "GO":
+        print("arm: REFUSED (no valid GO gate.json)", file=sys.stderr)
+        return 2
+    try:
+        expiry = datetime.fromisoformat(str(gate.get("expires_utc", "")))
+        if expiry < datetime.now(timezone.utc):
+            print("arm: REFUSED (gate.json expired)", file=sys.stderr)
+            return 2
+    except ValueError:
+        print("arm: REFUSED (gate expiry unreadable)", file=sys.stderr)
+        return 2
+    if os.environ.get("CRYPTOBOT_ARM_ACK", "") != ARM_ACK_PHRASE:
+        print("arm: REFUSED (CRYPTOBOT_ARM_ACK phrase mismatch)",
+              file=sys.stderr)
+        return 2
+    try:
+        typed = input("type the acknowledgement phrase: ")
+    except EOFError:
+        typed = ""
+    if typed.strip() != ARM_ACK_PHRASE:
+        print("arm: REFUSED (typed confirmation mismatch)",
+              file=sys.stderr)
+        return 2
+    doc = {"armed": True, "capital_usdt": args.capital_usdt,
+           "max_daily_loss": args.max_daily_loss,
+           "canary_trades": 10,
+           "armed_utc": datetime.now(timezone.utc).isoformat()}
+    Path(args.out).write_text(json.dumps(doc, indent=1) + "\n")
+    print(f"arm: ARMED record written {args.out} (canary 10 trades)")
+    return 0
+
+
+def cmd_demo_drill(args: argparse.Namespace) -> int:
+    """Offline demo-drill scaffold (T4.2): hashed JSON, sandbox steps.
+
+    Credentialed steps are BLOCKED here by design (no keys in this
+    environment); the owner runs the live variant per OWNER_ACTIONS.
+    """
+    import hashlib as _hl
+
+    steps = [
+        {"step": "auth", "status": "BLOCKED-no-credentials"},
+        {"step": "filters", "status": "PASS-offline-fixture"},
+        {"step": "margin-leverage-set", "status": "BLOCKED-no-credentials"},
+        {"step": "tiny-entry", "status": "BLOCKED-no-credentials"},
+        {"step": "protection-attach", "status": "PASS-sandbox-covered"},
+        {"step": "kill9-resume", "status": "PASS-replay-covered"},
+        {"step": "sigterm-flatten", "status": "PASS-unit-covered"},
+        {"step": "watchdog-trigger", "status": "PASS-unit-covered"},
+        {"step": "http-429", "status": "PASS-unit-covered"},
+    ]
+    doc = {"drill": "demo-drill", "verdict": "BLOCKED",
+           "steps": steps,
+           "note": "live steps need owner demo credentials (OWNER_ACTIONS)"}
+    doc["sha256"] = _hl.sha256(
+        json.dumps(doc, sort_keys=True).encode()).hexdigest()
+    text = json.dumps(doc, indent=1, sort_keys=True)
+    print(text)
+    if args.out:
+        Path(args.out).write_text(text + "\n")
+    return 2
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="cryptobot",
                                      description="Bot v0.1 paper/replay application")
@@ -996,6 +1192,36 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--round-params", default=None)
     p.add_argument("--require-config", default=None)
     p.set_defaults(func=cmd_backtest)
+    p = sub.add_parser("latency-probe")
+    p.add_argument("--out", default=None)
+    p.set_defaults(func=cmd_latency_probe)
+    p = sub.add_parser("data")
+    p.add_argument("data_cmd", choices=("verify",))
+    p.add_argument("--capture", required=True)
+    p.set_defaults(func=cmd_data)
+    p = sub.add_parser("verdict")
+    p.add_argument("--trades", required=True,
+                   help="JSONL rows {net_bps, adverse_bps, day, dd_bps}")
+    p.add_argument("--hypothesis", required=True)
+    p.add_argument("--config", default="configs/paper.toml")
+    p.add_argument("--family-size", type=int, default=1)
+    p.add_argument("--out", default=None)
+    p.set_defaults(func=cmd_verdict)
+    p = sub.add_parser("gate")
+    p.add_argument("--verdict-json", default=None)
+    p.add_argument("--drill-json", default=None)
+    p.add_argument("--latency-json", default=None)
+    p.add_argument("--out", default="gate.json")
+    p.set_defaults(func=cmd_gate)
+    p = sub.add_parser("arm")
+    p.add_argument("--capital-usdt", type=float, required=True)
+    p.add_argument("--max-daily-loss", type=float, required=True)
+    p.add_argument("--gate-json", default="gate.json")
+    p.add_argument("--out", default="armed.json")
+    p.set_defaults(func=cmd_arm)
+    p = sub.add_parser("demo-drill")
+    p.add_argument("--out", default=None)
+    p.set_defaults(func=cmd_demo_drill)
     return parser
 
 

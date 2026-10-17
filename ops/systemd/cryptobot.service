@@ -1,0 +1,17 @@
+[Unit]
+Description=CryptoBot supervised live trial (resume-on-restart, T3.1)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/cryptobot
+ExecStart=/opt/cryptobot/.venv/bin/cryptobot run --mode paper --config configs/demo.toml --run-id trial --resume
+Restart=on-failure
+RestartSec=10
+StartLimitIntervalSec=3600
+StartLimitBurst=5
+EnvironmentFile=/opt/cryptobot/bot.env
+
+[Install]
+WantedBy=multi-user.target

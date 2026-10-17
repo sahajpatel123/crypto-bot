@@ -72,6 +72,7 @@ def live_events(
     stats: dict[str, Any] | None = None,
     stale_partial_s: float = _STALE_PARTIAL_S,
     ws_host: str | None = None,
+    max_hf_subscriptions: int | None = None,
 ) -> Iterator[dict[str, Any] | None]:
     """Yield normalized public events until the consumer stops iterating.
 
@@ -93,6 +94,10 @@ def live_events(
     """
     if symbols is not None:
         chosen = tuple(s.upper() for s in symbols)
+        if max_hf_subscriptions is not None:
+            # T2.2: honour the HF subscription cap — evaluate at most
+            # this many symbols (default evaluating set BTC/ETH).
+            chosen = chosen[:max(0, int(max_hf_subscriptions))]
         if not chosen:
             raise ValueError("symbols must be non-empty when given")
         if len(chosen) > max_symbols:
