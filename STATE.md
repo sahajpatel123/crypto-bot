@@ -12,7 +12,7 @@ correctness > validation integrity > features.
 | ID | Task | Status |
 |---|---|---|
 | T0.1 | Baseline targeted tests + this file | DONE |
-| T0.2 | Consolidate F2 health recovery + F-SIZING-01 (+ client-ID if present); restore F2 tests; prove `_release_exit_only` callers | TODO |
+| T0.2 | Consolidate F2 health recovery + F-SIZING-01 (+ client-ID if present); restore F2 tests; prove `_release_exit_only` callers | DONE |
 | T0.3 | ruff + mypy configs (strict on risk/execution/adapters/app) + CI | TODO |
 | T0.4 | Truth-in-docs (doctor, run_live docstring, README E-007, prod.toml) | TODO |
 | T1.1 | Venue-seeded accounting + account-mode verification (fail closed) | TODO |
@@ -125,10 +125,27 @@ that predates this branch — left untouched, never committed as own work.
   only. Gate thresholds are never lowered to pass; any change needs a
   written justification in DECISIONS.md.
 
+## T0.2 consolidation (DONE)
+
+Reproduced on HEAD before fixing (branch tests run against e766383):
+F2 file → 6 failed/1 passed (stale latch never releases; entries never flow
+after mark recovery); sizing file → 2 failed/2 passed (−25bps funding credit
+sized qty×stop = 33.6 USDT vs 12.5 budget). Cherry-picked `eb0cfe1`
+(F2, → b686d0b) and `a576e73` (F-SIZING-01, → b87ee9a); after: both files
+11 passed; targeted regression (session×4 + sizing×3 + execution) 84 passed.
+`_release_exit_only` production callers now: `_apply_health_gate`
+(session.py:1569) ← `_health_tick` (:1585) ← event path (:2832). No
+client-ID work exists on `integration/owner-exec` (diff of
+binance_live.py/order_manager.py vs e766383 is empty) → client IDs are
+T1.6. `docs/f2-health-recovery.md` came with the F2 cherry-pick.
+
 ## Commands run
 
 - `git switch -c live/hardening` (from deep/integration @ e766383)
 - targeted baseline above → 81 passed
+- T0.2: `pytest /tmp/test_session_health_recovery.py` → 6F/1P on HEAD;
+  `pytest tests/acceptance/test_sizing_funding_clamp.py` → 2F/2P on HEAD;
+  after cherry-picks → 11 passed; regression set → 84 passed
 
 ## Open risks
 
