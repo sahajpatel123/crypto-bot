@@ -251,7 +251,7 @@ never read. Campaign `data/captures/campaign-1day-*` events never read
 | F3.3 | Durability: buffer, fsync, rotation, hash-chain, reports | DONE (integrated) |
 | F3.4 | Campaign manifest metadata gap note | DONE |
 | F3.5 | Vault DEV/CONFIRM + token gate + import-lint | DONE (integrated) |
-| F3.6 | recorder CLI + systemd + compose | TODO |
+| F3.6 | recorder CLI + systemd + compose | DONE |
 | F1.1 | Property tests (Hypothesis) | DONE |
 | F1.2 | Mutation testing risk/execution/adapters | TODO |
 | F1.3 | Chaos matrix sandbox venue | TODO |
@@ -464,3 +464,8 @@ never read. Campaign `data/captures/campaign-1day-*` events never read
   import-lint). Review point (vault README): cross-hypothesis
   DEV-for-H/CONFIRM-for-H2 nuance follows per-hypothesis classify;
   accepted (documented).
+- F3.6 DONE: `cryptobot recorder start|stop|status|verify` wired
+  (foreground+pid+status.json+STOP/SIGTERM; offline status/verify),
+  4 CLI tests (failed 4 first), systemd unit (builder) + watchdog
+  unit (triage), deploy/docker-compose.yml (recorder live, rest in
+  F2.4). F3 CLOSED (F3.1-3.6 all DONE).

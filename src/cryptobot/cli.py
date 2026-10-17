@@ -1042,6 +1042,125 @@ def cmd_data(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_recorder(args: argparse.Namespace) -> int:
+    """`cryptobot recorder start|stop|status|verify` (F3.6).
+
+    start runs the standalone recorder in the FOREGROUND (systemd
+    Type=simple): blocks until --duration-s elapses, a STOP file
+    appears, or SIGTERM/SIGINT arrives; then seals chunks and exits 0.
+    Writes recorder.pid + status.json (5s) into --run-dir. stop
+    SIGTERMs the pid (fallback: writes STOP). status/verify are
+    offline (no service needed).
+    """
+    from cryptobot.recorder.service import RecorderConfig, RecorderService
+
+    run_dir = Path(args.run_dir)
+    cmd = args.recorder_cmd
+    if cmd == "status":
+        status_path = run_dir / "status.json"
+        if not status_path.exists():
+            print(f"recorder status: not running (no {status_path})")
+            return 2
+        try:
+            doc = json.loads(status_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as exc:
+            print(f"recorder status: unreadable ({exc})")
+            return 2
+        print(f"recorder status: {'running' if doc.get('running') else 'stopped'} "
+              f"drops={doc.get('drops', '?')} "
+              f"run_id={doc.get('run_id', '?')}")
+        return 0 if doc.get("running") else 2
+    if cmd == "verify":
+        from cryptobot.recorder.integrity import build_report
+        from cryptobot.recorder.writer import verify_manifest_chain
+
+        chain = verify_manifest_chain(run_dir / "manifest.jsonl")
+        report = build_report(run_dir)
+        print(f"recorder verify: chain ok={chain['ok']} "
+              f"entries={chain['entries']} errors={chain['errors']}")
+        print(f"recorder verify: gap_rate={report.get('gap_rate')} "
+              f"violations={report.get('violations_total', '?')}")
+        ok = bool(chain["ok"]) and not chain["errors"]
+        print(f"recorder verify: {'OK' if ok else 'FAIL'}")
+        return 0 if ok else 2
+    if cmd == "stop":
+        pid_path = run_dir / "recorder.pid"
+        try:
+            pid = int(pid_path.read_text(encoding="utf-8").strip())
+        except (OSError, ValueError):
+            pid = 0
+        if pid > 0:
+            try:
+                import signal as _signal
+
+                os.kill(pid, _signal.SIGTERM)
+                print(f"recorder stop: SIGTERM -> {pid}")
+                return 0
+            except OSError as exc:
+                print(f"recorder stop: pid {pid} unreachable ({exc}); "
+                      f"writing STOP file")
+        run_dir.mkdir(parents=True, exist_ok=True)
+        (run_dir / "STOP").write_text("stop\n", encoding="utf-8")
+        print("recorder stop: STOP file written")
+        return 0
+    if cmd == "start":
+        import signal as _signal
+        import time as _time
+
+        symbols = tuple(s.strip().upper() for s in
+                        str(args.symbols or "").split(",") if s.strip())
+        if not symbols:
+            print("recorder start: no symbols", file=sys.stderr)
+            return 2
+        config = RecorderConfig(symbols=symbols, run_id=args.run_id or "rec")
+        service = RecorderService(config, run_dir)
+        halt: list[str] = []
+
+        def _on_signal(signum, _frame):
+            halt.append(f"signal-{signum}")
+
+        for sig in (_signal.SIGTERM, _signal.SIGINT):
+            try:
+                _signal.signal(sig, _on_signal)
+            except (OSError, ValueError):
+                pass
+        service.start()
+        run_dir.mkdir(parents=True, exist_ok=True)
+        (run_dir / "recorder.pid").write_text(str(os.getpid()),
+                                              encoding="utf-8")
+        deadline = (_time.monotonic() + float(args.duration_s)
+                    if float(args.duration_s or 0.0) > 0 else None)
+        try:
+            while True:
+                if halt:
+                    break
+                if deadline is not None and _time.monotonic() >= deadline:
+                    break
+                if (run_dir / "STOP").exists():
+                    halt.append("STOP-file")
+                    break
+                try:
+                    status = service.status()
+                except Exception:
+                    status = {"running": True}
+                try:
+                    (run_dir / "status.json").write_text(
+                        json.dumps(status, sort_keys=True), encoding="utf-8")
+                except OSError:
+                    pass
+                _time.sleep(5.0)
+        finally:
+            service.stop()
+            try:
+                (run_dir / "recorder.pid").unlink(missing_ok=True)
+            except OSError:
+                pass
+        print(f"recorder start: sealed ({','.join(halt) or 'duration'})")
+        return 0
+    print(f"recorder: unknown command {cmd!r}", file=sys.stderr)
+    return 2
+
+
 def cmd_verdict(args: argparse.Namespace) -> int:
     """Hash-bound verdict from a trades JSONL file (T5.5)."""
     from cryptobot.research.verdict import evaluate_trades, verdict_document
@@ -1267,6 +1386,14 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("demo-drill")
     p.add_argument("--out", default=None)
     p.set_defaults(func=cmd_demo_drill)
+    p = sub.add_parser("recorder")
+    p.add_argument("recorder_cmd", choices=["start", "stop", "status",
+                                            "verify"])
+    p.add_argument("--run-dir", required=True)
+    p.add_argument("--run-id", default="rec")
+    p.add_argument("--duration-s", type=float, default=0.0)
+    p.add_argument("--symbols", default="BTCUSDT,ETHUSDT")
+    p.set_defaults(func=cmd_recorder)
     return parser
 
 
