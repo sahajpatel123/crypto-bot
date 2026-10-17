@@ -50,6 +50,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Protocol
@@ -114,6 +115,37 @@ def caller_action(exc: BaseException) -> str:
     if isinstance(exc, VenueHttpError):
         return "retry_safe"
     return "abort"
+
+
+@dataclass(frozen=True)
+class ExceptionPolicy:
+    """Table-driven outcome for one venue exception (T1.3)."""
+
+    action: str  # retry_backoff | lookup_first | reject_intent | safe_mode
+    retry_after_s: float = 0.0
+    max_attempts: int = 1
+
+
+# T1.3 classification table. Order matters: RateLimited is a
+# VenueRejectedError subclass, unknowns must be looked up before any
+# other action, deterministic rejections reject only the intent, and
+# everything else fatal goes to safe mode (flatten, keep alerting).
+def classify_exception(exc: BaseException, *,
+                       idempotent_read: bool = False) -> ExceptionPolicy:
+    if isinstance(exc, RateLimitedError):
+        return ExceptionPolicy("retry_backoff",
+                               retry_after_s=exc.retry_after_s,
+                               max_attempts=3)
+    if isinstance(exc, UnknownOutcomeError):
+        return ExceptionPolicy("lookup_first", max_attempts=1)
+    if isinstance(exc, VenueRejectedError):
+        return ExceptionPolicy("reject_intent", max_attempts=1)
+    if isinstance(exc, VenueHttpError):
+        if idempotent_read and (exc.status >= 500 or exc.status == 0):
+            return ExceptionPolicy("retry_backoff", retry_after_s=0.25,
+                                   max_attempts=3)
+        return ExceptionPolicy("safe_mode", max_attempts=1)
+    return ExceptionPolicy("safe_mode", max_attempts=1)
 
 
 class VenueHttpError(Exception):
@@ -1404,9 +1436,21 @@ class BinanceLiveEngine:
         entry/mark prices are None when the venue omits them.
         """
         self._guarded("account_snapshot")
-        try:
-            view = self._signed("GET", "/fapi/v2/account")
-        except VenueHttpError:
+        # T1.3: bounded retry for this idempotent read (table-driven);
+        # exhausted/non-retryable failures still return None (unknown).
+        view = None
+        for _attempt in range(3):
+            try:
+                view = self._signed("GET", "/fapi/v2/account")
+                break
+            except VenueHttpError as exc:
+                policy = classify_exception(exc, idempotent_read=True)
+                if policy.action != "retry_backoff" \
+                        or _attempt >= policy.max_attempts - 1:
+                    return None
+                time.sleep(min(policy.retry_after_s, 2.0)
+                           + random.uniform(0.0, 0.05))
+        if view is None:
             return None
         now = self._now_utc()
         try:

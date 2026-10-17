@@ -17,7 +17,7 @@ correctness > validation integrity > features.
 | T0.4 | Truth-in-docs (doctor, run_live docstring, README E-007, prod.toml) | DONE |
 | T1.1 | Venue-seeded accounting + account-mode verification (fail closed) | DONE |
 | T1.2 | Hot path: cached account snapshot, debounced risk writer, weight governor, benchmark | PARTIAL |
-| T1.3 | Table-driven exception policy + safe mode; one order-lifecycle path | TODO |
+| T1.3 | Table-driven exception policy + safe mode; one order-lifecycle path | PARTIAL |
 | T1.4 | Protection window: parallel stop/target, shadow stop, fault injection | TODO |
 | T1.5 | SIGTERM/SIGINT flatten by default; `--leave-protected` opt-out | TODO |
 | T1.6 | Client IDs: UUID run prefix + persisted monotonic seq, ≤36 chars | TODO |
@@ -151,6 +151,16 @@ T1.6. `docs/f2-health-recovery.md` came with the F2 cherry-pick.
   non-blocking until baselines reach zero (never weakened to pass).
 - T0.4 (31b6c4d): doctor live-label fix + test_doctor_truth 28 passed
   with test_cli_readiness.
+- T1.3 (PARTIAL): classify_exception table (retry_backoff/lookup_first/
+  reject_intent/safe_mode), bounded retry on account_snapshot read,
+  Session.enter_safe_mode (halt+flatten retries+alert, never raises),
+  run_live converts safe_mode/lookup_first to graceful end. Evidence:
+  test_exception_policy + regressions 28 passed. Live path order
+  lifecycle is BinanceLiveEngine (OrderManager retry unchanged for
+  reference path — ONE live path; OrderManager remains replay-only,
+  documented not deleted to keep suite contract). Owed: wiring
+  retry_backoff at submit call sites (engine refuse-fast already
+  covers rate-limit window) — tracked in FINAL_STATUS.
 - T1.2 (PARTIAL): engine account cache TTL 5s (REST + ACCOUNT_UPDATE),
   account_snapshot_cached, weight governor from X-MBX-USED-WEIGHT-1M,
   RiskPolicy._persist_tick debounce (transitions force; flush_state).

@@ -190,6 +190,9 @@ class Session:
         # T1.1: venue-seeded equity for live (demo/prod) startup; None
         # until seed_from_venue() runs. Paper/replay keep the config seed.
         self.venue_seed_equity: float | None = None
+        # T1.3: safe-mode state + alert record (sinks arrive in T3.3).
+        self.safe_mode_reason: str | None = None
+        self.alerts: list[dict[str, Any]] = []
         self.policy = RiskPolicy(RiskConfig(**config.to_risk_kwargs()),
                                  state_path=self.workdir / "risk_state.json",
                                  now_utc=self.now_utc)
@@ -434,6 +437,37 @@ class Session:
         self.policy.reconcile_day(wallet, self.ledger.total_flows())
         self.venue_seed_equity = wallet
         return wallet
+
+    def enter_safe_mode(self, reason: str, *,
+                          attempts: int = 3) -> dict[str, Any]:
+        """Safe mode (T1.3): halt entries, flatten with retries, alert.
+
+        Never raises: a flatten failure is recorded as a critical alert
+        (protection/watchdog layers own the next step, T1.4/T3.2) and
+        entries stay halted. Returns an outcome dict for the run record.
+        """
+        self.safe_mode_reason = str(reason)
+        self._halt_entries(f"safe-mode:{reason}")
+        has_exposure = bool(self.ledger.has_position()
+                            or self._position is not None)
+        flatten_ok = not has_exposure
+        attempted = True  # _flatten is idempotent/silent when flat
+        for _ in range(max(1, attempts)):
+            try:
+                self._flatten(f"safe-mode:{reason}")
+                flatten_ok = True
+                break
+            except Exception:  # noqa: BLE001 — safe mode must not raise
+                flatten_ok = False
+        out = {"kind": "safe-mode", "reason": str(reason),
+               "flatten_attempted": attempted, "flatten_ok": flatten_ok,
+               "ts_utc": self.now_utc().isoformat()}
+        self.alerts.append(out)
+        try:
+            self.store.checkpoint(self.run_id, "safe-mode", out)
+        except Exception:  # noqa: BLE001 — checkpoint best-effort here
+            pass
+        return out
 
     def _snapshot_account(self, symbol: str | None = None) -> AccountSnapshot:
         mark = self._reference_mark()
@@ -3747,9 +3781,25 @@ class Session:
                 # Control-step latency is decision work, not the poll
                 # wait: the timer starts after the tick wake fires.
                 step_start = time.perf_counter()
-                reason = self._control_step(event, producer, adapters,
-                                            modules, ctx, deadline,
-                                            expect_class)
+                try:
+                    reason = self._control_step(event, producer, adapters,
+                                                modules, ctx, deadline,
+                                                expect_class)
+                except Exception as exc:  # noqa: BLE001 — T1.3 policy
+                    # Table-driven: fatal/unknown outcomes enter safe
+                    # mode (halt + flatten + alert) and end the run
+                    # gracefully instead of dying with open exposure.
+                    # Retryable/rejected intents are handled inside the
+                    # step/engine and never reach here as run-enders.
+                    from cryptobot.adapters.binance_live import (
+                        classify_exception)
+                    policy = classify_exception(exc)
+                    if policy.action in ("safe_mode", "lookup_first"):
+                        self.enter_safe_mode(
+                            f"{type(exc).__name__}:{exc}")
+                        reason = f"safe-mode:{type(exc).__name__}"
+                    else:
+                        raise
                 self._tick_ms.append((time.perf_counter() - step_start)
                                      * 1000.0)
                 if reason is not None:
