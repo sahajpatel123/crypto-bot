@@ -36,7 +36,7 @@ def _session(tmp_path: Path) -> Session:
 def test_shutdown_flattens_by_default(tmp_path):
     session = _session(tmp_path)
     calls = []
-    session._flatten = lambda reason: calls.append(reason)  # noqa: SLF001
+    session._flatten = lambda reason, **kw: calls.append(reason)  # noqa: SLF001
     out = session.shutdown_flatten()
     assert calls and "shutdown" in calls[0]
     assert out["confirmed_flat"] is True

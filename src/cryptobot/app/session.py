@@ -283,6 +283,8 @@ class Session:
         # it into a blocking gate reason (level-wise: auto-releases on
         # the next fresh snapshot). Reset on every snapshot call.
         self._reads_degraded = False
+        # A#2: orphan-exposure alert latch (one checkpoint per episode).
+        self._orphan_alerted = False
         self._user_stream_attachment: Any | None = None
         self._known_reservations: set[str] = set()
         self._cmd_seq = 0
@@ -555,6 +557,11 @@ class Session:
         With ``leave_protected`` set, an open position is left only
         when it carries protection legs; otherwise ValueError (fail
         closed — never exit silently on naked exposure).
+
+        A#3: legs stay live until the close CONFIRMS (drained between
+        attempts); stragglers cancel after confirmation. An
+        unconfirmed shutdown keeps venue protection AND reports
+        confirmed_flat False (the _supervise stop path safe-modes).
         """
         if self.leave_protected and self._position is not None:
             legs = list(self._position.get("legs") or [])
@@ -566,21 +573,93 @@ class Session:
         last_exc: Exception | None = None
         for _ in range(max(1, attempts)):
             try:
-                self._flatten("shutdown")
+                self._flatten("shutdown", keep_legs=True)
+                self._drain_engine()
             except Exception as exc:  # noqa: BLE001 — retry bounded
                 last_exc = exc
+                try:
+                    self._drain_engine()
+                except Exception:
+                    pass
                 continue
             if self._is_flat_confirmed():
+                try:
+                    self._flatten("shutdown-settle")
+                    self._drain_engine()
+                except Exception:
+                    pass
                 return {"left_protected": False, "confirmed_flat": True}
         return {"left_protected": False, "confirmed_flat": False,
                 "error": str(last_exc) if last_exc else "unconfirmed"}
+
+    def _mark_missing(self) -> bool:
+        """True when no valuation mark exists anywhere (A#6).
+
+        Exchange mark, then feed mark; 0.0/"none" means blind.
+        Blind + exposed must fail closed (block entries), never
+        evaluate stops on cash-as-equity fiction.
+        """
+        mark, source, _ts = self._reference_mark_full()
+        return not (mark > 0) or source == "none"
+
+    def _run_shadow_stop(self) -> None:
+        """Venue-independent stop backstop (B#3, wired in _supervise).
+
+        Fires only when ALL hold: an open position with a stop level,
+        ledger exposure, a REAL mark (never 0.0/missing — A#6) through
+        the stop, and NO live stop-role leg (the venue owns the exit
+        while its stop works). Flatten-on-breach, checkpointed.
+        """
+        pos = self._position
+        if pos is None or pos.get("stop") is None:
+            return
+        if not self.ledger.has_position():
+            return
+        if self._mark_missing():
+            return
+        mark = self._reference_mark()
+        if not self.shadow_stop_breached(mark):
+            return
+        try:
+            statuses = self._tracked_statuses_for(pos)
+        except (ValueError, KeyError, AttributeError):
+            statuses = {}
+        for lid in list(pos.get("legs") or []) \
+                + list(pos.get("retired") or []):
+            st = statuses.get(lid)
+            if st is not None \
+                    and getattr(st, "role", "") == "stop" \
+                    and getattr(st, "state", "") in ("open", "partial"):
+                return  # venue stop live: it owns the exit.
+        self.store.checkpoint(self.run_id, "shadow-stop",
+                               {"mark": mark, "stop": pos.get("stop")})
+        self._flatten("shadow-stop")
+
+    def _run_orphan_watch(self, ctx: dict[str, Any]) -> None:
+        """Flatten shell-less ledger exposure (A#2).
+
+        Cancel/fill races can clear _position while a fill still books
+        (live journal fallback). Ledger-exposed with no shell gets no
+        protection, no time exit, no run-end flatten from the tracked
+        paths — so supervision flattens it directly (reduce-only,
+        venue-safe) and alerts once per episode.
+        """
+        if self._position is not None or not self.ledger.has_position():
+            self._orphan_alerted = False
+            return
+        if not self._orphan_alerted:
+            self._orphan_alerted = True
+            self.store.checkpoint(self.run_id, "orphan-exposure",
+                                   {"net": self.ledger.position_qty()})
+        self._flatten("orphan-exposure")
 
     def shadow_stop_breached(self, mark: float) -> bool:
         """Local shadow stop (T1.4): mark crossed the position stop.
 
         Second layer behind venue conditional legs: if the venue stop
         is missing/failed and the mark trades through the stop, the
-        session flattens itself (wired in _supervise).
+        session flattens itself (wired in _supervise via
+        _run_shadow_stop).
         """
         pos = self._position
         if pos is None:
@@ -679,13 +758,15 @@ class Session:
         if callable(account_margin):
             try:
                 margins = account_margin()
-            except (ValueError, KeyError, AttributeError,
-                    VenueHttpError, UnknownOutcomeError):
+            except (VenueHttpError, UnknownOutcomeError):
                 # A#4: venue reads fail degraded (margin None skips the
                 # margin gate; leverage cap still applies; venue
-                # rejections backstop sizing), never fatal.
+                # rejections backstop sizing), never fatal. Local
+                # seam gaps (below) are NOT degradation.
                 margins = None
                 self._reads_degraded = True
+            except (ValueError, KeyError, AttributeError):
+                margins = None
             if margins is not None:
                 available = float(margins[0])
         fee_buffer = 0.0
@@ -727,13 +808,14 @@ class Session:
         pending = 0.0
         try:
             statuses = self.engine.open_orders()
-        except (ValueError, KeyError, AttributeError,
-                VenueHttpError, UnknownOutcomeError):
+        except (VenueHttpError, UnknownOutcomeError):
             # A#4: unknown pending exposure degrades to ledger+booked
             # only (venue rejects backstop any oversize); the health
             # gate separately blocks entries on degraded reads.
             statuses = []
             self._reads_degraded = True
+        except (ValueError, KeyError, AttributeError):
+            statuses = []
         for status in statuses:
             role = getattr(status, "role", "entry")
             if role != "entry":
@@ -1934,6 +2016,13 @@ class Session:
             health = HealthStatus(
                 False, tuple(health.reasons) + ("health:degraded-reads",),
                 health.latched)
+        if self._mark_missing() and (self.ledger.has_position()
+                                     or self._position is not None):
+            # A#6: blind + exposed (SHORT equity would read as cash
+            # fiction) blocks entries until marks return.
+            health = HealthStatus(
+                False, tuple(health.reasons) + ("health:mark-missing",),
+                health.latched)
         self._apply_health_gate(health)
 
     # -- command intentions (contract v1 §4) -------------------------------
@@ -2666,6 +2755,7 @@ class Session:
     def _retry_pending_flatten(self, reason: str) -> None:
         if not self.ledger.has_position():
             self._flatten_pending = False
+            self._release_shell_less_risk()
             return
         try:
             self._flatten(reason)
@@ -2675,6 +2765,28 @@ class Session:
                                   {"reason": str(exc)})
         if not self.ledger.has_position():
             self._flatten_pending = False
+            self._release_shell_less_risk()
+
+    def _release_shell_less_risk(self) -> None:
+        """Release risk state after shell-less recovery flattens (B#19).
+
+        Without a position shell, _update_position's note_flat +
+        release path never runs: open_position would latch and block
+        entries forever after a correct recovery flatten. Clearing is
+        safe: note_flat no-ops unless booked nets zero, and release()
+        frees only zero-net holds (nonzero moves to unresolved and
+        keeps blocking — fail-closed).
+        """
+        if self._position is not None:
+            return
+        try:
+            self.policy.note_flat()
+            for rid in list(self.policy.live_reservations()):
+                self.policy.release(rid)
+            for rid in list(self.policy.unresolved_ids()):
+                self.policy.release(rid)
+        except (ValueError, KeyError, AttributeError):
+            pass
 
     def _position_symbol(self) -> str | None:
         """Instrument of the current ledger exposure (last fill's symbol)."""
@@ -2685,7 +2797,7 @@ class Session:
                 return entry["symbol"]
         return None
 
-    def _flatten(self, reason: str) -> None:
+    def _flatten(self, reason: str, *, keep_legs: bool = False) -> None:
         """Idempotent tracked close (READY-§5 inv 5).
 
         Cancels every tracked live child (entry, legs, retired — closes
@@ -2694,6 +2806,10 @@ class Session:
         flight. Unknown (absent) closes count as in flight: reconcile
         before retry, never duplicate. Checkpoints only when it ACTS, so
         repeated empty calls are silent instead of looping.
+
+        keep_legs (shutdown only): skip leg/retired cancels — the close
+        races while venue protection stays live; legs cancel after the
+        close confirms. The entry still cancels (no refills).
         """
         if self.config.mode == "prod" and not self.config.allow_live_submission:
             raise ValueError("config:prod-submission-disabled")
@@ -2701,11 +2817,12 @@ class Session:
             return  # push reentrancy: the outer pass already converges.
         self._in_flatten = True
         try:
-            self._flatten_inner(reason)
+            self._flatten_inner(reason, keep_legs=keep_legs)
         finally:
             self._in_flatten = False
 
-    def _flatten_inner(self, reason: str) -> None:
+    def _flatten_inner(self, reason: str, *,
+                       keep_legs: bool = False) -> None:
         """Tracked-close body (see _flatten)."""
         # No drain here: callers drain around flatten (_update_position runs
         # post-drain; others drain after), and draining would recurse via
@@ -2723,12 +2840,15 @@ class Session:
             self._mark_seen(pos, statuses)
             # Own in-flight closes are left to work (canceling them
             # would self-sabotage); legs/retired/entry must die first.
-            for lid in list(pos.get("legs") or []) \
-                    + list(pos.get("retired") or []):
-                if self._request_cancel(pos, lid, statuses, reason) \
-                        == "sent" and lid not in requested:
-                    requested.add(lid)
-                    acted = True
+            # keep_legs (shutdown): legs stay live until the close
+            # confirms; the entry still cancels (no refills).
+            if not keep_legs:
+                for lid in list(pos.get("legs") or []) \
+                        + list(pos.get("retired") or []):
+                    if self._request_cancel(pos, lid, statuses, reason) \
+                            == "sent" and lid not in requested:
+                        requested.add(lid)
+                        acted = True
             entry_id = pos.get("entry_id") or pos.get("entry_pre_id") or ""
             entry = statuses.get(entry_id)
             if entry is None or entry.state in ("open", "partial"):
@@ -4054,7 +4174,20 @@ class Session:
         if not tick.ok:
             self._halt_entries(";".join(tick.reasons))
             self._set_state("halted", ";".join(tick.reasons))
+        # B#4: detection must also run WITHOUT market traffic (feed
+        # stall): a throttled full health evaluation (snapshot +
+        # policy check + gate) every 10s of supervision time. The
+        # event path evaluates every event; this covers idle wakes.
+        last_sup = ctx.get("last_sup_health_mono")
+        if last_sup is None or now_mono - last_sup >= 10.0:
+            ctx["last_sup_health_mono"] = now_mono
+            try:
+                self._health_tick()
+            except Exception:  # noqa: BLE001 — supervision never dies;
+                pass  # _health_tick already degrades venue reads.
         self._run_stop_actions()
+        self._run_shadow_stop()
+        self._run_orphan_watch(ctx)
         self._drain_unknown_outcomes()
         self._refresh_filters_if_stale()
         if now_mono - ctx["last_beat"] >= 30.0:
@@ -4069,9 +4202,17 @@ class Session:
             else:
                 # T1.5: graceful (SIGTERM/SIGINT) flattens by default
                 # and confirms flat; leave-protected is the opt-out.
+                # A#3: an UNCONFIRMED shutdown safe-modes loudly (halt
+                # + alert + legs retained by shutdown_flatten) instead
+                # of exiting silently on naked exposure.
                 try:
                     out = self.shutdown_flatten()
                     self.store.checkpoint(self.run_id, "shutdown", out)
+                    if not out.get("confirmed_flat") \
+                            and not out.get("left_protected"):
+                        self.enter_safe_mode("shutdown-unconfirmed")
+                        self.store.checkpoint(
+                            self.run_id, "shutdown-unconfirmed", out)
                 except ValueError as exc:
                     self.enter_safe_mode(f"shutdown:{exc}")
             return f"operator-stop:{stop}"
