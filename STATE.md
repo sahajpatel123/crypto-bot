@@ -243,7 +243,7 @@ never read. Campaign `data/captures/campaign-1day-*` events never read
 | F0.3 | Claim audit PASS/REOPEN table | DONE (21 items, 0 REOPEN; item 21 full-suite shared w/F0.2) |
 | F0.4a | Leverage-bracket gate into LIVE admission + stale reject | DONE |
 | F0.4b | Break-even re-derivation + tests + fix >60% statement | DONE |
-| F0.4c | Paper fill model parameterized + calibration path | TODO |
+| F0.4c | Paper fill model parameterized + calibration path | DONE |
 | F0.4d | RESEARCH_VERDICTS sentences -> verdict JSON mapping | TODO |
 | F0.5 | Adversarial review (2 subagents or 30-item pre-mortem) | TODO |
 | F3.1 | Standalone recorder Binance USD-M + USDC check | TODO |
@@ -349,3 +349,16 @@ never read. Campaign `data/captures/campaign-1day-*` events never read
   1.5x/2x, maker 2x), RC=0. Fixed RESEARCH_VERDICTS ">60–65%" to exact:
   25/25 taker 18bps/86% @1x, 104%/122% infeasible @1.5x/2x; maker
   15bps/80% @1x. hardening_batch (>0.6) untouched, still passes.
+- F0.4c DONE: 1-tick rule retired. PaperFillParams (versioned,
+  provenance-stamped ASSUMED-pessimistic: 2 spread + 6 slip + 2
+  latency + 25 empty-book bps, 50ms p95) in fill_realism;
+  NautilusPaperEngine accepts fill_params (dict or object),
+  fill_delay_ms defaults from params, slippage_audit prices every
+  fill against the book-walk pessimistic leg (drift_bps≥0, never
+  better). Calibration path documented in module/class docstrings:
+  F2.2 `cryptobot calibrate` fits MEASURED params from
+  demo-drill/paper/live fills; auto-updates only more conservative.
+  Tests: test_paper_fill_params 5 (failed ImportError first; incl.
+  200-seed never-improves property). Regression: fill_params +
+  fill_realism + paper_engine → 60 passed. FINAL_STATUS benchmark
+  line "always 1 tick adverse" now stale (rewritten in F9).

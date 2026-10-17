@@ -107,6 +107,8 @@ from cryptobot.app.engine import (
     EngineOrderStatus,
     EngineReject,
 )
+from cryptobot.execution.fill_realism import (
+    PaperFillParams, pessimistic_fill_price)
 from cryptobot.market_data.discovery import FAPI_BASE_URL, urllib_json_get
 from cryptobot.risk.rounding import floor_to_step, round_to_tick
 
@@ -152,7 +154,7 @@ class NautilusPaperEngine:
         taker_bps: float = 5.0,
         now_utc: Callable[[], datetime] | None = None,
         submit_delay_ms: int = 0,
-        fill_delay_ms: int = 50,
+        fill_delay_ms: int | None = None,
         *,
         journal_path: str | Path | None = None,
         maker_bps: float | None = None,
@@ -167,7 +169,18 @@ class NautilusPaperEngine:
         max_queued_submits: int = 1000,
         max_pending_events: int = 10000,
         run_tag: str | None = None,
+        fill_params: PaperFillParams | dict | None = None,
     ) -> None:
+        if isinstance(fill_params, dict):
+            fill_params = PaperFillParams.from_dict(fill_params)
+        # F0.4c: explicit parameterized fill economics. Defaults are
+        # ASSUMED-pessimistic until F2.2 calibrates MEASURED params.
+        self.fill_params: PaperFillParams = (
+            fill_params if fill_params is not None
+            else PaperFillParams.default_pessimistic())
+        # Delay model comes from params unless explicitly overridden.
+        if fill_delay_ms is None:
+            fill_delay_ms = self.fill_params.latency_ms_p95
         if taker_bps <= 0:
             raise ValueError("taker_bps must be > 0 (run-mode fees are never zero)")
         if fill_delay_ms <= 0:
@@ -220,10 +233,14 @@ class NautilusPaperEngine:
             msgbus=self._msgbus,
             cache=self._cache,
             clock=self._clock,
-            # T1.9: pessimistic by default — every fill slips one tick
-            # adversely (prob_slippage=1.0); zero-slippage fabricated
-            # edge in prior runs. Book-walk refinement lives in
-            # cryptobot.execution.fill_realism for replay accounting.
+            # F0.4c: nautilus handles MATCHING TIMING; fill ECONOMICS are
+            # set by self.fill_params (PaperFillParams, versioned +
+            # provenance-stamped). prob_slippage=1.0 keeps the pessimistic
+            # direction (never better than touch); the explicit bps terms
+            # (spread/slippage/latency/empty-book) price the fill via
+            # slippage_audit, and F2.2 calibrates them from measured
+            # fills. The bare "one tick" rule is retired: every basis
+            # point is now a named, versioned parameter.
             fill_model=FillModel(prob_fill_on_limit=1.0, prob_slippage=1.0,
                                  random_seed=random_seed),
             fee_model=MakerTakerFeeModel(),  # reads maker/taker fees off each instrument.
@@ -417,6 +434,40 @@ class NautilusPaperEngine:
     def _round_tick(self, symbol: str, price: float) -> float:
         # V-008 §7: the one shared venue-rounding rule (price leg).
         return round_to_tick(price, self._filters[symbol.upper()]["tick"])
+
+    def slippage_audit(self, *, side: str, qty: float,
+                       nautilus_price: float,
+                       levels: list[tuple[float, float]],
+                       symbol: str) -> dict:
+        """Audit a nautilus fill against the pessimistic model (F0.4c).
+
+        Prices ``qty`` against ``levels`` (best-first book snapshot at
+        fill time; top-of-book suffices — uncovered remainder draws the
+        empty-book penalty) plus the params latency term. Returns the
+        pessimistic price, the nautilus price, and non-negative drift
+        in bps (0 when nautilus is already at/past pessimistic).
+        drift_bps > 0 means the simulator was optimistic: F2.2 feeds
+        these audits into calibration, and paper P&L must use the
+        pessimistic leg (never better). Pure function of its inputs +
+        self.fill_params (deterministic).
+        """
+        pessimistic = pessimistic_fill_price(
+            side, qty=qty, levels=levels,
+            latency_bps=self.fill_params.latency_bps,
+            empty_book_bps=self.fill_params.empty_book_bps)
+        if side == "BUY":
+            drift = max(0.0, pessimistic - float(nautilus_price))
+        elif side == "SELL":
+            drift = max(0.0, float(nautilus_price) - pessimistic)
+        else:
+            raise ValueError(f"side must be BUY or SELL, got {side!r}")
+        base = float(nautilus_price) or 1.0
+        return {"symbol": symbol.upper(), "side": side,
+                "qty": float(qty), "nautilus_price": float(nautilus_price),
+                "pessimistic_price": pessimistic,
+                "drift_bps": drift / base * 10000.0,
+                "params_version": self.fill_params.version,
+                "provenance": self.fill_params.provenance}
 
     # -- S3 seam ----------------------------------------------------------
     def _new_client_id(self) -> str:
