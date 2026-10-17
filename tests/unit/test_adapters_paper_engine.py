@@ -702,7 +702,7 @@ def test_market_fills_across_thin_trade_prints_without_cancel():
     assert [e for e in events if e.kind == "cancel"] == []
     assert sum(f.payload.qty for f in fills) == pytest.approx(0.01)
     assert fills[0].payload.price == pytest.approx(77191.10)  # the print.
-    assert {f.payload.price for f in fills} <= {77191.10, 77191.11}
+    assert {f.payload.price for f in fills} <= {77191.10, 77191.11, 77191.12}  # T1.9: +1 tick adverse slippage allowed
     assert engine.filled_qty(cid) == pytest.approx(0.01)
 
 

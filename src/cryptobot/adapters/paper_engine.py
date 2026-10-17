@@ -220,7 +220,11 @@ class NautilusPaperEngine:
             msgbus=self._msgbus,
             cache=self._cache,
             clock=self._clock,
-            fill_model=FillModel(prob_fill_on_limit=1.0, prob_slippage=0.0,
+            # T1.9: pessimistic by default — every fill slips one tick
+            # adversely (prob_slippage=1.0); zero-slippage fabricated
+            # edge in prior runs. Book-walk refinement lives in
+            # cryptobot.execution.fill_realism for replay accounting.
+            fill_model=FillModel(prob_fill_on_limit=1.0, prob_slippage=1.0,
                                  random_seed=random_seed),
             fee_model=MakerTakerFeeModel(),  # reads maker/taker fees off each instrument.
             latency_model=LatencyModel(self.fill_delay_ms * 1_000_000),
