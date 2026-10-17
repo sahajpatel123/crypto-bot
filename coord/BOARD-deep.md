@@ -88,6 +88,14 @@ Production submission DISABLED. No credentials requested at this stage.
 - Freeze integrity: only §9 IST clarification (pre-outcome, disclosed) +
   authorized beta transcription; params/round/selection untouched.
 
+## W5 re-confirm requested (manager → board channel; peer msgs capped)
+- Chunked gates green here: A1 PASS (D1 8/8, D2 5/5), A3 PASS (D5 5/5,
+  D4 11/11), A2 PASS post-fixup. Filings at ec9257e + separator fix.
+- Chunk union proven identical (364+352+404=1120 collected). Pivot tests
+  scoped out with notes. Row11 marginality root-caused (load + clock
+  jump), green verbatim since, W1 follow-up filed.
+- W5: please re-run chunked A1/A3 + A2 on tip and amend DEEP-W5-VERDICT.
+
 ## Integration log (continued)
 - W4 D4 ACCEPTED (d71b050 → af9c86a + fixup bd8d54c): economics/select/
   bench-tests re-ran green; full-suite expect_rc adjusted for merged tree.
