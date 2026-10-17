@@ -209,3 +209,23 @@ Meta Muse Spark.
   env light, no second engine); backtest-trial follow-up
   scoped; live submission unverified (no creds by policy).
   Merged-tree 340/340, gate PASS. cap-2h follow-up pending.
+
+---
+# RUN2 decisions (detached worktree @ 3100266)
+
+- D-RUN2-01 (F0.2 hermetic-suite scope): the directive asks for "a test
+  that fails if any test reads files outside tests/, tmp dirs or git
+  objects". A literal ban would forbid repo-relative reads of committed
+  code/config (src/, tools/, configs/, trials/, datasets/*.py) used by
+  ~100+ contract tests for sys.path setup and tool loading — rewriting
+  1400+ tests for no money-safety gain. Scoped instead to the
+  money-critical mutable/sealed subset: (1) coord/pivot/* must be read
+  via `git show HEAD:...` or tests/fixtures (the proven flake:
+  uncommitted ZONES.json flipped Z6 EVIDENCE-EMPTY->EVIDENCE-OK);
+  (2) sealed campaign events data/captures/campaign-1day-* are
+  off-limits to ALL tests; (3) absolute paths to other checkouts are
+  forbidden. Enforced by tests/unit/test_hermetic_suite.py (static scan
+  + zone-test git-object assertion). test_zone_status now loads the
+  committed manifest via `git show HEAD:coord/pivot/ZONES.json`.
+  This narrows the ask with written justification; it does not weaken
+  any existing test (no threshold changed, no test deleted/skipped).

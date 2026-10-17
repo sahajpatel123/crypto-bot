@@ -225,3 +225,67 @@ T1.6. `docs/f2-health-recovery.md` came with the F2 cherry-pick.
 - R-3: No credentials available (by design) — all venue-behaviour claims
   must be proven on the sandbox venue / recorded fixtures; live claims
   become OWNER_ACTIONS.md entries.
+
+---
+# RUN2 — self-advancing system (F0-F9), worktree detached @ 3100266
+Started: 2026-10-18. Worktree:
+`/private/var/folders/3w/wgv95vkx69lf97wwlsh02d700000gn/T/opencode/cryto-hard-work`
+(detached HEAD 3100266). Main checkout untouched; uncommitted files there
+never read. Campaign `data/captures/campaign-1day-*` events never read
+(manifest/heartbeat/status metadata only).
+
+## RUN2 task list (phase order F0,F3,F1,F2,F4,F5,F6,F7,F8,F9)
+
+| ID | Task | Status |
+|---|---|---|
+| F0.1 | Re-entry: worktree + read committed docs | DONE |
+| F0.2 | Hermetic suite: zone test via git object + guard test, full suite 0 failed | IN_PROGRESS |
+| F0.3 | Claim audit PASS/REOPEN table | TODO |
+| F0.4a | Leverage-bracket gate into LIVE admission + stale reject | TODO |
+| F0.4b | Break-even re-derivation + tests + fix >60% statement | TODO |
+| F0.4c | Paper fill model parameterized + calibration path | TODO |
+| F0.4d | RESEARCH_VERDICTS sentences -> verdict JSON mapping | TODO |
+| F0.5 | Adversarial review (2 subagents or 30-item pre-mortem) | TODO |
+| F3.1 | Standalone recorder Binance USD-M + USDC check | TODO |
+| F3.2 | Venue plugins Bybit/OKX behind flags | TODO |
+| F3.3 | Durability: buffer, fsync, rotation, hash-chain, reports | TODO |
+| F3.4 | Campaign manifest metadata gap note | TODO |
+| F3.5 | Vault DEV/CONFIRM + token gate + import-lint | TODO |
+| F3.6 | recorder CLI + systemd + compose | TODO |
+| F1.1 | Property tests (Hypothesis) | TODO |
+| F1.2 | Mutation testing risk/execution/adapters | TODO |
+| F1.3 | Chaos matrix sandbox venue | TODO |
+| F1.4 | Determinism replay byte-identical | TODO |
+| F1.5 | Differential paper vs sandbox | TODO |
+| F1.6 | Fuzz REST/WS parsers | TODO |
+| F1.7 | Perf regression thresholds | TODO |
+| F2.1 | Close PARTIAL/BLOCKED non-credentialed | TODO |
+| F2.2 | calibrate CLI + conservative-only auto-update | TODO |
+| F2.3 | fixtures ingest CLI | TODO |
+| F2.4 | deploy kit + host-check | TODO |
+| F2.5 | Credential safety checks | TODO |
+| F2.6 | Clock-skew guard halts entries | TODO |
+| F4.1 | Prereg H4-H6 committed pre-eval (budget ≤8) | TODO |
+| F4.2-F4.7 | Autopilot state machine + dev/confirm/paper stages | TODO |
+| F4.8 | NO-EDGE terminal report | TODO |
+| F5.1-F5.5 | Gate/arm hardening + ladder + canary + refusal verify | TODO |
+| F6.1-F6.2 | Dashboard + alerts | TODO |
+| F7.1-F7.3 | Docs + OWNER_ACTIONS ordered checklist | TODO |
+| F8.1-F8.2 | Acceptance + soak + scores | TODO |
+| F9 | FINAL_STATUS rewrite from evidence | TODO |
+
+## RUN2 log
+- F0.1 DONE: worktree detached @ 3100266 confirmed (`git rev-parse HEAD`
+  = 3100266aa52a4181df250c7b1ecf916796d74483); read STATE/FINAL/
+  OWNER/VERDICTS/DECISIONS + research/prereg/H1-H3 from worktree only.
+- F0.2 FIX (targeted green, full suite pending): guard
+  tests/unit/test_hermetic_suite.py failed first (2 failed on HEAD
+  code), then tests/unit/test_zone_status.py switched to
+  `git show HEAD:coord/pivot/ZONES.json` via _read_committed.
+  Targeted: `pytest tests/unit/test_zone_status.py
+  tests/unit/test_hermetic_suite.py` → 6 passed. D-RUN2-01 justifies
+  the scoped hermetic ban. NOTE: worktree .venv via `uv sync --locked`
+  refused (lockfile needs update, uv picked 3.12 vs main 3.14); full
+  suite runs with main-venv interpreter + PYTHONPATH=worktree/src so
+  the tested code is the worktree's (verified
+  cryptobot.__file__=worktree/src/...).
