@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import argparse
 import bisect
+import gzip
 import json
 import sys
 from collections import deque
@@ -225,7 +226,8 @@ def run_stream(events_path: Path, symbol: str, tick: float,
                toxicity: float) -> dict:
     sims = {m: MakerSim(symbol, m, tick, toxicity)
             for m in ("optimistic", "conservative")}
-    with events_path.open() as fh:
+    opener = gzip.open if str(events_path).endswith(".gz") else open
+    with opener(events_path, "rt") as fh:
         for line in fh:
             try:
                 ev = json.loads(line)
