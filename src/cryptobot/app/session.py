@@ -3650,11 +3650,15 @@ class Session:
     def run_live(self, event_iter: Any, *, duration_s: int,
                  expect_class: str = "observed-public",
                  resume: bool = False) -> dict[str, Any]:
-        """Live-feed paper loop over a bridge event iterator (E-007).
+        """Live-feed loop over a bridge event iterator (E-007).
 
         Same _ingest path as replay (strategies/selector/exit/risk), wall
-        clock, wall duration budget. No Binance order submission exists on
-        this path: fills come from the injected paper engine only.
+        clock, wall duration budget. The injected engine decides what a
+        fill is: with the Nautilus paper engine fills are simulated; with
+        the Binance live engine (demo or prod) this path DOES submit real
+        venue orders — the old "no submission on this path" wording was
+        false for prod and is removed (T0.4). Prod submission stays off
+        unless the P6 arming path enables it.
         Resume continues wall-now with recovered state (no live cursor);
         any recovered exposure is flattened before continuing.
         """

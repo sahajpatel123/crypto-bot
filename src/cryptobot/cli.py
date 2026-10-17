@@ -71,12 +71,26 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     if config.engine_kind == "nautilus":
         try:
             import cryptobot.adapters.paper_engine  # noqa: F401  (E-007)
-            print("engine: OK nautilus adapter present")
+            print("engine: OK nautilus paper adapter present "
+                  "(src/cryptobot/adapters/paper_engine.py)")
             info["engine"] = "nautilus"
         except ImportError:
             problems.append("nautilus engine requested but "
                             "cryptobot.adapters.paper_engine is not integrated (E-007)")
             print("engine: BLOCKED (E-007 Nautilus adapter not integrated)")
+    elif config.engine_kind == "live":
+        # T0.4: doctor previously fell through to the reference label for
+        # live configs, misreporting a venue engine as the fake venue.
+        try:
+            import cryptobot.adapters.binance_live  # noqa: F401
+            print(f"engine: OK binance-live adapter present "
+                  f"(demo={config.engine_demo}, "
+                  f"submission={'ON' if config.allow_live_submission else 'OFF'})")
+            info["engine"] = "live"
+        except ImportError:
+            problems.append("live engine requested but "
+                            "cryptobot.adapters.binance_live is not integrated")
+            print("engine: BLOCKED (binance_live adapter not integrated)")
     else:
         print("engine: reference-fake-venue (replay/tests only; paper refuses it)")
         info["engine"] = "reference"

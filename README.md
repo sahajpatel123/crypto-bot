@@ -1,8 +1,12 @@
 # Crypto scalping bot — Bot v0.1 application
 
 Status: implementation authorised for simulation and research only. No live orders.
-Live trading is disabled: paper mode requires the E-007 Nautilus adapter, which is
-not yet integrated; the reference engine refuses paper by construction.
+Production submission is disabled by default (see `configs/prod.toml`:
+`allow_live_submission = false`, and the P6 arming path in STATE.md). The
+E-007 Nautilus paper adapter IS integrated
+(`src/cryptobot/adapters/paper_engine.py` exists; an older revision of this
+README claimed it missing — corrected in T0.4); the reference engine still
+refuses paper by construction.
 
 This repository is managed by the engineering manager session (young-polaris)
 coordinating exactly three worker sessions. See [DECISIONS.md](/Users/sahajpatel/Code/cryto-bot/DECISIONS.md),
@@ -26,9 +30,10 @@ uv run --locked cryptobot status --run-id <actual-run-id>
 uv run --locked cryptobot stop --run-id <actual-run-id> [--flatten]
 ```
 
-- `run --mode paper` is currently BLOCKED by design until E-007 lands
-  (`cryptobot.adapters.paper_engine` missing). It never routes through a live
-  client and needs no credentials.
+- `run --mode paper` runs on the integrated E-007 Nautilus paper adapter
+  (`src/cryptobot/adapters/paper_engine.py`). It never routes through a live
+  client and needs no credentials. (This bullet previously claimed the
+  adapter was missing; corrected in T0.4.)
 - Replay runs strategies (S1–S4; S5 after the Q-005-F1 adapter fixup) through
   selector → risk → fee-bearing reference fills → protective exits → ledger,
   with crash/resume recovery. Reference fills are loop mechanics, not profit
