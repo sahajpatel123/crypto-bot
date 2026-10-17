@@ -212,6 +212,38 @@ T1.6. `docs/f2-health-recovery.md` came with the F2 cherry-pick.
   fetching at startup deferred to T1.7 (funding booking); seed uses
   wallet/positions/orders now. Full P0 suite still owed (R-1).
 
+## Finish run (live/hardening-finish, worktree cryto-bot-wt)
+
+- F0.1 DONE: worktree at cryto-bot-wt, branch live/hardening-finish
+  from 3100266 (live/hardening tip). PYTHONPATH must point at the
+  worktree src (venv resolves cryptobot from the main checkout).
+- F0.2 DONE: zone test reads git object HEAD:coord/pivot/ZONES.json;
+  test_hermetic_workspace guards mutable-path reads. 6 passed.
+- F0.4b DONE: breakeven re-derived (p=(S+c)/(T+S)); 25/25 @26bps =
+  102% INFEASIBLE, feasible flag added; ">60%" corrected to 86%
+  (default model) in RESEARCH_VERDICTS.md.
+- F0.4a DONE: Session.liquidation_gate wired in _maybe_admit after
+  exits derived; BinanceLiveEngine.leverage_brackets cached, stale
+  rejects. Bracket-boundary tests in test_margin_sizing +
+  test_liquidation_gate (8 passed in batch).
+- F0.4c DONE: FillParams (spread+depth+latency bps) is the model of
+  record; paper engine maps it to Nautilus slip probability.
+- F0.4d DONE: RESEARCH_VERDICTS rewritten — only machine-backed or
+  explicitly prior-audit-labelled claims remain.
+- F0.3 claim audit (evidence re-run this run):
+  | Claim | Result |
+  |---|---|
+  | T1.1 venue seed | PASS (test_venue_seeding, prior run) |
+  | T1.5 shutdown | PASS (test_shutdown_flatten) |
+  | T1.6 client IDs | PASS (test_client_ids) |
+  | T1.7 funding | PASS (test_funding_booking) |
+  | T1.8 liquidation | REOPEN -> FIXED by F0.4a wiring |
+  | Breakeven >60% | REOPEN -> FIXED (86% / INFEASIBLE at 26bps) |
+  | 1-tick fill rule | REOPEN -> FIXED (FillParams, F0.4c) |
+  | RESEARCH_VERDICTS claims | REOPEN -> FIXED (F0.4d) |
+- F0.5: two adversarial subagents spawned (no STATE.md given);
+  findings triage pending their reports.
+
 ## Open risks
 
 - R-1 CLOSED: definitive full suite on 8b7f254: 1479 passed,

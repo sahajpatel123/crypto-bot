@@ -372,6 +372,7 @@ class BinanceLiveEngine:
         self._margin_cache: tuple[float, float] | None = None
         self._account_cached_at: float = 0.0
         self.ACCOUNT_CACHE_TTL_S = 5.0
+        self._bracket_cache: dict[str, tuple[float, list]] = {}
         self._listen_key: str | None = None
         # Contract v1 tracked truth: per-order versions, submit-intent
         # qty/symbol cache, adopted fill qty, emitted terminals.
@@ -1616,6 +1617,33 @@ class BinanceLiveEngine:
     def fee_bps(self, symbol: str) -> float:
         """Venue taker rate in bps (cached at readiness)."""
         return self._fee_bps[symbol.upper()]
+
+    def leverage_brackets(self, symbol: str,
+                          max_age_s: float = 300.0) -> tuple[list, bool]:
+        """Venue leverage brackets + staleness flag (F0.4a).
+
+        Cached per symbol; stale when the cache is older than
+        ``max_age_s`` or the venue read fails (caller must reject).
+        """
+        import time as _time
+        key = symbol.upper()
+        cached = self._bracket_cache.get(key)
+        now = _time.monotonic()
+        if cached and now - cached[0] <= max_age_s:
+            return (list(cached[1]), False)
+        try:
+            rows = self._signed("GET", "/fapi/v1/leverageBracket",
+                                {"symbol": key})
+        except Exception:  # noqa: BLE001 — stale, caller rejects
+            return (list(cached[1]) if cached else [], True)
+        brackets: list = []
+        if isinstance(rows, list):
+            for row in rows:
+                if str(row.get("symbol", "")).upper() == key:
+                    brackets = list(row.get("brackets", []))
+                    break
+        self._bracket_cache[key] = (now, brackets)
+        return (list(brackets), False)
 
     def funding_income(self, symbol: str) -> list[dict[str, Any]]:
         """Raw FUNDING_FEE income rows (T1.7 booking/reconcile input)."""

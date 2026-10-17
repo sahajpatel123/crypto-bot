@@ -562,6 +562,44 @@ class Session:
         self._flatten("protection-gap-timeout")
         return True
 
+    def liquidation_gate(self, *, symbol: str, side: str, qty: float,
+                         entry: float, stop: float) -> str | None:
+        """Live-admission liquidation gate (F0.4a, T1.8 wired).
+
+        Returns a reject reason, or None to admit. Only engines that
+        expose venue leverage brackets (live) are gated; stale/missing
+        bracket data rejects (never admit on unknown margin terms).
+        Liquidation must sit >=3x the stop distance away and beyond
+        the stop plus stressed slippage (risk.margin.liquidation_ok).
+        """
+        fetch = getattr(self.engine, "leverage_brackets", None)
+        if not callable(fetch):
+            return None
+        try:
+            brackets, stale = fetch(symbol)
+        except Exception as exc:  # noqa: BLE001 — unknown margin terms
+            return f"liquidation:brackets-unavailable:{type(exc).__name__}"
+        if stale or not brackets:
+            return "liquidation:brackets-stale"
+        from cryptobot.risk.margin import (
+            liquidation_ok, liquidation_price_isolated,
+            maintenance_margin)
+        leverage = float(getattr(self.engine, "_leverage", 0)
+                         or self.config.leverage_cap or 3.0)
+        notional = abs(float(qty) * float(entry))
+        maint = maintenance_margin(notional, list(brackets))
+        margin = notional / leverage if leverage > 0 else notional
+        signed_qty = abs(float(qty)) if side == "LONG" else -abs(float(qty))
+        liq = liquidation_price_isolated(entry=float(entry),
+                                         qty=signed_qty,
+                                         isolated_margin=margin,
+                                         maint_margin=maint)
+        if not liquidation_ok(entry=float(entry), stop=float(stop),
+                              liq=liq, stressed_slippage_bps=100.0,
+                              side=side):
+            return f"liquidation:too-close liq={liq:.2f}"
+        return None
+
     def book_settled_funding(self, symbol: str) -> int:
         """Book settled venue funding into the ledger (T1.7).
 
@@ -1166,6 +1204,20 @@ class Session:
                 self.run_id, intent.evidence_ref, intent.strategy,
                 intent.instrument, intent.side.value, "rejected",
                 "selection:exit-undecodable", self.now_utc().isoformat())
+            return
+        # F0.4a: live liquidation gate (bracket-based, stale rejects).
+        gate_reason = self.liquidation_gate(
+            symbol=intent.instrument, side=intent.side.value,
+            qty=executable, entry=self._reference_mark(), stop=stop)
+        if gate_reason is not None:
+            self.policy.release(verdict.reservation_id)
+            reason = f"risk:{gate_reason}"
+            self._note_reject(reason, intent.strategy,
+                              intent.instrument, intent.side.value)
+            self.store.record_intent(
+                self.run_id, intent.evidence_ref, intent.strategy,
+                intent.instrument, intent.side.value, "rejected",
+                reason, self.now_utc().isoformat())
             return
         side = "BUY" if intent.side.value == "LONG" else "SELL"
         # Directive L76: entries are price-protected marketable IOC, capped

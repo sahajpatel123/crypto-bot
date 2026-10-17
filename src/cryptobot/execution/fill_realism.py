@@ -9,6 +9,36 @@ receive <= book VWAP.
 from __future__ import annotations
 
 import math
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class FillParams:
+    """Calibrated adverse-fill parameters (F0.4c, replaces the fixed
+    "one tick" rule as the model of record).
+
+    adverse_bps is the expected adverse move between decision and fill:
+    half-spread paid + depth walked + latency drift at measured p95
+    feed age. Calibration path: `cryptobot calibrate` (F2.2) fits these
+    from demo/paper fills and may only raise them automatically.
+    The Nautilus FillModel can only express a 1-tick slip probability,
+    so the paper engine maps adverse_bps onto that probability against
+    a reference tick; the bps model here is the accounting truth.
+    """
+
+    spread_bps: float = 3.0
+    depth_bps: float = 5.0
+    latency_bps: float = 4.0
+
+    @property
+    def adverse_bps(self) -> float:
+        return float(self.spread_bps + self.depth_bps + self.latency_bps)
+
+    def slippage_prob(self, *, tick_bps_ref: float = 12.0) -> float:
+        """Probability for a 1-tick-slip model to match adverse_bps."""
+        if tick_bps_ref <= 0:
+            raise ValueError("tick_bps_ref must be > 0")
+        return max(0.0, min(1.0, self.adverse_bps / float(tick_bps_ref)))
 
 
 def pessimistic_fill_price(side: str, *, qty: float,

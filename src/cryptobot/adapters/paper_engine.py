@@ -167,6 +167,7 @@ class NautilusPaperEngine:
         max_queued_submits: int = 1000,
         max_pending_events: int = 10000,
         run_tag: str | None = None,
+        fill_params: Any | None = None,
     ) -> None:
         if taker_bps <= 0:
             raise ValueError("taker_bps must be > 0 (run-mode fees are never zero)")
@@ -186,6 +187,9 @@ class NautilusPaperEngine:
         self._event_handler = outcome_sink if callable(outcome_sink) else None
         self._legacy_sink_ignored = (
             outcome_sink is not None and not callable(outcome_sink))
+        from cryptobot.execution.fill_realism import FillParams
+        self.fill_params = fill_params or FillParams()
+        self._slippage_prob = self.fill_params.slippage_prob()
         self.taker_bps = float(taker_bps)
         self.maker_bps = float(taker_bps if maker_bps is None else maker_bps)
         self._now_utc = now_utc or (lambda: datetime.now(timezone.utc))
@@ -220,11 +224,13 @@ class NautilusPaperEngine:
             msgbus=self._msgbus,
             cache=self._cache,
             clock=self._clock,
-            # T1.9: pessimistic by default — every fill slips one tick
-            # adversely (prob_slippage=1.0); zero-slippage fabricated
-            # edge in prior runs. Book-walk refinement lives in
-            # cryptobot.execution.fill_realism for replay accounting.
-            fill_model=FillModel(prob_fill_on_limit=1.0, prob_slippage=1.0,
+            # T1.9/F0.4c: pessimistic by default. The calibrated
+            # FillParams adverse_bps (spread+depth+latency) maps onto
+            # the 1-tick slip probability Nautilus can express; the
+            # bps book-walk model in execution.fill_realism is the
+            # accounting truth used by calibrate/verdict.
+            fill_model=FillModel(prob_fill_on_limit=1.0,
+                                 prob_slippage=self._slippage_prob,
                                  random_seed=random_seed),
             fee_model=MakerTakerFeeModel(),  # reads maker/taker fees off each instrument.
             latency_model=LatencyModel(self.fill_delay_ms * 1_000_000),

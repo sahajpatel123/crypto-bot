@@ -60,5 +60,10 @@ def breakeven_table(model: CostModel | None = None) -> list[dict]:
                     "stress": stress, "round_trip_bps": round(cost, 2),
                     "required_win_rate": round(required_win_rate(
                         stop_bps=stop, target_bps=target,
-                        cost_bps=cost), 4)})
+                        cost_bps=cost), 4),
+                    # F0.4b: p > 1 means even winning every trade loses
+                    # (cost exceeds target): geometry is INFEASIBLE.
+                    "feasible": required_win_rate(
+                        stop_bps=stop, target_bps=target,
+                        cost_bps=cost) <= 1.0})
     return rows

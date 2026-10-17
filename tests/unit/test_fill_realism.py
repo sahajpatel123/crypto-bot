@@ -42,3 +42,12 @@ def test_paper_engine_default_is_pessimistic(tmp_path):
 
     src = inspect.getsource(paper_engine)
     assert "prob_slippage=0.0" not in src
+
+
+def test_fill_params_parameterized_not_one_tick():
+    from cryptobot.execution.fill_realism import FillParams
+
+    assert FillParams().adverse_bps == pytest.approx(12.0)
+    assert FillParams().slippage_prob() == pytest.approx(1.0)
+    wide = FillParams(spread_bps=1.0, depth_bps=1.0, latency_bps=1.0)
+    assert wide.slippage_prob(tick_bps_ref=12.0) == pytest.approx(0.25)

@@ -67,9 +67,14 @@ def test_unknown_kind_and_bad_manifest_raise(tmp_path):
 
 
 def test_real_zones_manifest_shape():
-    manifest = json.loads(
-        (REPO / "coord" / "pivot" / "ZONES.json").read_text(
-            encoding="utf-8"))
+    # F0.2 hermetic: read the COMMITTED manifest from the git object,
+    # never the mutable working-tree file (a concurrent campaign edits
+    # coord/pivot/ZONES.json; the suite must not depend on it).
+    import subprocess
+    raw = subprocess.run(
+        ["git", "show", "HEAD:coord/pivot/ZONES.json"],
+        cwd=REPO, capture_output=True, text=True, check=True).stdout
+    manifest = json.loads(raw)
     assert set(manifest["zones"]) == {
         "Z0-safety", "Z1-data", "Z2-execution", "Z3-alpha",
         "Z4-risk", "Z5-validation", "Z6-liveops"}
