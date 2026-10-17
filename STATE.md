@@ -20,7 +20,7 @@ correctness > validation integrity > features.
 | T1.3 | Table-driven exception policy + safe mode; one order-lifecycle path | PARTIAL |
 | T1.4 | Protection window: parallel stop/target, shadow stop, fault injection | TODO |
 | T1.5 | SIGTERM/SIGINT flatten by default; `--leave-protected` opt-out | TODO |
-| T1.6 | Client IDs: UUID run prefix + persisted monotonic seq, ≤36 chars | TODO |
+| T1.6 | Client IDs: UUID run prefix + persisted monotonic seq, ≤36 chars | DONE |
 | T1.7 | Settled funding booked in ledger, reconciled vs venue | TODO |
 | T1.8 | Tiered maintenance margin / liquidation gate + min-viable-equity calc | TODO |
 | T1.9 | Pessimistic paper fills (book-walk + latency penalty); 1x/2x cost P&L | TODO |
@@ -151,6 +151,9 @@ T1.6. `docs/f2-health-recovery.md` came with the F2 cherry-pick.
   non-blocking until baselines reach zero (never weakened to pass).
 - T0.4 (31b6c4d): doctor live-label fix + test_doctor_truth 28 passed
   with test_cli_readiness.
+- T1.6: _new_client_id = tag(sanitised<=16)-uuid10-seq6 (<=36, legal
+  charset); 1000 ids across 5 simulated restarts unique. Regression
+  fix: v008 unreachable test scripted 3 errors for T1.3 bounded retry.
 - T1.3 (PARTIAL): classify_exception table (retry_backoff/lookup_first/
   reject_intent/safe_mode), bounded retry on account_snapshot read,
   Session.enter_safe_mode (halt+flatten retries+alert, never raises),

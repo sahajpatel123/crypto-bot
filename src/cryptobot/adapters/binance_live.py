@@ -46,8 +46,10 @@ import hmac
 import json
 import os
 import random
+import re
 import time
 import urllib.error
+import uuid
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass
@@ -328,7 +330,10 @@ class BinanceLiveEngine:
             pass  # fail fast when the journal is not writable.
         self._leverage = int(expected_leverage)
         self._isolated = bool(expected_isolated)
-        self._run_tag = run_tag
+        # T1.6: sanitise/truncate the tag so tag+uuid+seq stays <=36.
+        self._run_tag = re.sub(r"[^A-Za-z0-9._-]", "-", str(run_tag))[:16] \
+            or "run"
+        self._run_prefix = uuid.uuid4().hex[:10]
         self._recv_window = int(recv_window_ms)
         self._working_type = stop_working_type
         self._orders_ttl = float(open_orders_ttl_s)
@@ -696,9 +701,16 @@ class BinanceLiveEngine:
 
     # -- submission -------------------------------------------------------------
     def _new_client_id(self) -> str:
+        """Run-unique client id (T1.6): ``<tag>-<uuid10>-<seq6>``.
+
+        The UUID-derived run prefix makes collisions across restarts
+        negligible even with the same run_tag; the monotonic seq is
+        journaled with every submit-intent before any venue call, so
+        ids stay unique and ordered within the run. Always <=36 chars
+        (tag truncated/sanitised) in Binance's allowed charset.
+        """
         self._seq += 1
-        rand = f"{random.getrandbits(16):04x}"
-        return f"{self._run_tag}-{self._seq:06d}-{rand}"
+        return f"{self._run_tag}-{self._run_prefix}-{self._seq:06d}"
 
     def _unknown_for(self, reservation_id: str | None) -> list[str]:
         if reservation_id is None:

@@ -721,9 +721,10 @@ def test_account_snapshot_reads_venue_account(tmp_path, ready):
 
 
 def test_account_snapshot_none_when_unreachable(tmp_path):
+    # T1.3: idempotent reads retry bounded (3 attempts) before None.
     engine, transport = _live(
         tmp_path, [("GET", "/fapi/v2/account", None,
-                    ("err", 503, None, "unavailable"))])
+                    ("err", 503, None, "unavailable"))] * 3)
     assert engine.account_snapshot() is None
     transport.assert_empty()
 
