@@ -2805,8 +2805,19 @@ class Session:
         snapshot (adapter models no venue account) or a
         pre-migration shape (raw dict) leaves the leg to order truth
         plus the legacy simulator-cache read below.
+
+        A#9: live runs with hot_cache_enabled read the TTL-cached
+        snapshot (<=1 REST/5s) instead of a fresh signed REST per
+        event; a stale/failed cache reads None and disagrees
+        (fail-closed: unconfirmed never releases). Scripted/drill
+        paths keep the exact direct-REST contract.
         """
         snap_fn = getattr(self.engine, "account_snapshot", None)
+        if getattr(self.engine, "hot_cache_enabled", False):
+            cached_fn = getattr(self.engine, "account_snapshot_cached",
+                                None)
+            if callable(cached_fn):
+                snap_fn = cached_fn
         if callable(snap_fn):
             try:
                 snap = snap_fn()

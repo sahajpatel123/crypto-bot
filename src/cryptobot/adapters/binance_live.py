@@ -1126,8 +1126,17 @@ class BinanceLiveEngine:
             raise RuntimeError("engine is closed")
         symbol = self._symbol_of(client_order_id)
         if self._states.get(client_order_id) in ("UNKNOWN", "CANCEL_UNKNOWN"):
-            resolved = self.lookup(client_order_id)
-            if resolved is None or resolved.state in TERMINAL_STATES:
+            # B#20: the pre-lookup sheds load inside the refuse-fast
+            # window — but cancels are exit-critical ("cancel capacity
+            # protected"). A refused lookup must not refuse the
+            # cancel: attempt the DELETE (venue -2013/unknown paths
+            # below stay fail-closed).
+            try:
+                resolved = self.lookup(client_order_id)
+            except RateLimitedError:
+                resolved = "window-bypass"
+            if resolved != "window-bypass" and (
+                    resolved is None or resolved.state in TERMINAL_STATES):
                 return  # lookup settled it: nothing left to cancel.
         self._journal("cancel-request", {"client_id": client_order_id,
                                          "reason": reason})
@@ -1261,10 +1270,11 @@ class BinanceLiveEngine:
             self._note_algo_update(payload.get("o", {}), payload)
         elif kind == "ACCOUNT_UPDATE":
             self._journal("account-update", {"event_time": payload.get("E")})
-            # T1.2: keep the account cache fresh from the stream so the
-            # hot path avoids signed REST. USDT wallet balance (wb)
-            # updates wallet equity; available margin is refreshed by
-            # the next TTL-bound REST read (stream carries no avail).
+            # T1.2: the stream refreshes the USDT wallet VALUE, but the
+            # snapshot AGE stays REST-bound (B#15): positions/available
+            # are untouched by balance ticks, so re-marking the cache
+            # fresh would lie about their staleness. TTL REST refresh
+            # (not stream ticks) advances _account_cached_at.
             try:
                 balances = (payload.get("a") or {}).get("B") or []
                 for entry in balances:
@@ -1282,7 +1292,6 @@ class BinanceLiveEngine:
                         if self._margin_cache is not None:
                             self._margin_cache = (self._margin_cache[0],
                                                   wallet)
-                        self._account_cached_at = time.monotonic()
             except (TypeError, ValueError, AttributeError):
                 pass  # cache stays stale -> TTL REST refresh covers it
         elif kind == "listenKeyExpired":
