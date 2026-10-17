@@ -116,3 +116,25 @@ def test_watchdog_stale_exposed(tmp_path):
                               "has_exposure": True, "run_id": "x"}))
     status = mod.heartbeat_status(hb, max_age_s=90.0)
     assert status["stale"] is True and status["has_exposure"] is True
+
+
+def test_soak_burst_bounded_queue():
+    import time as _t
+
+    from cryptobot.app.producer import BoundedProducer, TIMEOUT
+
+    def gen():
+        for i in range(5000):
+            yield {"channel": "aggTrade", "seq": i}
+
+    prod = BoundedProducer(gen(), maxsize=100)
+    deadline = _t.time() + 10
+    seen = 0
+    while not prod.finished and _t.time() < deadline:
+        if prod.poll(0.05) is not TIMEOUT:
+            seen += 1
+    _t.sleep(0.3)
+    assert prod.qsize <= 100
+    assert prod.dropped > 0
+    assert sum(prod.dropped_by_type.values()) == prod.dropped
+    prod.close()

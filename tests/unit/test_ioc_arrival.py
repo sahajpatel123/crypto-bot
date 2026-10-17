@@ -92,7 +92,7 @@ def test_corr_marketable_ioc_executes_at_arrival_not_later_quote():
     fills = [e for e in early if e.kind == "fill"]
     assert len(fills) == 1, f"expected due-time execution, got {early}"
     assert fills[0].payload.client_order_id == coid
-    assert fills[0].payload.price == pytest.approx(101.0)
+    assert fills[0].payload.price == pytest.approx(101.01)  # T1.9: +1 tick adverse slip
     assert fills[0].payload.qty == pytest.approx(0.001)
     _quote(engine, T0 + timedelta(seconds=10), 89.0, 90.0)
     assert [e.kind for e in _drain(engine)].count("fill") == 0
@@ -360,7 +360,7 @@ def test_ioc_marketable_sell_mirror_executes_at_arrival():
     early = _drain(engine)
     fills = [e for e in early if e.kind == "fill"]
     assert len(fills) == 1, f"expected due-time execution, got {early}"
-    assert fills[0].payload.price == pytest.approx(99.0)
+    assert fills[0].payload.price == pytest.approx(98.99)  # T1.9: -1 tick adverse slip (sell)
     _quote(engine, T0 + timedelta(seconds=10), 110.0, 111.0)
     assert [e.kind for e in _drain(engine)].count("fill") == 0
     assert engine.filled_qty(coid) == pytest.approx(0.001)

@@ -1579,16 +1579,20 @@ class BinanceLiveEngine:
     def valuation_mark_ts(self, instrument: str) -> datetime | None:
         return self._mark_ts.get(instrument.upper())
 
-    def account_margin(self) -> tuple[float, float]:
-        """(availableBalance, marginBalance − initialMargin).
+    def account_margin_cached(self) -> tuple[float, float]:
+        """Hot-path margin (T1.2): <=5s cache, one REST on stale.
 
-        T1.2: served from the <=5s account cache on the hot path; a
-        stale/missing cache does ONE signed REST refresh and re-caches.
+        Session uses this variant; ``account_margin`` keeps the exact
+        one-REST-per-call contract other callers/tests rely on.
         """
         age = self.account_cache_age_s()
         if self._margin_cache is not None and age is not None \
                 and age <= self.ACCOUNT_CACHE_TTL_S:
             return self._margin_cache
+        return self.account_margin()
+
+    def account_margin(self) -> tuple[float, float]:
+        """(availableBalance, marginBalance − initialMargin) from venue."""
         account = self._signed("GET", "/fapi/v2/account")
         available = float(account.get("availableBalance", 0.0) or 0.0)
         free = float(account.get("totalMarginBalance", 0.0) or 0.0) - float(

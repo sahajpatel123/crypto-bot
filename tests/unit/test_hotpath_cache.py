@@ -26,12 +26,12 @@ def test_account_margin_cached_and_stream_updated(tmp_path):
     script = [("GET", "/fapi/v2/account", None, ("ok", _account()))]
     engine, transport = venues.make_engine(tmp_path, script)
     assert engine.account_margin() == (4900.0, 5000.0)
-    # Second call within TTL: no REST (script exhausted would fail).
-    assert engine.account_margin() == (4900.0, 5000.0)
+    # Second CACHED call within TTL: no REST (script exhausted).
+    assert engine.account_margin_cached() == (4900.0, 5000.0)
     engine.note_user_event({
         "e": "ACCOUNT_UPDATE", "E": 1,
         "a": {"B": [{"a": "USDT", "wb": "6000.0", "cw": "6000.0"}]}})
-    assert engine.account_margin()[0] == 4900.0  # avail unchanged by wb
+    assert engine.account_margin_cached()[0] == 4900.0  # avail unchanged
     snap = engine.account_snapshot_cached()
     assert snap is not None and snap.wallet_equity_usdt == 6000.0
     transport.assert_empty()
@@ -42,9 +42,9 @@ def test_account_cache_stale_forces_rest(tmp_path):
               ("GET", "/fapi/v2/account", None,
                ("ok", _account("7000.0", "6900.0")))]
     engine, transport = venues.make_engine(tmp_path, script)
-    assert engine.account_margin() == (4900.0, 5000.0)
+    assert engine.account_margin_cached() == (4900.0, 5000.0)
     engine._account_cached_at -= 10.0  # age beyond TTL
-    assert engine.account_margin() == (6900.0, 7000.0)
+    assert engine.account_margin_cached() == (6900.0, 7000.0)
     transport.assert_empty()
 
 

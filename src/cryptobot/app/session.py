@@ -609,7 +609,15 @@ class Session:
         # (None skips the margin gate), a round-trip fee buffer in margin
         # space, and the one-budget in-flight exposure figure.
         available: float | None = None
-        account_margin = getattr(self.engine, "account_margin", None)
+        # T1.2: hot path prefers the cached margin variant only when
+        # the CLI enabled it for a live run (scripted/drill dialogues
+        # keep the exact one-REST-per-call contract).
+        account_margin = None
+        if getattr(self.engine, "hot_cache_enabled", False):
+            account_margin = getattr(self.engine,
+                                     "account_margin_cached", None)
+        if account_margin is None:
+            account_margin = getattr(self.engine, "account_margin", None)
         if callable(account_margin):
             try:
                 margins = account_margin()
@@ -3953,7 +3961,10 @@ class Session:
                     from cryptobot.adapters.binance_live import (
                         classify_exception)
                     policy = classify_exception(exc)
-                    if policy.action in ("safe_mode", "lookup_first"):
+                    _exposed = bool(self.ledger.has_position()
+                                    or self._position is not None)
+                    if policy.action in ("safe_mode", "lookup_first") \
+                            and _exposed:
                         self.enter_safe_mode(
                             f"{type(exc).__name__}:{exc}")
                         reason = f"safe-mode:{type(exc).__name__}"

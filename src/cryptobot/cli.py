@@ -341,6 +341,8 @@ def _run_paper(args: argparse.Namespace) -> int:
                       clock=clock, engine=engine)
     session.leave_protected = bool(
         getattr(args, "leave_protected", False))
+    if config.engine_kind == "live":
+        engine.hot_cache_enabled = True  # T1.2 hot-path account cache
     if config.engine_kind == "live" and not args.resume:
         # T1.1: seed accounting from the venue before any trading.
         try:
