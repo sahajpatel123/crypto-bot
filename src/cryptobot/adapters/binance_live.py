@@ -1326,6 +1326,17 @@ class BinanceLiveEngine:
             self._maybe_emit_terminal(cid, str(order["s"]),
                                       f"stream:{order['x']}")
             return
+        # B#17: a fired conditional's TRADE may arrive under the
+        # triggered-order id (ti), not the algo cid — resolve through
+        # the _triggered map so the fill attributes to the algo leg
+        # (else the leg sticks open and its sibling never cancels).
+        for algo_cid, trig_id in self._triggered.items():
+            if trig_id == cid and algo_cid != cid:
+                self._journal_transition(
+                    "fill-remapped", algo_cid,
+                    {"triggered_id": cid, "trade_id": str(order.get("t", ""))})
+                cid = algo_cid
+                break
         last_qty = float(order.get("l", 0.0) or 0.0)
         if last_qty <= 0:
             return
@@ -1728,11 +1739,26 @@ class BinanceLiveEngine:
             kind="STOP_MARKET", stop_price=stop_price, reduce_only=True,
             reservation_id=status.reservation_id, role="stop"))]
         if target_price is not None:
-            legs.append(self.submit(EngineOrder(
-                instrument=symbol, side=side, qty=protect_qty,
-                kind="TAKE_PROFIT_MARKET", stop_price=target_price,
-                reduce_only=True, reservation_id=status.reservation_id,
-                role="target")))
+            try:
+                legs.append(self.submit(EngineOrder(
+                    instrument=symbol, side=side, qty=protect_qty,
+                    kind="TAKE_PROFIT_MARKET", stop_price=target_price,
+                    reduce_only=True,
+                    reservation_id=status.reservation_id,
+                    role="target")))
+            except Exception as exc:
+                # B#11: never strand a live untracked leg. Roll the
+                # stop back; if the rollback itself is ambiguous,
+                # surface leg1's id on the raised error so the
+                # session tracks (never orphans) it.
+                try:
+                    self.cancel(legs[0], "attach-rollback")
+                except Exception:
+                    try:
+                        exc.partial_leg_id = legs[0]  # type: ignore[attr-defined]
+                    except (AttributeError, TypeError):
+                        pass
+                raise
         return legs
 
     @property

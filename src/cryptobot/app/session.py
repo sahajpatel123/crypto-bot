@@ -2201,6 +2201,15 @@ class Session:
         entry = statuses.get(pos["entry_id"] or "")
         # Sibling settling + terminal pruning (ids tracked to terminal).
         self._settle_leg_terminals(pos, statuses)
+        # B#2: a double-filled sibling pair inverts the book — flatten
+        # the reversal immediately; never attach wrong-way legs onto it.
+        if self._reversed_exposure(pos):
+            self.store.checkpoint(self.run_id, "position-reversed",
+                                   {"net": self.ledger.position_qty(),
+                                    "side": pos.get("side")})
+            self._cancel_tracked(pos, statuses, "reversal")
+            self._flatten("position-reversed")
+            return
         # Coverage supervision: verify until protected, re-verify on growth.
         if entry is not None and entry.filled_qty > 1e-12 \
                 and not pos["protected"]:
@@ -2380,8 +2389,38 @@ class Session:
         # Legs may have attached/retired: persist the structural change.
         self._save_position_shell()
 
+    def _reversed_exposure(self, pos: dict[str, Any]) -> bool:
+        """True when the ledger net materially opposes the entry side.
+
+        B#2/B#12: after a sibling double-fill (or any cancel/fill
+        race), both reduce-only legs can book against successive
+        partial nets and leave the book directionally inverted. The
+        venue backstops the full-size case, but the session must
+        never attach same-direction-as-entry "protection" onto a
+        reversed book (it would ADD to the inverted exposure):
+        reversed books flatten, never re-protect.
+        """
+        net = self.ledger.position_qty()
+        if abs(net) <= 1e-9:
+            return False
+        side = (pos.get("side") or "").upper()
+        if side == "LONG":
+            return net < 0
+        if side == "SHORT":
+            return net > 0
+        return False
+
     def _ensure_protection_inner(self, pos: dict[str, Any]) -> None:
         """Attach + verify body (see _ensure_protection)."""
+        if self._reversed_exposure(pos):
+            # B#2: flatten the inverted book; never protect it.
+            self.store.checkpoint(self.run_id, "position-reversed",
+                                   {"net": self.ledger.position_qty(),
+                                    "side": pos.get("side")})
+            self._cancel_tracked(
+                pos, self._tracked_statuses_for(pos), "reversal")
+            self._flatten("position-reversed")
+            return
         statuses = self._tracked_statuses_for(pos)
         self._mark_seen(pos, statuses)
         self._settle_leg_terminals(pos, statuses)
@@ -2443,7 +2482,22 @@ class Session:
         try:
             pos["legs"] = self.engine.attach_protection(
                 pos["entry_id"] or "", pos["stop"], pos["target"])
-        except (ValueError, KeyError) as exc:
+        except UnknownOutcomeError as exc:
+            # B#11: the leg MAY be live with a journaled id — track
+            # it (unknown-drain resolves; never orphan).
+            if exc.client_id and exc.client_id not in pos["legs"]:
+                pos["legs"].append(exc.client_id)
+            self.store.checkpoint(self.run_id, "protection-failed",
+                                   {"attempt": pos["protect_attempts"],
+                                    "reason": f"unknown:{exc.client_id}"})
+            return
+        except (ValueError, KeyError, VenueHttpError) as exc:
+            # Venue attach faults (429/reject/5xx) retry next tick via
+            # the attempts bound, then emergency-flatten — like local
+            # attach faults, never safe-mode (no exposure change yet).
+            partial = getattr(exc, "partial_leg_id", None)
+            if partial and partial not in pos["legs"]:
+                pos["legs"].append(partial)
             self.store.checkpoint(self.run_id, "protection-failed",
                                   {"attempt": pos["protect_attempts"],
                                    "reason": str(exc)})

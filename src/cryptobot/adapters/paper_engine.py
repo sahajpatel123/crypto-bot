@@ -760,10 +760,23 @@ class NautilusPaperEngine:
             kind="STOP_MARKET", stop_price=stop_price, reduce_only=True,
             reservation_id=reservation, role="stop"))]
         if target_price is not None:
-            legs.append(self.submit(EngineOrder(
-                instrument=symbol, side=exit_side, qty=protect_qty,
-                kind="TAKE_PROFIT_MARKET", stop_price=target_price,
-                reduce_only=True, reservation_id=reservation, role="target")))
+            try:
+                legs.append(self.submit(EngineOrder(
+                    instrument=symbol, side=exit_side, qty=protect_qty,
+                    kind="TAKE_PROFIT_MARKET", stop_price=target_price,
+                    reduce_only=True, reservation_id=reservation,
+                    role="target")))
+            except Exception as exc:
+                # B#11 (paper mirror): roll the stop back; surface its
+                # id when the rollback is ambiguous.
+                try:
+                    self.cancel(legs[0], "attach-rollback")
+                except Exception:
+                    try:
+                        exc.partial_leg_id = legs[0]  # type: ignore[attr-defined]
+                    except (AttributeError, TypeError):
+                        pass
+                raise
         return legs
 
     def cancel(self, client_order_id: str, reason: str) -> None:
