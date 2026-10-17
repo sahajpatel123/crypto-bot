@@ -19,7 +19,7 @@ correctness > validation integrity > features.
 | T1.2 | Hot path: cached account snapshot, debounced risk writer, weight governor, benchmark | PARTIAL |
 | T1.3 | Table-driven exception policy + safe mode; one order-lifecycle path | PARTIAL |
 | T1.4 | Protection window: parallel stop/target, shadow stop, fault injection | TODO |
-| T1.5 | SIGTERM/SIGINT flatten by default; `--leave-protected` opt-out | TODO |
+| T1.5 | SIGTERM/SIGINT flattens by default; `--leave-protected` opt-out | DONE |
 | T1.6 | Client IDs: UUID run prefix + persisted monotonic seq, ≤36 chars | DONE |
 | T1.7 | Settled funding booked in ledger, reconciled vs venue | DONE |
 | T1.8 | Tiered maintenance margin / liquidation gate + min-viable-equity calc | PARTIAL |
@@ -151,6 +151,10 @@ T1.6. `docs/f2-health-recovery.md` came with the F2 cherry-pick.
   non-blocking until baselines reach zero (never weakened to pass).
 - T0.4 (31b6c4d): doctor live-label fix + test_doctor_truth 28 passed
   with test_cli_readiness.
+- T1.5: Session.shutdown_flatten (bounded retries, flat confirmed
+  via ledger+venue snapshot), graceful stop in _supervise now
+  flattens, --leave-protected CLI flag wired (paper run). 34 passed
+  with cli/session regressions.
 - T1.9 (PARTIAL): execution/fill_realism.py book-walk + latency +
   stressed_pnl 1x/2x; paper FillModel prob_slippage 0.0->1.0 (always
   1 tick adverse). One existing paper test updated to allow the

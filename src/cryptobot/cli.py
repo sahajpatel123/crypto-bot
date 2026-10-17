@@ -339,6 +339,8 @@ def _run_paper(args: argparse.Namespace) -> int:
             starting_balance_usdt=config.paper_capital_usdt)
     session = Session(config, store, workdir, run_id, pid=os.getpid(),
                       clock=clock, engine=engine)
+    session.leave_protected = bool(
+        getattr(args, "leave_protected", False))
     if config.engine_kind == "live" and not args.resume:
         # T1.1: seed accounting from the venue before any trading.
         try:
@@ -944,6 +946,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--run-id", default=None)
     p.add_argument("--expect-class", default=None)
     p.add_argument("--resume", action="store_true")
+    p.add_argument("--leave-protected", action="store_true",
+                   help="on shutdown, leave positions with confirmed "
+                        "protection instead of flattening (T1.5)")
     p.add_argument("--crash-after", type=int, default=None)
     p.set_defaults(func=cmd_run)
     p = sub.add_parser("replay")

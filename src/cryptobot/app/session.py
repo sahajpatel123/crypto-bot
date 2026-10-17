@@ -193,6 +193,9 @@ class Session:
         # T1.3: safe-mode state + alert record (sinks arrive in T3.3).
         self.safe_mode_reason: str | None = None
         self.alerts: list[dict[str, Any]] = []
+        # T1.5: shutdown policy — flatten by default on SIGTERM/SIGINT;
+        # leave-protected is an explicit opt-out needing live protection.
+        self.leave_protected: bool = False
         self.policy = RiskPolicy(RiskConfig(**config.to_risk_kwargs()),
                                  state_path=self.workdir / "risk_state.json",
                                  now_utc=self.now_utc)
@@ -468,6 +471,46 @@ class Session:
         except Exception:  # noqa: BLE001 — checkpoint best-effort here
             pass
         return out
+
+    def _is_flat_confirmed(self) -> bool:
+        """Ledger flat and (when the engine can say) venue flat."""
+        if self.ledger.has_position():
+            return False
+        snap_fn = getattr(self.engine, "account_snapshot", None)
+        if callable(snap_fn):
+            try:
+                snap = snap_fn()
+            except Exception:  # noqa: BLE001 — unconfirmed, not flat
+                return False
+            if snap is not None and getattr(snap, "positions", ()):
+                return False
+        return True
+
+    def shutdown_flatten(self, *, attempts: int = 3) -> dict[str, Any]:
+        """Shutdown (T1.5): flatten + confirm flat, bounded retries.
+
+        With ``leave_protected`` set, an open position is left only
+        when it carries protection legs; otherwise ValueError (fail
+        closed — never exit silently on naked exposure).
+        """
+        if self.leave_protected and self._position is not None:
+            legs = list(self._position.get("legs") or [])
+            if not legs:
+                raise ValueError("leave-protected refused: open position "
+                                 "has no confirmed protection legs")
+            return {"left_protected": True, "confirmed_flat": False,
+                    "legs": legs}
+        last_exc: Exception | None = None
+        for _ in range(max(1, attempts)):
+            try:
+                self._flatten("shutdown")
+            except Exception as exc:  # noqa: BLE001 — retry bounded
+                last_exc = exc
+                continue
+            if self._is_flat_confirmed():
+                return {"left_protected": False, "confirmed_flat": True}
+        return {"left_protected": False, "confirmed_flat": False,
+                "error": str(last_exc) if last_exc else "unconfirmed"}
 
     def book_settled_funding(self, symbol: str) -> int:
         """Book settled venue funding into the ledger (T1.7).
@@ -3743,6 +3786,14 @@ class Session:
             if stop == "flatten":
                 self._flatten("operator-stop-flatten")
                 self._drain_engine()
+            else:
+                # T1.5: graceful (SIGTERM/SIGINT) flattens by default
+                # and confirms flat; leave-protected is the opt-out.
+                try:
+                    out = self.shutdown_flatten()
+                    self.store.checkpoint(self.run_id, "shutdown", out)
+                except ValueError as exc:
+                    self.enter_safe_mode(f"shutdown:{exc}")
             return f"operator-stop:{stop}"
         return None
 
