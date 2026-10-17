@@ -159,3 +159,12 @@ python3 -m pytest -q tests/unit/test_quick_trade_probe.py
 
 Determinism: both passes are pure functions of the capture bytes; no
 wall clock, no randomness.
+
+## 6. Addendum 2026-10-17: inputs deleted, outputs preserved
+
+The five input captures were deleted in the Oct-17 storage cleanup
+(see `outputs/quick-probe/README.md`). The per-capture result JSONs are
+preserved frozen in `outputs/quick-probe/`; the §2/§2b tables reproduce
+them exactly. The powered re-run against the fresh 1-day campaign data
+(`data/captures/campaign-1day-20261017`) uses the identical frozen
+rules — rerun, not reinterpretation.
