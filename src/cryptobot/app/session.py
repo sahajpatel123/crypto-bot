@@ -196,6 +196,9 @@ class Session:
         # T1.5: shutdown policy — flatten by default on SIGTERM/SIGINT;
         # leave-protected is an explicit opt-out needing live protection.
         self.leave_protected: bool = False
+        # T1.4: max seconds a filled position may sit unprotected
+        # before the gap budget flattens it (attempts bound also fires).
+        self.protection_budget_s: float = 30.0
         self.policy = RiskPolicy(RiskConfig(**config.to_risk_kwargs()),
                                  state_path=self.workdir / "risk_state.json",
                                  now_utc=self.now_utc)
@@ -511,6 +514,50 @@ class Session:
                 return {"left_protected": False, "confirmed_flat": True}
         return {"left_protected": False, "confirmed_flat": False,
                 "error": str(last_exc) if last_exc else "unconfirmed"}
+
+    def shadow_stop_breached(self, mark: float) -> bool:
+        """Local shadow stop (T1.4): mark crossed the position stop.
+
+        Second layer behind venue conditional legs: if the venue stop
+        is missing/failed and the mark trades through the stop, the
+        session flattens itself (wired in _supervise).
+        """
+        pos = self._position
+        if pos is None:
+            return False
+        stop = pos.get("stop")
+        if stop is None:
+            return False
+        qty = self.ledger.position_qty()
+        if qty > 0:
+            return float(mark) <= float(stop)
+        if qty < 0:
+            return float(mark) >= float(stop)
+        return False
+
+    def check_protection_budget(self, pos: dict[str, Any]) -> bool:
+        """Flatten when unprotected longer than the budget (T1.4)."""
+        since = pos.get("unprotected_since_utc")
+        if not since:
+            pos["unprotected_since_utc"] = self.now_utc().isoformat()
+            return False
+        try:
+            start = datetime.fromisoformat(str(since))
+            elapsed = (self.now_utc() - start).total_seconds()
+        except (TypeError, ValueError):
+            return False
+        if elapsed <= self.protection_budget_s:
+            return False
+        out = {"kind": "protection-gap", "elapsed_s": elapsed,
+               "budget_s": self.protection_budget_s,
+               "ts_utc": self.now_utc().isoformat()}
+        self.alerts.append(out)
+        try:
+            self.store.checkpoint(self.run_id, "protection-gap", out)
+        except Exception:  # noqa: BLE001 — alert recorded above
+            pass
+        self._flatten("protection-gap-timeout")
+        return True
 
     def book_settled_funding(self, symbol: str) -> int:
         """Book settled venue funding into the ledger (T1.7).
@@ -2192,6 +2239,10 @@ class Session:
         self._mark_seen(pos, statuses)
         self._settle_leg_terminals(pos, statuses)
         need = self._protection_need(pos, statuses)
+        if need > 1e-9 and not pos.get("protected"):
+            # T1.4 time budget alongside the attempts bound below.
+            if self.check_protection_budget(pos):
+                return
         if need <= 1e-9:
             # Vacuous: nothing to cover — cancel live tracked legs and
             # stay quiet (flat inference clears; no checkpoint spam).

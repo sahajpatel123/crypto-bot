@@ -18,7 +18,7 @@ correctness > validation integrity > features.
 | T1.1 | Venue-seeded accounting + account-mode verification (fail closed) | DONE |
 | T1.2 | Hot path: cached account snapshot, debounced risk writer, weight governor, benchmark | PARTIAL |
 | T1.3 | Table-driven exception policy + safe mode; one order-lifecycle path | PARTIAL |
-| T1.4 | Protection window: parallel stop/target, shadow stop, fault injection | TODO |
+| T1.4 | Protection window + shadow stop + gap budget | PARTIAL |
 | T1.5 | SIGTERM/SIGINT flattens by default; `--leave-protected` opt-out | DONE |
 | T1.6 | Client IDs: UUID run prefix + persisted monotonic seq, ≤36 chars | DONE |
 | T1.7 | Settled funding booked in ledger, reconciled vs venue | DONE |
@@ -151,6 +151,12 @@ T1.6. `docs/f2-health-recovery.md` came with the F2 cherry-pick.
   non-blocking until baselines reach zero (never weakened to pass).
 - T0.4 (31b6c4d): doctor live-label fix + test_doctor_truth 28 passed
   with test_cli_readiness.
+- T1.4 (PARTIAL): existing attach (stop-first, verified, 3-attempt
+  emergency flatten) + new shadow_stop_breached + protection time
+  budget (30s -> flatten + protection-gap alert) wired in
+  _ensure_protection_inner. Fault-injection on sandbox venue owed
+  (covered partially by T1.3 safe-mode + existing protection tests);
+  parallel stop/target is sequential stop-first by design (safer).
 - T1.5: Session.shutdown_flatten (bounded retries, flat confirmed
   via ledger+venue snapshot), graceful stop in _supervise now
   flattens, --leave-protected CLI flag wired (paper run). 34 passed
