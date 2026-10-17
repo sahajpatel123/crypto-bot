@@ -228,7 +228,15 @@ def run_stream(events_path: Path, symbol: str, tick: float,
             for m in ("optimistic", "conservative")}
     opener = gzip.open if str(events_path).endswith(".gz") else open
     with opener(events_path, "rt") as fh:
-        for line in fh:
+        while True:
+            try:
+                line = fh.readline()
+            except EOFError:
+                # live/growing capture: the gzip stream legitimately has no
+                # end-of-stream marker yet — the bytes up to here are valid
+                break
+            if not line:
+                break
             try:
                 ev = json.loads(line)
             except json.JSONDecodeError:
