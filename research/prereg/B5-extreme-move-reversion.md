@@ -30,9 +30,12 @@ condition and fixed 24h exit bound the damage.
   move = close[now]/close[now−W] − 1; σ_W = trailing-30d std of
   non-overlapping W-returns; z = move/σ_W.
 - Entry: if |z| > threshold T in {2, 3} AND (OI-confirm=no OR OI rose
-  over W — sum_open_interest now > W-ago) → fade: SHORT if z > 0,
-  LONG if z < 0. One position per symbol; no re-entry within 24h of
-  an exit (same symbol).
+  over max(W, 24h) — sum_open_interest now > W-ago) → fade: SHORT if
+  z > 0, LONG if z < 0. OI prints are daily 00:00 UTC; the "now" print
+  is the last print strictly before the signal date, so the 4h cell
+  uses the trailing-24h OI change (intraday OI is unobservable;
+  clarified pre-evaluation, D-035). One position per symbol; no
+  re-entry within 24h of an exit (same symbol).
 - Size: risk sleeve = min(5% equity risk, vol-scaled to 20% ann.
   sleeve vol); portfolio gross ≤ 2×; per-symbol ≤ 25% gross.
 - Exit: 24h time exit (taker at the bar) OR protective stop at 2× the

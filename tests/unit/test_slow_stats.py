@@ -95,12 +95,18 @@ def test_walk_forward_purge_embargo():
     folds = walk_forward_splits(dates, test_years=(2021, 2022, 2023),
                                 purge_days=30, embargo_days=5)
     assert len(folds) == 3
-    for (tr0, tr1, te0, te1), year in zip(folds, (2021, 2022, 2023)):
+    for (tr0, tr1, te0, te1, eval0), year in zip(folds, (2021, 2022, 2023)):
         assert dates[te0].year == year and dates[te1].year == year
         assert (dates[te0] - dates[tr1]).days >= 35  # purge + embargo gap
+        assert (dates[eval0] - dates[te0]).days >= 35  # attribution gap
         assert dates[tr0] == dates[0]  # anchored
     # Expanding: later train ends advance (still gapped before own test).
     assert folds[1][1] > folds[0][1] > 0
+    # B4-30d cells: gap scales to 2x max holding (60d).
+    folds60 = walk_forward_splits(dates, test_years=(2022,), max_hold_d=30)
+    (tr0, tr1, te0, te1, eval0) = folds60[0]
+    assert (dates[te0] - dates[tr1]).days >= 60
+    assert (dates[eval0] - dates[te0]).days >= 60
 
 
 def test_plateau_fraction():

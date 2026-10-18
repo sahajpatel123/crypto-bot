@@ -30,9 +30,11 @@ decoupling (F1), negative-flip whipsaw (F2), 4-leg costs (F3).
   markets by construction).
 - Predicted funding: median 8h rate over trailing 7 days, per symbol,
   settlements strictly before the daily check (00:00 UTC).
-- All-in round-trip both legs: 2×(15 spot + 7.5 perp + 1 spread + 1
-  slip floor) ≈ 49bps (spot taker 15bps = 10bps VIP0 + 50%).
-- Entry: if median_8h × 3 × max_hold_days > k × 49bps → open
+- All-in round-trip both legs: 2×(15 spot + 1 spread + 1 slip) +
+  2×(7.5 perp + 1 spread + 1 slip) = 34 + 19 = 53bps (spot taker
+  15bps = 10bps VIP0 + 50%). CORRECTED pre-evaluation (D-035): the
+  committed text said 49bps, undercounting spread+slip on one leg.
+- Entry: if median_8h × 3 × max_hold_days > k × 53bps → open
   delta-neutral (long spot notional = short perp notional);
   k in {1.5, 2, 3}; max_hold_days in {7, 14, 30}.
 - Exit: funding negative for 3 consecutive settlements, or max hold

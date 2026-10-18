@@ -30,6 +30,12 @@ most obvious names is the failure mode (F2).
   skip-1 adapted to daily): `ret = close[d-1]/close[d-1-F] - 1`.
 - Rank eligible symbols by ret; long top quantile, short bottom
   quantile (terciles → 10/10; quintiles → 6/6 of 30).
+- CLARIFIED pre-evaluation (D-035): "skip-1" means the formation uses
+  closes strictly before the rebalance date (most recent: Sunday close
+  for Monday 00:00 UTC execution, formula
+  close[d−1]/close[d−1−F]−1). No additional day is skipped: at daily
+  frequency with next-open execution the most recent close is already
+  one day stale at fill time.
 - Equal-weight within each leg; legs dollar-equal (net zero at entry);
   each leg vol-scaled to 10% annualized trailing-60d (portfolio ≈20%).
   Gross ≤ 2×; per-symbol ≤ 25% gross.

@@ -110,6 +110,28 @@ def test_job_builder_marks_dev_only_and_skips_checksums():
     assert jobs[0]["checksum_url"].endswith(".CHECKSUM")
 
 
+def test_build_plan_parallel_splits_from_listing(monkeypatch):
+    def fake(prefix, delimiter=None, max_keys=1000):
+        if delimiter:
+            return [], [f"{prefix}BTCUSDT/"]
+        if prefix.endswith("/1d/"):
+            return [
+                {"Key": prefix + "BTCUSDT-1d-2023-06.zip", "Size": 10},
+                {"Key": prefix + "BTCUSDT-1d-2024-02.zip", "Size": 12},
+                {"Key": prefix + "BTCUSDT-1d-2024-02.zip.CHECKSUM", "Size": 89},
+            ], []
+        return [], []
+
+    monkeypatch.setattr(vision_pull, "s3_list_keys", fake)
+    plan = vision_pull.build_plan(["klines"], intervals={"klines": ["1d"]},
+                                  workers=2)
+    by_name = {j["filename"]: j for j in plan["jobs"]}
+    assert set(by_name) == {"BTCUSDT-1d-2023-06.zip", "BTCUSDT-1d-2024-02.zip"}
+    assert by_name["BTCUSDT-1d-2023-06.zip"]["split"] == "dev"
+    assert by_name["BTCUSDT-1d-2024-02.zip"]["split"] == "holdout"
+    assert plan["total_bytes"] == 22
+
+
 def test_list_symbols_takes_last_segment(monkeypatch):
     seen = {}
 

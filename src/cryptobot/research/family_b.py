@@ -186,30 +186,52 @@ def signals_b3(data: MarketData, params: dict, dates: list[pd.Timestamp],
                **legacy):
     look, k = params["lookback_d"], params["k"]
     unit = 0.0001  # 1bp per 8h settlement
-    pos = dict((init_state or {}).get("positions", {}))
-    pos.update({s: v for s, v in (legacy.get("prev") or {}).items()})
+    max_hold = params.get("max_hold_d", 28)
+    st: dict[str, dict] = {}
+    for s, v in (init_state or {}).get("positions", {}).items():
+        st[s] = v if isinstance(v, dict) else {"side": v, "enter": None,
+                                              "blocked_until": None}
+    for s, v in (legacy.get("prev") or {}).items():
+        st[s] = {"side": v, "enter": None, "blocked_until": None}
     targets: dict[pd.Timestamp, dict[str, float]] = {}
     for d in sorted(dates):
         for sym in universe_fn(d):
+            cur = st.get(sym, {"side": 0, "enter": None,
+                               "blocked_until": None})
             fr = data.funding.get(sym)
             if fr is None:
-                pos[sym] = 0
+                st[sym] = {"side": 0, "enter": None,
+                           "blocked_until": cur.get("blocked_until")}
                 continue
+            if cur["side"] != 0 and cur.get("enter") is not None \
+                    and (d - cur["enter"]).total_seconds() / 86400.0 >= max_hold:
+                cur = {"side": 0, "enter": None,  # forced 28d exit + 7d block
+                       "blocked_until": d + pd.Timedelta(days=7)}
             win = fr[(fr["calc_time"] >= d - pd.Timedelta(days=look))
                      & (fr["calc_time"] < d)]
             if win.empty:
-                pos[sym] = 0
+                st[sym] = {"side": 0, "enter": None,
+                           "blocked_until": cur.get("blocked_until")}
                 continue
             med = float(win["last_funding_rate"].median())
+            blocked = cur.get("blocked_until") is not None \
+                and d < cur["blocked_until"]
+            if blocked:
+                st[sym] = cur
+                continue
             if med > k * unit:
-                pos[sym] = -1
+                side = -1
             elif med < -k * unit:
-                pos[sym] = 1
+                side = 1
             elif abs(med) < 0.5 * k * unit:
-                pos[sym] = 0  # exit band
-            # else: keep previous (hysteresis)
-        live = {s: v for s, v in pos.items()
-                if v != 0 and s in universe_fn(d)}
+                side = 0  # exit band
+            else:
+                side = cur["side"]  # hysteresis
+            enter = d if side != 0 and cur["side"] == 0 else cur.get("enter")
+            st[sym] = {"side": side, "enter": enter,
+                       "blocked_until": cur.get("blocked_until")}
+        live = {s: v["side"] for s, v in st.items()
+                if v["side"] != 0 and s in universe_fn(d)}
         vols: dict[str, float] = {}
         for sym in live:
             df = data.daily.get(sym)
@@ -230,11 +252,11 @@ def signals_b3(data: MarketData, params: dict, dates: list[pd.Timestamp],
                 w = {s: (v / longs * m if v > 0 else v / shorts * m)
                      for s, v in w.items()}
         targets[d] = _cap_weights(w)
-    return targets, {"positions": pos}
+    return targets, {"positions": st}
 
 
 # -- B4 ------------------------------------------------------------------------
-RT_BPS = 0.0049  # 49bps round-trip both legs (prereg arithmetic)
+RT_BPS = 0.0053  # 53bps round-trip both legs (D-035 corrected)
 
 
 def signals_b4(data: MarketData, params: dict, dates: list[pd.Timestamp],
@@ -276,7 +298,7 @@ def signals_b4(data: MarketData, params: dict, dates: list[pd.Timestamp],
                 w[sym] = -0.5
         targets[d] = _cap_weights(w)
         info[d] = day_info
-    return targets, info
+    return targets, {"positions": st, "history": info}
 
 
 # -- B5 ------------------------------------------------------------------------
@@ -284,44 +306,65 @@ def signals_b5(data: MarketData, params: dict, dates: list[pd.Timestamp],
                universe_fn: UniverseFn, init_state: dict | None = None,
                **legacy):
     W, T = params["window_h"], params["threshold"]
+    hold_h = params.get("hold_h", 24)
+    stop_mult = params.get("stop_mult", 2.0)
     st: dict[str, dict] = dict((init_state or {}).get("positions", {}))
-    st.update({s: {"side": 0} for s in (legacy.get("prev") or {}) if s not in st})
     targets: dict[pd.Timestamp, dict[str, float]] = {}
     info: dict[pd.Timestamp, dict[str, dict]] = {}
     for d in sorted(dates):
         day_info: dict[str, dict] = {}
         w: dict[str, float] = {}
         for sym in universe_fn(d):
-            cur = st.get(sym, {"side": 0, "enter": None, "stop": None})
+            cur = st.get(sym, {"side": 0, "enter": None, "stop": None,
+                               "expiry": None, "frac": 0.0,
+                               "exited_at": None})
+            # Time exit first: an expired position is flat before any
+            # new entry logic runs.
+            if cur.get("side", 0) != 0 and cur.get("expiry") is not None \
+                    and d >= cur["expiry"]:
+                cur = {"side": 0, "enter": None, "stop": None, "expiry": None,
+                       "frac": 0.0, "exited_at": d}
             h = data.hourly.get(sym)
             if h is None:
-                st[sym] = {"side": 0, "enter": None, "stop": None}
-                day_info[sym] = dict(st[sym])
+                cur = {"side": 0, "enter": None, "stop": None, "expiry": None,
+                       "frac": 0.0, "exited_at": cur.get("exited_at")}
+                st[sym] = cur
+                day_info[sym] = dict(cur)
                 continue
             i = _idx_before(h, "open_time", d)
             if i is None or i < W + 1:
-                st[sym] = {"side": 0, "enter": None, "stop": None}
-                day_info[sym] = dict(st[sym])
+                st[sym] = cur
+                day_info[sym] = dict(cur)
                 continue
             closes = h["close"].reset_index(drop=True)
             move = float(closes.iloc[i] / closes.iloc[i - W] - 1.0)
             hist = [float(closes.iloc[j] / closes.iloc[j - W] - 1.0)
                     for j in range(i - 30 * 24, i, W) if j - W >= 0]
             sd = float(np.std(hist, ddof=1)) if len(hist) >= 10 else 0.0
+            # OI "now" = last print STRICTLY before d (lookahead-safe);
+            # comparison window = max(W, 24h) per D-035.
             oi_ok = True
             if params.get("oi_confirm", False):
                 oi = data.oi.get(sym)
-                if oi is None or d not in oi.index \
-                        or (d - pd.Timedelta(days=1)) not in oi.index:
-                    oi_ok = False
-                else:
-                    oi_ok = bool(oi.loc[d] > oi.loc[d - pd.Timedelta(days=1)])
+                oi_ok = False
+                if oi is not None:
+                    past = oi.index[oi.index < d]
+                    if len(past):
+                        now_t = past[-1]
+                        back = now_t - pd.Timedelta(
+                            hours=max(W, 24))
+                        prev = past[past <= back]
+                        if len(prev):
+                            oi_ok = bool(oi.loc[now_t] > oi.loc[prev[-1]])
             z = move / sd if sd > 0 else 0.0
-            if cur.get("side", 0) == 0 and abs(z) > T and oi_ok:
+            cooled = cur.get("exited_at") is None or \
+                (d - cur["exited_at"]).total_seconds() >= 24 * 3600
+            if cur.get("side", 0) == 0 and abs(z) > T and oi_ok and cooled:
                 side = -1 if z > 0 else 1
                 entry = float(closes.iloc[i])
-                stop = entry * (1 - side * 2 * abs(move))
-                risk_frac = 0.05 / (2 * abs(move)) if move != 0 else 0.0
+                stop = entry * (1 - side * stop_mult * abs(move))
+                risk_frac = 0.05 / (stop_mult * abs(move)) \
+                    if move != 0 else 0.0
                 vol = None
                 dd = data.daily.get(sym)
                 di = _idx_before(dd, "open_time", d) if dd is not None else None
@@ -331,8 +374,9 @@ def signals_b5(data: MarketData, params: dict, dates: list[pd.Timestamp],
                 frac = min(risk_frac, 0.20 / vol if vol else float("inf"),
                            PER_SYM_CAP)
                 cur = {"side": side, "enter": d, "stop": stop,
-                       "expiry": d + pd.Timedelta(hours=params.get("hold_h", 24)),
-                       "frac": side * frac}
+                       "expiry": d + pd.Timedelta(hours=hold_h),
+                       "frac": side * frac,
+                       "exited_at": cur.get("exited_at")}
             w_sym = cur.get("frac", 0.0) if cur.get("side", 0) != 0 else 0.0
             if w_sym != 0.0:
                 w[sym] = w_sym
@@ -340,13 +384,14 @@ def signals_b5(data: MarketData, params: dict, dates: list[pd.Timestamp],
             day_info[sym] = dict(cur)
         targets[d] = _cap_weights(w)
         info[d] = day_info
-    return targets, info
+    return targets, {"positions": st, "history": info}
 
 
 # -- B6 ------------------------------------------------------------------------
 def signals_b6(data: MarketData, params: dict, dates: list[pd.Timestamp],
                universe_fn: UniverseFn, init_state: dict | None = None):
     W, T = params["window_d"], params["threshold"]
+    min_obs = min(4, 90 // W)  # D-035: W=30 admits 3 windows in 90d
     targets: dict[pd.Timestamp, dict[str, float]] = {}
     for d in sorted(dates):
         dirs: dict[str, int] = {}
@@ -359,11 +404,15 @@ def signals_b6(data: MarketData, params: dict, dates: list[pd.Timestamp],
             i = _idx_before(df, "open_time", d)
             if i is None or i < 90 + W:
                 continue
+            # OI reference = last print strictly before d (lookahead-safe).
+            past_oi = oi.index[oi.index < d]
+            if not len(past_oi):
+                continue
+            rd = past_oi[-1]
             closes = df["close"].reset_index(drop=True)
             r = float(np.log(closes.iloc[i] / closes.iloc[i - W]))
             try:
-                g = float(np.log(oi.loc[d - pd.Timedelta(days=0)] /
-                                 oi.loc[d - pd.Timedelta(days=W)]))
+                g = float(np.log(oi.loc[rd] / oi.loc[rd - pd.Timedelta(days=W)]))
             except KeyError:
                 continue
             rs, gs = [], []
@@ -372,19 +421,19 @@ def signals_b6(data: MarketData, params: dict, dates: list[pd.Timestamp],
                 if j - W < 0:
                     break
                 rs.append(float(np.log(closes.iloc[j] / closes.iloc[j - W])))
-                dd = d - pd.Timedelta(days=k * W)
+                dd = rd - pd.Timedelta(days=k * W)
                 try:
-                    gs.append(float(np.log(oi.loc[dd] / oi.loc[dd - pd.Timedelta(days=W)])))
+                    gs.append(float(np.log(
+                        oi.loc[dd] / oi.loc[dd - pd.Timedelta(days=W)])))
                 except KeyError:
                     break
-            if len(rs) < 4 or len(gs) < 4:
+            if len(rs) < min_obs or len(gs) < min_obs:
                 continue
             sdr = float(np.std(rs, ddof=1))
             sdg = float(np.std(gs, ddof=1))
             if sdr <= 0 or sdg <= 0:
                 continue
-            div = (g - float(np.mean(gs))) / sdg \
-                - (r - float(np.mean(rs))) / sdr
+            div = g / sdg - r / sdr  # raw z-scores per frozen prereg
             if abs(div) <= T:
                 continue
             side = -1 if div > 0 else 1

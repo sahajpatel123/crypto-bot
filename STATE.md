@@ -28,20 +28,20 @@ vault/autopilot artifacts, every claim cites command+output or file path.
 | E0.1 | Re-entry: read memory, full suite 0 failed | DONE | 1501 passed/1 skipped nobench + 27 bench = 1528/1/0 failed |
 | E0.2 | Autopilot run-once Family A, record dev outcomes | DONE | all H1–H6 DEV_EVAL, no dev artifacts; left to timer |
 | E1.1 | Vision inventory, DATA_INVENTORY.md | DONE | `tools/vision_inventory.py`, `DATA_INVENTORY.md`; probes verified |
-| E1.2 | Checksummed download (1h/1d all, 1m top-20 DEV-only, funding, mark/prem, metrics subset) | IN_PROGRESS | tool+tests committed; pass-1 pull running |
+| E1.2 | Checksummed download | IN_PROGRESS | pass-1 pull ADOPTED from concurrent session (audited 0/2000 split mismatches, 0 failures); 167,625 jobs, 1.52GB; see D-036 |
 | E1.3 | Parquet store + hash manifest + DQ report | DONE (code) | `research/lake.py`, 4 tests; build runs when bytes land |
 | E1.4 | Point-in-time universe + no-lookahead test | DONE | `research/universe.py`, 5 tests incl. lookahead proof |
 | E2.1 | SPLIT.md prereg + commit (DEV/HOLDOUT/FORWARD, detectable Sharpe) | DONE | `research/prereg/SPLIT.md` fb95e02 |
 | E2.2 | Vault HOLDOUT class + seal holdout pre-analysis + import lint | PARTIAL | code+CLI+8 tests done (d9ec258); sealing when bytes land |
 | E2.3 | Family B budget (8) + Holm family justification | DONE | SPLIT.md + D-032 |
-| E3 | Family B preregs B1–B7 committed pre-evaluation | TODO | |
+| E3 | Family B preregs B1–B7 committed pre-evaluation | DONE | 7 preregs + configs + registry b0b4ac4/70e2f38; D-035 pre-eval corrections |
 | E4.1 | Slow backtester vectorized + event reference + differential | DONE | `slow_backtest.py`, differential 1e-9, 10 engine tests |
 | E4.2 | Realism (fees+50%, funding, sqrt impact, filters, liq, delist) | DONE | hand-computed cost test; liq/delist/spot/stops |
 | E4.3 | Capital sweep 120/1000/10000 | DONE | `capital_sweep` + test |
 | E4.4 | Leak detectors as tests | DONE | shift/shuffle/SR3/no-lookahead signals |
-| E4.5 | Reviewer sub-agent breaks E4; fix findings | TODO | |
+| E4.5 | Reviewer sub-agent breaks E4; fix findings | DONE | 15 findings; all CRITICAL/HIGH fixed + tested (37 E4/E5 tests green) |
 | E5 | Statistics module + tests (WF, bootstrap, DSR, PBO, SPA, plateau, regimes, DD, capacity) | DONE | `slow_stats.py`, 9 tests |
-| E6.1 | DEV evaluation, all trials counted, kill failures | TODO | |
+| E6.1 | DEV evaluation, all trials counted, kill failures | TODO | driver contract must freeze first (reviewer risk 1); blocks=hold (risk 2); lock promotion script (risk 3) |
 | E6.2 | Freeze survivors, holdout screen once via verdict | TODO | |
 | E6.3 | Autopilot Family B extension (FROZEN/HOLDOUT_SCREEN/SCREEN_PASS/FORWARD_*) | TODO | |
 | E6.4 | RESEARCH_VERDICTS_B.md from machine JSONs | TODO | |

@@ -131,10 +131,27 @@ DATASETS = ("klines", "markPriceKlines", "premiumIndexKlines", "fundingRate",
             "metrics")
 
 
+def _zips_under(prefix: str, ds: str, sym: str, iv: str | None, *,
+                dev_only: bool = False) -> list[dict]:
+    """List one symbol prefix and return zip jobs (checksum keys ignored)."""
+    contents, _ = s3_list_keys(prefix)
+    jobs = []
+    for c in contents:
+        key = c["Key"]
+        if key.endswith(".zip") and ".CHECKSUM" not in key:
+            jobs.append(_job(ds, sym, iv, c, dev_only=dev_only))
+    return jobs
+
+
 def build_plan(datasets: list[str], *, symbols_file: str | None = None,
                intervals: dict[str, list[str]] | None = None,
-               metrics_symbols: list[str] | None = None) -> dict:
-    """Enumerate exact file keys via S3 listings (never assume filenames)."""
+               metrics_symbols: list[str] | None = None,
+               workers: int = 16) -> dict:
+    """Enumerate exact file keys via S3 listings (never assume filenames).
+
+    Symbol prefixes are listed concurrently. Keys still come from the
+    bucket listing, not from a guessed calendar.
+    """
     sym_filter: set[str] | None = None
     if symbols_file:
         sym_filter = {ln.strip() for ln in Path(symbols_file).read_text().splitlines()
@@ -142,41 +159,42 @@ def build_plan(datasets: list[str], *, symbols_file: str | None = None,
     intervals = intervals or {"klines": ["1d", "1h"],
                               "markPriceKlines": ["1d", "1h"],
                               "premiumIndexKlines": ["1d", "1h"]}
-    jobs: list[dict] = []
+    tasks: list[tuple] = []
     for ds in datasets:
         if ds == "fundingRate":
             syms = list_symbols("fundingRate")
             if sym_filter:
                 syms = [s for s in syms if s in sym_filter]
             for sym in syms:
-                contents, _ = s3_list_keys(
-                    f"data/futures/um/monthly/fundingRate/{sym}/")
-                for c in contents:
-                    if c["Key"].endswith(".zip") and ".CHECKSUM" not in c["Key"]:
-                        jobs.append(_job(ds, sym, None, c))
+                tasks.append((f"data/futures/um/monthly/fundingRate/{sym}/",
+                              ds, sym, None, False))
         elif ds == "metrics":
             syms = metrics_symbols or list_symbols("metrics", "daily")
             if sym_filter:
                 syms = [s for s in syms if s in sym_filter]
             for sym in syms:
-                contents, _ = s3_list_keys(
-                    f"data/futures/um/daily/metrics/{sym}/")
-                for c in contents:
-                    if c["Key"].endswith(".zip") and ".CHECKSUM" not in c["Key"]:
-                        jobs.append(_job(ds, sym, None, c))
+                tasks.append((f"data/futures/um/daily/metrics/{sym}/",
+                              ds, sym, None, False))
         else:
+            syms = list_symbols(ds)
+            if sym_filter:
+                syms = [s for s in syms if s in sym_filter]
             for iv in intervals.get(ds, ["1d"]):
-                syms = list_symbols(ds)
-                if sym_filter:
-                    syms = [s for s in syms if s in sym_filter]
                 dev_only = (ds == "klines" and iv == "1m")
                 for sym in syms:
-                    contents, _ = s3_list_keys(
-                        f"data/futures/um/monthly/{ds}/{sym}/{iv}/")
-                    for c in contents:
-                        if c["Key"].endswith(".zip") and ".CHECKSUM" not in c["Key"]:
-                            jobs.append(_job(ds, sym, iv, c,
-                                            dev_only=dev_only))
+                    tasks.append((
+                        f"data/futures/um/monthly/{ds}/{sym}/{iv}/",
+                        ds, sym, iv, dev_only))
+    jobs: list[dict] = []
+    print(f"plan: {len(tasks)} prefixes, workers={workers}", flush=True)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max(1, workers)) as pool:
+        futs = [pool.submit(_zips_under, prefix, ds, sym, iv, dev_only=dev_only)
+                for prefix, ds, sym, iv, dev_only in tasks]
+        for i, fut in enumerate(concurrent.futures.as_completed(futs), 1):
+            jobs.extend(fut.result())
+            if i % 250 == 0 or i == len(futs):
+                print(f"plan: listed {i}/{len(futs)} prefixes, "
+                      f"jobs={len(jobs)}", flush=True)
     return {"format": "cryptobot-vision-plan/1", "created_utc": _utc_now(),
             "cutoff_month": CUTOFF_MONTH, "cutoff_day": CUTOFF_DAY,
             "jobs": jobs,
@@ -460,6 +478,7 @@ def build_parser() -> argparse.ArgumentParser:
     q.add_argument("--symbols-file", default=None)
     q.add_argument("--metrics-symbols", default=None,
                    help="file with metrics symbol list (daily leg)")
+    q.add_argument("--workers", type=int, default=24)
     q.add_argument("--out", required=True)
     q.set_defaults(func=lambda a: _cmd_plan(a))
     q = sub.add_parser("pull")
@@ -498,7 +517,8 @@ def _cmd_plan(args: argparse.Namespace) -> int:
                         if ln.strip() and not ln.startswith("#")]
     plan = build_plan(args.datasets, symbols_file=args.symbols_file,
                       intervals=intervals or None,
-                      metrics_symbols=metrics_syms)
+                      metrics_symbols=metrics_syms,
+                      workers=int(args.workers))
     Path(args.out).write_text(json.dumps(plan, indent=1, sort_keys=True) + "\n")
     n_dev = sum(1 for j in plan["jobs"] if j["split"] == "dev")
     n_hold = sum(1 for j in plan["jobs"] if j["split"] == "holdout")

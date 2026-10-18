@@ -214,17 +214,19 @@ def reality_check_pvalue(trial_returns: list[list[float]], *, rounds: int = 500,
 def walk_forward_splits(dates: pd.DatetimeIndex, *,
                         test_years=(2021, 2022, 2023),
                         purge_days: int = 30,
-                        embargo_days: int = 5) -> list[tuple[int, int, int, int]]:
-    """Anchored yearly folds: train [start, test_start - purge - embargo).
+                        embargo_days: int = 5,
+                        max_hold_d: int = 0):
+    """Anchored yearly folds -> (tr0, tr1, te0, te1, eval0).
 
-    In anchored (expanding) mode the embargo extends the purge gap: past
-    test blocks legitimately join later trains (all past by then), so a
-    separate post-test embargo would only punch holes. Total gap 35d
-    covers the longest holding period (B4, 30d) plus margin.
+    Train is [start, test_start - gap); OOS P&L attribution starts at
+    eval0 = test_start + gap (boundary-spanning positions wash out).
+    gap = max(purge + embargo, 2 * max_hold_d) per the preregs
+    (B3: 56d, B4-30d: 60d, default 35d). In anchored mode the embargo
+    extends the purge gap (past tests legitimately join later trains).
     """
     dates = pd.DatetimeIndex(dates)
     folds = []
-    gap = int(purge_days) + int(embargo_days)
+    gap = max(int(purge_days) + int(embargo_days), 2 * int(max_hold_d))
     for year in test_years:
         start = pd.Timestamp(f"{year}-01-01", tz=dates.tz)
         stop = pd.Timestamp(f"{year + 1}-01-01", tz=dates.tz)
@@ -234,7 +236,8 @@ def walk_forward_splits(dates: pd.DatetimeIndex, *,
             continue
         cutoff = dates[te0] - pd.Timedelta(days=gap)
         tr1 = int(dates.searchsorted(cutoff)) - 1
-        folds.append((0, tr1, te0, te1))
+        eval0 = int(dates.searchsorted(dates[te0] + pd.Timedelta(days=gap)))
+        folds.append((0, tr1, te0, te1, eval0))
     return folds
 
 

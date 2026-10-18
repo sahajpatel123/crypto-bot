@@ -74,10 +74,14 @@ def test_hand_computed_costs_and_funding():
                             config=SimConfig(initial_equity=10000.0))
     # Buy 1000 @100 (10 units, cost 9.5bps of 1000 = 0.95);
     # sell 10 @110 = 1100 (cost 9.5bps = 1.045); gross +100.
-    # Funding: 2 settlements x 1000 x 1bp + 1 x 1100 x 1bp = 0.31.
+    # Funding: day-10 08:00/16:00 at mark 100 (0.10 x2) + day-11 00:00
+    # overnight settlement marked at the 00:00 open 110 (0.11) = 0.31.
     assert r.final_equity == pytest.approx(10000 + 100 - 0.95 - 1.045 - 0.31,
-                                           abs=0.05)
-    assert r.costs["funding"] == pytest.approx(0.31, abs=0.02)
+                                           abs=1e-4)
+    assert r.costs["funding"] == pytest.approx(0.31, abs=1e-9)
+    assert r.costs["fees"] == pytest.approx(0.75 + 0.825, abs=1e-9)
+    assert r.costs["spread"] == pytest.approx(0.10 + 0.11, abs=1e-9)
+    assert r.costs["slip"] == pytest.approx(0.10 + 0.11, abs=1e-9)
 
 
 def test_min_notional_drops_dust_loudly():
@@ -97,8 +101,8 @@ def test_step_flooring_and_leverage_cap():
         SimConfig, simulate_vectorized)
 
     daily, idx = _panel(symbols=("A", "B"), days=10)
-    daily["A"]["close"] = 60000.0
-    daily["A"]["open"] = 60000.0
+    for col in ("open", "high", "low", "close"):
+        daily["A"][col] = 60000.0
     r = simulate_vectorized({idx[0]: {"A": 2.0, "B": 2.0}}, daily,
                             _funding(("A", "B"), idx),
                             config=SimConfig(initial_equity=10000.0))
@@ -127,9 +131,8 @@ def test_liq_proxy_force_closes():
         SimConfig, simulate_vectorized)
 
     daily, idx = _panel(symbols=("A",), days=10)
-    daily["A"].loc[:, "close"] = 100.0
-    daily["A"].loc[5:, "close"] = 55.0  # -45% crash vs entry
-    daily["A"].loc[5:, "open"] = 55.0
+    daily["A"].loc[:, ["open", "high", "low", "close"]] = 100.0
+    daily["A"].loc[5:, ["open", "high", "low", "close"]] = 55.0  # -45% crash
     r = simulate_vectorized({idx[0]: {"A": 0.5}}, daily,
                             _funding(("A",), idx),
                             config=SimConfig(initial_equity=10000.0))
@@ -205,3 +208,65 @@ def test_sharpe3_autoflag():
                             config=SimConfig(initial_equity=10000.0))
     assert r.sharpe > 3.0
     assert "leak-investigate" in r.flags
+
+
+def test_missing_keys_flatten_on_rebalance_dates():
+    from cryptobot.research.slow_backtest import (
+        SimConfig, simulate_event, simulate_vectorized)
+
+    daily, idx = _panel(symbols=("A", "B"), days=20)
+    fund = _funding(("A", "B"), idx)
+    targets = {idx[0]: {"A": 0.5, "B": 0.5}, idx[10]: {"A": 0.5}}
+    for sim in (simulate_vectorized, simulate_event):
+        r = sim(targets, daily, fund,
+                config=SimConfig(initial_equity=10000.0))
+        assert "B" not in r.final_positions
+        assert r.final_positions.get("A", 0.0) != 0.0
+
+
+def test_liq_triggers_on_wick():
+    from cryptobot.research.slow_backtest import (
+        SimConfig, simulate_vectorized)
+
+    daily, idx = _panel(symbols=("A",), days=10)
+    daily["A"].loc[:, ["open", "close"]] = 100.0
+    daily["A"].loc[5, "low"] = 60.0  # -40% wick, close recovers
+    daily["A"].loc[5, "close"] = 100.0
+    r = simulate_vectorized({idx[0]: {"A": 0.5}}, daily,
+                            _funding(("A",), idx),
+                            config=SimConfig(initial_equity=10000.0))
+    assert "liquidation:A" in r.flags
+    assert r.final_positions == {}
+
+
+def test_turnover_gate():
+    from cryptobot.research.slow_backtest import (
+        SimConfig, check_turnover, simulate_vectorized)
+
+    daily, idx = _panel(symbols=("A",), days=60)
+    churn = {d: {"A": 0.5 if i % 2 == 0 else -0.5}
+             for i, d in enumerate(idx)}
+    r = simulate_vectorized(churn, daily, _funding(("A",), idx),
+                            config=SimConfig(initial_equity=10000.0))
+    assert check_turnover(r, 6.0)["ok"] is False
+    assert check_turnover(r, 10000.0)["ok"] is True
+
+
+def test_differential_with_stops_and_spot():
+    from cryptobot.research.slow_backtest import (
+        CostModel, SimConfig, simulate_event, simulate_vectorized)
+
+    daily, idx = _panel(symbols=("A",), days=20, seed=13, drift=-0.01)
+    hrs = pd.date_range("2023-01-01", periods=20 * 24, freq="h", tz="UTC")
+    hourly = {"A": pd.DataFrame({"open_time": hrs, "close": 90.0})}
+    spot = {"BTCUSDT": daily["A"].rename(
+        columns={})[["open_time", "open", "high", "low", "close",
+                     "quote_volume"]].copy()}
+    targets = {idx[0]: {"A": 0.5, "SPOT:BTCUSDT": 0.2}}
+    stops = {"A": {"stop": 95.0, "expiry": idx[-1]}}
+    kw = dict(costs=CostModel(), config=SimConfig(initial_equity=10000.0),
+              spot=spot, hourly=hourly, stops=stops)
+    a = simulate_vectorized(targets, daily, _funding(("A",), idx), **kw)
+    b = simulate_event(targets, daily, _funding(("A",), idx), **kw)
+    assert "stop:A" in a.flags and "stop:A" in b.flags
+    assert a.final_equity == pytest.approx(b.final_equity, rel=1e-9)

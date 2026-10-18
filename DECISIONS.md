@@ -322,3 +322,29 @@ Meta Muse Spark.
   load-bearing and tested); (b) anchored walk-forward: embargo_days folds
   into the purge gap (35d total; separate post-test embargo would only
   punch holes in expanding trains); documented in slow_stats.py.
+- D-035 (E3 pre-evaluation corrections, NO data seen): implementing E4
+  against the frozen B-preregs exposed 4 frozen-input bugs, fixed in
+  prereg text BEFORE any lake byte was decoded (pass-1 pull still in
+  flight): (a) B4 round-trip 49->53bps (spread+slip were counted once
+  for both legs); (b) B2 "skip-1" words clarified to match the frozen
+  formula (closes strictly before rebalance date; next-open execution
+  already stales the last close by a day); (c) B6 min-obs 4->3 for W=30
+  (90d admit exactly 3 non-overlapping 30d windows; min-4 structurally
+  silenced half the grid); (d) B5 OI window max(W,24h) on daily prints
+  (intraday OI unobservable). Also: B3 forced-exit 7d no-re-entry block
+  (prereg silent; without it max-hold is a no-op; smallest coherent unit
+  = one weekly cycle). No threshold/grid/criterion was tuned to results;
+  none exist. Adversarial-review fixes E4.5: stale-key flatten, B5 exits,
+  B4/B5 state round-trip, OI strictly-before-d, raw B6 z, wick liq,
+  00:00 mark=open, independent event ledger, WF eval0 + 2x-hold gaps.
+- D-036 (concurrent-session incident 2026-10-18 ~16:19 UTC): an
+  unidentified parallel Cursor process modified tools/vision_pull.py in
+  this worktree (parallelized plan listings + test) and launched the
+  pass-1 pull (24 workers, data/lake paths). Audited before adopting:
+  split_of/checksum/pull logic untouched (diff = plan concurrency only);
+  running plan matches SPLIT.md cutoffs and the pass-1 dataset scope;
+  2000-job random sample showed 0 split mismatches; pull failures = 0
+  (checksum gate active). ADOPTED the running pull (killing it would
+  waste verified progress); my own nohup relaunch had died silently
+  (empty plan log, no process). Lesson: use the shell tool's background
+  mode (supervised) instead of nohup for long jobs in this harness.

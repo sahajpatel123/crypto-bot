@@ -1,8 +1,11 @@
 """E4: slow-strategy portfolio backtester (1d bars + funding + stops).
 
-Two engines, one spec (differential-tested):
-- simulate_vectorized: pandas/numpy matrix loop over dates.
-- simulate_event: explicit event queue (settlement/trade/mark/stop).
+Two harnesses, one spec (differential-tested):
+- simulate_vectorized: pandas/numpy matrix loop over dates + _Book ledger.
+- simulate_event: explicit event queue + independent _EventBook ledger
+  (own cash/qty/cost accumulation; shared only: data accessors, atomic
+  bps math, venue rounding). Cost FORMULAS are pinned by hand-computed
+  tests; the differential test pins plumbing/logic agreement.
 
 Shared execution semantics (both engines, identical math):
 - Targets = fraction of previous-close equity, traded taker at the
@@ -104,8 +107,119 @@ def _trail_stats(frames: dict[str, pd.DataFrame], sym: str,
             adv if adv > 0 else FALLBACK_ADV)
 
 
+class MarketIndex:
+    """O(1) bar and funding lookups. Built once per simulation.
+
+    Trail stats at date d use bars with open_time < d (same as the
+    dataframe filter). Funding windows match _settle / _settle_window.
+    """
+
+    def __init__(self, daily: dict, spot: dict, funding: dict) -> None:
+        self.daily_bar: dict[tuple, tuple[float, float]] = {}
+        self.spot_bar: dict[tuple, tuple[float, float]] = {}
+        self.trail: dict[tuple, tuple[float, float]] = {}
+        self.spot_trail: dict[tuple, tuple[float, float]] = {}
+        self.last_date: dict[str, pd.Timestamp] = {}
+        self.last_close: dict[str, float] = {}
+        self.spot_last_date: dict[str, pd.Timestamp] = {}
+        self.spot_last_close: dict[str, float] = {}
+        self.fund_exact: dict[tuple, list[float]] = {}
+        self.fund_window: dict[tuple, list[float]] = {}
+        self._build_bars(daily, self.daily_bar, self.trail,
+                         self.last_date, self.last_close)
+        self._build_bars(spot, self.spot_bar, self.spot_trail,
+                         self.spot_last_date, self.spot_last_close)
+        dates = sorted({t for df in daily.values() for t in df["open_time"]})
+        self.dates = dates
+        self._build_funding(funding, dates)
+
+    @staticmethod
+    def _build_bars(frames, bars, trail, last_date, last_close) -> None:
+        for sym, df in frames.items():
+            df = df.sort_values("open_time").drop_duplicates("open_time")
+            opens = df["open"].to_numpy(dtype=float)
+            closes = df["close"].to_numpy(dtype=float)
+            vols = df["quote_volume"].to_numpy(dtype=float)
+            times = list(df["open_time"])
+            logret = np.zeros(len(closes))
+            if len(closes) > 1:
+                logret[1:] = np.diff(np.log(np.maximum(closes, 1e-12)))
+            # Match _trail_stats: last `window` bars with open_time < d,
+            # std of log-diff inside that slice, fallback if fewer than 10.
+            window = 30
+            for i, ts in enumerate(times):
+                bars[(sym, ts)] = (float(opens[i]), float(closes[i]))
+                p0 = max(0, i - window)
+                n_past = i - p0
+                adv_seg = vols[p0:i]
+                adv = float(adv_seg.mean()) if adv_seg.size else FALLBACK_ADV
+                if n_past < 10 or not np.isfinite(adv) or adv <= 0:
+                    sd = FALLBACK_SIGMA_D
+                    if not np.isfinite(adv) or adv <= 0:
+                        adv = FALLBACK_ADV
+                else:
+                    seg = logret[p0 + 1:i]
+                    sd = float(seg.std(ddof=1)) if seg.size >= 2 else FALLBACK_SIGMA_D
+                    if not np.isfinite(sd) or sd <= 0:
+                        sd = FALLBACK_SIGMA_D
+                trail[(sym, ts)] = (sd, adv)
+            if times:
+                last_date[sym] = times[-1]
+                last_close[sym] = float(closes[-1])
+
+    def _build_funding(self, funding: dict, dates: list) -> None:
+        if not dates:
+            return
+        nxt = {dates[i]: dates[i + 1] if i + 1 < len(dates)
+               else dates[i] + pd.Timedelta(days=1)
+               for i in range(len(dates))}
+        for sym, df in funding.items():
+            if df is None or len(df) == 0:
+                continue
+            ts = pd.DatetimeIndex(df["calc_time"])
+            rates = df["last_funding_rate"].to_numpy(dtype=float)
+            order = np.argsort(ts.asi8)
+            ts_ns = ts.asi8[order]
+            rates = rates[order]
+            j = 0
+            n = len(ts_ns)
+            for d in dates:
+                target = pd.Timestamp(d).value
+                hi = pd.Timestamp(nxt[d]).value
+                while j < n and ts_ns[j] < target:
+                    j += 1
+                k = j
+                exact: list[float] = []
+                while k < n and ts_ns[k] == target:
+                    exact.append(float(rates[k]))
+                    k += 1
+                if exact:
+                    self.fund_exact[(sym, d)] = exact
+                w = k
+                window: list[float] = []
+                while w < n and ts_ns[w] < hi:
+                    window.append(float(rates[w]))
+                    w += 1
+                if window:
+                    self.fund_window[(sym, d)] = window
+                j = k
+
+    def bar(self, sym: str, d: pd.Timestamp, *, spot: bool = False):
+        src = self.spot_bar if spot else self.daily_bar
+        hit = src.get((sym, d))
+        if hit is None:
+            return None
+        return {"open": hit[0], "close": hit[1]}
+
+    def trail_of(self, sym: str, d: pd.Timestamp, *, spot: bool = False):
+        src = self.spot_trail if spot else self.trail
+        return src.get((sym, d), (FALLBACK_SIGMA_D, FALLBACK_ADV))
+
+
 def _bar_on(frames: dict[str, pd.DataFrame], sym: str,
             d: pd.Timestamp) -> dict | None:
+    if isinstance(frames, MarketIndex):
+        return frames.bar(sym, d)
     df = frames.get(sym)
     if df is None:
         return None
@@ -276,17 +390,22 @@ def simulate_vectorized(targets: dict, daily: dict, funding: dict, *,
     marks: dict[str, float] = {}
     for n, d in enumerate(dates):
         nxt = dates[n + 1] if n + 1 < len(dates) else d + pd.Timedelta(days=1)
-        # 1. overnight funding at 00:00 on pre-trade positions.
+        # 1. overnight funding at 00:00 on pre-trade positions,
+        # marked at the 00:00 open by definition.
         for key in list(book.qty):
             if _is_spot(key):
                 continue
             for rate in _settle(funding, _sym_of(key), d):
-                book.fund(key, marks.get(key, 0.0) or _open_px(
-                    frames, spot, key, d), rate)
-        # 2. rebalance at open.
+                book.fund(key, _open_px(frames, spot, key, d), rate)
+        # 2. rebalance at open. Held keys missing from targets[d] are
+        # flattened (rotation strategies must not accumulate stale
+        # buy-and-hold); dates absent from targets hold everything.
         if d in targets:
-            opens = _opens_on(frames, spot, targets[d], d)
-            want = _desired_quantities(targets[d], vals[-1] if vals else
+            want_d = dict(targets[d])
+            for key in book.qty:
+                want_d.setdefault(key, 0.0)
+            opens = _opens_on(frames, spot, want_d, d)
+            want = _desired_quantities(want_d, vals[-1] if vals else
                                        config.initial_equity, opens, book,
                                        config)
             for key, q in want.items():
@@ -364,7 +483,11 @@ def _supervise_and_mark(book: _Book, frames, spot, dates, n: int,
         entry = book.entry.get(key)
         if entry:
             side = 1 if book.qty[key] > 0 else -1
-            adverse = side * (entry - marks[key]) / entry
+            # Trigger on the adverse wick (conservative: intraday
+            # excursions liquidate even if the close recovers); the
+            # forced exit prints at the close (disclosed simplification).
+            wick = float(bar["low"]) if side > 0 else float(bar["high"])
+            adverse = side * (entry - wick) / entry
             if adverse > cfg.liq_adverse:
                 sd, adv = _trail_stats(src, _sym_of(key), d)
                 book.trade(key, 0.0, marks[key], sd, adv, costs)
@@ -382,6 +505,146 @@ class _Event:
     payload: Any = None
 
 
+class _EventBook:
+    """Independent ledger for the event engine.
+
+    Same SPEC as _Book, separate implementation: own cash/qty/cost
+    accumulation, rescale, floor, funding, liq/delist supervision.
+    Shared atoms only: _slip_bps (formula pinned by hand tests),
+    floor_to_step (venue rounding), data accessors.
+    """
+
+    def __init__(self, equity: float) -> None:
+        self.cash = float(equity)
+        self.qty: dict[str, float] = {}
+        self.entry: dict[str, float] = {}
+        self.fee = 0.0
+        self.spr = 0.0
+        self.slp = 0.0
+        self.fund = 0.0
+        self.traded = 0.0
+        self.drops = 0
+        self.breaches = 0
+        self.maxgross = 0.0
+        self.flags: list[str] = []
+
+    def execute(self, key: str, qty: float, px: float, sig: float, adv: float,
+                costs: CostModel) -> None:
+        delta = qty - self.qty.get(key, 0.0)
+        if delta == 0.0:
+            return
+        notion = abs(delta) * px
+        taker = costs.spot_taker_bps if _is_spot(key) else costs.taker_bps
+        m = costs.adverse_mult
+        self.fee += notion * taker / 1e4 * m
+        self.spr += notion * costs.spread_bps / 1e4 * m
+        self.slp += notion * _slip_bps(notion, sig, adv, costs) / 1e4 * m
+        self.cash -= delta * px + (notion * taker / 1e4 * m
+                                   + notion * costs.spread_bps / 1e4 * m
+                                   + notion * _slip_bps(notion, sig, adv,
+                                                        costs) / 1e4 * m)
+        self.traded += notion
+        if qty == 0.0:
+            self.qty.pop(key, None)
+            self.entry.pop(key, None)
+        else:
+            self.qty[key] = qty
+            self.entry[key] = px
+
+    def settle(self, key: str, mark: float, rate: float) -> None:
+        q = self.qty.get(key, 0.0)
+        if q == 0.0:
+            return
+        delta = -q * mark * rate
+        self.cash += delta
+        self.fund -= delta
+
+    def size_targets(self, want: dict[str, float], equity: float,
+                     opens: dict[str, float], cfg: SimConfig) -> dict[str, float]:
+        notion = {k: v * equity for k, v in want.items()}
+        gross = sum(abs(v) for v in notion.values()) / max(equity, 1e-12)
+        if gross > cfg.gross_cap and gross > 0:
+            f = cfg.gross_cap / gross
+            notion = {k: v * f for k, v in notion.items()}
+            self.breaches += 1
+        out: dict[str, float] = {}
+        for key, amt in notion.items():
+            if key not in opens:
+                if amt != 0.0:
+                    self.drops += 1
+                continue
+            if abs(amt) < cfg.min_notional:
+                if amt != 0.0:
+                    self.drops += 1
+                out[key] = 0.0
+                continue
+            raw = amt / opens[key]
+            if raw == 0.0:
+                out[key] = 0.0
+                continue
+            floored = float(np.sign(raw) * floor_to_step(abs(raw),
+                                                         cfg.qty_step))
+            if floored == 0.0:
+                self.drops += 1
+            out[key] = floored
+        return out
+
+    def supervise(self, frames, spot, d: pd.Timestamp, costs: CostModel,
+                  cfg: SimConfig, marks: dict[str, float]) -> None:
+        for key in list(self.qty):
+            src = spot if _is_spot(key) else frames
+            bar = _bar_on(src, _sym_of(key), d)
+            if bar is None:
+                df = src.get(_sym_of(key))
+                if df is not None and len(df) and d > df["open_time"].max():
+                    px = float(df[df["open_time"] == df["open_time"].max(
+                    )].iloc[0]["close"])
+                    sig, adv = _trail_stats(src, _sym_of(key), d)
+                    self.execute(key, 0.0, px, sig, adv, costs)
+                    self.flags.append(f"delisted-exit:{_sym_of(key)}")
+                continue
+            marks[key] = float(bar["close"])
+            if _is_spot(key):
+                continue
+            entry = self.entry.get(key)
+            if entry:
+                side = 1 if self.qty[key] > 0 else -1
+                wick = float(bar["low"]) if side > 0 else float(bar["high"])
+                adverse = side * (entry - wick) / entry
+                if adverse > cfg.liq_adverse:
+                    sig, adv = _trail_stats(src, _sym_of(key), d)
+                    self.execute(key, 0.0, marks[key], sig, adv, costs)
+                    self.flags.append(f"liquidation:{_sym_of(key)}")
+        eq = self.cash + sum(
+            q * marks.get(k, 0.0) for k, q in self.qty.items())
+        gross = sum(abs(q) * marks.get(k, 0.0)
+                    for k, q in self.qty.items()) / max(eq, 1e-12)
+        self.maxgross = max(self.maxgross, gross)
+
+    def to_result(self, idx, vals, cfg: SimConfig) -> BacktestResult:
+        eq = pd.Series(vals, index=pd.DatetimeIndex(idx))
+        rets = eq.pct_change().dropna()
+        sd = float(rets.std(ddof=1)) if len(rets) >= 2 else 0.0
+        sr = float(rets.mean() / sd * np.sqrt(PERIODS)) \
+            if sd > 0 and sd >= 1e-9 else 0.0
+        dd = float((1.0 - eq / eq.cummax()).max()) if len(eq) else 0.0
+        years = max(len(eq) / 365.0, 1 / 365.0)
+        avg = float(eq.mean()) if len(eq) else cfg.initial_equity
+        flags = list(self.flags)
+        if sr > 3.0 and "leak-investigate" not in flags:
+            flags.append("leak-investigate")
+        costs = {"fees": self.fee, "spread": self.spr, "slip": self.slp,
+                 "funding": self.fund}
+        return BacktestResult(
+            equity=eq, final_equity=float(eq.iloc[-1]) if len(eq)
+            else cfg.initial_equity, total_costs=sum(costs.values()),
+            costs=costs, turnover_oneway=self.traded / max(avg, 1e-12)
+            / years, sharpe=sr, max_dd=dd,
+            final_positions={k: v for k, v in self.qty.items() if v != 0.0},
+            drops=self.drops, gross_breaches=self.breaches,
+            max_gross=self.maxgross, flags=flags)
+
+
 def simulate_event(targets: dict, daily: dict, funding: dict, *,
                    costs: CostModel | None = None,
                    config: SimConfig | None = None,
@@ -392,7 +655,7 @@ def simulate_event(targets: dict, daily: dict, funding: dict, *,
     spot, hourly, stops = spot or {}, hourly or {}, stops or {}
     frames = dict(daily)
     dates = sorted({t for df in daily.values() for t in df["open_time"]})
-    book = _Book(config.initial_equity)
+    book = _EventBook(config.initial_equity)
     idx: list = []
     vals: list = []
     marks: dict[str, float] = {}
@@ -400,7 +663,10 @@ def simulate_event(targets: dict, daily: dict, funding: dict, *,
         nxt = dates[n + 1] if n + 1 < len(dates) else d + pd.Timedelta(days=1)
         queue = [_Event(d, "settle-overnight")]
         if d in targets:
-            queue.append(_Event(d, "trade", targets[d]))
+            merged = dict(targets[d])
+            for key in book.qty:
+                merged.setdefault(key, 0.0)
+            queue.append(_Event(d, "trade", merged))
         queue.append(_Event(d, "settle-day"))
         queue.append(_Event(d, "stop"))
         queue.append(_Event(d, "mark"))
@@ -410,25 +676,26 @@ def simulate_event(targets: dict, daily: dict, funding: dict, *,
                     if _is_spot(key):
                         continue
                     for rate in _settle(funding, _sym_of(key), d):
-                        book.fund(key, marks.get(key, 0.0) or _open_px(
-                            frames, spot, key, d), rate)
+                        book.settle(key, _open_px(frames, spot, key, d),
+                                    rate)
             elif ev.kind == "trade":
                 opens = _opens_on(frames, spot, ev.payload, d)
-                want = _desired_quantities(
+                want = book.size_targets(
                     ev.payload, vals[-1] if vals else config.initial_equity,
-                    opens, book, config)
+                    opens, config)
                 for key, q in want.items():
                     if key not in opens:
                         continue
                     sd, adv = _trail_stats(
                         spot if _is_spot(key) else frames, _sym_of(key), d)
-                    book.trade(key, q, opens[key], sd, adv, costs)
+                    book.execute(key, q, opens[key], sd, adv, costs)
             elif ev.kind == "settle-day":
                 for key in list(book.qty):
                     if _is_spot(key):
                         continue
                     for rate in _settle_window(funding, _sym_of(key), d, nxt):
-                        book.fund(key, _open_px(frames, spot, key, d), rate)
+                        book.settle(key, _open_px(frames, spot, key, d),
+                                    rate)
             elif ev.kind == "stop":
                 for key in list(book.qty):
                     if _is_spot(key):
@@ -441,14 +708,14 @@ def simulate_event(targets: dict, daily: dict, funding: dict, *,
                                       rule["stop"])
                     if hit is not None:
                         sd, adv = _trail_stats(frames, _sym_of(key), d)
-                        book.trade(key, 0.0, hit, sd, adv, costs)
+                        book.execute(key, 0.0, hit, sd, adv, costs)
                         book.flags.append(f"stop:{_sym_of(key)}")
             elif ev.kind == "mark":
-                _supervise_and_mark(book, frames, spot, dates, n, d, costs,
-                                    config, marks)
+                book.supervise(frames, spot, d, costs, config, marks)
         idx.append(d)
-        vals.append(book.equity(marks))
-    return _finish(book, idx, vals, config)
+        vals.append(book.cash + sum(
+            q * marks.get(k, 0.0) for k, q in book.qty.items()))
+    return book.to_result(idx, vals, config)
 
 
 def shift_targets(targets: dict, dates, k: int) -> dict:
@@ -483,6 +750,15 @@ def shuffle_labels(daily: dict[str, pd.DataFrame], seed: int = 99):
     return out
 
 
+def check_turnover(result: BacktestResult, budget_oneway: float) -> dict:
+    """Promotion-layer gate: realized one-way turnover within budget."""
+    ok = result.turnover_oneway <= budget_oneway
+    return {"ok": ok, "turnover_oneway": result.turnover_oneway,
+            "budget": budget_oneway,
+            "reason": "" if ok else
+            f"turnover {result.turnover_oneway:.2f}x > {budget_oneway:.2f}x"}
+
+
 def capital_sweep(targets: dict, daily: dict, funding: dict, *,
                   equities=(120.0, 1000.0, 10000.0),
                   costs: CostModel | None = None, **kw) -> dict:
@@ -499,4 +775,4 @@ def capital_sweep(targets: dict, daily: dict, funding: dict, *,
 
 __all__ = ["CostModel", "SimConfig", "BacktestResult", "PERIODS",
            "simulate_vectorized", "simulate_event", "shift_targets",
-           "shuffle_labels", "capital_sweep"]
+           "shuffle_labels", "capital_sweep", "check_turnover"]

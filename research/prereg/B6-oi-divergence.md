@@ -28,7 +28,11 @@ Failure: divergences that resolve by price continuing (F1).
 - Over window W in {7, 30} days ending Sunday close: r = total log
   return; g = Δlog(sum_open_interest) (daily 00:00 UTC OI series).
   z_r = r / σ_r, z_g = g / σ_g with σ = trailing-90d std of
-  non-overlapping W-period changes (min 4 observations or no signal).
+  non-overlapping W-period changes (min 4 observations for W=7, min 3
+  for W=30 — 90 days admit exactly 3 non-overlapping 30d windows, so
+  min-4 would structurally silence the W=30 cells; corrected
+  pre-evaluation, D-035). Raw (non-demeaned) z-scores per the formula.
+  OI "now" is the last 00:00 UTC print strictly before the signal date.
 - Divergence D = z_g − z_r. Signal: if |D| > threshold T in {1, 2} →
   direction = −sign(D) (fade the gap: crowded-long build without
   price → SHORT; OI drain on selloff → LONG). Hold exactly 1 week.
