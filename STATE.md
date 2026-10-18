@@ -10,7 +10,7 @@ stored a key, and never read the campaign-1day event data.
 
 | Item | Status | Evidence |
 |---|---|---|
-| Full suite green in worktree, 0 failed | see Tests | `pytest tests/unit`, `tests/acceptance tests/audit tests/ceo_review` |
+| Full suite green in worktree, 0 failed | DONE | 1527 passed, 1 skipped; logs `final-suite-nobench2.log`, `final-suite-bench.log` |
 | F0.3 table has no open REOPEN | DONE | table below, 80 targeted passed |
 | Break-even verified by independent script + tests | DONE | `tools/breakeven_audit.py`; `test_breakeven_audit.py` |
 | Liquidation/bracket gate wired into live admission, tested | DONE | `Session._bracket_admission`; `test_margin_sizing.py` |
@@ -140,7 +140,9 @@ Gate is NO-GO: no PASS verdict, no GATE_READY, no sealed confirmation.
 - `pytest tests/unit/test_adversarial_regressions.py` → 6 passed.
 - `pytest tests/unit/test_ladder_controller.py` → 4 passed.
 - `python -m cryptobot.cli acceptance --root /tmp/cb-accept2` → PASS, gate NO-GO on SYNTHETIC.
-- Full unit suite: see FINAL_STATUS (log path in commands).
+- Definitive suite: `pytest -q` with the three slow benchmark files
+  split out → **1500 passed, 1 skipped**; benchmark files separately →
+  **27 passed**. Combined **1527 passed, 1 skipped, 0 failed**.
 
 ## F0.5 adversarial triage
 

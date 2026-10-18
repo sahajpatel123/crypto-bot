@@ -136,8 +136,14 @@ produces GATE_READY.
 - `python tools/breakeven_audit.py` → `ok: true`, 30 rows.
 - `cryptobot acceptance --full` → PASS, final state GATE_READY,
   provenance SYNTHETIC, gate NO-GO.
-- Full unit suite result and count: see the run log
-  `final-unit.log` (recorded below when complete).
+- Definitive suite (same worktree; only the three benchmark files were
+  split out because they take 12 minutes together): **1500 passed,
+  1 skipped** with
+  `pytest -q --ignore=tests/unit/test_bench_run.py
+  --ignore=tests/unit/test_bench_run_multi.py
+  --ignore=tests/unit/test_bench_restart_equivalence.py`; plus
+  **27 passed** for the three benchmark files. Combined:
+  **1527 passed, 1 skipped, 0 failed**.
 
 ## Remaining work — ONLY owner-dependent (ordered)
 
