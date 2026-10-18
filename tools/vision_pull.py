@@ -55,7 +55,11 @@ def _utc_now() -> str:
 
 # -- split (pure, tested) ----------------------------------------------------
 def split_of(filename: str, *, dev_only: bool = False) -> str:
-    """SPLIT.md assignment from filename date. Never reads content."""
+    """SPLIT.md assignment from filename date. Never reads content.
+
+    Undated keys (Vision has at least one junk metrics object,
+    ``MATICUSDT-metrics-1993.zip``) are skipped, not assigned.
+    """
     m = DAY_RE.search(filename)
     if m:
         side = "dev" if m.group(1) < CUTOFF_DAY else "holdout"
@@ -73,7 +77,7 @@ def split_of(filename: str, *, dev_only: bool = False) -> str:
 def _ascii_url(url: str) -> str:
     """Percent-encode non-ASCII path segments (CJK perp symbols)."""
     parts = urllib.parse.urlsplit(url)
-    path = urllib.parse.quote(parts.path, safe="/%")
+    path = urllib.parse.quote(urllib.parse.unquote(parts.path), safe="/")
     return urllib.parse.urlunsplit(
         (parts.scheme, parts.netloc, path, parts.query, parts.fragment))
 

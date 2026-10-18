@@ -107,6 +107,7 @@ def promotion_gates(hypothesis: str, cells: dict, *, years: list[float],
         "turnover": cells[best]["turnover"] <= turnover_budget,
     }
     detail = {"best_cell": best, "best_oos_sharpe": sharpes[best],
+              "best_oos": [float(x) for x in best_oos],
               "sharpe_2x": sharpe_2x, "dsr": dsr, "pbo": pbo,
               "years": years, "plateau": plateau,
               "drawdown": cells[best]["dd"],

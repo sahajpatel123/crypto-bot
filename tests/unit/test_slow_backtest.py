@@ -270,3 +270,106 @@ def test_differential_with_stops_and_spot():
     b = simulate_event(targets, daily, _funding(("A",), idx), **kw)
     assert "stop:A" in a.flags and "stop:A" in b.flags
     assert a.final_equity == pytest.approx(b.final_equity, rel=1e-9)
+
+
+def test_index_parity_with_dict_paths():
+    import numpy as np
+    import pandas as pd
+
+    from cryptobot.research.slow_backtest import (
+        MarketIndex, _bar_on, _settle, _settle_window, _trail_stats)
+
+    rng = np.random.default_rng(4)
+    idx = pd.date_range("2023-01-01", periods=60, freq="D", tz="UTC")
+    closes = 100.0 * np.exp(np.cumsum(rng.normal(0, 0.02, 60)))
+    daily = {"A": pd.DataFrame({"open_time": idx, "open": closes,
+                                "high": closes * 1.01, "low": closes * 0.99,
+                                "close": closes,
+                                "quote_volume": [1e7] * 60})}
+    calcs = []
+    for d in idx:
+        for h in (0, 8, 16):
+            calcs.append(d + pd.Timedelta(hours=h))
+    funding = {"A": pd.DataFrame(
+        {"calc_time": pd.DatetimeIndex(calcs),
+         "last_funding_rate": rng.normal(0, 0.001, len(calcs))})}
+    ix = MarketIndex(daily, {}, funding)
+    for d in list(idx[::7]) + [idx[0], idx[-1]]:
+        a = _trail_stats(daily, "A", d)
+        b = _trail_stats(ix, "A", d) if False else None
+        from cryptobot.research.slow_backtest import _Panel
+        b = _trail_stats(_Panel(ix, spot=False), "A", d)
+        assert a[0] == pytest.approx(b[0], rel=1e-12)
+        assert a[1] == pytest.approx(b[1], rel=1e-12)
+        assert _bar_on(daily, "A", d)["close"] == pytest.approx(
+            _bar_on(ix, "A", d)["close"])
+        assert _settle(funding, "A", d) == pytest.approx(_settle(ix, "A", d))
+        nxt = d + pd.Timedelta(days=1)
+        assert _settle_window(funding, "A", d, nxt) == pytest.approx(
+            _settle_window(ix, "A", d, nxt))
+
+
+def test_stops_by_day_override_static_per_date():
+    from cryptobot.research.slow_backtest import (
+        SimConfig, simulate_event, simulate_vectorized)
+
+    daily, idx = _panel(symbols=("A",), days=10)
+    daily["A"].loc[:, ["open", "high", "low", "close"]] = 100.0
+    hrs = pd.date_range("2023-01-01", periods=10 * 24, freq="h", tz="UTC")
+    hourly = {"A": pd.DataFrame({"open_time": hrs, "close": 100.0})}
+    targets = {idx[0]: {"A": 0.5}}
+    # Day-0 stop far away (never), day-5 stop above price (long exits).
+    by_day = {idx[5]: {"A": {"stop": 200.0, "expiry": idx[9]}}}
+    static = {"A": {"stop": 1.0, "expiry": idx[9]}}
+    kw = dict(costs=None, config=SimConfig(initial_equity=10000.0),
+              hourly=hourly, stops=static, stops_by_day=by_day)
+    for sim in (simulate_vectorized, simulate_event):
+        r = sim(targets, daily, _funding(("A",), idx), **kw)
+        assert "stop:A" in r.flags
+        assert r.final_positions == {}
+        # Static 1.0 stop alone would never fire; per-day 200.0 did.
+        r2 = sim(targets, daily, _funding(("A",), idx),
+                 costs=None, config=SimConfig(initial_equity=10000.0),
+                 hourly=hourly, stops=static)
+        assert "stop:A" not in r2.flags
+
+
+def test_liq_fills_at_wick_not_close():
+    from cryptobot.research.slow_backtest import (
+        SimConfig, simulate_vectorized)
+
+    daily, idx = _panel(symbols=("A",), days=10)
+    daily["A"].loc[:, ["open", "high", "low", "close"]] = 100.0
+    daily["A"].loc[5, "low"] = 60.0
+    daily["A"].loc[5, "close"] = 100.0
+    r = simulate_vectorized({idx[0]: {"A": 0.5}}, daily,
+                            _funding(("A",), idx, rate=0.0),
+                            config=SimConfig(initial_equity=10000.0))
+    assert "liquidation:A" in r.flags
+    # 50 units @100 -> stopped at wick 60: loss 2000 + costs.
+    assert r.final_equity < 8100.0
+    assert r.final_equity == pytest.approx(
+        10000 - 50 * 40 - r.total_costs, abs=1e-6)
+
+
+def test_stopped_position_skips_later_settlements():
+    from cryptobot.research.slow_backtest import (
+        SimConfig, simulate_event, simulate_vectorized)
+
+    daily, idx = _panel(symbols=("A",), days=4)
+    daily["A"].loc[:, ["open", "high", "low", "close"]] = 100.0
+    hrs = pd.date_range("2023-01-01", periods=4 * 24, freq="h", tz="UTC")
+    closes = np.full(4 * 24, 100.0)
+    closes[25] = 50.0  # breach at 01:00 day 1
+    hourly = {"A": pd.DataFrame({"open_time": hrs, "close": closes})}
+    fund = _funding(("A",), idx, rate=0.01)  # huge 1% funding
+    targets = {idx[0]: {"A": 0.5}}
+    stops = {"A": {"stop": 90.0, "expiry": idx[-1]}}
+    kw = dict(config=SimConfig(initial_equity=10000.0), hourly=hourly,
+              stops=stops)
+    for sim in (simulate_vectorized, simulate_event):
+        r = sim(targets, daily, fund, **kw)
+        assert "stop:A" in r.flags
+        # Paid day-0 08:00/16:00 + day-1 00:00 (3 x 5000 x 1% = 150);
+        # day-1 08:00/16:00 skipped after the 01:00 stop-out.
+        assert r.costs["funding"] == pytest.approx(150.0, abs=1e-6)

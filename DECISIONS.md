@@ -377,3 +377,19 @@ Meta Muse Spark.
   are committed. The parallel session's all-in-one HOLDOUT manifest
   (absolute paths) coexists harmlessly (append-only); E6.2 uses the
   per-leg manifests.
+- D-039 (shared-worktree protocol; parallel Cursor session active in this
+  worktree since ~16:19 UTC): all foreign content is AUDITED before use,
+  never trusted. Adopted after line review + tests: parallel plan
+  listings, _ascii_url hardening, MarketIndex engine index (+parity
+  tests), stops_by_day engine support (completed here: was passed by
+  runner without engine support), universe cache, run progress prints.
+  Foreign data ops adopted: pass-1 pull (167,625/167,625 verified, 0
+  split mismatches in 2000-sample audit), all-in-one HOLDOUT manifest
+  (coexists; E6.2 uses per-leg manifests). Killed 2026-10-18 ~19:05 UTC:
+  redundant foreign metrics pull (dup destination, DEV-only scope
+  insufficient for B5/B6 holdout screens, memory pressure SIGTERMing
+  local tests). Protocol henceforth: re-read before every edit; stage
+  explicit paths only (no git add -A); full-diff review pre-commit;
+  behavior battery after any suspected foreign change. E6.1 wave-1
+  killed pre-output (perf: uncached universes) — no results existed, so
+  the memoized relaunch is result-identical.

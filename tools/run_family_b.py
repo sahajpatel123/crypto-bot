@@ -48,13 +48,14 @@ def load_config(hypothesis: str) -> tuple[dict, str]:
     return doc, digest
 
 
-def build_market_data(lake: Path) -> FB.MarketData:
+def build_market_data(lake: Path, *, need_hourly: bool = False) -> FB.MarketData:
     import pandas as pd
 
     syms = sorted(p.name.split("=", 1)[1] for p in
                   (lake / "klines" / "interval=1d").glob("symbol=*"))
     daily = load_dev_frames(lake, "klines", syms, interval="1d")
-    hourly = load_dev_frames(lake, "klines", syms, interval="1h")
+    hourly = (load_dev_frames(lake, "klines", syms, interval="1h")
+              if need_hourly else {})
     funding = load_dev_frames(lake, "funding", syms)
     oi: dict[str, pd.Series] = {}
     for sym in syms:
@@ -78,13 +79,17 @@ def build_market_data(lake: Path) -> FB.MarketData:
 def evaluate_cell(hypothesis: str, params: dict, data: FB.MarketData,
                   cfg: dict, costs: BT.CostModel, equity: float) -> dict:
     ucfg = cfg["universe"]
+    cache = evaluate_cell._universe_cache
 
     def universe_fn(d):
         import re
-        out = eligible_universe(
-            d, data.daily, top_n=int(ucfg["top_n"]),
-            min_listing_age_days=int(ucfg["min_listing_age_days"]),
-            min_quote_volume_30d=float(ucfg["min_quote_volume_30d"]))
+        key = str(d)
+        if key not in cache:
+            cache[key] = eligible_universe(
+                d, data.daily, top_n=int(ucfg["top_n"]),
+                min_listing_age_days=int(ucfg["min_listing_age_days"]),
+                min_quote_volume_30d=float(ucfg["min_quote_volume_30d"]))
+        out = list(cache[key])
         if hypothesis == "B4":
             out = [s for s in out if s in ("BTCUSDT", "ETHUSDT")]
         # D-038 tripwire: settlement indices / expired quarterlies were
@@ -105,26 +110,31 @@ def evaluate_cell(hypothesis: str, params: dict, data: FB.MarketData,
     rebal = rebalance_dates(pd.DatetimeIndex(dates), CADENCE[hypothesis])
     targets, info = SIGNAL_FN[hypothesis](data, full_params, rebal,
                                           universe_fn)
-    stops: dict[str, dict] = {}
+    stops_by_day: dict = {}
     if hypothesis == "B5":
         for d, per in (info.get("history", {}) or {}).items():
+            rules = {}
             for sym, st in per.items():
                 if st.get("side") and st.get("stop"):
-                    stops[sym] = {"stop": st["stop"],
+                    rules[sym] = {"stop": st["stop"],
                                   "expiry": pd.Timestamp(
                                       st.get("expiry") or d, tz="UTC")}
+            if rules:
+                stops_by_day[d] = rules
     res = BT.simulate_vectorized(targets, data.daily, data.funding,
-                                 costs=costs,
+                                 costs=costs, stops_by_day=stops_by_day,
                                  config=BT.SimConfig(
                                      initial_equity=float(equity)),
-                                 spot=data.spot, hourly=data.hourly,
-                                 stops=stops)
+                                 spot=data.spot, hourly=data.hourly)
     gap = max(35, 2 * MAX_HOLD_D[hypothesis])
     rx = res.equity.pct_change().dropna()
     oos = pooled_oos_returns(rx, gap_days=gap)
     years = oos_year_nets(rx, gap_days=gap)
     return {"result": res, "targets": targets, "oos": oos, "years": years,
             "n_rebalances": sum(1 for d in rebal if targets.get(d))}
+
+
+evaluate_cell._universe_cache = {}
 
 
 def evaluate_hypothesis(hypothesis: str, lake: Path, *,
@@ -136,13 +146,15 @@ def evaluate_hypothesis(hypothesis: str, lake: Path, *,
         spread_bps=float(cfg["costs"]["spread_bps_per_side"]),
         slip_floor_bps=float(cfg["costs"]["slip_floor_bps"]),
         slip_k=float(cfg["costs"]["slip_k"]))
-    data = build_market_data(lake)
+    data = build_market_data(lake, need_hourly=(hypothesis == "B5"))
+    evaluate_cell._universe_cache = {}
     cells = load_grid_from_toml(hypothesis)
     gap = max(35, 2 * MAX_HOLD_D[hypothesis])
     per_cell: dict[tuple, dict] = {}
     oos_matrix: dict[tuple, list[float]] = {}
     for combo in cells:
         key = cell_key(combo)
+        print(f"{hypothesis} cell {key}", flush=True)
         ev = evaluate_cell(hypothesis, combo, data, cfg, costs, equity)
         oos = ev["oos"]
         dd = ST.max_drawdown(list(oos)) if len(oos) else 1.0
@@ -240,6 +252,24 @@ def main(argv=None) -> int:
         path = write_dev_artifact(Path(args.root), result)
         print(f"{hyp}: promotes={result['gates']['pass']} "
               f"trials={result['n_trials']} -> {path}")
+        best_oos = result["gates"].get("best_oos", [])
+        if best_oos:
+            family_oos[hyp] = [float(x) for x in best_oos]
+    if len(hyps) > 1 and family_oos:
+        from cryptobot.research.slow_stats import reality_check_pvalue
+
+        n = min(len(v) for v in family_oos.values())
+        mat = [v[:n] for v in family_oos.values()]
+        fam = {"report": "family-b/dev", "generated_utc": _utc_now(),
+               "hypotheses": sorted(family_oos),
+               "reality_check_pvalue": reality_check_pvalue(
+                   mat, rounds=500, mean_block=30, seed=7),
+               "note": "reported only, not a promotion gate"}
+        fpath = Path(args.root) / "dev" / "_family.json"
+        tmp = fpath.with_suffix(".json.tmp")
+        tmp.write_text(json.dumps(fam, indent=1, sort_keys=True) + "\n")
+        tmp.rename(fpath)
+        print(f"family RC p={fam['reality_check_pvalue']:.4f} -> {fpath}")
         if args.auto_freeze and result["gates"]["pass"]:
             from cryptobot.data.vault import Vault
             vault = Vault(args.vault_root)

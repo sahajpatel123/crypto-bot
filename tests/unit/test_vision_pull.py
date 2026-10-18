@@ -44,7 +44,7 @@ def test_split_dev_only_skips_holdout():
     assert vision_pull.split_of("BTCUSDT-1m-2024-01.zip",
                                 dev_only=True) == "skip"
     with pytest.raises(ValueError, match="no YYYY-MM"):
-        vision_pull.split_of("no-date-here.zip")
+        vision_pull.split_of("MATICUSDT-metrics-1993.zip")
 
 
 def test_pull_job_verifies_checksum_and_splits(tmp_path, monkeypatch):
