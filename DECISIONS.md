@@ -229,3 +229,17 @@ Meta Muse Spark.
   committed manifest via `git show HEAD:coord/pivot/ZONES.json`.
   This narrows the ask with written justification; it does not weaken
   any existing test (no threshold changed, no test deleted/skipped).
+- D-RUN2-02 (F1.2 mutation scope): the directive asks for mutation
+  testing on risk/, execution/ and adapters/binance_live.py. Full-file
+  mutation on binance_live.py (~1900 lines, ~1500 mutants) at ~60s
+  per mutant (live-contract suite) exceeds 20h single-threaded and
+  is infeasible in-run; the money-critical kernels ARE mutated
+  completely instead (risk/sizing, risk/margin, risk/rounding,
+  risk/policy, execution/order_manager, execution/fill_realism —
+  every money-critical function in those files, fast selections,
+  survivors killed or justified each). binance_live.py money paths
+  are covered by other F1 means: Hypothesis properties (client IDs),
+  the F1.3 chaos matrix (all lifecycle cells), contract tests, and
+  the 33-finding adversarial triage (F0.5). No threshold changed;
+  scope narrowed with this justification; the mutmut loop + config
+  are reproducible (tools/mutmut scope in STATE F1.2).

@@ -182,7 +182,8 @@ class WallClock:
 class Session:
     def __init__(self, config: AppConfig, store: RunStore, workdir: str | Path,
                  run_id: str, *, pid: int | None = None,
-                 clock: Any | None = None, engine: Any | None = None) -> None:
+                 clock: Any | None = None, engine: Any | None = None,
+                 wall_utc: Callable[[], datetime] | None = None) -> None:
         self.config = config
         self.store = store
         self.workdir = Path(workdir)
@@ -190,6 +191,11 @@ class Session:
         self.run_id = run_id
         self.clock = clock or ReplayClock()
         self.now_utc: Callable[[], datetime] = self.clock.now
+        # F1.4: wall timestamps (run-file provenance only, never
+        # decisions) come from an injectable clock so replays are
+        # byte-identical with a fixed wall time. Live uses real time.
+        self._wall_utc = wall_utc or (
+            lambda: datetime.now(timezone.utc))
         self.ledger = Ledger(config.paper_capital_usdt)
         # T1.1: venue-seeded equity for live (demo/prod) startup; None
         # until seed_from_venue() runs. Paper/replay keep the config seed.
@@ -338,7 +344,7 @@ class Session:
         self.store.set_state(self.run_id, state, reason)
         self._append_run_file("risk.jsonl", {
             "ts_utc": self.now_utc().isoformat(),
-            "wall_ts_utc": datetime.now(timezone.utc).isoformat(),
+            "wall_ts_utc": self._wall_utc().isoformat(),
             "kind": "run-state",
             "from_state": old, "to_state": state, "reason": reason})
 
@@ -1382,7 +1388,7 @@ class Session:
                               intent.instrument, intent.side.value)
             self._append_run_file("risk.jsonl", {
                 "ts_utc": self.now_utc().isoformat(),
-                "wall_ts_utc": datetime.now(timezone.utc).isoformat(),
+                "wall_ts_utc": self._wall_utc().isoformat(),
                 "kind": "risk-decision",
                 "from_state": "", "to_state": "rejected",
                 "reason": verdict.reason})
@@ -3546,7 +3552,7 @@ class Session:
             self._stop_alerted = True
             self._append_run_file("risk.jsonl", {
                 "ts_utc": self.now_utc().isoformat(),
-                "wall_ts_utc": datetime.now(timezone.utc).isoformat(),
+                "wall_ts_utc": self._wall_utc().isoformat(),
                 "kind": "operator-alert",
                 "from_state": "", "to_state": "emergency",
                 "reason": "halt:emergency:exposure-reduction"})
@@ -3623,7 +3629,7 @@ class Session:
                 action = caller_action(exc) if caller_action else "retry"
                 self._append_run_file("risk.jsonl", {
                     "ts_utc": self.now_utc().isoformat(),
-                    "wall_ts_utc": datetime.now(timezone.utc).isoformat(),
+                    "wall_ts_utc": self._wall_utc().isoformat(),
                     "kind": "unknown-drain",
                     "from_state": cid, "to_state": action,
                     "reason": f"{type(exc).__name__}:still-blocking"})
@@ -4300,7 +4306,7 @@ class Session:
             ctx["last_market_mono"] = now_mono
             self._append_run_file("risk.jsonl", {
                 "ts_utc": self.now_utc().isoformat(),
-                "wall_ts_utc": datetime.now(timezone.utc).isoformat(),
+                "wall_ts_utc": self._wall_utc().isoformat(),
                 "kind": "stream-stall",
                 "from_state": "streaming", "to_state": "resync",
                 "reason": "no market events for 60s; re-priming books"})
