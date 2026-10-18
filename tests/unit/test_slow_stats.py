@@ -138,3 +138,19 @@ def test_year_breakdown_tail_capacity():
     cap = capacity_estimate(median_adv=1e8, max_participation=0.01,
                             gross_turnover_per_year=6.0)
     assert cap == pytest.approx(0.01 * 1e8 * 365.0 / 6.0)
+
+
+def test_bootstrap_lower_q_one_sided():
+    import numpy as np
+
+    from cryptobot.research.slow_stats import stationary_bootstrap_ci
+
+    rng = np.random.default_rng(11)
+    vals = list(rng.normal(0.0, 1.0, 400))
+    lo80, _ = stationary_bootstrap_ci(vals, np.mean, mean_block=5,
+                                       rounds=1000, alpha=0.20,
+                                       lower_q=0.20, seed=11)
+    lo90, _ = stationary_bootstrap_ci(vals, np.mean, mean_block=5,
+                                       rounds=1000, alpha=0.20, seed=11)
+    # One-sided 80% LB (20th pct) sits above the two-sided 90% LB (10th).
+    assert lo90 < lo80 < float(np.mean(vals))
