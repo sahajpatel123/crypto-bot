@@ -50,6 +50,23 @@ vault/autopilot artifacts, every claim cites command+output or file path.
 | E8 | OWNER_ACTIONS + README/ARCHITECTURE/RUNBOOK | DONE | steps 15–17 |
 | E9 | FINAL_STATUS.md | DONE | see FINAL_STATUS.md; closeout supersedes any SCREEN_PASS reading |
 
+## Consolidation task table (resume the first non-DONE row)
+
+| ID | Task | Status | Evidence |
+|---|---|---|---|
+| Z0 | Re-entry | DONE | tip `00474c1` tag `closeout-v1`. Dirty before Z1.1: OWNER_ACTIONS.md, RESEARCH_VERDICTS_B.md, SLOW_ENGINE_DESIGN.md, research/autopilot_b/dev/B2.json, B4.json, reports/2026-10-18.json, state/B1–B7.json, transitions.json, transitions.json.VOIDED-foreign, untracked dev/_family.json |
+| Z1.1 | Provenance: archive or commit dirty Family B | DONE | restored to committed artifacts; `archive/z1.1-uncommitted.patch`; D-044 |
+| Z1.2 | release/v1, tag v1.0-closeout, bundle + tar | PENDING | |
+| Z1.3 | Holdout map + INC-1 | PENDING | |
+| Z1.4 | Clean-room proof | PENDING | |
+| Z2.1 | Configurable data root | PENDING | |
+| Z2.2 | Family A dev eval on pilot + benchmark | PENDING | |
+| Z3 | Passive launchd jobs + RECORDER_COSTS.md | PENDING | |
+| Z4 | C1 B4b prereg before any forward read | PENDING | |
+| Z5 | Adjudication table + cryptobot adjudicate | PENDING | |
+| Z6 | PROJECT_FINAL_REPORT.md + final-status | PENDING | |
+| Z7 | Suite green, tag v1.0-final | PENDING | |
+
 ## Closeout (2026-10-19)
 
 Evidence page: `PROJECT_CLOSEOUT.md`. Tag `closeout-v1`.

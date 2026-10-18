@@ -432,3 +432,20 @@ Meta Muse Spark.
   once metrics land; (4) autopilot_b state/ + transitions.json RESET
   (old chain preserved as transitions.json.VOIDED) and re-driven SOLELY
   from verified artifacts. Terminal states are never edited in place.
+- D-044 (Z1.1 provenance, 2026-10-19): uncommitted worktree diffs at
+  tip 00474c1 were not the code that produced any adopted verdict.
+  `research/autopilot_b/dev/B4.json` on disk (evaluated
+  2026-10-18T17:20:33Z, best cell k=3, turnover 15.4809) disagreed
+  with the committed artifact (evaluated 2026-10-18T15:50:09Z, best
+  cell k=2, turnover 17.0506). B2 differed only in the last float
+  digit. The whole diff, including doc files that restated the
+  uncommitted numbers, is `archive/z1.1-uncommitted.patch` (10275
+  lines) and the worktree was restored to 00474c1. D-043's sentence
+  "turnover 15.48" describes that uncommitted rerun; the release
+  artifact remains the committed file. Artifacts were not edited.
+  Recorded code commits versus 00474c1: `research/verdicts_b/B4.json`
+  hashes.code_commit `fdb8967` is an ancestor. Exceptions:
+  `research/verdicts/H1.json`–`H6.json` record `code_commit: unknown`;
+  `research/autopilot_b/dev/B1.json`–`B7.json` and
+  `research/autopilot/dev/H1.json`–`H6.json` have no `code_commit`
+  field. Those files stay as written.
