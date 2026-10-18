@@ -56,7 +56,7 @@ vault/autopilot artifacts, every claim cites command+output or file path.
 |---|---|---|---|
 | Z0 | Re-entry | DONE | tip `00474c1` tag `closeout-v1`. Dirty before Z1.1: OWNER_ACTIONS.md, RESEARCH_VERDICTS_B.md, SLOW_ENGINE_DESIGN.md, research/autopilot_b/dev/B2.json, B4.json, reports/2026-10-18.json, state/B1–B7.json, transitions.json, transitions.json.VOIDED-foreign, untracked dev/_family.json |
 | Z1.1 | Provenance: archive or commit dirty Family B | DONE | restored to committed artifacts; `archive/z1.1-uncommitted.patch`; D-044 |
-| Z1.2 | release/v1, tag v1.0-closeout, bundle + tar | PENDING | |
+| Z1.2 | release/v1, tag v1.0-closeout, bundle + tar | DONE | tag `v1.0-closeout` = `d3e0ba7`; branch `release/v1`; `release/v1.0-closeout.bundle`, `release/research-artifacts.tar`, `release/SHA256SUMS` |
 | Z1.3 | Holdout map + INC-1 | DONE | `tools/holdout_reconcile.py`; `release/holdout-reconcile.json` subset_ok false (132/198 and 132/202 inside chunk-2a22; spot and rest_tail outside); D-045 |
 | Z1.4 | Clean-room proof | PENDING | |
 | Z2.1 | Configurable data root | PENDING | |
