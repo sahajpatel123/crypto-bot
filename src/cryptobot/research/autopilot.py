@@ -32,8 +32,15 @@ from cryptobot.research.verdict import evaluate_trades
 STATES = ("REGISTERED", "DEV_EVAL", "KILLED", "AWAIT_CONFIRM_DATA",
           "CONFIRM", "FAIL", "PASS", "PAPER_14D", "PAPER_COMPARE",
           "GATE_READY")
+# E6.3 Family B extension (separate registry roots carry family "B"):
+# REGISTERED -> DEV_EVAL -> {KILLED | FROZEN} -> HOLDOUT_SCREEN ->
+# {FAIL | SCREEN_PASS} -> FORWARD_PAPER -> FORWARD_COMPARE -> GATE_READY.
+B_STATES = ("FROZEN", "HOLDOUT_SCREEN", "SCREEN_PASS", "FORWARD_PAPER",
+            "FORWARD_COMPARE")
 TERMINAL = {"KILLED", "FAIL"}
 PAPER_DAYS = 14
+FORWARD_MIN_DAYS = 60
+FORWARD_MIN_REBALANCES = 30
 
 
 def _utc_now() -> str:
@@ -68,8 +75,10 @@ def _bootstrap_lower(values: list[float], *, seed: int = 7,
 class Autopilot:
     def __init__(self, root: str | Path = "research/autopilot",
                  *, allow_synthetic: bool = False,
-                 paper_days: int = PAPER_DAYS) -> None:
+                 paper_days: int = PAPER_DAYS,
+                 family: str = "A") -> None:
         self.root = Path(root)
+        self.family = str(family).upper()
         self.state_dir = self.root / "state"
         self.registry_path = self.root / "registry.json"
         self.log_path = self.root / "transitions.json"
@@ -78,11 +87,17 @@ class Autopilot:
         if not self.registry_path.exists():
             _atomic(self.registry_path, {
                 "format": "cryptobot-autopilot-registry/1",
+                "family": self.family,
                 "created_utc": _utc_now(), "hypotheses": {}})
         if not self.log_path.exists():
             _atomic(self.log_path, {
                 "format": "cryptobot-autopilot-transitions/1",
                 "chain_head": "genesis", "entries": []})
+        reg = self.registry
+        if "family" not in reg:
+            reg["family"] = self.family  # one-time machine migration
+            _atomic(self.registry_path, reg)
+        self.family = str(reg.get("family", self.family)).upper()
 
     # -- registry ----------------------------------------------------------
     @property
@@ -122,8 +137,14 @@ class Autopilot:
         state = self.read_state(hypothesis)
         if state["state"] == new_state:
             return state
-        if new_state not in STATES:
+        if new_state not in STATES + B_STATES:
             raise ValueError(f"unknown autopilot state {new_state}")
+        if self.family == "A" and new_state in B_STATES:
+            raise ValueError(f"Family A cannot enter {new_state}")
+        if self.family == "B" and new_state in (
+                "AWAIT_CONFIRM_DATA", "CONFIRM", "PASS", "PAPER_14D",
+                "PAPER_COMPARE"):
+            raise ValueError(f"Family B cannot enter {new_state}")
         entry = {"hypothesis": hypothesis, "from": state["state"],
                  "to": new_state, "reason": reason,
                  "ts_utc": _utc_now(), "provenance": provenance,
@@ -226,6 +247,11 @@ class Autopilot:
                 details={"prereg": str(prereg),
                          "config_sha256": entry.get("config_sha256")}
             )["state"], "changed": True}
+        if cur == "DEV_EVAL" and self.family == "B":
+            return self._advance_b_dev(hyp, entry)
+        if cur in ("FROZEN", "HOLDOUT_SCREEN", "SCREEN_PASS", "FORWARD_PAPER",
+                   "FORWARD_COMPARE"):
+            return self._advance_b(hyp, entry)
         if cur == "DEV_EVAL":
             dev = self._artifact("dev", hyp)
             blocked = self._guard_synthetic(dev)
@@ -347,6 +373,140 @@ class Autopilot:
             return {"state": self._transition(
                 hyp, "GATE_READY" if passed else "FAIL",
                 reason="paper compare " + ("PASSED" if passed else "FAILED"),
+                details=detail,
+                provenance=state.get("provenance", "OBSERVED"))["state"],
+                "changed": True}
+        return {"state": cur, "changed": False}
+
+    # -- Family B machine (E6.3) -------------------------------------------
+    def _advance_b_dev(self, hyp: str, entry: dict) -> dict:
+        cur = "DEV_EVAL"
+        dev = self._artifact("dev", hyp)
+        blocked = self._guard_synthetic(dev)
+        if blocked:
+            return {"state": cur, "changed": False, "blocked": blocked}
+        if dev is None:
+            return {"state": cur, "changed": False,
+                    "blocked": "dev/<H>.json not present"}
+        if not dev.get("promotes"):
+            return {"state": self._transition(
+                hyp, "KILLED", reason="dev promotion failed",
+                details={"gates": dev.get("gates", {})},
+                provenance=self._provenance(dev))["state"], "changed": True}
+        frozen = dev.get("vault_frozen") or {}
+        if frozen.get("config_sha256") != entry.get("config_sha256"):
+            return {"state": cur, "changed": False,
+                    "blocked": "vault freeze record missing/mismatched; "
+                               "batch-freeze survivors before screening"}
+        return {"state": self._transition(
+            hyp, "FROZEN", reason="dev passed; config frozen in vault",
+            details={"gates": dev.get("gates", {}),
+                     "vault_frozen": frozen},
+            provenance=self._provenance(dev))["state"], "changed": True}
+
+    def _advance_b(self, hyp: str, entry: dict) -> dict:
+        state = self.read_state(hyp)
+        cur = state["state"]
+        if cur == "FROZEN":
+            verdict = self._artifact("verdicts_b", hyp)
+            if verdict is None:
+                # Verdicts live at research/verdicts_b/<H>.json; the
+                # autopilot root mirrors via _artifact subdir convention.
+                alt = self.root.parent / "verdicts_b" / f"{hyp}.json"
+                if alt.exists():
+                    try:
+                        verdict = json.loads(alt.read_text(encoding="utf-8"))
+                        verdict["_path"] = str(alt)
+                    except ValueError:
+                        verdict = None
+            blocked = self._guard_synthetic(verdict)
+            if blocked:
+                return {"state": cur, "changed": False, "blocked": blocked}
+            if verdict is None:
+                return {"state": cur, "changed": False,
+                        "blocked": "verdicts_b/<H>.json not present"}
+            if str(verdict.get("data_provenance", "")).upper() != \
+                    "SEALED-HOLDOUT":
+                return {"state": self._transition(
+                    hyp, "FAIL", reason="holdout verdict provenance not "
+                                        "SEALED-HOLDOUT",
+                    provenance=self._provenance(verdict))["state"],
+                    "changed": True}
+            return {"state": self._transition(
+                hyp, "HOLDOUT_SCREEN",
+                reason=f"holdout screen {verdict.get('verdict')}",
+                details={"verdict": verdict.get("verdict"),
+                         "metrics": verdict.get("metrics", {})},
+                provenance=self._provenance(verdict))["state"],
+                "changed": True}
+        if cur == "HOLDOUT_SCREEN":
+            state = self.read_state(hyp)
+            detail = state.get("details", {})
+            v = state.get("verdict", detail.get("verdict"))
+            if v == "SCREEN_PASS":
+                new, reason = "SCREEN_PASS", "holdout screen passed"
+            else:
+                new, reason = "FAIL", f"holdout screen {v}"
+            return {"state": self._transition(
+                hyp, new, reason=reason, details={"verdict": v},
+                provenance=state.get("provenance", "OBSERVED"))["state"],
+                "changed": True}
+        if cur == "SCREEN_PASS":
+            fwd = self._artifact("forward", hyp)
+            blocked = self._guard_synthetic(fwd)
+            if blocked:
+                return {"state": cur, "changed": False, "blocked": blocked}
+            if fwd is None or not fwd.get("paper_started_utc"):
+                return {"state": cur, "changed": False,
+                        "blocked": "forward/<H>.json run not started"}
+            return {"state": self._transition(
+                hyp, "FORWARD_PAPER",
+                reason="forward paper started",
+                details={"paper_started_utc": fwd["paper_started_utc"]},
+                provenance=self._provenance(fwd))["state"], "changed": True}
+        if cur == "FORWARD_PAPER":
+            fwd = self._artifact("forward", hyp)
+            blocked = self._guard_synthetic(fwd)
+            if blocked:
+                return {"state": cur, "changed": False, "blocked": blocked}
+            if fwd is None:
+                return {"state": cur, "changed": False,
+                        "blocked": "forward/<H>.json not present"}
+            try:
+                elapsed = (datetime.now(timezone.utc)
+                           - datetime.fromisoformat(
+                               str(fwd.get("paper_started_utc")))).total_seconds()
+            except ValueError:
+                elapsed = 0.0
+            days = elapsed / 86400.0
+            rebalances = int(fwd.get("rebalances", 0) or 0)
+            if days < FORWARD_MIN_DAYS or rebalances < FORWARD_MIN_REBALANCES:
+                return {"state": cur, "changed": False,
+                        "blocked": f"forward window incomplete "
+                                   f"({days:.1f}d, {rebalances} rebalances)"}
+            realized = float(fwd.get("realized_sharpe", 0.0) or 0.0)
+            screen = float((state.get("metrics") or {}).get("point_sharpe",
+                                                            0.0) or 0.0)
+            dd = float(fwd.get("max_dd", 1.0) or 1.0)
+            turnover = float(fwd.get("turnover", 1e9) or 1e9)
+            budget = float(fwd.get("turnover_budget", 0.0) or 0.0)
+            # D-037 forward-compare rule (pre-data spec): realized > 0 and
+            # >= 50% of screen Sharpe, DD in budget, turnover in budget.
+            passed = (realized > 0 and realized >= 0.5 * screen
+                      and dd <= 0.35 and turnover <= budget)
+            return {"state": self._transition(
+                hyp, "FORWARD_COMPARE", reason="forward window complete",
+                details={"realized_sharpe": realized,
+                         "screen_sharpe": screen, "max_dd": dd,
+                         "turnover": turnover, "passed": passed},
+                provenance=self._provenance(fwd))["state"], "changed": True}
+        if cur == "FORWARD_COMPARE":
+            state = self.read_state(hyp)
+            detail = state.get("details", {})
+            passed = bool(state.get("passed", detail.get("passed")))
+            return {"state": self._transition(
+                hyp, "GATE_READY" if passed else "FAIL",
+                reason="forward compare " + ("PASSED" if passed else "FAILED"),
                 details=detail,
                 provenance=state.get("provenance", "OBSERVED"))["state"],
                 "changed": True}

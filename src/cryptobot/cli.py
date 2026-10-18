@@ -1059,10 +1059,12 @@ def cmd_data(args: argparse.Namespace) -> int:
 
 
 def cmd_verdict(args: argparse.Namespace) -> int:
-    """Hash-bound verdict from trades JSONL or a sealed CONFIRM chunk."""
+    """Hash-bound verdict from trades JSONL, CONFIRM chunk, or holdout."""
     from cryptobot.data.vault import Vault, VaultError
     from cryptobot.research.verdict import evaluate_trades, verdict_document
 
+    if getattr(args, "holdout_screen", False):
+        return _cmd_verdict_holdout(args)
     provenance = "OBSERVED"
     seal_sha = None
     if getattr(args, "vault_token", None):
@@ -1115,6 +1117,90 @@ def cmd_verdict(args: argparse.Namespace) -> int:
     return 0 if doc["verdict"] == "PASS" else 1
 
 
+def _cmd_verdict_holdout(args: argparse.Namespace) -> int:
+    """E6.2: exactly-once Family B holdout screen through the vault."""
+    import tomllib
+
+    from cryptobot.data.vault import Vault, VaultError
+    from cryptobot.research import verdict as _v
+    from cryptobot.research.family_b_driver import run_holdout_screen
+    from cryptobot.research.lake import load_dev_frames
+    from cryptobot.research.slow_backtest import CostModel
+
+    for need in ("vault_token", "holdout_chunk", "cell_params", "lake"):
+        if not getattr(args, need, None):
+            print(f"verdict: REFUSED --{need.replace('_', '-')} required "
+                  f"for --holdout-screen", file=sys.stderr)
+            return 2
+    try:
+        vault = Vault(args.vault_root)
+        elig = vault.holdout_confirm_eligible(args.holdout_chunk,
+                                              args.hypothesis)
+        if not elig["eligible"]:
+            print(f"verdict: REFUSED holdout ineligible: {elig['reason']}",
+                  file=sys.stderr)
+            return 2
+        auth = vault.authorize_holdout_decode(
+            args.holdout_chunk, token=args.vault_token,
+            hypothesis=args.hypothesis)
+        holdout = _v.holdout_frames_for_verdict(auth["files"])
+    except (VaultError, ValueError, OSError) as exc:
+        print(f"verdict: REFUSED {exc}", file=sys.stderr)
+        return 2
+    try:
+        lake = Path(args.lake)
+        syms = sorted(p.name for p in
+                      (lake / "klines" / "interval=1d").glob("symbol=*"))
+        syms = [s.split("=", 1)[1] for s in syms]
+        dev = {"daily": load_dev_frames(lake, "klines", syms, interval="1d"),
+               "hourly": load_dev_frames(lake, "klines", syms, interval="1h"),
+               "funding": load_dev_frames(lake, "funding", syms),
+               "oi": {}, "spot": {}}
+        for sym in syms:
+            mp = lake / "metrics" / f"symbol={sym}" / "data.parquet"
+            if mp.exists():
+                import pandas as _pd
+                df = _pd.read_parquet(mp).sort_values("create_time")
+                dev["oi"][sym] = _pd.Series(
+                    df["sum_open_interest"].to_numpy(),
+                    index=_pd.DatetimeIndex(df["create_time"], tz="UTC"))
+        cfg = tomllib.loads(Path(args.config).read_text())
+        costs = CostModel(
+            taker_bps=float(cfg["costs"]["perp_taker_bps"]),
+            spot_taker_bps=float(cfg["costs"]["spot_taker_bps"]),
+            spread_bps=float(cfg["costs"]["spread_bps_per_side"]),
+            slip_floor_bps=float(cfg["costs"]["slip_floor_bps"]),
+            slip_k=float(cfg["costs"]["slip_k"]))
+        cell = json.loads(Path(args.cell_params).read_text())
+        metrics = run_holdout_screen(
+            args.hypothesis, cell, dev_frames=dev, holdout_frames=holdout,
+            dev_sharpe=float(args.dev_sharpe), costs=costs,
+            equity=float(getattr(args, "equity", 1000.0)))
+    except (ValueError, OSError, KeyError) as exc:
+        print(f"verdict: REFUSED screen failed: {exc}", file=sys.stderr)
+        return 2
+    decision = _v.screen_decision(
+        point_sharpe=metrics["point_sharpe"], dev_sharpe=metrics["dev_sharpe"],
+        lb80=metrics["lb80"], sharpe_2x=metrics["sharpe_2x"],
+        max_dd=metrics["max_dd"], n_rebalances=metrics["n_rebalances"],
+        turnover=metrics["turnover"])
+    result = {"metrics": metrics, **decision,
+              "family_size": args.family_size,
+              "n_trades": metrics["n_rebalances"]}
+    commit = os.environ.get("CRYPTOBOT_CODE_COMMIT", "unknown")
+    seal_sha = next((e["sha256"] for e in vault.registry["entries"]
+                     if e["chunk_id"] == args.holdout_chunk), None)
+    doc = _v.verdict_document(
+        hypothesis=args.hypothesis, result=result, config_path=args.config,
+        data_manifest=args.holdout_chunk, code_commit=commit,
+        data_provenance="SEALED-HOLDOUT", sealed_chunk_sha256=seal_sha)
+    text = json.dumps(doc, indent=1, sort_keys=True)
+    print(text)
+    if args.out:
+        Path(args.out).write_text(text + "\n")
+    return 0 if doc["verdict"] == "SCREEN_PASS" else 1
+
+
 def _read_json(path: str | None) -> dict:
     if not path:
         return {}
@@ -1165,10 +1251,14 @@ def cmd_gate(args: argparse.Namespace) -> int:
     provenance = str(verdict.get("data_provenance", "UNKNOWN")).upper()
     auto_prov = str(autopilot.get("provenance", "UNKNOWN")).upper()
     checks = {
-        "verdict_pass": verdict.get("verdict") == "PASS",
+        "verdict_pass": verdict.get("verdict") in ("PASS", "SCREEN_PASS"),
         "verdict_provenance_sealed": provenance in (
-            "OBSERVED", "SEALED-CONFIRM")
+            "OBSERVED", "SEALED-CONFIRM", "SEALED-HOLDOUT")
         and provenance != "SYNTHETIC",
+        # Family B coupling: a holdout screen only counts from sealed
+        # holdout bytes (never from an OBSERVED/dev run of the screen).
+        "screen_requires_holdout": verdict.get("verdict") != "SCREEN_PASS"
+        or provenance == "SEALED-HOLDOUT",
         "autopilot_gate_ready": autopilot.get("state") == "GATE_READY",
         "autopilot_provenance_observed": auto_prov not in (
             "SYNTHETIC", "UNKNOWN"),
@@ -1451,7 +1541,8 @@ def cmd_autopilot(args: argparse.Namespace) -> int:
     """F4.6: idempotent research autopilot state machine."""
     from cryptobot.research.autopilot import Autopilot
 
-    bot = Autopilot(args.root, allow_synthetic=args.allow_synthetic)
+    bot = Autopilot(args.root, allow_synthetic=args.allow_synthetic,
+                    family=getattr(args, "family", "A"))
     if args.autopilot_cmd == "status":
         print(json.dumps(bot.report(), indent=1, sort_keys=True))
         return 0
@@ -1598,6 +1689,15 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--vault-root", default="data/vault")
     p.add_argument("--vault-token", default=None)
     p.add_argument("--vault-chunk", default=None)
+    p.add_argument("--holdout-screen", action="store_true",
+                   help="Family B exactly-once holdout screen (E6.2)")
+    p.add_argument("--holdout-chunk", default=None)
+    p.add_argument("--cell-params", default=None,
+                   help="JSON file with the frozen best-cell params")
+    p.add_argument("--lake", default=None,
+                   help="DEV lake dir (indicator history only)")
+    p.add_argument("--dev-sharpe", type=float, default=0.0)
+    p.add_argument("--equity", type=float, default=1000.0)
     p.add_argument("--out", default=None)
     p.set_defaults(func=cmd_verdict)
     p = sub.add_parser("gate")
@@ -1624,6 +1724,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("autopilot_cmd",
                    choices=("run-once", "status", "report"))
     p.add_argument("--root", default="research/autopilot")
+    p.add_argument("--family", default="A", choices=("A", "B"))
     p.add_argument("--allow-synthetic", action="store_true",
                    help="only for F8.1 acceptance; never for a real gate")
     p.set_defaults(func=cmd_autopilot)

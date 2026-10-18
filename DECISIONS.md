@@ -349,3 +349,15 @@ Meta Muse Spark.
   waste verified progress); my own nohup relaunch had died silently
   (empty plan log, no process). Lesson: use the shell tool's background
   mode (supervised) instead of nohup for long jobs in this harness.
+- D-037 (E6.2/E6.3 pre-data specs; holdout undecoded): (a) holdout screen
+  turnover is REPORTED, not gated (DEV already gated the same cell; a new
+  screen gate post-freeze would be a new criterion); (b) UNDERPOWERED if
+  <30 holdout rebalances (fail-safe precedent from Family A min_trades);
+  (c) screen runs on the FULL holdout window, cold-start flat (no eval
+  gap: all holdout decisions use legitimate past data; inherited DEV
+  positions would flatter, so none are inherited); (d) FORWARD_COMPARE
+  pass = realized Sharpe >0 AND >=50% of screen Sharpe AND DD<=35% AND
+  turnover<=budget (mirrors the screen's DEV-fraction logic; forward data
+  does not exist yet); (e) CJK symbol URLs percent-encoded (31 pull
+  failures root-caused to UnicodeEncodeError); retry via rebuilt plan +
+  same state file after the running pull completes.

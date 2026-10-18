@@ -42,8 +42,8 @@ vault/autopilot artifacts, every claim cites command+output or file path.
 | E4.5 | Reviewer sub-agent breaks E4; fix findings | DONE | 15 findings; all CRITICAL/HIGH fixed + tested (37 E4/E5 tests green) |
 | E5 | Statistics module + tests (WF, bootstrap, DSR, PBO, SPA, plateau, regimes, DD, capacity) | DONE | `slow_stats.py`, 9 tests |
 | E6.1 | DEV evaluation, all trials counted, kill failures | TODO | driver contract must freeze first (reviewer risk 1); blocks=hold (risk 2); lock promotion script (risk 3) |
-| E6.2 | Freeze survivors, holdout screen once via verdict | TODO | |
-| E6.3 | Autopilot Family B extension (FROZEN/HOLDOUT_SCREEN/SCREEN_PASS/FORWARD_*) | TODO | write + test on synthetic before data lands |
+| E6.2 | Freeze survivors, holdout screen once via verdict | CODE DONE | verdict screen + CLI + E2E test; runs when holdout sealed |
+| E6.3 | Autopilot Family B extension (FROZEN/HOLDOUT_SCREEN/SCREEN_PASS/FORWARD_*) | DONE | B-machine + 8 tests; forward rule in D-037 |
 | E6.4 | RESEARCH_VERDICTS_B.md from machine JSONs | TODO | |
 | E7 | Conditional slow live path or SLOW_ENGINE_DESIGN.md | TODO | |
 | E8 | OWNER_ACTIONS + README/ARCHITECTURE/RUNBOOK | TODO | |

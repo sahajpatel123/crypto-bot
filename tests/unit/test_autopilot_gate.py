@@ -203,3 +203,22 @@ def test_arm_refuses_expired_gate_even_interactive(tmp_path, monkeypatch):
                                   - timedelta(hours=1)).isoformat()})
     assert cli.cmd_arm(_arm_args(tmp_path, gate)) == 2
     assert not (tmp_path / "armed.json").exists()
+
+
+def test_gate_family_b_screen_pass_holdout_coupling(tmp_path):
+    import shutil
+
+    paths = _gate_artifacts(tmp_path)
+    verdict = json.loads(Path(paths["verdict"]).read_text())
+    verdict["verdict"] = "SCREEN_PASS"
+    verdict["data_provenance"] = "SEALED-HOLDOUT"
+    _write(Path(paths["verdict"]), verdict)
+    assert _run_gate(paths, tmp_path / "gate-b.json") == 0
+    assert json.loads((tmp_path / "gate-b.json").read_text())["gate"] == "GO"
+    # Same SCREEN_PASS claimed from OBSERVED/dev data: NO-GO.
+    verdict["data_provenance"] = "OBSERVED"
+    _write(Path(paths["verdict"]), verdict)
+    assert _run_gate(paths, tmp_path / "gate-b2.json") == 2
+    doc = json.loads((tmp_path / "gate-b2.json").read_text())
+    assert doc["gate"] == "NO-GO"
+    assert doc["checks"]["screen_requires_holdout"] is False

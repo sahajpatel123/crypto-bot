@@ -82,3 +82,27 @@ def test_toml_grids_match_frozen_axes():
         assert len(cells) == len(expand_grid(h))
         total += len(cells)
     assert total == 59
+
+
+def test_run_holdout_screen_cold_start_and_metrics():
+    import pandas as pd
+
+    from cryptobot.research.family_b_driver import run_holdout_screen
+    from cryptobot.research.slow_backtest import CostModel
+
+    dev_idx = pd.date_range("2023-07-01", "2023-12-31", freq="D", tz="UTC")
+    hold_idx = pd.date_range("2024-01-01", "2024-06-30", freq="D", tz="UTC")
+    dev = {"A": pd.DataFrame({
+        "open_time": dev_idx, "open": 100.0, "high": 101.0, "low": 99.0,
+        "close": 100.5, "quote_volume": 1e8})}
+    hold = {"A": pd.DataFrame({
+        "open_time": hold_idx, "open": 100.5, "high": 101.5, "low": 99.5,
+        "close": 101.0, "quote_volume": 1e8})}
+    out = run_holdout_screen(
+        "B1", {"lookback_d": 20, "vol_window_d": 20, "target_vol": 0.20},
+        dev_frames={"daily": dev}, holdout_frames={"daily": hold},
+        dev_sharpe=1.0, costs=CostModel(), equity=1000.0)
+    assert set(out) >= {"point_sharpe", "dev_sharpe", "lb80", "sharpe_2x",
+                        "max_dd", "n_rebalances", "turnover", "final_equity"}
+    assert out["dev_sharpe"] == 1.0
+    assert out["n_rebalances"] > 0

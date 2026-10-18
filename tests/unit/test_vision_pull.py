@@ -142,3 +142,13 @@ def test_list_symbols_takes_last_segment(monkeypatch):
     monkeypatch.setattr(vision_pull, "s3_list_keys", fake_list)
     assert vision_pull.list_symbols("klines") == ["BTCUSDT", "ETHUSDT"]
     assert seen["prefix"] == "data/futures/um/monthly/klines/"
+
+
+def test_job_quotes_non_ascii_symbol_names():
+    key = "data/futures/um/monthly/klines/哈基米USDT/1d/哈基米USDT-1d-2026-09.zip"
+    job = vision_pull._job(
+        "klines", "哈基米USDT", "1d", {"Key": key, "Size": 10})
+    assert job["key"] == key  # state identity stays raw
+    assert job["url"].isascii() and "%E5" in job["url"]
+    assert job["checksum_url"].endswith(".CHECKSUM")
+    assert job["split"] == "holdout"

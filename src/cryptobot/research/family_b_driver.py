@@ -146,6 +146,83 @@ def load_grid_from_toml(hypothesis: str,
     return mine
 
 
+def run_holdout_screen(hypothesis: str, cell: dict, *,
+                       dev_frames: dict, holdout_frames: dict,
+                       dev_sharpe: float, costs, equity: float = 1000.0,
+                       holdout_start: str = "2024-01-01") -> dict:
+    """Screen ONE frozen cell on sealed holdout (E6.2 orchestration).
+
+    DEV frames supply indicator/universe history only; positions start
+    FLAT at holdout_start (a real deployment starts flat — inherited
+    DEV winners must not flatter the screen). Returns screen metrics;
+    the PASS/FAIL decision itself lives in verdict.screen_decision.
+    """
+    from cryptobot.research import family_b as _fb
+    from cryptobot.research import slow_backtest as _bt
+    from cryptobot.research import slow_stats as _st
+    from cryptobot.research.universe import eligible_universe
+
+    start = pd.Timestamp(holdout_start, tz="UTC")
+    merged: dict[str, dict] = {}
+    for key in ("daily", "hourly", "funding", "spot"):
+        merged[key] = {}
+        syms = set(dev_frames.get(key, {})) | set(holdout_frames.get(key, {}))
+        for sym in syms:
+            parts = [f for f in (dev_frames.get(key, {}).get(sym),
+                                 holdout_frames.get(key, {}).get(sym))
+                     if f is not None]
+            df = pd.concat(parts, ignore_index=True)
+            tcol = "calc_time" if key == "funding" else "open_time"
+            merged[key][sym] = df.sort_values(tcol).drop_duplicates(
+                tcol, keep="first").reset_index(drop=True)
+    merged_oi = dict(dev_frames.get("oi", {}))
+    for sym, ser in holdout_frames.get("oi", {}).items():
+        base = merged_oi.get(sym)
+        merged_oi[sym] = ser if base is None else pd.concat(
+            [base, ser]).sort_index().loc[~pd.concat(
+                [base, ser]).sort_index().index.duplicated(keep="first")]
+    data = _fb.MarketData(daily=merged["daily"], funding=merged["funding"],
+                          oi=merged_oi, hourly=merged["hourly"],
+                          spot=merged["spot"])
+    all_dates = sorted({t for df in merged["daily"].values()
+                        for t in df["open_time"] if t >= start})
+    cadence = {"B1": "weekly", "B2": "weekly", "B3": "weekly",
+               "B4": "daily", "B5": "daily", "B6": "weekly",
+               "B7": "monthly"}[hypothesis]
+    rebal = rebalance_dates(pd.DatetimeIndex(all_dates), cadence)
+    univ = lambda d: eligible_universe(d, merged["daily"], top_n=30,
+                                       min_listing_age_days=90,
+                                       min_quote_volume_30d=1e7)
+    sig = getattr(_fb, f"signals_{hypothesis.lower()}")
+    targets, info = sig(data, cell, rebal, univ)
+    res = _bt.simulate_vectorized(targets, merged["daily"], merged["funding"],
+                                  costs=costs,
+                                  config=_bt.SimConfig(
+                                      initial_equity=float(equity)),
+                                  spot=merged["spot"])
+    rx = res.equity.pct_change().dropna()
+    rx = rx[rx.index >= start]
+    lo, _ = _st.stationary_bootstrap_ci(
+        list(rx), lambda v: _st.sharpe(v), mean_block=BOOTSTRAP_BLOCK_D,
+        rounds=1000, alpha=0.20, seed=7)
+    import copy as _copy
+    costs2x = _copy.replace(costs, adverse_mult=2.0)
+    res2 = _bt.simulate_vectorized(
+        targets, merged["daily"], merged["funding"], costs=costs2x,
+        config=_bt.SimConfig(initial_equity=float(equity)),
+        spot=merged["spot"])
+    rx2 = res2.equity.pct_change().dropna()
+    rx2 = rx2[rx2.index >= start]
+    held = sum(1 for d in rebal if d >= start and targets.get(d))
+    return {"point_sharpe": _st.sharpe(list(rx)), "dev_sharpe": dev_sharpe,
+            "lb80": lo, "sharpe_2x": _st.sharpe(list(rx2)),
+            "max_dd": _st.max_drawdown(list(rx)),
+            "n_rebalances": held,
+            "turnover": res.turnover_oneway,
+            "final_equity": float(res.equity.iloc[-1])}
+
+
 __all__ = ["GRID_AXES", "MAX_HOLD_D", "BOOTSTRAP_BLOCK_D", "TEST_YEARS",
            "expand_grid", "cell_key", "rebalance_dates", "pooled_oos_returns",
-           "oos_year_nets", "promotion_gates", "load_grid_from_toml"]
+           "oos_year_nets", "promotion_gates", "load_grid_from_toml",
+           "run_holdout_screen"]

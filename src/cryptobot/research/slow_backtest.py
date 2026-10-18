@@ -126,18 +126,25 @@ class MarketIndex:
         self.last_close: dict[str, float] = {}
         self.spot_last_date: dict[str, pd.Timestamp] = {}
         self.spot_last_close: dict[str, float] = {}
+        self.daily_times: dict[str, list] = {}
+        self.daily_closes: dict[str, np.ndarray] = {}
+        self.spot_times: dict[str, list] = {}
+        self.spot_closes: dict[str, np.ndarray] = {}
         self.fund_exact: dict[tuple, list[float]] = {}
         self.fund_window: dict[tuple, list[float]] = {}
         self._build_bars(daily, self.daily_bar, self.trail,
-                         self.last_date, self.last_close)
+                         self.last_date, self.last_close,
+                         self.daily_times, self.daily_closes)
         self._build_bars(spot, self.spot_bar, self.spot_trail,
-                         self.spot_last_date, self.spot_last_close)
+                         self.spot_last_date, self.spot_last_close,
+                         self.spot_times, self.spot_closes)
         dates = sorted({t for df in daily.values() for t in df["open_time"]})
         self.dates = dates
         self._build_funding(funding, dates)
 
     @staticmethod
-    def _build_bars(frames, bars, trail, last_date, last_close) -> None:
+    def _build_bars(frames, bars, trail, last_date, last_close,
+                    times_out, closes_out) -> None:
         for sym, df in frames.items():
             df = df.sort_values("open_time").drop_duplicates("open_time")
             opens = df["open"].to_numpy(dtype=float)
@@ -174,6 +181,8 @@ class MarketIndex:
             if times:
                 last_date[sym] = times[-1]
                 last_close[sym] = float(closes[-1])
+                times_out[sym] = times
+                closes_out[sym] = closes
 
     def _build_funding(self, funding: dict, dates: list) -> None:
         if not dates:
@@ -184,7 +193,8 @@ class MarketIndex:
         for sym, df in funding.items():
             if df is None or len(df) == 0:
                 continue
-            ts = pd.DatetimeIndex(df["calc_time"])
+            ts = pd.DatetimeIndex(pd.to_datetime(df["calc_time"], utc=True))
+            ts = ts.as_unit("ns")
             rates = df["last_funding_rate"].to_numpy(dtype=float)
             order = np.argsort(ts.asi8)
             ts_ns = ts.asi8[order]
@@ -219,6 +229,17 @@ class MarketIndex:
             return None
         return {"open": hit[0], "high": hit[1], "low": hit[2], "close": hit[3]}
 
+    def prev_close(self, sym: str, d: pd.Timestamp, *, spot: bool = False):
+        import bisect
+        times = (self.spot_times if spot else self.daily_times).get(sym)
+        closes = (self.spot_closes if spot else self.daily_closes).get(sym)
+        if not times:
+            return None
+        i = bisect.bisect_left(times, d)
+        if i <= 0:
+            return None
+        return float(closes[i - 1])
+
     def trail_of(self, sym: str, d: pd.Timestamp, *, spot: bool = False):
         src = self.spot_trail if spot else self.trail
         return src.get((sym, d), (FALLBACK_SIGMA_D, FALLBACK_ADV))
@@ -247,8 +268,11 @@ def _bar_on(frames, sym: str, d: pd.Timestamp) -> dict | None:
     return hit.iloc[0].to_dict()
 
 
-def _last_bar_before(frames: dict[str, pd.DataFrame], sym: str,
-                     d: pd.Timestamp) -> dict | None:
+def _last_bar_before(frames, sym: str, d: pd.Timestamp) -> dict | None:
+    panel = getattr(frames, "index", None)
+    if panel is not None and hasattr(frames, "spot"):
+        px = panel.prev_close(sym, d, spot=bool(frames.spot))
+        return {"close": px, "open": px} if px is not None else None
     df = frames.get(sym)
     if df is None:
         return None
@@ -268,12 +292,31 @@ def _settle(frames_f, sym: str, ts: pd.Timestamp):
             df[df["calc_time"] == ts]["last_funding_rate"].tolist()]
 
 
-def _settle_window(frames_f: dict[str, pd.DataFrame], sym: str, lo, hi):
+def _settle_window(frames_f, sym: str, lo, hi):
+    if isinstance(frames_f, MarketIndex):
+        # Precomputed on the same next-bar boundary the simulator uses.
+        return list(frames_f.fund_window.get((sym, lo), ()))
     df = frames_f.get(sym)
     if df is None:
         return []
     m = df[(df["calc_time"] > lo) & (df["calc_time"] < hi)]
     return [float(r) for r in m["last_funding_rate"].tolist()]
+
+
+def _delist_px(src, sym: str, d: pd.Timestamp) -> float | None:
+    panel = getattr(src, "index", None)
+    if panel is not None and hasattr(src, "spot"):
+        dates = panel.spot_last_date if src.spot else panel.last_date
+        closes = panel.spot_last_close if src.spot else panel.last_close
+        last = dates.get(sym)
+        if last is not None and d > last:
+            return float(closes[sym])
+        return None
+    df = src.get(sym) if hasattr(src, "get") else None
+    if df is not None and len(df) and d > df["open_time"].max():
+        last = df["open_time"].max()
+        return float(df[df["open_time"] == last].iloc[0]["close"])
+    return None
 
 
 class _Book:
@@ -399,11 +442,16 @@ def simulate_vectorized(targets: dict, daily: dict, funding: dict, *,
                         config: SimConfig | None = None,
                         spot: dict | None = None,
                         hourly: dict | None = None,
-                        stops: dict | None = None) -> BacktestResult:
+                        stops: dict | None = None,
+                        stops_by_day: dict | None = None) -> BacktestResult:
     costs, config = costs or CostModel(), config or SimConfig()
-    spot, hourly, stops = spot or {}, hourly or {}, stops or {}
-    frames = dict(daily)
-    dates = sorted({t for df in daily.values() for t in df["open_time"]})
+    hourly, stops = hourly or {}, stops or {}
+    stops_by_day = stops_by_day or {}
+    ix = MarketIndex(daily, spot or {}, funding)
+    frames = _Panel(ix, spot=False)
+    spot = _Panel(ix, spot=True)
+    funding = ix
+    dates = ix.dates
     book = _Book(config.initial_equity)
     idx: list = []
     vals: list = []
@@ -444,7 +492,8 @@ def simulate_vectorized(targets: dict, daily: dict, funding: dict, *,
         for key in list(book.qty):
             if _is_spot(key):
                 continue
-            rule = stops.get(_sym_of(key))
+            rule = (stops_by_day.get(d) or {}).get(_sym_of(key)) \
+                or stops.get(_sym_of(key))
             if not rule or d > rule.get("expiry", d):
                 continue
             side = 1 if book.qty[key] > 0 else -1
@@ -488,11 +537,8 @@ def _supervise_and_mark(book: _Book, frames, spot, dates, n: int,
         src = spot if _is_spot(key) else frames
         bar = _bar_on(src, _sym_of(key), d)
         if bar is None:
-            df = src.get(_sym_of(key))
-            last_date = df["open_time"].max() if df is not None and len(
-                df) else None
-            if last_date is not None and d > last_date:
-                px = float(df[df["open_time"] == last_date].iloc[0]["close"])
+            px = _delist_px(src, _sym_of(key), d)
+            if px is not None:
                 sd, adv = _trail_stats(src, _sym_of(key), d)
                 book.trade(key, 0.0, px, sd, adv, costs)
                 book.flags.append(f"delisted-exit:{_sym_of(key)}")
@@ -615,10 +661,8 @@ class _EventBook:
             src = spot if _is_spot(key) else frames
             bar = _bar_on(src, _sym_of(key), d)
             if bar is None:
-                df = src.get(_sym_of(key))
-                if df is not None and len(df) and d > df["open_time"].max():
-                    px = float(df[df["open_time"] == df["open_time"].max(
-                    )].iloc[0]["close"])
+                px = _delist_px(src, _sym_of(key), d)
+                if px is not None:
                     sig, adv = _trail_stats(src, _sym_of(key), d)
                     self.execute(key, 0.0, px, sig, adv, costs)
                     self.flags.append(f"delisted-exit:{_sym_of(key)}")
@@ -670,11 +714,16 @@ def simulate_event(targets: dict, daily: dict, funding: dict, *,
                    config: SimConfig | None = None,
                    spot: dict | None = None,
                    hourly: dict | None = None,
-                   stops: dict | None = None) -> BacktestResult:
+                   stops: dict | None = None,
+                   stops_by_day: dict | None = None) -> BacktestResult:
     costs, config = costs or CostModel(), config or SimConfig()
-    spot, hourly, stops = spot or {}, hourly or {}, stops or {}
-    frames = dict(daily)
-    dates = sorted({t for df in daily.values() for t in df["open_time"]})
+    hourly, stops = hourly or {}, stops or {}
+    stops_by_day = stops_by_day or {}
+    ix = MarketIndex(daily, spot or {}, funding)
+    frames = _Panel(ix, spot=False)
+    spot = _Panel(ix, spot=True)
+    funding = ix
+    dates = ix.dates
     book = _EventBook(config.initial_equity)
     idx: list = []
     vals: list = []
@@ -720,7 +769,8 @@ def simulate_event(targets: dict, daily: dict, funding: dict, *,
                 for key in list(book.qty):
                     if _is_spot(key):
                         continue
-                    rule = stops.get(_sym_of(key))
+                    rule = (stops_by_day.get(d) or {}).get(_sym_of(key)) \
+                        or stops.get(_sym_of(key))
                     if not rule or d > rule.get("expiry", d):
                         continue
                     side = 1 if book.qty[key] > 0 else -1

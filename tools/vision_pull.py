@@ -205,8 +205,11 @@ def _job(ds: str, sym: str, iv: str | None, c: dict, *,
          dev_only: bool = False) -> dict:
     key = c["Key"]
     name = key.rsplit("/", 1)[-1]
-    return {"key": key, "url": f"{VISION}/{key}",
-            "checksum_url": f"{VISION}/{key}.CHECKSUM",
+    # Percent-encode non-ASCII symbol names (CJK perps exist); S3 keys
+    # stay raw for state identity, URLs must be ASCII.
+    quoted = urllib.parse.quote(key, safe="/")
+    return {"key": key, "url": f"{VISION}/{quoted}",
+            "checksum_url": f"{VISION}/{quoted}.CHECKSUM",
             "dataset": ds, "symbol": sym, "interval": iv,
             "filename": name, "bytes": c["Size"],
             "split": split_of(name, dev_only=dev_only)}
