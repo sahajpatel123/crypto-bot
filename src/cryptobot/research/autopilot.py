@@ -37,7 +37,8 @@ STATES = ("REGISTERED", "DEV_EVAL", "KILLED", "AWAIT_DATA",
 # {FAIL | SCREEN_PASS} -> FORWARD_PAPER -> FORWARD_COMPARE -> GATE_READY.
 B_STATES = ("FROZEN", "HOLDOUT_SCREEN", "SCREEN_PASS", "FORWARD_PAPER",
             "FORWARD_COMPARE")
-TERMINAL = {"KILLED", "FAIL"}
+C_STATES = ("DEV_SANITY", "AWAIT_FORWARD", "FORWARD_EVAL", "NOT_ESTABLISHED")
+TERMINAL = {"KILLED", "FAIL", "NOT_ESTABLISHED", "IMPRACTICAL"}
 PAPER_DAYS = 14
 FORWARD_MIN_DAYS = 60
 FORWARD_MIN_REBALANCES = 30
@@ -137,7 +138,7 @@ class Autopilot:
         state = self.read_state(hypothesis)
         if state["state"] == new_state:
             return state
-        if new_state not in STATES + B_STATES:
+        if new_state not in STATES + B_STATES + C_STATES:
             raise ValueError(f"unknown autopilot state {new_state}")
         if self.family == "A" and new_state in B_STATES:
             raise ValueError(f"Family A cannot enter {new_state}")
@@ -145,6 +146,9 @@ class Autopilot:
                 "AWAIT_CONFIRM_DATA", "CONFIRM", "PASS", "PAPER_14D",
                 "PAPER_COMPARE"):
             raise ValueError(f"Family B cannot enter {new_state}")
+        c_only = tuple(s for s in C_STATES if s != "NOT_ESTABLISHED")
+        if self.family != "C" and new_state in c_only:
+            raise ValueError(f"Family {self.family} cannot enter {new_state}")
         entry = {"hypothesis": hypothesis, "from": state["state"],
                  "to": new_state, "reason": reason,
                  "ts_utc": _utc_now(), "provenance": provenance,
@@ -235,6 +239,8 @@ class Autopilot:
     def _advance(self, hyp: str, entry: dict) -> dict:
         state = self.read_state(hyp)
         cur = state["state"]
+        if self.family == "C":
+            return self._advance_c(hyp, entry, cur)
         if cur in TERMINAL:
             return {"state": cur, "changed": False}
         if cur == "REGISTERED":
@@ -420,6 +426,51 @@ class Autopilot:
             details={"gates": dev.get("gates", {}),
                      "vault_frozen": frozen},
             provenance=self._provenance(dev))["state"], "changed": True}
+
+    def _advance_c(self, hyp: str, entry: dict, cur: str) -> dict:
+        """Family C: DEV sanity cannot confirm. FORWARD_PAPER follows a pass."""
+        if cur in TERMINAL or cur == "PASS":
+            paper = self._artifact("forward", hyp)
+            if cur == "PASS" and paper and paper.get("paper_started_utc"):
+                return {"state": self._transition(
+                    hyp, "FORWARD_PAPER", reason="forward paper started",
+                    details={"paper_started_utc": paper["paper_started_utc"]},
+                    provenance=self._provenance(paper))["state"],
+                    "changed": True}
+            return {"state": cur, "changed": False}
+        if cur == "REGISTERED":
+            return {"state": self._transition(
+                hyp, "AWAIT_FORWARD",
+                reason="C1 confirms on FORWARD only; holdout is burned",
+                details={"config_sha256": entry.get("config_sha256")})["state"],
+                "changed": True}
+        if cur in ("AWAIT_FORWARD", "DEV_SANITY", "FORWARD_EVAL"):
+            fwd = self._artifact("forward", hyp)
+            if fwd is None:
+                return {"state": cur if cur != "REGISTERED" else "AWAIT_FORWARD",
+                        "changed": False,
+                        "blocked": "forward/<H>.json not present; "
+                                   "90 forward days required"}
+            if str(fwd.get("provenance", "")).upper() == "SYNTHETIC":
+                return {"state": cur, "changed": False,
+                        "blocked": "synthetic forward artifact refused"}
+            if int(fwd.get("n_days") or 0) < 90:
+                return {"state": cur, "changed": False,
+                        "blocked": "fewer than 90 forward days"}
+            if fwd.get("decision") == "PASS":
+                return {"state": self._transition(
+                    hyp, "PASS", reason="forward confirmation passed",
+                    details={"beats_zero": fwd.get("beats_zero"),
+                             "beats_benchmark_apr": fwd.get(
+                                 "beats_benchmark_apr")})["state"],
+                    "changed": True}
+            return {"state": self._transition(
+                hyp, "FAIL", reason="forward confirmation failed",
+                details={"decision": fwd.get("decision")})["state"],
+                "changed": True}
+        if cur == "FORWARD_PAPER":
+            return {"state": cur, "changed": False}
+        return {"state": cur, "changed": False}
 
     def _refuse_invalidated_verdict(self, hyp: str) -> str | None:
         verdict = self._artifact("verdicts_b", hyp)

@@ -62,8 +62,8 @@ vault/autopilot artifacts, every claim cites command+output or file path.
 | Z2.1 | Configurable data root | DONE | `src/cryptobot/research/data_root.py`, `tests/unit/test_data_root.py`, `research/DATA_ROOT.md` |
 | Z2.2 | Family A dev eval on pilot + benchmark | DONE | `tools/family_a_dev.py` on external pilot (29 days, no quote channel) and local benchmark (aggTrade 248, fundingRate 10, markPrice 248). H1–H6 UNDERPOWERED/AWAIT_DATA. `estimate_power([])` IMPOSSIBLE, days_required null. Report `research/autopilot/reports/family-a-z2.json` |
 | Z3 | Passive launchd jobs + RECORDER_COSTS.md | PENDING | |
-| Z4 | C1 B4b prereg before any forward read | PENDING | |
-| Z5 | Adjudication table + cryptobot adjudicate | PENDING | |
+| Z4 | C1 B4b prereg before any forward read | DONE | `research/prereg/C1-b4b-carry.md` and `research/configs/C1.toml` committed before any forward read. Confirmation cell k=1.5, drift_band=0.05. Holdout BURNED |
+| Z5 | Adjudication table + cryptobot adjudicate | DONE | `research/prereg/ADJUDICATION.md` committed before launchd. `cryptobot adjudicate` hash chain. Tests: ARCHIVE_NEGATIVE unloads plists, PAPER_ONLY, READY_FOR_HUMAN_DECISION, SYNTHETIC refused, AWAIT_DATA force-closed. C1 holdout burn appended on `invalidations.json` |
 | Z6 | PROJECT_FINAL_REPORT.md + final-status | PENDING | |
 | Z7 | Suite green, tag v1.0-final | PENDING | |
 

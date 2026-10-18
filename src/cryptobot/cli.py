@@ -1640,6 +1640,83 @@ def cmd_dashboard(args: argparse.Namespace) -> int:
     return 0
 
 
+def _hypothesis_rows() -> list[dict]:
+    from cryptobot.research.autopilot import Autopilot
+    rows = []
+    for family, root in (("A", "research/autopilot"),
+                         ("B", "research/autopilot_b"),
+                         ("C", "research/autopilot_c")):
+        path = Path(root)
+        if not (path / "registry.json").exists():
+            continue
+        bot = Autopilot(path, family=family)
+        for hyp in sorted(bot.registry.get("hypotheses", {})):
+            state = bot.read_state(hyp)
+            dev = path / "dev" / f"{hyp}.json"
+            provenance = "OBSERVED"
+            if dev.exists():
+                try:
+                    provenance = json.loads(dev.read_text()).get(
+                        "provenance", provenance)
+                except ValueError:
+                    provenance = "UNKNOWN"
+            rows.append({"hypothesis": hyp, "family": family,
+                         "state": state.get("state"),
+                         "provenance": provenance})
+    return rows
+
+
+def cmd_adjudicate(args: argparse.Namespace) -> int:
+    """Idempotent project decision. Does not write a gate or arm file."""
+    from datetime import datetime, timezone
+    from cryptobot.research.adjudicate import run_adjudication
+    rows = _hypothesis_rows()
+    t0 = None
+    manifest = Path(getattr(args, "recorder", "data/recorder")) / "manifest.json"
+    if manifest.exists():
+        doc = json.loads(manifest.read_text())
+        stamps = [e.get("sealed_utc") for e in doc.get("entries", [])
+                  if e.get("sealed_utc")]
+        if stamps:
+            t0 = datetime.fromisoformat(min(stamps))
+    gate_is_go = False
+    gate_path = getattr(args, "gate_json", None)
+    if gate_path:
+        gate_is_go = _read_json(gate_path).get("gate") == "GO"
+    out = run_adjudication(
+        rows=rows, now=datetime.now(timezone.utc), t0=t0,
+        gate_is_go=gate_is_go,
+        chain_path=Path(args.chain),
+        plist_dir=Path(args.plist_dir),
+        verdict_path=Path(args.verdict),
+        notify=not args.no_notify)
+    print(json.dumps({k: out[k] for k in out if k != "closed"},
+                     indent=1, sort_keys=True, default=str))
+    return 0 if out["decision"] != "REFUSED_BROKEN_CHAIN" else 2
+
+
+def cmd_final_status(_args: argparse.Namespace) -> int:
+    """One screen: hypotheses, trials, and the adjudication clock."""
+    rows = _hypothesis_rows()
+    chain = Path("research/adjudication/chain.json")
+    last = None
+    if chain.exists():
+        doc = json.loads(chain.read_text())
+        if doc.get("entries"):
+            last = doc["entries"][-1].get("decision")
+    lines = ["cryptobot final status", ""]
+    for row in rows:
+        lines.append(f"{row['family']} {row['hypothesis']}: {row['state']}")
+    if not rows:
+        lines.append("no hypotheses registered")
+    lines.append("")
+    lines.append(f"adjudication: {last or 'not run'}")
+    lines.append("arming: human TTY only; this command does not arm")
+    lines.append("review: see PROJECT_FINAL_REPORT.md and research/prereg/ADJUDICATION.md")
+    print("\n".join(lines))
+    return 0
+
+
 def cmd_acceptance(args: argparse.Namespace) -> int:
     """F8.1: full/state-machine acceptance on synthetic + sandbox data."""
     from cryptobot.acceptance import run_acceptance
@@ -1845,6 +1922,19 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--autopilot-root", default="research/autopilot")
     p.add_argument("--risk-state", default=None)
     p.set_defaults(func=cmd_dashboard)
+    p = sub.add_parser("adjudicate",
+                       help="hash-chained project decision (Z5)")
+    p.add_argument("--chain", default="research/adjudication/chain.json")
+    p.add_argument("--plist-dir",
+                   default=str(Path.home() / "Library" / "LaunchAgents"))
+    p.add_argument("--verdict", default="FINAL_VERDICT.md")
+    p.add_argument("--recorder", default="data/recorder")
+    p.add_argument("--gate-json", default=None)
+    p.add_argument("--no-notify", action="store_true")
+    p.set_defaults(func=cmd_adjudicate)
+    p = sub.add_parser("final-status",
+                       help="one-screen project summary (Z6)")
+    p.set_defaults(func=cmd_final_status)
     p = sub.add_parser("acceptance", help="end-to-end acceptance (F8.1)")
     p.add_argument("--full", action="store_true")
     p.add_argument("--root", default=None)

@@ -62,12 +62,24 @@ def split_of(filename: str, *, dev_only: bool = False) -> str:
     """
     m = DAY_RE.search(filename)
     if m:
-        side = "dev" if m.group(1) < CUTOFF_DAY else "holdout"
+        stamp = m.group(1)
+        if stamp <= "2026-10-17" and stamp >= CUTOFF_DAY:
+            side = "holdout"
+        elif stamp > "2026-10-17":
+            side = "forward"
+        else:
+            side = "dev"
     else:
         m = MONTH_RE.search(filename)
         if not m:
             raise ValueError(f"no YYYY-MM[-DD] date in {filename!r}")
-        side = "dev" if m.group(1) < CUTOFF_MONTH else "holdout"
+        stamp = m.group(1)
+        if stamp <= "2026-10" and stamp >= CUTOFF_MONTH:
+            side = "holdout"
+        elif stamp > "2026-10":
+            side = "forward"
+        else:
+            side = "dev"
     if side == "holdout" and dev_only:
         return "skip"
     return side
@@ -306,12 +318,18 @@ def _sha256_file(path: Path) -> str:
     return h.hexdigest()
 
 
-def pull_job(job: dict, *, dev_dir: Path, holdout_dir: Path) -> dict:
+def pull_job(job: dict, *, dev_dir: Path, holdout_dir: Path,
+             forward_dir: Path | None = None) -> dict:
     if job["split"] == "skip":
         return {"status": "skipped", "reason": "dev-only leg"}
     if job["split"] == "unknown":
         return {"status": "skipped", "reason": "unparseable filename date"}
-    base = dev_dir if job["split"] == "dev" else holdout_dir
+    if job["split"] == "forward":
+        if forward_dir is None:
+            return {"status": "skipped", "reason": "forward dir not configured"}
+        base = forward_dir
+    else:
+        base = dev_dir if job["split"] == "dev" else holdout_dir
     dest = base / job["dataset"] / (job["interval"] or "na") / job["symbol"] / job["filename"]
     if dest.exists():
         return {"status": "ok", "path": str(dest), "resumed": True,
@@ -352,8 +370,13 @@ def cmd_pull(args: argparse.Namespace) -> int:
     t0 = time.time()
     with concurrent.futures.ThreadPoolExecutor(
             max_workers=int(args.workers)) as pool:
+        forward_dir = Path(args.forward_dir) if getattr(
+            args, "forward_dir", None) else None
+        if forward_dir is not None:
+            forward_dir.mkdir(parents=True, exist_ok=True)
         futs = {pool.submit(pull_job, j, dev_dir=dev_dir,
-                            holdout_dir=holdout_dir): j for j in jobs}
+                            holdout_dir=holdout_dir,
+                            forward_dir=forward_dir): j for j in jobs}
         for n, fut in enumerate(concurrent.futures.as_completed(futs), 1):
             if stop.is_set():
                 break
@@ -529,6 +552,7 @@ def build_parser() -> argparse.ArgumentParser:
     q.add_argument("--plan", required=True)
     q.add_argument("--dev-dir", required=True)
     q.add_argument("--holdout-dir", required=True)
+    q.add_argument("--forward-dir", default=None)
     q.add_argument("--workers", type=int, default=8)
     q.add_argument("--disk-floor-gb", type=float, default=10.0)
     q.add_argument("--state", required=True)

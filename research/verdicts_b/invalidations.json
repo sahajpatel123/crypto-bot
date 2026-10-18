@@ -1,5 +1,5 @@
 {
- "chain_head": "5bbbe3f726b6de7b13b40b9f960dcad13d221098424263899ffd2bd45e1e9e05",
+ "chain_head": "e8689ff09a8a093c9bc5a3a13adfc32acb51e7c12b0814d2384636e2c2609733",
  "entries": [
   {
    "action": "invalidate",
@@ -45,6 +45,20 @@
    "ts_utc": "2026-10-18T19:22:21.237704+00:00",
    "verdict_file": "research/verdicts_b/B4.json",
    "verdict_sha256": "2974cc1a24cdc1ef99238380919a9070e271427798482a5ded351e03bda028e8"
+  },
+  {
+   "action": "burn-holdout",
+   "burned_hypotheses": [
+    "C1",
+    "B4b"
+   ],
+   "decision": "Z4",
+   "entry_hash": "e8689ff09a8a093c9bc5a3a13adfc32acb51e7c12b0814d2384636e2c2609733",
+   "holdout": "BURNED",
+   "hypothesis": "C1",
+   "prev": "5bbbe3f726b6de7b13b40b9f960dcad13d221098424263899ffd2bd45e1e9e05",
+   "rule": "C1 is B4b. Holdout stays burned. Confirmation is FORWARD only.",
+   "ts_utc": "2026-10-18T21:37:00.348449+00:00"
   }
  ],
  "format": "cryptobot-verdict-invalidations/1"

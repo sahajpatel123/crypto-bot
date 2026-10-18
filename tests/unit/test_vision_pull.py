@@ -36,6 +36,21 @@ def test_split_daily_boundary():
     assert vision_pull.split_of("BTCUSDT-metrics-2023-12-31.zip") == "dev"
     assert vision_pull.split_of("BTCUSDT-metrics-2024-01-01.zip") == "holdout"
     assert vision_pull.split_of("BTCUSDT-1d-2026-10-17.zip") == "holdout"
+    assert vision_pull.split_of("BTCUSDT-1d-2026-10-18.zip") == "forward"
+
+
+def test_forward_refresh_drops_holdout_jobs():
+    import sys
+    sys.path.insert(0, str(REPO / "tools"))
+    import forward_refresh
+    plan = {"jobs": [
+        {"split": "holdout", "filename": "BTCUSDT-1d-2024-01.zip"},
+        {"split": "forward", "filename": "BTCUSDT-1d-2026-10-18.zip"},
+        {"split": "dev", "filename": "BTCUSDT-1d-2023-01.zip"},
+    ]}
+    kept = forward_refresh.forward_only(plan)
+    assert [j["split"] for j in kept["jobs"]] == ["forward"]
+    assert kept["dropped_non_forward"] == 2
 
 
 def test_split_dev_only_skips_holdout():

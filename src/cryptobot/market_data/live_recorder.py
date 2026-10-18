@@ -263,6 +263,15 @@ class RecorderWriter:
         self._gz.write((json.dumps(record, sort_keys=True) + "\n").encode())
         self.records += 1
         self._since_fsync += 1
+        if self.records % 200 == 0 and self._raw_path is not None:
+            self._fsync()
+            _atomic_json(self.root / "heartbeat.json", {
+                "ts_utc": _utc_now(),
+                "state": "running",
+                "records": self.records,
+                "chunk": self._raw_path.name,
+                "bytes": self._raw_path.stat().st_size,
+            })
         period = self._now() - self._chunk_start_ms / 1000.0
         if period >= self.config.chunk_seconds:
             self._rotate()
