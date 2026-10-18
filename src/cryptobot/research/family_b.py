@@ -154,9 +154,9 @@ def signals_b2(data: MarketData, params: dict, dates: list[pd.Timestamp],
             sig_s = _leg_vol(data, short_new, d) if len(short_new) else None
             vols = [v for v in (sig, sig_s) if v is not None]
             scale = 0.10 / max(vols) if vols else 1.0
-            for s in long_new:
+            for s in sorted(long_new):
                 w[s] = scale / len(long_new)
-            for s in short_new:
+            for s in sorted(short_new):
                 w[s] = -scale / len(short_new)
         prev_long, prev_short = long_new, short_new
         targets[d] = _cap_weights(w)
@@ -165,7 +165,7 @@ def signals_b2(data: MarketData, params: dict, dates: list[pd.Timestamp],
 
 def _leg_vol(data: MarketData, leg: set[str], d: pd.Timestamp) -> float | None:
     series = []
-    for sym in leg:
+    for sym in sorted(leg):
         df = data.daily.get(sym)
         if df is None:
             return None
