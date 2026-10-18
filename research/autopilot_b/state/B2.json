@@ -1032,12 +1032,12 @@
   {
    "reason": "prereg present; dev evaluation due",
    "state": "DEV_EVAL",
-   "ts_utc": "2026-10-18T14:18:13.755545+00:00"
+   "ts_utc": "2026-10-18T16:34:20.034665+00:00"
   },
   {
    "reason": "dev promotion failed",
    "state": "KILLED",
-   "ts_utc": "2026-10-18T14:18:46.170086+00:00"
+   "ts_utc": "2026-10-18T16:34:20.166281+00:00"
   }
  ],
  "hypothesis": "B2",
@@ -1045,5 +1045,5 @@
  "provenance": "OBSERVED_PUBLIC",
  "reason": "dev promotion failed",
  "state": "KILLED",
- "updated_utc": "2026-10-18T14:18:46.170086+00:00"
+ "updated_utc": "2026-10-18T16:34:20.166281+00:00"
 }

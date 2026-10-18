@@ -1,6 +1,6 @@
 {
  "format": "cryptobot-autopilot-report/1",
- "generated_utc": "2026-10-18T15:47:02.209994+00:00",
+ "generated_utc": "2026-10-18T16:34:20.189797+00:00",
  "hypotheses": [
   {
    "hypothesis": "B1",
@@ -8,7 +8,7 @@
    "provenance": "OBSERVED_PUBLIC",
    "reason": "dev promotion failed",
    "state": "KILLED",
-   "updated_utc": "2026-10-18T14:18:46.163908+00:00"
+   "updated_utc": "2026-10-18T16:34:20.163034+00:00"
   },
   {
    "hypothesis": "B2",
@@ -16,7 +16,7 @@
    "provenance": "OBSERVED_PUBLIC",
    "reason": "dev promotion failed",
    "state": "KILLED",
-   "updated_utc": "2026-10-18T14:18:46.170086+00:00"
+   "updated_utc": "2026-10-18T16:34:20.166281+00:00"
   },
   {
    "hypothesis": "B3",
@@ -24,15 +24,15 @@
    "provenance": "OBSERVED_PUBLIC",
    "reason": "dev promotion failed",
    "state": "KILLED",
-   "updated_utc": "2026-10-18T14:18:46.175829+00:00"
+   "updated_utc": "2026-10-18T16:34:20.169313+00:00"
   },
   {
    "hypothesis": "B4",
    "power": null,
-   "provenance": "OBSERVED",
-   "reason": "holdout screen passed",
-   "state": "SCREEN_PASS",
-   "updated_utc": "2026-10-18T15:28:12.951836+00:00"
+   "provenance": "OBSERVED_PUBLIC",
+   "reason": "dev promotion failed",
+   "state": "KILLED",
+   "updated_utc": "2026-10-18T16:34:20.172427+00:00"
   },
   {
    "hypothesis": "B5",
@@ -40,7 +40,7 @@
    "provenance": "OBSERVED_PUBLIC",
    "reason": "dev promotion failed",
    "state": "KILLED",
-   "updated_utc": "2026-10-18T14:18:46.183582+00:00"
+   "updated_utc": "2026-10-18T16:34:20.175398+00:00"
   },
   {
    "hypothesis": "B6",
@@ -48,7 +48,7 @@
    "provenance": "OBSERVED_PUBLIC",
    "reason": "dev promotion failed",
    "state": "KILLED",
-   "updated_utc": "2026-10-18T15:28:12.826550+00:00"
+   "updated_utc": "2026-10-18T16:34:20.179180+00:00"
   },
   {
    "hypothesis": "B7",
@@ -56,9 +56,9 @@
    "provenance": "OBSERVED_PUBLIC",
    "reason": "dev promotion failed",
    "state": "KILLED",
-   "updated_utc": "2026-10-18T14:18:46.191491+00:00"
+   "updated_utc": "2026-10-18T16:34:20.183810+00:00"
   }
  ],
  "log_problems": [],
- "terminal_no_edge": false
+ "terminal_no_edge": true
 }
