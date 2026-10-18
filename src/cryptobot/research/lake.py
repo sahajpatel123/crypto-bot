@@ -179,48 +179,106 @@ def _write_parquet(df: pd.DataFrame, dest: Path) -> None:
     df.to_parquet(dest, index=False, compression="zstd")
 
 
-def build_lake(raw_dir: str | Path, lake_dir: str | Path) -> dict:
-    """Decode DEV zips -> partitioned parquet + hash-chained manifest."""
+def _build_one_klines(args) -> dict | None:
+    dataset, iv_name, sym, zips, lake_s = args
+    import pandas as _pd
+    from pathlib import Path as _P
+    lake = _P(lake_s)
+    frames = [read_klines_zip(z) for z in sorted(zips)]
+    if not frames:
+        return None
+    df = _pd.concat(frames, ignore_index=True)
+    df = df.sort_values("open_time").drop_duplicates(
+        subset="open_time", keep="first").reset_index(drop=True)
+    if dataset == "spot":
+        dest = lake / "spot" / f"symbol={sym}" / "data.parquet"
+    else:
+        dest = lake / dataset / f"interval={iv_name}" / f"symbol={sym}" \
+            / "data.parquet"
+    _write_parquet(df, dest)
+    return {"entry": _file_entry(lake, dest, rows=len(df))}
+
+
+def _build_one_aux(args) -> dict | None:
+    dataset, sym, zips, lake_s = args
+    import pandas as _pd
+    from pathlib import Path as _P
+    lake = _P(lake_s)
+    reader = read_funding_zip if dataset == "fundingRate" else read_metrics_zip
+    key = "calc_time" if dataset == "fundingRate" else "create_time"
+    frames = [reader(z) for z in sorted(zips)]
+    df = _pd.concat(frames, ignore_index=True)
+    df = df.sort_values(key).drop_duplicates(
+        subset=key, keep="first").reset_index(drop=True)
+    dest = lake / ("funding" if dataset == "fundingRate" else "metrics") \
+        / f"symbol={sym}" / "data.parquet"
+    _write_parquet(df, dest)
+    return {"entry": _file_entry(lake, dest, rows=len(df))}
+
+
+def build_lake(raw_dir: str | Path, lake_dir: str | Path, *,
+               symbols: list[str] | None = None,
+               workers: int = 1) -> dict:
+    """Decode DEV zips -> partitioned parquet + hash-chained manifest.
+
+    symbols: restrict to a subset (e.g. hourly build for the metrics
+    universe only). workers: ThreadPoolExecutor parallelism (GIL-light
+    CSV/parquet work; deterministic manifest via sorted post-pass).
+    """
+    import concurrent.futures
     from datetime import datetime
 
     raw, lake = Path(raw_dir), Path(lake_dir)
-    manifest: dict[str, Any] = {
-        "format": MANIFEST_FORMAT, "schema_version": SCHEMA_VERSION,
-        "provenance": PROVENANCE, "chain_head": "genesis", "entries": [],
-        "created_utc": datetime.now(timezone.utc).isoformat()}
+    keep = set(symbols) if symbols else None
+    klines_tasks, aux_tasks = [], []
     for dataset in ("klines", "markPriceKlines", "premiumIndexKlines",
                     "spot"):
-        for iv_dir in sorted((raw / dataset).glob("*")) if (raw / dataset).exists() else []:
+        if not (raw / dataset).exists():
+            continue
+        for iv_dir in sorted((raw / dataset).glob("*")):
             for sym_dir in sorted(iv_dir.glob("*")):
-                frames = [read_klines_zip(z) for z in sorted(sym_dir.glob("*.zip"))]
-                if not frames:
+                if keep is not None and sym_dir.name not in keep:
                     continue
-                df = pd.concat(frames, ignore_index=True)
-                df = df.sort_values("open_time").drop_duplicates(
-                    subset="open_time", keep="first").reset_index(drop=True)
-                if dataset == "spot":
-                    dest = lake / "spot" / f"symbol={sym_dir.name}" / "data.parquet"
-                else:
-                    dest = lake / dataset / f"interval={iv_dir.name}" / f"symbol={sym_dir.name}" / "data.parquet"
-                _write_parquet(df, dest)
-                _chain_append(manifest, _file_entry(lake, dest, rows=len(df)))
-    for dataset, reader in (("fundingRate", read_funding_zip),
-                            ("metrics", read_metrics_zip)):
+                zips = sorted(sym_dir.glob("*.zip"))
+                if zips:
+                    klines_tasks.append((dataset, iv_dir.name, sym_dir.name,
+                                         zips, str(lake)))
+    for dataset in ("fundingRate", "metrics"):
         base = raw / dataset
         if not base.exists():
             continue
         for sym_dir in sorted(p for p in base.rglob("*") if p.is_dir()
                               and list(p.glob("*.zip"))):
-            sym = sym_dir.name
-            frames = [reader(z) for z in sorted(sym_dir.glob("*.zip"))]
-            key = "calc_time" if dataset == "fundingRate" else "create_time"
-            df = pd.concat(frames, ignore_index=True)
-            df = df.sort_values(key).drop_duplicates(
-                subset=key, keep="first").reset_index(drop=True)
-            dest = lake / ("funding" if dataset == "fundingRate" else "metrics") \
-                / f"symbol={sym}" / "data.parquet"
-            _write_parquet(df, dest)
-            _chain_append(manifest, _file_entry(lake, dest, rows=len(df)))
+            if keep is not None and sym_dir.name not in keep:
+                continue
+            zips = sorted(sym_dir.glob("*.zip"))
+            if zips:
+                aux_tasks.append((dataset, sym_dir.name, zips, str(lake)))
+    entries = []
+    if workers and workers > 1:
+        with concurrent.futures.ThreadPoolExecutor(
+                max_workers=workers) as pool:
+            futs = ([pool.submit(_build_one_klines, t) for t in klines_tasks]
+                    + [pool.submit(_build_one_aux, t) for t in aux_tasks])
+            for fut in concurrent.futures.as_completed(futs):
+                res = fut.result()
+                if res is not None:
+                    entries.append(res["entry"])
+    else:
+        for t in klines_tasks:
+            res = _build_one_klines(t)
+            if res is not None:
+                entries.append(res["entry"])
+        for t in aux_tasks:
+            res = _build_one_aux(t)
+            if res is not None:
+                entries.append(res["entry"])
+    manifest: dict[str, Any] = {
+        "format": MANIFEST_FORMAT, "schema_version": SCHEMA_VERSION,
+        "provenance": PROVENANCE, "chain_head": "genesis", "entries": [],
+        "created_utc": datetime.now(timezone.utc).isoformat()}
+    for e in sorted(entries, key=lambda x: x["path"]):
+        _chain_append(manifest, e)
     mp = lake / "manifest.json"
     mp.write_text(json.dumps(manifest, indent=1, sort_keys=True) + "\n")
     return manifest

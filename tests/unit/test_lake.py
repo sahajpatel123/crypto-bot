@@ -144,3 +144,18 @@ def test_read_klines_accepts_header_or_not(tmp_path):
     b = read_klines_zip(tmp_path / "n.zip")
     assert len(a) == len(b) == 1
     assert a["close"].iloc[0] == b["close"].iloc[0] == 0.004531
+
+
+def test_build_lake_workers_and_symbol_filter_match(tmp_path):
+    from cryptobot.research.lake import build_lake, verify_lake_manifest
+
+    raw = _dev_tree(tmp_path)
+    m1 = build_lake(raw, tmp_path / "lake1", workers=4)
+    m2 = build_lake(raw, tmp_path / "lake2", workers=1,
+                    symbols=["BTCUSDT"])
+    paths1 = sorted(e["path"] for e in m1["entries"])
+    paths2 = sorted(e["path"] for e in m2["entries"])
+    assert all("BTCUSDT" in p for p in paths2)
+    assert len(paths2) < len(paths1)
+    assert verify_lake_manifest(tmp_path / "lake1")["ok"] is True
+    assert verify_lake_manifest(tmp_path / "lake2")["ok"] is True
