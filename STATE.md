@@ -234,12 +234,24 @@ Started: 2026-10-18. Worktree:
 never read. Campaign `data/captures/campaign-1day-*` events never read
 (manifest/heartbeat/status metadata only).
 
+RECOVERY 2026-10-18: the /private/.../T/opencode volume was wiped
+(session migrated hosts; BOTH worktrees + all scratch lost). Tip
+08b6f4b intact in the shared object store (verified via
+.git/worktrees admin + fsck: no newer dangling commit of mine).
+Recreated worktree at /Users/sahajpatel/Code/cryto-bot-run2 @ 08b6f4b
+(detached, persistent home disk — see D-RUN2-03). Lost: F2.6
+uncommitted work (redone below), mutation .txt artifacts (counts kept:
+AFTER fillrealism 181/33, margin 158/56, ordermanager 1491/15,
+policy 930/101, rounding 107/10, sizing 232/36; BEFORE reruns with
+the fixed harness). Main checkout never touched during recovery
+(git metadata reads + worktree admin only).
+
 ## RUN2 task list (phase order F0,F3,F1,F2,F4,F5,F6,F7,F8,F9)
 
 | ID | Task | Status |
 |---|---|---|
 | F0.1 | Re-entry: worktree + read committed docs | DONE |
-| F0.2 | Hermetic suite: zone test via git object + guard test, full suite 0 failed | IN_PROGRESS (fix 1e96e80; full suite sh_14bf34aa running) |
+| F0.2 | Hermetic suite: zone test via git object + guard test, full suite 0 failed | IN_PROGRESS (post-recovery suite to launch at new HEAD) |
 | F0.3 | Claim audit PASS/REOPEN table | DONE (21 items, 0 REOPEN; item 21 full-suite shared w/F0.2) |
 | F0.4a | Leverage-bracket gate into LIVE admission + stale reject | DONE |
 | F0.4b | Break-even re-derivation + tests + fix >60% statement | DONE |
@@ -253,7 +265,7 @@ never read. Campaign `data/captures/campaign-1day-*` events never read
 | F3.5 | Vault DEV/CONFIRM + token gate + import-lint | DONE (integrated) |
 | F3.6 | recorder CLI + systemd + compose | DONE |
 | F1.1 | Property tests (Hypothesis) | DONE |
-| F1.2 | Mutation testing risk/execution/adapters | IN_PROGRESS (scoped loop sh_14c4e13c in mut worktree: sizing/margin/rounding/fillrealism/policy/ordermanager) |
+| F1.2 | Mutation testing risk/execution/adapters | IN_PROGRESS (before/after battery to relaunch in fresh mut worktree; AFTER counts kept: 3099 killed / 251 survived total) |
 | F1.3 | Chaos matrix sandbox venue | DONE (40 cells green) |
 | F1.4 | Determinism replay byte-identical | DONE |
 | F1.5 | Differential paper vs sandbox | DONE |
@@ -264,7 +276,7 @@ never read. Campaign `data/captures/campaign-1day-*` events never read
 | F2.3 | fixtures ingest CLI | DONE |
 | F2.4 | deploy kit + host-check | TODO |
 | F2.5 | Credential safety checks | TODO |
-| F2.6 | Clock-skew guard halts entries | TODO |
+| F2.6 | Clock-skew guard halts entries | DONE (redone post-recovery) |
 | F4.1 | Prereg H4-H6 committed pre-eval (budget ≤8) | TODO |
 | F4.2-F4.7 | Autopilot state machine + dev/confirm/paper stages | TODO |
 | F4.8 | NO-EDGE terminal report | TODO |

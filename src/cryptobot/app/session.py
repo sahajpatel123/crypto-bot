@@ -291,6 +291,8 @@ class Session:
         self._reads_degraded = False
         # A#2: orphan-exposure alert latch (one checkpoint per episode).
         self._orphan_alerted = False
+        # F2.6: clock-skew refresh throttle (monotonic wall, 60s).
+        self._last_skew_mono = 0.0
         self._user_stream_attachment: Any | None = None
         self._known_reservations: set[str] = set()
         self._cmd_seq = 0
@@ -2162,7 +2164,48 @@ class Session:
             health = HealthStatus(
                 False, tuple(health.reasons) + ("health:mark-missing",),
                 health.latched)
+        skew_reason = self._check_clock_skew()
+        if skew_reason is not None:
+            health = HealthStatus(
+                False, tuple(health.reasons) + (skew_reason,),
+                health.latched)
         self._apply_health_gate(health)
+
+    def _check_clock_skew(self) -> str | None:
+        """F2.6: halt entries when skew exceeds the recvWindow margin.
+
+        Refreshes the engine offset at most every 60s (one public
+        REST call); evaluates on the last-known offset otherwise.
+        Blocks at |skew| > 80% of recvWindow (signed requests die at
+        100%; the 20% margin covers drift between refreshes).
+        Capability-guarded: engines without skew reporting skip.
+        Returns the gate reason, or None when healthy/unsampled.
+        """
+        skew_fn = getattr(self.engine, "clock_skew_ms", None)
+        window_fn = getattr(self.engine, "recv_window_ms", None)
+        refresh_fn = getattr(self.engine, "refresh_clock_offset", None)
+        if not callable(skew_fn) or not callable(window_fn):
+            return None
+        now_mono = time.monotonic()
+        if callable(refresh_fn) and now_mono - self._last_skew_mono >= 60.0:
+            self._last_skew_mono = now_mono
+            try:
+                refresh_fn()
+            except Exception:  # noqa: BLE001 — keep last-known offset.
+                pass
+        try:
+            skew = skew_fn()
+            window = window_fn()
+        except (ValueError, KeyError, AttributeError):
+            return None
+        if skew is None:
+            return None
+        try:
+            if abs(float(skew)) > float(window) * 0.8:
+                return "health:clock-skew"
+        except (TypeError, ValueError):
+            return None
+        return None
 
     # -- command intentions (contract v1 §4) -------------------------------
     def _new_command(self, kind: str, payload: dict[str, Any]) -> str:

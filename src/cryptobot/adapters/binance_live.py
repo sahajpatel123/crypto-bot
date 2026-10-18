@@ -341,6 +341,7 @@ class BinanceLiveEngine:
         self._now_utc = now_utc or (lambda: datetime.now(timezone.utc))
         self._now_ms = lambda: int(self._now_utc().timestamp() * 1000)
         self._offset_ms = 0
+        self._offset_synced = False
         self._ready = False
         self._closed = False
         self._exit_only_reasons: set[str] = set()
@@ -645,11 +646,32 @@ class BinanceLiveEngine:
             raise VenueRejectedError(exc.status, exc.code, exc.msg) from None
 
     # -- readiness (time sync, filters, fees, margin mode, leverage) -----------
+    def clock_skew_ms(self) -> float | None:
+        """Last measured venue-minus-local offset (None before first sync)."""
+        return float(self._offset_ms) if self._offset_synced else None
+
+    def recv_window_ms(self) -> int:
+        """Signed-request window the skew is judged against (F2.6)."""
+        return int(self._recv_window)
+
+    def refresh_clock_offset(self) -> float:
+        """Re-measure skew via server time (F2.6 continuous guard).
+
+        One public REST call; updates _offset_ms and returns it.
+        Raises VenueHttpError on transport failure (caller throttles
+        and degrades; staleness is bounded by the refresh cadence).
+        """
+        server_ms = int(self._public("GET", "/fapi/v1/time")["serverTime"])
+        self._offset_ms = server_ms - self._now_ms()
+        self._offset_synced = True
+        return float(self._offset_ms)
+
     def _ensure_ready(self, symbol: str) -> None:
         if self._ready and symbol in self._filters:
             return
         server_ms = int(self._public("GET", "/fapi/v1/time")["serverTime"])
         self._offset_ms = server_ms - self._now_ms()
+        self._offset_synced = True
         if abs(self._offset_ms) > self._recv_window:
             raise VenueRejectedError(0, None,
                                      f"clock skew {self._offset_ms}ms exceeds "

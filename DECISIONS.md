@@ -243,3 +243,14 @@ Meta Muse Spark.
   the 33-finding adversarial triage (F0.5). No threshold changed;
   scope narrowed with this justification; the mutmut loop + config
   are reproducible (tools/mutmut scope in STATE F1.2).
+- D-RUN2-03 (recovery worktree relocation): the FPS-preferred
+  /private/.../T/opencode volume was wiped mid-run (host migration),
+  destroying both worktrees and all scratch. Tip 08b6f4b recovered
+  intact from the shared object store (verified: admin HEAD +
+  fsck, no newer dangling commit of mine). New worktree lives at
+  /Users/sahajpatel/Code/cryto-bot-run2 (persistent home disk).
+  Rationale: a worktree carrying hours of committed work is not
+  "temporary" in the scratch sense; temp-dir volatility already
+  cost one redo (F2.6) plus one mutation battery. Scratch outputs
+  (logs, result .txts) stay in T/opencode (recreatable); everything
+  load-bearing lives in git + home disk from here on.
