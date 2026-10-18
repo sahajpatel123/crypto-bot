@@ -1258,6 +1258,37 @@ def cmd_arm(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_calibrate(args: argparse.Namespace) -> int:
+    """Fit a versioned cost model from fill observations (F2.2)."""
+    from cryptobot.research.calibrate import fit_cost_model
+
+    current = None
+    if args.current:
+        try:
+            current = json.loads(Path(args.current).read_text(
+                encoding="utf-8"))
+        except (OSError, ValueError) as exc:
+            print(f"calibrate: cannot read --current: {exc}",
+                  file=sys.stderr)
+            return 2
+    try:
+        doc = fit_cost_model(
+            list(args.observations or []), list(args.fills or []),
+            current=current, allow_relax=bool(args.allow_relax),
+            relax_reason=args.relax_reason,
+            now_utc=datetime.now(timezone.utc).isoformat())
+    except ValueError as exc:
+        print(f"calibrate: refused ({exc})", file=sys.stderr)
+        return 2
+    text = json.dumps(doc, indent=1, sort_keys=True)
+    print(text)
+    if args.out:
+        Path(args.out).write_text(text + "\n", encoding="utf-8")
+        print(f"calibrate: wrote {args.out} "
+              f"version={doc['version']}")
+    return 0
+
+
 def cmd_demo_drill(args: argparse.Namespace) -> int:
     """Offline demo-drill scaffold (T4.2): hashed JSON, sandbox steps.
 
@@ -1386,6 +1417,17 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("demo-drill")
     p.add_argument("--out", default=None)
     p.set_defaults(func=cmd_demo_drill)
+    p = sub.add_parser("calibrate")
+    p.add_argument("--fills", nargs="*", default=[],
+                   help="fills_drift.jsonl files (latency only)")
+    p.add_argument("--observations", nargs="*", default=[],
+                   help="realized-slippage observation JSONL files")
+    p.add_argument("--current", default=None,
+                   help="previous cost-model JSON (version chain)")
+    p.add_argument("--out", default=None)
+    p.add_argument("--allow-relax", action="store_true")
+    p.add_argument("--relax-reason", default=None)
+    p.set_defaults(func=cmd_calibrate)
     p = sub.add_parser("recorder")
     p.add_argument("recorder_cmd", choices=["start", "stop", "status",
                                             "verify"])

@@ -1835,12 +1835,14 @@ class Session:
                     if resolved == payload.client_order_id:
                         submitted = self._submit_ts.pop(key)
                         break
+            dispatch_ms: float | None = None
             if submitted is not None:
                 try:
-                    self._dispatch_ms.append(
-                        (payload.ts_utc - submitted).total_seconds() * 1000)
+                    dispatch_ms = (
+                        payload.ts_utc - submitted).total_seconds() * 1000
+                    self._dispatch_ms.append(dispatch_ms)
                 except (TypeError, AttributeError):
-                    pass
+                    dispatch_ms = None
             outcome = self._apply_fill(
                 client_order_id=payload.client_order_id,
                 execution_id=payload.execution_id,
@@ -1848,7 +1850,8 @@ class Session:
                 qty=payload.qty, price=payload.price, fee=payload.fee,
                 ts_utc=payload.ts_utc, liquidity=payload.liquidity,
                 slippage_drift_bps=getattr(payload,
-                                           "slippage_drift_bps", 0.0))
+                                           "slippage_drift_bps", 0.0),
+                dispatch_ms=dispatch_ms)
         elif event.kind in ("cancel", "reject", "expire"):
             if self.store.record_event(
                     self.run_id, payload.client_order_id, event.kind,
@@ -1918,7 +1921,8 @@ class Session:
     def _apply_fill(self, *, client_order_id: str, execution_id: str,
                     instrument: str, side: str, qty: float, price: float,
                     fee: float, ts_utc: Any, liquidity: str,
-                    slippage_drift_bps: float = 0.0) -> str:
+                    slippage_drift_bps: float = 0.0,
+                    dispatch_ms: float | None = None) -> str:
         """Book one fill increment exactly once (contract v1 §3).
 
         Returns applied|duplicate|unbooked|rejected. A staged legacy
@@ -1984,7 +1988,8 @@ class Session:
             "instrument": instrument,
             "raw_fee": float(fee or 0.0),
             "slippage_drift_bps": drift_bps, "drift_fee": drift_fee,
-            "booked_fee": booked_fee, "ts_utc": ts_iso})
+            "booked_fee": booked_fee, "dispatch_ms": dispatch_ms,
+            "ts_utc": ts_iso})
         self._equity_dirty = True
         self._note_fill_exposure(client_order_id, execution_id)
         status = self._tracked_status(client_order_id)

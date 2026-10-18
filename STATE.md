@@ -260,7 +260,7 @@ never read. Campaign `data/captures/campaign-1day-*` events never read
 | F1.6 | Fuzz REST/WS parsers | DONE |
 | F1.7 | Perf regression thresholds | DONE |
 | F2.1 | Close PARTIAL/BLOCKED non-credentialed | TODO |
-| F2.2 | calibrate CLI + conservative-only auto-update | TODO |
+| F2.2 | calibrate CLI + conservative-only auto-update | DONE |
 | F2.3 | fixtures ingest CLI | TODO |
 | F2.4 | deploy kit + host-check | TODO |
 | F2.5 | Credential safety checks | TODO |
