@@ -313,3 +313,12 @@ Meta Muse Spark.
   HOLDOUT; import lint extended to authorize_holdout_decode/
   decode_holdout/holdout_frames. Legal per E2.2: no Family B hypothesis
   is frozen yet; Family A CONFIRM path untouched (14/14 vault tests green).
+- D-034 (E4 mechanics clarifications, pre-evaluation): implementing the
+  frozen B-preregs surfaced under-specifications; resolved WITHOUT
+  touching prereg text, thresholds, grids, or criteria, before any lake
+  byte was decoded (pull still running): (a) B2 "legs dollar-equal" +
+  "each leg to 10% vol" conflict -> equal-dollar legs kept exact, uniform
+  scale so the hotter trailing-60d leg sits at 10% (neutrality is
+  load-bearing and tested); (b) anchored walk-forward: embargo_days folds
+  into the purge gap (35d total; separate post-test embargo would only
+  punch holes in expanding trains); documented in slow_stats.py.

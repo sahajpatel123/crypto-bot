@@ -35,12 +35,12 @@ vault/autopilot artifacts, every claim cites command+output or file path.
 | E2.2 | Vault HOLDOUT class + seal holdout pre-analysis + import lint | PARTIAL | code+CLI+8 tests done (d9ec258); sealing when bytes land |
 | E2.3 | Family B budget (8) + Holm family justification | DONE | SPLIT.md + D-032 |
 | E3 | Family B preregs B1–B7 committed pre-evaluation | TODO | |
-| E4.1 | Slow backtester vectorized + event reference + differential | TODO | |
-| E4.2 | Realism (fees+50%, funding, sqrt impact, filters, liq, delist) | TODO | |
-| E4.3 | Capital sweep 120/1000/10000 | TODO | |
-| E4.4 | Leak detectors as tests | TODO | |
+| E4.1 | Slow backtester vectorized + event reference + differential | DONE | `slow_backtest.py`, differential 1e-9, 10 engine tests |
+| E4.2 | Realism (fees+50%, funding, sqrt impact, filters, liq, delist) | DONE | hand-computed cost test; liq/delist/spot/stops |
+| E4.3 | Capital sweep 120/1000/10000 | DONE | `capital_sweep` + test |
+| E4.4 | Leak detectors as tests | DONE | shift/shuffle/SR3/no-lookahead signals |
 | E4.5 | Reviewer sub-agent breaks E4; fix findings | TODO | |
-| E5 | Statistics module + tests (WF, bootstrap, DSR, PBO, SPA, plateau, regimes, DD, capacity) | TODO | |
+| E5 | Statistics module + tests (WF, bootstrap, DSR, PBO, SPA, plateau, regimes, DD, capacity) | DONE | `slow_stats.py`, 9 tests |
 | E6.1 | DEV evaluation, all trials counted, kill failures | TODO | |
 | E6.2 | Freeze survivors, holdout screen once via verdict | TODO | |
 | E6.3 | Autopilot Family B extension (FROZEN/HOLDOUT_SCREEN/SCREEN_PASS/FORWARD_*) | TODO | |
