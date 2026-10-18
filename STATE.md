@@ -11,7 +11,7 @@ vault/autopilot artifacts, every claim cites command+output or file path.
 
 | Item | Status | Evidence |
 |---|---|---|
-| Suite green, 0 failed | E0.1 PENDING-BENCH | nobench 1501 passed/1 skipped; bench running |
+| Suite green, 0 failed | DONE | 1528 passed, 1 skipped, 0 failed |
 | Split + holdout sealed BEFORE analysis | TODO (E2) | |
 | Preregs committed before evaluations | TODO (E3) | |
 | Leak tests present and passing | TODO (E4.4) | |
@@ -25,12 +25,12 @@ vault/autopilot artifacts, every claim cites command+output or file path.
 
 | ID | Task | Status | Evidence |
 |---|---|---|---|
-| E0.1 | Re-entry: read memory, full suite 0 failed | IN_PROGRESS | nobench 1501/1 skipped; bench running `edge-suite-bench.log` |
+| E0.1 | Re-entry: read memory, full suite 0 failed | DONE | 1501 passed/1 skipped nobench + 27 bench = 1528/1/0 failed |
 | E0.2 | Autopilot run-once Family A, record dev outcomes | DONE | all H1–H6 DEV_EVAL, no dev artifacts; left to timer |
 | E1.1 | Vision inventory, DATA_INVENTORY.md | DONE | `tools/vision_inventory.py`, `DATA_INVENTORY.md`; probes verified |
 | E1.2 | Checksummed download (1h/1d all, 1m top-20 DEV-only, funding, mark/prem, metrics subset) | IN_PROGRESS | tool+tests committed; pass-1 pull running |
-| E1.3 | Parquet store + hash manifest + DQ report | TODO | |
-| E1.4 | Point-in-time universe + no-lookahead test | TODO | |
+| E1.3 | Parquet store + hash manifest + DQ report | DONE (code) | `research/lake.py`, 4 tests; build runs when bytes land |
+| E1.4 | Point-in-time universe + no-lookahead test | DONE | `research/universe.py`, 5 tests incl. lookahead proof |
 | E2.1 | SPLIT.md prereg + commit (DEV/HOLDOUT/FORWARD, detectable Sharpe) | DONE | `research/prereg/SPLIT.md` fb95e02 |
 | E2.2 | Vault HOLDOUT class + seal holdout pre-analysis + import lint | PARTIAL | code+CLI+8 tests done (d9ec258); sealing when bytes land |
 | E2.3 | Family B budget (8) + Holm family justification | DONE | SPLIT.md + D-032 |
