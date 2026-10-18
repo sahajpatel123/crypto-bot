@@ -282,3 +282,22 @@ Meta Muse Spark.
   the real Session + sandbox venue; acceptance adds submit/stream fault
   scenarios. The invariant is flat or verified-protected, never an
   unowned naked position; the new orphan/shadow-stop guards enforce it.
+
+## live/edge-sprint (2026-10-18, Family B low-frequency search)
+
+- D-031 (E2.1 split): C = 2024-01-01T00:00Z; DEV [2019-09-01, C) ~4.3y,
+  HOLDOUT [C, 2026-10-17] ~33.5mo, FORWARD after ingestion end. Chosen on
+  calendar/coverage grounds from inventory metadata only (file counts,
+  date ranges, bytes); no return/volume statistic was computed before
+  research/prereg/SPLIT.md committed. Detectable SR ≈ 0.98 one-sided
+  95% (t = SR·√2.797); 80%-power SR ≈ 1.49. The holdout is a SCREEN
+  (sensitivity ~0.88 at SR=1, type-I ~0.31 on the point leg alone), not
+  proof; see SPLIT.md for the full power table and look-boundary
+  attestation.
+- D-032 (E2.3 Family B budget): separate budget (max 8) and Holm family
+  from Family A. Justification: disjoint data (multi-year daily lake vs
+  tick/dev captures), disjoint strategy space (holding periods hours–
+  weeks vs seconds–minutes), disjoint trial universes. Pooling would
+  over-penalize both families and answer neither question cleanly.
+  DSR trial counts are kept per family. Registry:
+  research/autopilot_b/registry.json with its own hash chain.
