@@ -25,15 +25,15 @@ vault/autopilot artifacts, every claim cites command+output or file path.
 
 | ID | Task | Status | Evidence |
 |---|---|---|---|
-| E0.1 | Re-entry: read memory, full suite 0 failed | IN_PROGRESS | nobench log `edge-suite-nobench.log`; bench `edge-suite-bench.log` |
+| E0.1 | Re-entry: read memory, full suite 0 failed | IN_PROGRESS | nobench 1501/1 skipped; bench running `edge-suite-bench.log` |
 | E0.2 | Autopilot run-once Family A, record dev outcomes | DONE | all H1–H6 DEV_EVAL, no dev artifacts; left to timer |
 | E1.1 | Vision inventory, DATA_INVENTORY.md | DONE | `tools/vision_inventory.py`, `DATA_INVENTORY.md`; probes verified |
-| E1.2 | Checksummed download (1h/1d all, 1m top-20 DEV-only, funding, mark/prem, metrics subset) | TODO | |
+| E1.2 | Checksummed download (1h/1d all, 1m top-20 DEV-only, funding, mark/prem, metrics subset) | IN_PROGRESS | tool+tests committed; pass-1 pull running |
 | E1.3 | Parquet store + hash manifest + DQ report | TODO | |
 | E1.4 | Point-in-time universe + no-lookahead test | TODO | |
-| E2.1 | SPLIT.md prereg + commit (DEV/HOLDOUT/FORWARD, detectable Sharpe) | TODO | |
-| E2.2 | Vault HOLDOUT class + seal holdout pre-analysis + import lint | TODO | |
-| E2.3 | Family B budget (8) + Holm family justification | TODO | |
+| E2.1 | SPLIT.md prereg + commit (DEV/HOLDOUT/FORWARD, detectable Sharpe) | DONE | `research/prereg/SPLIT.md` fb95e02 |
+| E2.2 | Vault HOLDOUT class + seal holdout pre-analysis + import lint | PARTIAL | code+CLI+8 tests done (d9ec258); sealing when bytes land |
+| E2.3 | Family B budget (8) + Holm family justification | DONE | SPLIT.md + D-032 |
 | E3 | Family B preregs B1–B7 committed pre-evaluation | TODO | |
 | E4.1 | Slow backtester vectorized + event reference + differential | TODO | |
 | E4.2 | Realism (fees+50%, funding, sqrt impact, filters, liq, delist) | TODO | |
