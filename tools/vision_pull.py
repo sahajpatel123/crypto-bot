@@ -229,11 +229,16 @@ def _job(ds: str, sym: str, iv: str | None, c: dict, *,
     # Percent-encode non-ASCII symbol names (CJK perps exist); S3 keys
     # stay raw for state identity, URLs must be ASCII.
     quoted = urllib.parse.quote(key, safe="/")
+    try:
+        split = split_of(name, dev_only=dev_only)
+    except ValueError:
+        # Junk/misnamed keys exist (e.g. MATICUSDT-metrics-1993.zip):
+        # skip loudly, never crash the plan, never download blind.
+        split = "unknown"
     return {"key": key, "url": f"{VISION}/{quoted}",
             "checksum_url": f"{VISION}/{quoted}.CHECKSUM",
             "dataset": ds, "symbol": sym, "interval": iv,
-            "filename": name, "bytes": c["Size"],
-            "split": split_of(name, dev_only=dev_only)}
+            "filename": name, "bytes": c["Size"], "split": split}
 
 
 # -- pull ----------------------------------------------------------------------
@@ -300,6 +305,8 @@ def _sha256_file(path: Path) -> str:
 def pull_job(job: dict, *, dev_dir: Path, holdout_dir: Path) -> dict:
     if job["split"] == "skip":
         return {"status": "skipped", "reason": "dev-only leg"}
+    if job["split"] == "unknown":
+        return {"status": "skipped", "reason": "unparseable filename date"}
     base = dev_dir if job["split"] == "dev" else holdout_dir
     dest = base / job["dataset"] / (job["interval"] or "na") / job["symbol"] / job["filename"]
     if dest.exists():

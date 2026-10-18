@@ -162,3 +162,14 @@ def test_job_quotes_non_ascii_symbol_names():
     assert job["url"].isascii() and "%E5" in job["url"]
     assert job["checksum_url"].endswith(".CHECKSUM")
     assert job["split"] == "holdout"
+
+
+def test_job_marks_undatable_filenames_unknown(tmp_path):
+    job = vision_pull._job(
+        "metrics", "MATICUSDT", None,
+        {"Key": "data/futures/um/daily/metrics/MATICUSDT/MATICUSDT-metrics-1993.zip",
+         "Size": 10})
+    assert job["split"] == "unknown"
+    rec = vision_pull.pull_job(job, dev_dir=tmp_path / "dev",
+                               holdout_dir=tmp_path / "hold")
+    assert rec["status"] == "skipped" and "unparseable" in rec["reason"]
