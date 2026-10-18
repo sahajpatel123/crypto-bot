@@ -206,8 +206,8 @@ def run_holdout_screen(hypothesis: str, cell: dict, *,
     lo, _ = _st.stationary_bootstrap_ci(
         list(rx), lambda v: _st.sharpe(v), mean_block=BOOTSTRAP_BLOCK_D,
         rounds=1000, alpha=0.20, lower_q=0.20, seed=7)
-    import copy as _copy
-    costs2x = _copy.replace(costs, adverse_mult=2.0)
+    from dataclasses import replace as _replace
+    costs2x = _replace(costs, adverse_mult=2.0)
     res2 = _bt.simulate_vectorized(
         targets, merged["daily"], merged["funding"], costs=costs2x,
         config=_bt.SimConfig(initial_equity=float(equity)),

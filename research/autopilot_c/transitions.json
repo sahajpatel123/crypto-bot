@@ -1,0 +1,19 @@
+{
+ "chain_head": "cc7fad34a2fc7e09a0fe1a67c88e3ebad0681bd61695bf260f699615901ccb52",
+ "entries": [
+  {
+   "details": {
+    "config_sha256": "fca4a03c29b2f7cca4d79e2bd97d4d4572e69a61a6cad62b012a209354f0fa8d"
+   },
+   "entry_hash": "cc7fad34a2fc7e09a0fe1a67c88e3ebad0681bd61695bf260f699615901ccb52",
+   "from": "REGISTERED",
+   "hypothesis": "C1",
+   "prev": "genesis",
+   "provenance": "OBSERVED",
+   "reason": "C1 confirms on FORWARD only; holdout is burned",
+   "to": "AWAIT_FORWARD",
+   "ts_utc": "2026-10-18T21:57:00.093287+00:00"
+  }
+ ],
+ "format": "cryptobot-autopilot-transitions/1"
+}

@@ -1,0 +1,254 @@
++ rm -rf /tmp/cryptobot-v1-cleanroom
++ git clone --branch release/v1 /Users/sahajpatel/Code/cryto-bot-edge/release/v1.0-closeout.bundle /tmp/cryptobot-v1-cleanroom
+Cloning into '/tmp/cryptobot-v1-cleanroom'...
++ cd /tmp/cryptobot-v1-cleanroom
++ git rev-parse HEAD
+d3e0ba7795349a8c0551ed5889aa57d41768f311
++ git describe --tags --exact-match HEAD
+v1.0-closeout
++ ln -s /Users/sahajpatel/Code/cryto-bot-edge/data/lake data/lake
++ uv sync --locked
+Using CPython 3.12.13
+Creating virtual environment at: .venv
+Resolved 30 packages in 16ms
+   Building crypto-scalping-bot @ file:///private/tmp/cryptobot-v1-cleanroom
+Downloading nautilus-trader (148.8MiB)
+Downloading uvloop (1.3MiB)
+Downloading pyarrow (34.7MiB)
+Downloading numpy (5.2MiB)
+Downloading pandas (9.6MiB)
+ Downloaded uvloop
+      Built crypto-scalping-bot @ file:///private/tmp/cryptobot-v1-cleanroom
+ Downloaded numpy
+ Downloaded pandas
+ Downloaded pyarrow
+ Downloaded nautilus-trader
+Prepared 16 packages in 21.49s
+Installed 16 packages in 109ms
+ + click==8.5.0
+ + crypto-scalping-bot==0.1.0 (from file:///private/tmp/cryptobot-v1-cleanroom)
+ + fsspec==2026.2.0
+ + msgspec==0.22.0
+ + nautilus-trader==1.231.0
+ + numpy==2.5.4
+ + pandas==3.0.6
+ + portion==2.6.3
+ + pyarrow==26.0.0
+ + python-dateutil==2.9.0.post0
+ + pytz==2026.5
+ + six==1.17.0
+ + sortedcontainers==2.4.0
+ + tqdm==4.70.1
+ + tzdata==2026.5
+ + uvloop==0.22.1
++ uv sync --locked --extra dev
+Resolved 30 packages in 24ms
+Downloading pygments (1.2MiB)
+Downloading ruff (8.8MiB)
+Downloading ast-serialize (1.2MiB)
+Downloading mypy (13.7MiB)
+ Downloaded ast-serialize
+ Downloaded pygments
+ Downloaded ruff
+ Downloaded mypy
+Prepared 13 packages in 2.72s
+Installed 13 packages in 35ms
+ + ast-serialize==0.13.1
+ + hypothesis==6.170.1
+ + iniconfig==2.3.1
+ + librt==0.16.0
+ + mypy==2.4.0
+ + mypy-extensions==1.1.0
+ + packaging==26.3
+ + pathspec==1.1.1
+ + pluggy==1.6.0
+ + pygments==2.21.0
+ + pytest==9.1.1
+ + ruff==0.17.1
+ + typing-extensions==4.16.0
++ uv run --locked --extra dev python -m pytest -q --tb=line
+........................................................................ [  4%]
+........................................................................ [  8%]
+........................................................................ [ 13%]
+........................................................................ [ 17%]
+........................................................................ [ 21%]
+........................................................................ [ 26%]
+........................................................................ [ 30%]
+........................................................................ [ 35%]
+........................................................................ [ 39%]
+........................................................................ [ 43%]
+.................................F...................................... [ 48%]
+........................................................................ [ 52%]
+........................................................................ [ 56%]
+........................................................................ [ 61%]
+..s..................................................................... [ 65%]
+........................................................................ [ 70%]
+........................................................................ [ 74%]
+........................................................................ [ 78%]
+.F...................................................................... [ 83%]
+........................................................................ [ 87%]
+........................................................................ [ 91%]
+........................................................................ [ 96%]
+.........................F..................................             [100%]
+=================================== FAILURES ===================================
+E   AttributeError: module 'copy' has no attribute 'replace'
+/private/tmp/cryptobot-v1-cleanroom/src/cryptobot/research/family_b_driver.py:210: AttributeError: module 'copy' has no attribute 'replace'
+E   AttributeError: module 'copy' has no attribute 'replace'
+----------------------------- Captured stdout call -----------------------------
+B2 cell (('formation_d', 5), ('quantiles', 'tercile'))
+B2 cell (('formation_d', 5), ('quantiles', 'quintile'))
+B2 cell (('formation_d', 20), ('quantiles', 'tercile'))
+B2 cell (('formation_d', 20), ('quantiles', 'quintile'))
+B2 cell (('formation_d', 60), ('quantiles', 'tercile'))
+B2 cell (('formation_d', 60), ('quantiles', 'quintile'))
+/private/tmp/cryptobot-v1-cleanroom/tools/run_family_b.py:172: AttributeError: module 'copy' has no attribute 'replace'
+E   AttributeError: module 'copy' has no attribute 'replace'
+/private/tmp/cryptobot-v1-cleanroom/src/cryptobot/research/family_b_driver.py:210: AttributeError: module 'copy' has no attribute 'replace'
+=============================== warnings summary ===============================
+tests/acceptance/test_risk_v004.py::test_bad_config_raises[kwargs2]
+  <string>:22: DeprecationWarning: daily_loss_halt_pct is deprecated; use emergency_stop_pct
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/unit/test_family_b_driver.py::test_run_holdout_screen_cold_start_and_metrics
+FAILED tests/unit/test_run_family_b.py::test_runner_b2_schema_counts_determinism
+FAILED tests/unit/test_verdict_holdout.py::test_cli_holdout_screen_end_to_end
+3 failed, 1640 passed, 1 skipped, 1 warning in 1640.10s (0:27:20)
++ echo PYTEST_RC:1
+PYTEST_RC:1
++ uv run --locked --extra dev cryptobot acceptance --full --root /tmp/cryptobot-v1-acceptance
+{
+ "checks": {
+  "autopilot_config_matches_verdict": true,
+  "autopilot_gate_ready": true,
+  "autopilot_provenance_observed": false,
+  "config_matches_verdict": true,
+  "cost_model_fresh": true,
+  "demo_drill_pass_fresh": true,
+  "host_check_pass_fresh": true,
+  "latency_ws_pass": true,
+  "no_blocked_in_state": true,
+  "screen_requires_holdout": true,
+  "verdict_not_invalidated": true,
+  "verdict_pass": true,
+  "verdict_provenance_sealed": false,
+  "watchdog_heartbeat_fresh": true
+ },
+ "created_utc": "2026-10-18T21:27:43.961352+00:00",
+ "details": {
+  "config_sha256_16": "262bb3192d07027c"
+ },
+ "expires_utc": "2026-10-19T21:27:43.961342+00:00",
+ "gate": "NO-GO",
+ "hypothesis": "H1"
+}
+{
+ "acceptance": "full",
+ "faults": [
+  {
+   "result": "PASS",
+   "scenario": "rate-limit",
+   "state": "rejected:429",
+   "venue_orders": 0
+  },
+  {
+   "resolved": true,
+   "result": "PASS",
+   "scenario": "unknown-submit",
+   "state": "unknown"
+  },
+  {
+   "filled": 0.0,
+   "result": "PASS",
+   "scenario": "reject",
+   "state": "submitted"
+  },
+  {
+   "filled": 0.01,
+   "result": "PASS",
+   "scenario": "duplicate-event",
+   "state": "filled"
+  },
+  {
+   "filled": 0.01,
+   "result": "PASS",
+   "scenario": "reorder-event",
+   "state": "filled"
+  }
+ ],
+ "final_state": "GATE_READY",
+ "gate_exit": 2,
+ "gate_verdict": "NO-GO",
+ "generated_utc": "2026-10-18T21:27:43.959316+00:00",
+ "provenance": "SYNTHETIC",
+ "root": "/tmp/cryptobot-v1-acceptance",
+ "steps": [
+  "DEV_EVAL",
+  "AWAIT_CONFIRM_DATA",
+  "CONFIRM",
+  "PASS",
+  "PAPER_14D",
+  "PAPER_COMPARE",
+  "GATE_READY"
+ ],
+ "verdict": "PASS"
+}
++ echo ACCEPT_RC:0
+ACCEPT_RC:0
++ uv run --locked --extra dev cryptobot gate --out /tmp/cryptobot-v1-gate.json
+{
+ "checks": {
+  "autopilot_config_matches_verdict": false,
+  "autopilot_gate_ready": false,
+  "autopilot_provenance_observed": false,
+  "cost_model_fresh": false,
+  "demo_drill_pass_fresh": false,
+  "host_check_pass_fresh": false,
+  "latency_ws_pass": false,
+  "no_blocked_in_state": true,
+  "screen_requires_holdout": true,
+  "verdict_not_invalidated": true,
+  "verdict_pass": false,
+  "verdict_provenance_sealed": false,
+  "watchdog_heartbeat_fresh": false
+ },
+ "created_utc": "2026-10-18T21:27:44.214292+00:00",
+ "details": {},
+ "expires_utc": "2026-10-19T21:27:44.214031+00:00",
+ "gate": "NO-GO",
+ "hypothesis": null
+}
++ echo GATE_RC:2
+GATE_RC:2
++ python3 -c 'import json; print("GATE", json.load(open("/tmp/cryptobot-v1-gate.json"))["gate"])'
+GATE NO-GO
++ rm -f /tmp/cryptobot-v1-gate.json
++ uv run --locked --extra dev cryptobot arm --capital-usdt 120 --max-daily-loss 1 --out /tmp/cryptobot-v1-armed.json
+arm: REFUSED (interactive TTY required)
++ echo ARM_RC:2
+ARM_RC:2
++ rm -f /tmp/cryptobot-v1-armed.json
++ uv run --locked --extra dev python -
+B1 cell (('lookback_d', 20), ('target_vol', 0.15), ('vol_window_d', 20))
+B1 cell (('lookback_d', 20), ('target_vol', 0.25), ('vol_window_d', 20))
+B1 cell (('lookback_d', 20), ('target_vol', 0.15), ('vol_window_d', 60))
+B1 cell (('lookback_d', 20), ('target_vol', 0.25), ('vol_window_d', 60))
+B1 cell (('lookback_d', 60), ('target_vol', 0.15), ('vol_window_d', 20))
+B1 cell (('lookback_d', 60), ('target_vol', 0.25), ('vol_window_d', 20))
+B1 cell (('lookback_d', 60), ('target_vol', 0.15), ('vol_window_d', 60))
+B1 cell (('lookback_d', 60), ('target_vol', 0.25), ('vol_window_d', 60))
+B1 cell (('lookback_d', 120), ('target_vol', 0.15), ('vol_window_d', 20))
+B1 cell (('lookback_d', 120), ('target_vol', 0.25), ('vol_window_d', 20))
+B1 cell (('lookback_d', 120), ('target_vol', 0.15), ('vol_window_d', 60))
+B1 cell (('lookback_d', 120), ('target_vol', 0.25), ('vol_window_d', 60))
+Traceback (most recent call last):
+  File "<stdin>", line 20, in <module>
+  File "<stdin>", line 9, in cmp
+  File "/private/tmp/cryptobot-v1-cleanroom/tools/run_family_b.py", line 172, in evaluate_hypothesis
+    costs2x = copy.replace(costs, adverse_mult=2.0)
+              ^^^^^^^^^^^^
+AttributeError: module 'copy' has no attribute 'replace'
++ echo REDERIVE_RC:1
+REDERIVE_RC:1
++ echo CLEANROOM_DONE
+CLEANROOM_DONE

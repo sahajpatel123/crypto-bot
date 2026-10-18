@@ -1,0 +1,94 @@
+{
+ "chain_head": "38aa707c422c9d03dcc1e4405f0ccce82d8f1d4a7d93a54b71c636f1ea3548d7",
+ "entries": [
+  {
+   "actions": [],
+   "closed": [
+    {
+     "family": "A",
+     "hypothesis": "H1",
+     "provenance": "OBSERVED",
+     "state": "AWAIT_DATA"
+    },
+    {
+     "family": "A",
+     "hypothesis": "H2",
+     "provenance": "OBSERVED",
+     "state": "AWAIT_DATA"
+    },
+    {
+     "family": "A",
+     "hypothesis": "H3",
+     "provenance": "OBSERVED",
+     "state": "AWAIT_DATA"
+    },
+    {
+     "family": "A",
+     "hypothesis": "H4",
+     "provenance": "OBSERVED",
+     "state": "AWAIT_DATA"
+    },
+    {
+     "family": "A",
+     "hypothesis": "H5",
+     "provenance": "OBSERVED",
+     "state": "AWAIT_DATA"
+    },
+    {
+     "family": "A",
+     "hypothesis": "H6",
+     "provenance": "OBSERVED",
+     "state": "AWAIT_DATA"
+    },
+    {
+     "family": "B",
+     "hypothesis": "B1",
+     "provenance": "OBSERVED_PUBLIC",
+     "state": "KILLED"
+    },
+    {
+     "family": "B",
+     "hypothesis": "B2",
+     "provenance": "OBSERVED_PUBLIC",
+     "state": "KILLED"
+    },
+    {
+     "family": "B",
+     "hypothesis": "B3",
+     "provenance": "OBSERVED_PUBLIC",
+     "state": "KILLED"
+    },
+    {
+     "family": "B",
+     "hypothesis": "B4",
+     "provenance": "OBSERVED_PUBLIC",
+     "state": "KILLED"
+    },
+    {
+     "family": "B",
+     "hypothesis": "B5",
+     "provenance": "OBSERVED_PUBLIC",
+     "state": "KILLED"
+    },
+    {
+     "family": "B",
+     "hypothesis": "B6",
+     "provenance": "OBSERVED_PUBLIC",
+     "state": "KILLED"
+    },
+    {
+     "family": "B",
+     "hypothesis": "B7",
+     "provenance": "OBSERVED_PUBLIC",
+     "state": "KILLED"
+    }
+   ],
+   "decision": "WAITING",
+   "entry_hash": "38aa707c422c9d03dcc1e4405f0ccce82d8f1d4a7d93a54b71c636f1ea3548d7",
+   "prev": "genesis",
+   "snapshot": "05262b4630ce9ad7079ef4e421067af4e9bd9da4ae6d5c9b10bde630113f854a",
+   "ts_utc": "2026-10-18T21:40:43.915607+00:00"
+  }
+ ],
+ "format": "cryptobot-adjudication/1"
+}

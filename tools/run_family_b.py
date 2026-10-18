@@ -168,8 +168,8 @@ def evaluate_hypothesis(hypothesis: str, lake: Path, *,
     sharpes = {k: ST.sharpe(v["oos"]) for k, v in per_cell.items()}
     best = max(sharpes, key=lambda k: sharpes[k])
     best_combo = next(c for c in cells if cell_key(c) == best)
-    import copy
-    costs2x = copy.replace(costs, adverse_mult=2.0)
+    from dataclasses import replace as _replace
+    costs2x = _replace(costs, adverse_mult=2.0)
     ev2 = evaluate_cell(hypothesis, best_combo, data, cfg, costs2x, equity)
     oos2 = pooled_oos_returns(ev2["result"].equity.pct_change().dropna(),
                               gap_days=gap)

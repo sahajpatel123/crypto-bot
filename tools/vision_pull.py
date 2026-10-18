@@ -171,7 +171,7 @@ def _zips_under(prefix: str, ds: str, sym: str, iv: str | None, *,
 def build_plan(datasets: list[str], *, symbols_file: str | None = None,
                intervals: dict[str, list[str]] | None = None,
                metrics_symbols: list[str] | None = None,
-               workers: int = 16) -> dict:
+               workers: int = 16, include_daily: bool = False) -> dict:
     """Enumerate exact file keys via S3 listings (never assume filenames).
 
     Symbol prefixes are listed concurrently. Keys still come from the
@@ -193,6 +193,9 @@ def build_plan(datasets: list[str], *, symbols_file: str | None = None,
             for sym in syms:
                 tasks.append((f"data/futures/um/monthly/fundingRate/{sym}/",
                               ds, sym, None, False))
+                if include_daily:
+                    tasks.append((f"data/futures/um/daily/fundingRate/{sym}/",
+                                  ds, sym, None, False))
         elif ds == "metrics":
             syms = metrics_symbols or list_symbols("metrics", "daily")
             if sym_filter:
@@ -212,6 +215,10 @@ def build_plan(datasets: list[str], *, symbols_file: str | None = None,
                     tasks.append((
                         f"data/spot/monthly/klines/{sym}/{iv}/",
                         ds, sym, iv, False))
+                    if include_daily:
+                        tasks.append((
+                            f"data/spot/daily/klines/{sym}/{iv}/",
+                            ds, sym, iv, False))
         else:
             syms = list_symbols(ds)
             if sym_filter:
@@ -222,6 +229,10 @@ def build_plan(datasets: list[str], *, symbols_file: str | None = None,
                     tasks.append((
                         f"data/futures/um/monthly/{ds}/{sym}/{iv}/",
                         ds, sym, iv, dev_only))
+                    if include_daily and not dev_only:
+                        tasks.append((
+                            f"data/futures/um/daily/{ds}/{sym}/{iv}/",
+                            ds, sym, iv, False))
     jobs: list[dict] = []
     print(f"plan: {len(tasks)} prefixes, workers={workers}", flush=True)
     with concurrent.futures.ThreadPoolExecutor(max_workers=max(1, workers)) as pool:
@@ -545,6 +556,7 @@ def build_parser() -> argparse.ArgumentParser:
     q.add_argument("--symbols-file", default=None)
     q.add_argument("--metrics-symbols", default=None,
                    help="file with metrics symbol list (daily leg)")
+    q.add_argument("--include-daily", action="store_true")
     q.add_argument("--workers", type=int, default=24)
     q.add_argument("--out", required=True)
     q.set_defaults(func=lambda a: _cmd_plan(a))
@@ -586,12 +598,15 @@ def _cmd_plan(args: argparse.Namespace) -> int:
     plan = build_plan(args.datasets, symbols_file=args.symbols_file,
                       intervals=intervals or None,
                       metrics_symbols=metrics_syms,
+                      include_daily=bool(getattr(args, "include_daily", False)),
                       workers=int(args.workers))
     Path(args.out).write_text(json.dumps(plan, indent=1, sort_keys=True) + "\n")
     n_dev = sum(1 for j in plan["jobs"] if j["split"] == "dev")
     n_hold = sum(1 for j in plan["jobs"] if j["split"] == "holdout")
+    n_fwd = sum(1 for j in plan["jobs"] if j["split"] == "forward")
     n_skip = sum(1 for j in plan["jobs"] if j["split"] == "skip")
     print(json.dumps({"jobs": len(plan["jobs"]), "dev": n_dev,
+                      "forward": n_fwd,
                       "holdout": n_hold, "skipped": n_skip,
                       "gb": round(plan["total_bytes"] / 1e9, 2)}))
     return 0

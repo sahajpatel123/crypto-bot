@@ -39,6 +39,7 @@ def main() -> int:
         "--intervals", "klines:1d", "markPriceKlines:1d",
         "premiumIndexKlines:1d", "spot:1d",
         "--symbols-file", str(symbols),
+        "--include-daily",
         "--workers", "8",
         "--out", str(plan_path),
     ])
