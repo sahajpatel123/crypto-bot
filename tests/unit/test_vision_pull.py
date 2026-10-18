@@ -108,3 +108,15 @@ def test_job_builder_marks_dev_only_and_skips_checksums():
             if c["Key"].endswith(".zip") and ".CHECKSUM" not in c["Key"]]
     assert len(jobs) == 1
     assert jobs[0]["checksum_url"].endswith(".CHECKSUM")
+
+
+def test_list_symbols_takes_last_segment(monkeypatch):
+    seen = {}
+
+    def fake_list(prefix, delimiter=None, max_keys=1000):
+        seen["prefix"] = prefix
+        return [], [f"{prefix}BTCUSDT/", f"{prefix}ETHUSDT/"]
+
+    monkeypatch.setattr(vision_pull, "s3_list_keys", fake_list)
+    assert vision_pull.list_symbols("klines") == ["BTCUSDT", "ETHUSDT"]
+    assert seen["prefix"] == "data/futures/um/monthly/klines/"

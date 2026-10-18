@@ -99,7 +99,7 @@ def s3_list_keys(prefix: str, *, delimiter: str | None = None,
             q["continuation-token"] = token
         url = S3LIST + "?" + urllib.parse.urlencode(q)
         root = ET.fromstring(_http_get(url))
-        ns = "{http://s3.amazonaws.com/doc/2006-03-01}"
+        ns = "{http://s3.amazonaws.com/doc/2006-03-01/}"
         for c in root.findall(f"{ns}Contents"):
             key = c.findtext(f"{ns}Key") or ""
             size = int(c.findtext(f"{ns}Size") or "0")
@@ -120,9 +120,9 @@ def list_symbols(dataset: str, cadence: str = "monthly") -> list[str]:
                                delimiter="/")
     out = []
     for p in prefixes:
-        parts = p.rstrip("/").split("/")
-        if len(parts) >= 5:
-            out.append(parts[4])
+        seg = p.rstrip("/").rsplit("/", 1)[-1]
+        if seg:
+            out.append(seg)
     return sorted(set(out))
 
 
