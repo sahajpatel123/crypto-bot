@@ -1,0 +1,51 @@
+hypothesis = "B4"
+family = "B"
+family_size = 7
+
+[wfo]
+scheme = "anchored-yearly"
+train_start = "2020-01-01"
+test_years = [2021, 2022, 2023]
+purge_days = 30
+embargo_days = 5
+
+[universe]
+top_n = 30
+min_listing_age_days = 90
+min_quote_volume_30d = 10000000.0
+trailing_days = 30
+
+[costs]
+perp_taker_bps = 7.5
+spot_taker_bps = 15.0
+spread_bps_per_side = 1.0
+slip_floor_bps = 1.0
+slip_k = 0.5
+adverse_mult = 2.0
+execution = "taker-next-open"
+
+[risk]
+gross_cap = 2.0
+per_symbol_cap = 0.25
+dd_budget = 0.35
+leverage_cap = 3.0
+
+[promotion]
+oos_sharpe = 0.7
+adverse_sharpe = 0.3
+dsr = 0.8
+pbo = 0.3
+oos_years = 2
+plateau = 0.7
+
+[screen]
+point_sharpe = 0.3
+dev_fraction = 0.5
+lb80 = -0.3
+
+[grid]
+symbols = ["BTCUSDT", "ETHUSDT"]
+thresholds_k = [1.5, 2.0, 3.0]
+max_holds_d = [7, 14, 30]
+rebalance = "daily-check"
+turnover_budget = 12.0
