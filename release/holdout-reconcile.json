@@ -1,0 +1,62 @@
+{
+ "children": [
+  {
+   "chunk": "chunk-c87821b135ac9667.json",
+   "files": 198,
+   "inside": {
+    "funding": 66,
+    "klines": 66
+   },
+   "mapped": 132,
+   "missing_sha_count": 66,
+   "outside": {
+    "spot": 66
+   }
+  },
+  {
+   "chunk": "chunk-74e0747f6d1aab3a.json",
+   "files": 202,
+   "inside": {
+    "funding": 66,
+    "klines": 66
+   },
+   "mapped": 132,
+   "missing_sha_count": 70,
+   "outside": {
+    "rest_tail": 4,
+    "spot": 66
+   }
+  }
+ ],
+ "decodes": [
+  {
+   "chunk_id": "chunk-c87821b135ac9667",
+   "files": 198,
+   "hypothesis": "B4",
+   "token_sha256": "32a0fae8819ed99066d2ef604a83c03993bf7075f35a8709ec3df73067d249ba",
+   "when": "2026-10-18T15:14:54.552172+00:00",
+   "who": "verdict"
+  },
+  {
+   "chunk_id": "chunk-c87821b135ac9667",
+   "files": 198,
+   "hypothesis": "B4",
+   "token_sha256": "8faf71e2a1d7754291e7a5127e3ec7c46c11d2ca7d2fdb142b281c8b5d5ba3d7",
+   "when": "2026-10-18T15:15:55.691572+00:00",
+   "who": "verdict"
+  },
+  {
+   "chunk_id": "chunk-74e0747f6d1aab3a",
+   "files": 202,
+   "hypothesis": "B4",
+   "token_sha256": "0d6ee79f414a9a241d392c631f9753e424180da149a89ac8708637100008cf22",
+   "when": "2026-10-18T15:25:38.237970+00:00",
+   "who": "verdict"
+  }
+ ],
+ "incident": "INC-1",
+ "parent_chunk": "chunk-2a22e52c3c8f50db",
+ "parent_files": 118548,
+ "rule": "B4 holdout was decoded three times. The exactly-once rule was broken for B4 only. Those decodes are void (D-042).",
+ "subset_ok": false
+}

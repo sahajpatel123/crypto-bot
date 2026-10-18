@@ -449,3 +449,13 @@ Meta Muse Spark.
   `research/autopilot_b/dev/B1.json`–`B7.json` and
   `research/autopilot/dev/H1.json`–`H6.json` have no `code_commit`
   field. Those files stay as written.
+- INC-1 / D-045 (Z1.3, 2026-10-19): B4 holdout was decoded three times,
+  breaking the exactly-once rule. Consumer `verdict`, hypothesis B4
+  only. Times and tokens are in `release/holdout-reconcile.json`.
+  The decodes are void (D-042). `tools/holdout_reconcile.py` compared
+  those chunk manifests to the pre-analysis seal
+  `chunk-2a22e52c3c8f50db` (118548 files). Of the 198-file chunk,
+  132 files (66 klines + 66 funding) are in that seal and 66 spot
+  files are not. Of the 202-file chunk, the same 132 are in the seal;
+  66 spot files and 4 rest_tail files are not. `subset_ok` is false.
+  No zip was opened.
