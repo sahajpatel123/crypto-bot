@@ -446,6 +446,14 @@ def cmd_rest_tail(args: argparse.Namespace) -> int:
             if s.strip() and not s.startswith("#")]
     out = Path(args.out_dir)
     out.mkdir(parents=True, exist_ok=True)
+    meta_path = out / "fetch_meta.json"
+    meta: dict[str, dict] = {}
+    if meta_path.exists():
+        try:
+            meta = json.loads(meta_path.read_text(encoding="utf-8")).get(
+                "symbols", {})
+        except ValueError:
+            meta = {}
     start_ms = int(datetime(2026, 10, 1, tzinfo=timezone.utc).timestamp() * 1000)
     end_ms = int(datetime(2026, 10, 17, 23, 59, 59, tzinfo=timezone.utc).timestamp() * 1000)
     legs = {"klines_1d": "/fapi/v1/klines?interval=1d",
@@ -454,11 +462,11 @@ def cmd_rest_tail(args: argparse.Namespace) -> int:
             "mark_1h": "/fapi/v1/markPriceKlines?interval=1h",
             "premium_1d": "/fapi/v1/premiumIndexKlines?interval=1d",
             "premium_1h": "/fapi/v1/premiumIndexKlines?interval=1h"}
-    meta: dict[str, dict] = {}
     for sym in syms:
         row: dict[str, object] = {}
+        qs = urllib.parse.quote(sym, safe="")  # CJK symbols need encoding
         for leg, path in legs.items():
-            url = (f"{FAPI}{path}&symbol={sym}&startTime={start_ms}"
+            url = (f"{FAPI}{path}&symbol={qs}&startTime={start_ms}"
                    f"&endTime={end_ms}&limit=1000")
             try:
                 data = _rest_json(url)
@@ -474,7 +482,7 @@ def cmd_rest_tail(args: argparse.Namespace) -> int:
             time.sleep(float(args.delay_s))
         # Funding tail (8h rows; ~51 rows, one page).
         try:
-            url = (f"{FAPI}/fapi/v1/fundingRate?symbol={sym}"
+            url = (f"{FAPI}/fapi/v1/fundingRate?symbol={qs}"
                    f"&startTime={start_ms}&endTime={end_ms}&limit=1000")
             data = _rest_json(url)
             assert isinstance(data, list)
