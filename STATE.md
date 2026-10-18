@@ -10,7 +10,7 @@ stored a key, and never read the campaign-1day event data.
 
 | Item | Status | Evidence |
 |---|---|---|
-| Full suite green in worktree, 0 failed | DONE | 1528 passed, 1 skipped; logs `final-suite-nobench2.log`, `final-suite-bench.log` |
+| Full suite green in worktree, 0 failed | DONE | 1528 passed, 1 skipped; logs `final-suite-nobench3.log`, `final-suite-bench.log` |
 | F0.3 table has no open REOPEN | DONE | table below, 80 targeted passed |
 | Break-even verified by independent script + tests | DONE | `tools/breakeven_audit.py`; `test_breakeven_audit.py` |
 | Liquidation/bracket gate wired into live admission, tested | DONE | `Session._bracket_admission`; `test_margin_sizing.py` |
