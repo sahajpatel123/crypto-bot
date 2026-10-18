@@ -1,0 +1,44 @@
+{
+ "benchmark": "/Users/sahajpatel/Code/cryto-bot-edge/datasets/benchmark_30d.toml",
+ "benchmark_channels": {
+  "aggTrade": 248,
+  "fundingRate": 10,
+  "markPrice": 248
+ },
+ "benchmark_source": "local",
+ "hypotheses": {
+  "H1": {
+   "outcome": "UNDERPOWERED",
+   "reason": "UNDERPOWERED/AWAIT_DATA: no L2 / top-of-book history in the pilot or the benchmark. power status IMPOSSIBLE: fewer than 2 dev trades. Prereg floor 100 dev trades / 10 days, confirm 300.",
+   "status": "AWAIT_DATA"
+  },
+  "H2": {
+   "outcome": "UNDERPOWERED",
+   "reason": "UNDERPOWERED/AWAIT_DATA: no strategy trade list; the existing dev rule needs trades. power status IMPOSSIBLE: fewer than 2 dev trades. Prereg floor 100 dev trades / 20 days, confirm 300.",
+   "status": "AWAIT_DATA"
+  },
+  "H3": {
+   "outcome": "UNDERPOWERED",
+   "reason": "UNDERPOWERED/AWAIT_DATA: no strategy trade list; the existing dev rule needs trades. power status IMPOSSIBLE: fewer than 2 dev trades. Prereg floor 100 dev trades / 30 days, confirm 300.",
+   "status": "AWAIT_DATA"
+  },
+  "H4": {
+   "outcome": "UNDERPOWERED",
+   "reason": "UNDERPOWERED/AWAIT_DATA: no Bybit or OKX history. power status IMPOSSIBLE: fewer than 2 dev trades. Prereg floor 100 dev trades / 10 days, confirm 300.",
+   "status": "AWAIT_DATA"
+  },
+  "H5": {
+   "outcome": "UNDERPOWERED",
+   "reason": "UNDERPOWERED/AWAIT_DATA: no liquidation-print history. power status IMPOSSIBLE: fewer than 2 dev trades. Prereg floor 50 dev trades / 10 days, confirm 300.",
+   "status": "AWAIT_DATA"
+  },
+  "H6": {
+   "outcome": "UNDERPOWERED",
+   "reason": "UNDERPOWERED/AWAIT_DATA: no strategy trade list; the existing dev rule needs trades. power status IMPOSSIBLE: fewer than 2 dev trades. Prereg floor 100 dev trades / 20 days, confirm 300.",
+   "status": "AWAIT_DATA"
+  }
+ },
+ "pilot": "/Users/sahajpatel/Code/cryto-bot/data/pilot",
+ "pilot_days": 29,
+ "pilot_source": "external"
+}

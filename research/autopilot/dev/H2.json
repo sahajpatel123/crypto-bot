@@ -1,7 +1,82 @@
 {
- "data_required": "book-walk depth when recorded; otherwise taker replay. No dev trade file",
+ "benchmark_manifest_sha": "9008ba92ef88a8cf8f446f77fbe27983de16d780148a11fe6fd6971b0e8f1e31",
+ "benchmark_source": "local",
+ "data_required": "5-minute bars (book-walk only if depth is recorded)",
  "hypothesis": "H2",
+ "inspection": {
+  "benchmark": {
+   "books_unevaluable": true,
+   "channels": {
+    "aggTrade": 248,
+    "fundingRate": 10,
+    "markPrice": 248
+   },
+   "has_book": false,
+   "has_liquidation": false,
+   "has_other_venue": false,
+   "manifest_sha": "9008ba92ef88a8cf8f446f77fbe27983de16d780148a11fe6fd6971b0e8f1e31",
+   "missing_local": 506,
+   "path": "/Users/sahajpatel/Code/cryto-bot-edge/datasets/benchmark_30d.toml",
+   "present": true
+  },
+  "benchmark_notes": "Fills: trade-cross from observed aggTrades (no archive BBO; vision bookDepth is %-band depth, not price levels, and is excluded). Marks: 1m mark closes; funding: monthly fundingRate, both sourced-vision. Book views are never-synced on this data (S5-ineligible with reasons).",
+  "pilot": {
+   "caveats": [
+    "marks at 1m archive cadence (floor wants >=1s)",
+    "no quote channel in futures archive (books unevaluable)"
+   ],
+   "days": [
+    "2026-09-18",
+    "2026-09-19",
+    "2026-09-20",
+    "2026-09-21",
+    "2026-09-22",
+    "2026-09-23",
+    "2026-09-24",
+    "2026-09-25",
+    "2026-09-26",
+    "2026-09-27",
+    "2026-09-28",
+    "2026-09-29",
+    "2026-09-30",
+    "2026-10-01",
+    "2026-10-02",
+    "2026-10-03",
+    "2026-10-04",
+    "2026-10-05",
+    "2026-10-06",
+    "2026-10-07",
+    "2026-10-08",
+    "2026-10-09",
+    "2026-10-10",
+    "2026-10-11",
+    "2026-10-12",
+    "2026-10-13",
+    "2026-10-14",
+    "2026-10-15",
+    "2026-10-16"
+   ],
+   "files": {
+    "COMPACTION.json": 29,
+    "SOURCES.md": 29,
+    "events.jsonl.gz": 29,
+    "funding.jsonl": 29,
+    "manifest.json": 29
+   },
+   "has_book": false,
+   "has_liquidation": false,
+   "has_other_venue": false,
+   "has_trade_list": false,
+   "n_days": 29,
+   "present": true,
+   "symbols": [
+    "BTCUSDT"
+   ]
+  }
+ },
  "outcome": "UNDERPOWERED",
+ "pilot": "/Users/sahajpatel/Code/cryto-bot/data/pilot",
+ "pilot_source": "external",
  "power": {
   "days_required": null,
   "mean_bps": 0.0,
@@ -12,14 +87,10 @@
   "trades_per_day": 1.0
  },
  "provenance": "OBSERVED",
- "reason": "UNDERPOWERED/AWAIT_DATA: no evaluable dev trades. power status IMPOSSIBLE: fewer than 2 dev trades. Prereg floor 100 dev trades / 20 days, confirm 300.",
+ "reason": "UNDERPOWERED/AWAIT_DATA: no strategy trade list; the existing dev rule needs trades. power status IMPOSSIBLE: fewer than 2 dev trades. Prereg floor 100 dev trades / 20 days, confirm 300.",
  "required_confirm_trades": 300,
  "required_dev_days": 20,
  "required_dev_trades": 100,
  "status": "AWAIT_DATA",
- "stores_present": {
-  "data/pilot": false,
-  "datasets/benchmark_30d": false
- },
  "trades": []
 }

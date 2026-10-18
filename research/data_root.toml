@@ -1,0 +1,2 @@
+# Read-only external checkout. Local files win when they exist.
+external_root = "/Users/sahajpatel/Code/cryto-bot"

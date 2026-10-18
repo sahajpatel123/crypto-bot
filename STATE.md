@@ -59,8 +59,8 @@ vault/autopilot artifacts, every claim cites command+output or file path.
 | Z1.2 | release/v1, tag v1.0-closeout, bundle + tar | DONE | tag `v1.0-closeout` = `d3e0ba7`; branch `release/v1`; `release/v1.0-closeout.bundle`, `release/research-artifacts.tar`, `release/SHA256SUMS` |
 | Z1.3 | Holdout map + INC-1 | DONE | `tools/holdout_reconcile.py`; `release/holdout-reconcile.json` subset_ok false (132/198 and 132/202 inside chunk-2a22; spot and rest_tail outside); D-045 |
 | Z1.4 | Clean-room proof | PENDING | |
-| Z2.1 | Configurable data root | PENDING | |
-| Z2.2 | Family A dev eval on pilot + benchmark | PENDING | |
+| Z2.1 | Configurable data root | DONE | `src/cryptobot/research/data_root.py`, `tests/unit/test_data_root.py`, `research/DATA_ROOT.md` |
+| Z2.2 | Family A dev eval on pilot + benchmark | DONE | `tools/family_a_dev.py` on external pilot (29 days, no quote channel) and local benchmark (aggTrade 248, fundingRate 10, markPrice 248). H1–H6 UNDERPOWERED/AWAIT_DATA. `estimate_power([])` IMPOSSIBLE, days_required null. Report `research/autopilot/reports/family-a-z2.json` |
 | Z3 | Passive launchd jobs + RECORDER_COSTS.md | PENDING | |
 | Z4 | C1 B4b prereg before any forward read | PENDING | |
 | Z5 | Adjudication table + cryptobot adjudicate | PENDING | |
