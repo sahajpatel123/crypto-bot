@@ -89,11 +89,27 @@ def _finalize_time(df: pd.DataFrame, col: str) -> pd.DataFrame:
     return df
 
 
+def _drop_header_row(df: pd.DataFrame) -> pd.DataFrame:
+    """Vision format drift: newer kline CSVs carry a header row, older do not."""
+    if len(df) == 0:
+        return df
+    first = str(df.iloc[0, 0]).strip().lower()
+    try:
+        float(str(df.iloc[0, 0]).strip())
+        numeric = True
+    except ValueError:
+        numeric = False
+    if first == "open_time" or not numeric:
+        df = df.iloc[1:].reset_index(drop=True)
+    return df
+
+
 def read_klines_zip(path: str | Path) -> pd.DataFrame:
     """Parse a Vision kline zip (spot/UM/mark/premium/rest-tail all match)."""
     df = _read_csv_from_zip(path, header=False)
     if df.shape[1] != 12:
         raise ValueError(f"{path}: expected 12 kline cols, got {df.shape[1]}")
+    df = _drop_header_row(df)
     df.columns = KLINE_COLS
     for col in ("open", "high", "low", "close", "volume", "quote_volume",
                 "trades", "taker_buy_base", "taker_buy_quote"):

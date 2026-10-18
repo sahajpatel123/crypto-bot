@@ -70,8 +70,17 @@ def split_of(filename: str, *, dev_only: bool = False) -> str:
 
 
 # -- S3 listing ----------------------------------------------------------------
+def _ascii_url(url: str) -> str:
+    """Percent-encode non-ASCII path segments (CJK perp symbols)."""
+    parts = urllib.parse.urlsplit(url)
+    path = urllib.parse.quote(parts.path, safe="/%")
+    return urllib.parse.urlunsplit(
+        (parts.scheme, parts.netloc, path, parts.query, parts.fragment))
+
+
 def _http_get(url: str, timeout: float = 30.0,
               retries: int = 3) -> bytes:
+    url = _ascii_url(url)
     last: Exception | None = None
     for attempt in range(retries):
         try:

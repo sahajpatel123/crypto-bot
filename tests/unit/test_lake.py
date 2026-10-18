@@ -129,3 +129,18 @@ def test_load_dev_frames_reads_lake(tmp_path):
     assert len(funding["BTCUSDT"]) == 2
     assert set(funding["BTCUSDT"].columns) >= {
         "calc_time", "funding_interval_hours", "last_funding_rate"}
+
+
+def test_read_klines_accepts_header_or_not(tmp_path):
+    from cryptobot.research.lake import read_klines_zip
+
+    row = ("1700611200000,0.00478,0.004825,0.004076,0.004531,12700997933,"
+           "1700697599999,56367827.49,320715,6184933232,27467335.12,0")
+    hdr = ("open_time,open,high,low,close,volume,close_time,quote_volume,"
+           "count,taker_buy_volume,taker_buy_quote_volume,ignore")
+    _write_zip(tmp_path / "h.zip", "h.csv", [hdr, row])
+    _write_zip(tmp_path / "n.zip", "n.csv", [row])
+    a = read_klines_zip(tmp_path / "h.zip")
+    b = read_klines_zip(tmp_path / "n.zip")
+    assert len(a) == len(b) == 1
+    assert a["close"].iloc[0] == b["close"].iloc[0] == 0.004531
