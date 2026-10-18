@@ -399,3 +399,15 @@ Meta Muse Spark.
   turnover ~2x off). Saved to /tmp/foreign-dev-artifacts for the record;
   official E6.1 = this session's reruns on the audited tree, each
   determinism-checked. Lesson reinforced: reproduce, never adopt, foreign results.
+- D-041 (official screens; CODE FREEZE): (a) B4 vault freeze ADOPTED
+  (hash matches E3-frozen B4.toml, verified untouched since b0b4ac4).
+  (b) Parallel B4 screen (2.945) NOT adopted (unknown code state);
+  official screens run once each by this session on the audited tree.
+  (c) Fresh minimal per-screen HOLDOUT manifests (prereg-determined file
+  lists only) preserve exactly-once per chunk. (d) CODE FREEZE on the
+  evaluation path (family_b/slow_backtest/slow_stats/driver/runner/
+  verdict-screen/lake readers) until all screens complete; exceptions
+  only for proven bugs (failing test + new decision entry). (e) B5's
+  premature KILL (foreign artifact, metrics missing) is remediated by
+  proper rerun: corroborated FAIL stands; a PROMOTE forks to B5R (8th
+  budget slot) to preserve append-only terminal semantics.
