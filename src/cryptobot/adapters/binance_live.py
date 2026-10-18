@@ -191,6 +191,66 @@ class UnknownOutcomeError(Exception):
         self.reason = reason
 
 
+SAPI_BASE_URL = "https://api.binance.com"
+
+
+def fetch_api_restrictions(api_key: str, api_secret: str, *,
+                           http_get=None) -> dict[str, Any]:
+    """Signed GET /sapi/v1/accountApiRestrictions (F2.5, read-only).
+
+    `http_get(url, headers, timeout_s) -> parsed JSON` is injectable
+    for offline tests; default performs a real signed request.
+    Raises VenueHttpError on transport failure.
+    """
+    import time as _time
+    import urllib.request as _request
+
+    params = {"timestamp": int(_time.time() * 1000)}
+    query = urllib.parse.urlencode(params)
+    signature = hmac.new(api_secret.encode("utf-8"), query.encode("utf-8"),
+                         hashlib.sha256).hexdigest()
+    url = (f"{SAPI_BASE_URL}/sapi/v1/accountApiRestrictions?"
+           f"{query}&signature={signature}")
+    headers = {"X-MBX-APIKEY": api_key}
+    if http_get is not None:
+        return dict(http_get(url, headers, 10.0))
+    req = _request.Request(url, headers=headers, method="GET")
+    try:
+        with _request.urlopen(req, timeout=10.0) as resp:
+            return json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        raise VenueHttpError(exc.code, None,
+                             f"sapi restrictions: http {exc.code}") from None
+    except (urllib.error.URLError, OSError, ValueError) as exc:
+        raise VenueHttpError(0, None,
+                             f"sapi restrictions unreachable: {exc}") from None
+
+
+def check_api_restrictions(payload: dict[str, Any] | None,
+                           ) -> tuple[bool, str]:
+    """Verify a key is trade-only (F2.5).
+
+    `payload` is GET /sapi/v1/accountApiRestrictions (or None when
+    the endpoint is unreachable — futures-only contexts). Withdrawals
+    must be disabled and futures enabled; anything else (or an
+    unreachable endpoint) fails closed with a MANUAL checklist
+    instruction instead of a silent pass.
+    """
+    if not isinstance(payload, dict):
+        return False, ("manual-check: fetch GET "
+                       "/sapi/v1/accountApiRestrictions and confirm "
+                       "enableWithdrawals=false, enableFutures=true, "
+                       "IP allowlist restricted (endpoint unreachable "
+                       "from here)")
+    if payload.get("enableWithdrawals"):
+        return False, "refused: enableWithdrawals is true (must be false)"
+    if not payload.get("enableFutures"):
+        return False, "refused: enableFutures is false (must be true)"
+    ip_note = "ipRestrict=true" if payload.get("ipRestrict") \
+        else "manual-check: enable IP allowlist restriction"
+    return True, f"trade-only key ({ip_note})"
+
+
 class LiveTransport(Protocol):
     """Synchronous JSON transport (urllib prod / replay test)."""
 

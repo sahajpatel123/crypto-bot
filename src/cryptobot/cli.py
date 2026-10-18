@@ -33,6 +33,46 @@ def _store_path(storage_dir: str) -> Path:
     return Path(storage_dir) / "cryptobot.db"
 
 
+def load_api_keys(key_env: str, secret_env: str, *,
+                  key_file: str | None = None) -> tuple[str, str]:
+    """Load API credentials from env or a 0600 key file (F2.5).
+
+    Env wins when both parts are set; otherwise CRYPTOBOT_KEY_FILE (or
+    the explicit key_file, which wins over the env pointer) must point
+    at JSON {"api_key": ..., "api_secret": ...} readable ONLY by the
+    owner (no group/other permission bits — 0600 or stricter).
+    Values are never printed. Raises ValueError when unusable.
+    """
+    key = os.environ.get(key_env, "")
+    secret = os.environ.get(secret_env, "")
+    if key and secret:
+        return key, secret
+    pointer = key_file or os.environ.get("CRYPTOBOT_KEY_FILE", "")
+    if not pointer:
+        raise ValueError(
+            f"credentials absent: set {key_env}/{secret_env} or point "
+            f"CRYPTOBOT_KEY_FILE at a 0600 JSON key file")
+    path = Path(pointer)
+    try:
+        mode = path.stat().st_mode
+    except OSError as exc:
+        raise ValueError(f"key file unreadable: {pointer} ({exc})") from None
+    if mode & 0o077:
+        raise ValueError(
+            f"key file {pointer} has group/other permissions "
+            f"({oct(mode & 0o777)}); run: chmod 0600 {pointer}")
+    try:
+        doc = json.loads(path.read_text(encoding="utf-8"))
+        file_key, file_secret = doc["api_key"], doc["api_secret"]
+    except (OSError, ValueError, KeyError) as exc:
+        raise ValueError(
+            f"key file {pointer} must be JSON "
+            f'{{"api_key": ..., "api_secret": ...}} ({exc})') from None
+    if not file_key or not file_secret:
+        raise ValueError(f"key file {pointer} has empty credentials")
+    return str(file_key), str(file_secret)
+
+
 def _new_run_id(prefix: str) -> str:
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     return f"{prefix}-{stamp}-{os.getpid()}"
@@ -328,14 +368,14 @@ def _run_paper(args: argparse.Namespace) -> int:
     clock = WallClock()
     if config.engine_kind == "live":
         # W3-24H P5 demo mode: config already enforces demo = true.
-        # Credentials come ONLY from the environment (never chat/files).
+        # Credentials from env or a 0600 key file (F2.5; never chat).
         from cryptobot.adapters import binance_live as _live
-        api_key = os.environ.get("BINANCE_DEMO_KEY", "")
-        api_secret = os.environ.get("BINANCE_DEMO_SECRET", "")
-        if not api_key or not api_secret:
-            print("demo engine needs BINANCE_DEMO_KEY and "
-                  "BINANCE_DEMO_SECRET in the environment.",
-                  file=sys.stderr)
+        try:
+            api_key, api_secret = load_api_keys(
+                "BINANCE_DEMO_KEY", "BINANCE_DEMO_SECRET",
+                key_file=getattr(args, "key_file", None))
+        except ValueError as exc:
+            print(f"demo engine credentials: {exc}", file=sys.stderr)
             return 2
         engine = _live.BinanceLiveEngine(
             api_key=api_key, api_secret=api_secret,
@@ -543,17 +583,19 @@ def _signed_rows(engine, config) -> list[tuple[str, str, str]]:
 
 
 def _readiness_signed(config, key_env: str, secret_env: str,
+                      key_file: str | None = None,
                       ) -> list[tuple[str, str, str]]:
     """Signed read-only venue checks. GET requests only, never submits."""
     from cryptobot.adapters import binance_live as _live
-    key = os.environ.get(key_env, "")
-    secret = os.environ.get(secret_env, "")
-    if not key or not secret:
+    try:
+        key, secret = load_api_keys(key_env, secret_env,
+                                    key_file=key_file)
+    except ValueError:
         return [(f"signed-checks({key_env}/{secret_env})", "BLOCKED",
                  "credentials absent from environment (declared blocker; "
                  "unsigned checks above still stand)")]
     rows: list[tuple[str, str, str]] = [
-        ("creds-from-env", "PASS",
+        ("creds-loaded", "PASS",
          f"{key_env}=set {secret_env}=set (values never shown)")]
     journal = Path(config.storage_dir) / "readiness_journal.jsonl"
     try:
@@ -567,9 +609,30 @@ def _readiness_signed(config, key_env: str, secret_env: str,
         return rows + [("venue-connect", "FAIL", str(exc))]
     try:
         rows += _signed_rows(engine, config)
+        rows.append(_key_permissions_row(key, secret))
     finally:
         engine.close()
     return rows
+
+
+def _key_permissions_row(key: str, secret: str) -> tuple[str, str, str]:
+    """Trade-only key verification (F2.5): withdrawals must be off.
+
+    Best-effort sapi query (signed, read-only); unreachable endpoint
+    yields a MANUAL checklist row instead of a silent pass.
+    """
+    from cryptobot.adapters import binance_live as _live
+
+    try:
+        payload = _live.fetch_api_restrictions(key, secret)
+    except Exception:  # noqa: BLE001 — any fetch fault -> manual
+        payload = None
+    ok, detail = _live.check_api_restrictions(payload)
+    if payload is None:
+        # Endpoint unreachable (offline/CI/futures-only context):
+        # MANUAL checklist item — never fails readiness by itself.
+        return ("key-permissions", "MANUAL", detail)
+    return ("key-permissions", "PASS" if ok else "FAIL", detail)
 
 
 def _risk_bounds_rows(config) -> list[tuple[str, str, str]]:
@@ -633,7 +696,9 @@ def cmd_readiness(args: argparse.Namespace) -> int:
             key_env, secret_env = "BINANCE_DEMO_KEY", "BINANCE_DEMO_SECRET"
         else:
             key_env, secret_env = "CRYPTOBOT_API_KEY", "CRYPTOBOT_API_SECRET"
-        rows += _readiness_signed(config, key_env, secret_env)
+        rows += _readiness_signed(config, key_env, secret_env,
+                                    key_file=getattr(args, "key_file",
+                                                     None))
     print(f"readiness {args.config}:")
     for name, state, detail in rows:
         print(f"  [{state}] {name}: {detail}")
@@ -663,9 +728,11 @@ def cmd_reconcile(args: argparse.Namespace) -> int:
         key_env, secret_env = "BINANCE_DEMO_KEY", "BINANCE_DEMO_SECRET"
     else:
         key_env, secret_env = "CRYPTOBOT_API_KEY", "CRYPTOBOT_API_SECRET"
-    key = os.environ.get(key_env, "")
-    secret = os.environ.get(secret_env, "")
-    if not key or not secret:
+    try:
+        key, secret = load_api_keys(
+            key_env, secret_env,
+            key_file=getattr(args, "key_file", None))
+    except ValueError:
         print(f"reconcile {args.config}: BLOCKED on {key_env}/"
               f"{secret_env} in the owner's environment.")
         return 3
@@ -769,13 +836,15 @@ def _run_prod(args: argparse.Namespace, _engine_factory=None) -> int:
         print("prod: REFUSED (guard failures above)", file=sys.stderr)
         return 2
     key_env, secret_env = _prod_cred_env(config)
-    key = os.environ.get(key_env, "")
-    secret = os.environ.get(secret_env, "")
-    if not key or not secret:
+    try:
+        key, secret = load_api_keys(
+            key_env, secret_env,
+            key_file=getattr(args, "key_file", None))
+    except ValueError:
         print(f"prod: BLOCKED on {key_env}/{secret_env} in the owner's "
               f"environment.")
         return 3
-    print(f"  [PASS] creds-from-env: {key_env}=set {secret_env}=set "
+    print(f"  [PASS] creds-loaded: {key_env}=set {secret_env}=set "
           f"(values never shown)")
     storage = Path(config.storage_dir)
     journal = storage / "prod_engine_journal.jsonl"
@@ -852,14 +921,17 @@ def cmd_preflight(args: argparse.Namespace) -> int:
     rows = _readiness_unsigned(config, args.config)
     rows += _risk_bounds_rows(config)
     key_env, secret_env = _prod_cred_env(config)
-    key = os.environ.get(key_env, "")
-    secret = os.environ.get(secret_env, "")
     factory = getattr(args, "_engine_factory", None) or _build_live_engine
-    if not key or not secret:
+    try:
+        key, secret = load_api_keys(
+            key_env, secret_env,
+            key_file=getattr(args, "key_file", None))
+    except ValueError:
         rows.append((f"signed-checks({key_env}/{secret_env})", "BLOCKED",
                      "credentials absent from environment"))
-    else:
-        rows.append(("creds-from-env", "PASS",
+        key, secret = "", ""
+    if key and secret:
+        rows.append(("creds-loaded", "PASS",
                      f"{key_env}=set {secret_env}=set (values never shown)"))
         journal = Path(config.storage_dir) / "preflight_journal.jsonl"
         try:
@@ -1359,6 +1431,8 @@ def build_parser() -> argparse.ArgumentParser:
                    help="on shutdown, leave positions with confirmed "
                         "protection instead of flattening (T1.5)")
     p.add_argument("--crash-after", type=int, default=None)
+    p.add_argument("--key-file", default=None,
+                   help="0600 JSON key file (env fallback: CRYPTOBOT_KEY_FILE)")
     p.set_defaults(func=cmd_run)
     p = sub.add_parser("replay")
     p.add_argument("--capture", required=True)
@@ -1379,12 +1453,15 @@ def build_parser() -> argparse.ArgumentParser:
     p.set_defaults(func=cmd_stop)
     p = sub.add_parser("readiness")
     p.add_argument("--config", required=True)
+    p.add_argument("--key-file", default=None)
     p.set_defaults(func=cmd_readiness)
     p = sub.add_parser("preflight")
     p.add_argument("--config", required=True)
+    p.add_argument("--key-file", default=None)
     p.set_defaults(func=cmd_preflight)
     p = sub.add_parser("reconcile")
     p.add_argument("--config", required=True)
+    p.add_argument("--key-file", default=None)
     p.add_argument("--expect-flat", action="store_true",
                    help="fail unless zero positions and zero open orders")
     p.set_defaults(func=cmd_reconcile)

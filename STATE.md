@@ -275,7 +275,7 @@ the fixed harness). Main checkout never touched during recovery
 | F2.2 | calibrate CLI + conservative-only auto-update | DONE |
 | F2.3 | fixtures ingest CLI | DONE |
 | F2.4 | deploy kit + host-check | TODO |
-| F2.5 | Credential safety checks | TODO |
+| F2.5 | Credential safety checks | DONE (IP-allowlist reminder queued for F7 OWNER_ACTIONS) |
 | F2.6 | Clock-skew guard halts entries | DONE (redone post-recovery) |
 | F4.1 | Prereg H4-H6 committed pre-eval (budget ≤8) | TODO |
 | F4.2-F4.7 | Autopilot state machine + dev/confirm/paper stages | TODO |
