@@ -1,0 +1,45 @@
+hypothesis = "C1"
+family = "C"
+family_size = 1
+alias = "B4b"
+holdout = "BURNED"
+confirm_on = "FORWARD"
+forward_after = "2026-10-17"
+forward_min_days = 90
+
+[costs]
+perp_taker_bps = 7.5
+spot_taker_bps = 15.0
+spread_bps_per_side = 1.0
+slip_floor_bps = 1.0
+slip_k = 0.5
+adverse_mult = 2.0
+round_trip = 0.0053
+execution = "taker-next-open"
+
+[risk]
+per_leg = 0.5
+gross_cap = 2.0
+max_drawdown = 0.02
+qty_step = 0.001
+min_notional = 6.0
+equities = [120.0, 1000.0, 10000.0]
+
+[rules]
+trailing_days = 7
+settlements_per_day = 3.0
+amortize_days = 7
+min_hold_days = 7
+exit_hurdle_fraction = 0.5
+exit_consecutive_days = 3
+# Editable only before the first forward evaluation artifact.
+benchmark_apr = 0.05
+
+[confirmation_cell]
+k = 1.5
+drift_band = 0.05
+
+[grid]
+k = [1.0, 1.5]
+drift_band = [0.05, 0.10]
+role = "dev-sanity-only"
