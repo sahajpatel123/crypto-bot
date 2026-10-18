@@ -390,6 +390,16 @@ never read. Campaign `data/captures/campaign-1day-*` events never read
   Notable independent confirmations: A#11 == F1.1 rounding bug;
   reviewer-held areas (journaling, idempotency, sizing clamp,
   prod-off chain) match the F0.3 PASS column.
+- F0.2-fix DONE: authoritative suite @991b6cd exposed 12 triage
+  regressions (11 lifecycle_matrix + 1 release_checkpoint_a). Root
+  causes: (1) supervision funding GETs desync strict scripts →
+  income added to POLL_CALLS (canned []; T1.7 covers booking);
+  (2) old fail-loud/raise contracts asserted (release unknown-raise,
+  row04 raise+intended/eid-less) → updated to post-merge contracts
+  (retain+link+submitted-unknown; row04 restructured:
+  no-seed-A + reseed-B, cid linkage resolves at resume, B#19
+  releases cleanly). No src reversals — all triage fixes stood.
+  18 passed (lifecycle+release). Final F0 suite relaunched.
 
   | ID | Severity | Finding | Verdict |
   |---|---|---|---|
