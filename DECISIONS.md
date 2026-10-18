@@ -209,3 +209,76 @@ Meta Muse Spark.
   env light, no second engine); backtest-trial follow-up
   scoped; live submission unverified (no creds by policy).
   Merged-tree 340/340, gate PASS. cap-2h follow-up pending.
+
+## live/final-hardening takeover (2026-10-18)
+
+- D-020: Work is confined to a dedicated worktree
+  `/Users/sahajpatel/Code/cryto-bot-final`, branch `live/final-hardening`,
+  created from `live/hardening` tip `3100266`. The main checkout's
+  uncommitted `coord/pivot/*` was never read, modified or relied on; no
+  other branch was merged. `data/captures/campaign-1day-*` events were
+  never read (only manifest/status metadata may be read).
+- D-021 (hermetic suite, F0.2): `test_zone_status` now reads the committed
+  git object `HEAD:coord/pivot/ZONES.json` instead of the mutable working
+  tree. `tests/unit/test_hermetic_reads.py` resolves literal repo paths in
+  test modules and fails when a test reads a currently modified/untracked
+  data/config file. Source imports under `src/` and tools under `tools/`
+  are exempt because they are the code under test; tests/ and tmp are
+  allowed. This is the rule the old failure violated.
+- D-022 (break-even, F0.4b): `required_win_rate = (S+c)/(T+S)` is
+  re-derived by `tools/breakeven_audit.py` without calling the production
+  function. The table now carries `feasible`/`verdict`; `p >= 100%` is
+  INFEASIBLE. At 25/25bps and 26bps cost p=102% (impossible). The default
+  model's 25/25 taker geometry is 18bps, requiring p=86%; the earlier
+  ">60-65%" prose was wrong and is corrected in RESEARCH_VERDICTS.md.
+- D-023 (bracket admission, F0.4a): `bracket_admission_check` is called
+  from `Session._maybe_admit` before submission for any engine exposing
+  `leverage_brackets`. Missing/unobserved/stale/malformed brackets reject;
+  leverage is the engine's expected value and is re-checked every 60s via
+  `leverage_now` (mid-run changes halt entries). Maintenance margin is
+  clamped non-negative so a malformed `cum` cannot move liquidation away.
+- D-024 (paper fills, F0.4c): the "one adverse tick" rule is replaced by
+  `PaperFillParameters`, which derives expected adverse bps from measured
+  spread, depth multiple and latency, with floor/cap ticks. The Nautilus
+  paper simulator applies at most one tick (documented limitation); the
+  bps model is what replay/paper accounting and calibration use.
+- D-025 (rounding bug): property tests found that the 1e-9 epsilon in
+  `floor_to_step`/`floor_to_tick` could round UP by a whole step at large
+  ratios, and `ceil_to_tick` could round DOWN. Both now clamp the result
+  to the correct side of the input. F1.1 property tests cover it. This is
+  a correctness fix, not a threshold relaxation.
+- D-026 (gate strictness, F5.1): the old gate accepted
+  `MEASURED-REST-ONLY` latency. It now requires measured
+  `p99_feed_age_ms <= 250` and `drop_rate <= 0.001`, plus GATE_READY,
+  sealed provenance, config-hash match, cost model <=30 days, host-check
+  <=7 days, demo drill <=7 days, and a fresh watchdog heartbeat. This is
+  STRICTER than before; no threshold was loosened to make anything pass.
+- D-027 (research budget, F4.1): the family is H1-H6 (6 of the 8 allowed),
+  preregistered in `research/prereg/` with exact rules/grids/costs/min
+  trades and frozen configs in `research/configs/`. H4-H6 were committed
+  before any evaluation. The registry is machine-written by
+  `cryptobot research register`.
+- D-028 (synthetic acceptance, F8.1): the autopilot's
+  `--allow-synthetic` flag exists only to exercise the state machine in
+  acceptance. It stamps state provenance SYNTHETIC; `gate` rejects it.
+  The acceptance command proves the transition path AND the rejection.
+- D-029 (adversarial review triage): two independent reviewers audited
+  FINAL_STATUS and money paths without this STATE. Findings were:
+  FIXED: unknown/reject submit escapes (A1/A2), unreachable venue treated
+  as flat (B1/A7), day-roll clearing safety halts (B2/A8), protection
+  UNKNOWN crash (B3), user-stream fee crash (B4), missing watchdog
+  heartbeat (B5), orphan late fill (B6), leave-protected local-only
+  trust (B7/A9), dust/min-notional close loop (B8/A10), malformed venue
+  position rows read as flat (B9), shadow stop not wired (A4), rate-limit
+  read escapes (A3), flatten not drained (A12), negative maintenance
+  margin (A6 part). DISPUTED/ACCEPTED-RISK: booking-block latch has no
+  auto-ack (A11) — it is fail-closed and requires reconciliation; default
+  `max_mark_age_ms=None` on old research configs (A5) — prod/demo set
+  1s, and the gate requires host/latency evidence; full mutation score
+  (F1.2) is recorded as BLOCKED-TECH below if not completed.
+- D-030 (chaos): the existing 13-row lifecycle matrix
+  (`tests/unit/test_lifecycle_matrix.py`) is the automated fault matrix
+  (timeout/5xx/429/reject/partial/dupe/reorder/WS death/crash/resume) on
+  the real Session + sandbox venue; acceptance adds submit/stream fault
+  scenarios. The invariant is flat or verified-protected, never an
+  unowned naked position; the new orphan/shadow-stop guards enforce it.

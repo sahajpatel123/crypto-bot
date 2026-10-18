@@ -1,0 +1,90 @@
+{
+ "chain_head": "5f5673b98d6230395a821f48e73312d959022e3c65654567cab3d579c90337a8",
+ "entries": [
+  {
+   "details": {
+    "config_sha256": "9e3de68888a25db929cf1035ac041a12a3482f6739d7a33392b5537cfc5adb9a",
+    "prereg": "research/prereg/H1-maker-ofi-scalp.md"
+   },
+   "entry_hash": "fa50b15a70ca630f32e0657158d2b68cb3e074c19c888afaaab06a42006d1dcc",
+   "from": "REGISTERED",
+   "hypothesis": "H1",
+   "prev": "genesis",
+   "provenance": "OBSERVED",
+   "reason": "prereg present; dev evaluation due",
+   "to": "DEV_EVAL",
+   "ts_utc": "2026-10-18T06:53:00.283401+00:00"
+  },
+  {
+   "details": {
+    "config_sha256": "d85ed353445895d78a922580bb58e7e131bd5b1cfc438ceb99901c7f5586c73a",
+    "prereg": "research/prereg/H2-trend-vol-regime.md"
+   },
+   "entry_hash": "c0f6b818ec0ca863ea0e0ed5f7137965bcbdc725aeef1735f91b19ef97a90a7e",
+   "from": "REGISTERED",
+   "hypothesis": "H2",
+   "prev": "fa50b15a70ca630f32e0657158d2b68cb3e074c19c888afaaab06a42006d1dcc",
+   "provenance": "OBSERVED",
+   "reason": "prereg present; dev evaluation due",
+   "to": "DEV_EVAL",
+   "ts_utc": "2026-10-18T06:53:00.285067+00:00"
+  },
+  {
+   "details": {
+    "config_sha256": "0885b908ffe137692040ac7a3701b02a6dbc420b8fd9106e098659a1314c991b",
+    "prereg": "research/prereg/H3-funding-skew-tilt.md"
+   },
+   "entry_hash": "b9f664415b965b921a638a355636190776a51451e20054a5c7a474ef481ee204",
+   "from": "REGISTERED",
+   "hypothesis": "H3",
+   "prev": "c0f6b818ec0ca863ea0e0ed5f7137965bcbdc725aeef1735f91b19ef97a90a7e",
+   "provenance": "OBSERVED",
+   "reason": "prereg present; dev evaluation due",
+   "to": "DEV_EVAL",
+   "ts_utc": "2026-10-18T06:53:00.286159+00:00"
+  },
+  {
+   "details": {
+    "config_sha256": "b199dfdf445f5427d09864f9732e64c7f03d7835b3b5674c45a1ca668dc3c5bd",
+    "prereg": "research/prereg/H4-cross-venue-lead-lag.md"
+   },
+   "entry_hash": "3406490807748340a7bb5442945f166268f87c3fb1b461aa123d21981460708d",
+   "from": "REGISTERED",
+   "hypothesis": "H4",
+   "prev": "b9f664415b965b921a638a355636190776a51451e20054a5c7a474ef481ee204",
+   "provenance": "OBSERVED",
+   "reason": "prereg present; dev evaluation due",
+   "to": "DEV_EVAL",
+   "ts_utc": "2026-10-18T06:53:00.287089+00:00"
+  },
+  {
+   "details": {
+    "config_sha256": "0e239da8664edf588ca63cd0d7d6872522f6667ed618142225d3ad0ca56c0cf1",
+    "prereg": "research/prereg/H5-liquidation-cascade-fade.md"
+   },
+   "entry_hash": "e360ba050d824d6a54146149b82e3520d667553b9891ac416747f4fea600119f",
+   "from": "REGISTERED",
+   "hypothesis": "H5",
+   "prev": "3406490807748340a7bb5442945f166268f87c3fb1b461aa123d21981460708d",
+   "provenance": "OBSERVED",
+   "reason": "prereg present; dev evaluation due",
+   "to": "DEV_EVAL",
+   "ts_utc": "2026-10-18T06:53:00.287884+00:00"
+  },
+  {
+   "details": {
+    "config_sha256": "f9fc17a44f770d35b0ba3c84c1601708d129a0200a67d1eaab528d0a85f38f53",
+    "prereg": "research/prereg/H6-vol-shock-regime-filter.md"
+   },
+   "entry_hash": "5f5673b98d6230395a821f48e73312d959022e3c65654567cab3d579c90337a8",
+   "from": "REGISTERED",
+   "hypothesis": "H6",
+   "prev": "e360ba050d824d6a54146149b82e3520d667553b9891ac416747f4fea600119f",
+   "provenance": "OBSERVED",
+   "reason": "prereg present; dev evaluation due",
+   "to": "DEV_EVAL",
+   "ts_utc": "2026-10-18T06:53:00.288730+00:00"
+  }
+ ],
+ "format": "cryptobot-autopilot-transitions/1"
+}

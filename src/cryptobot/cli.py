@@ -937,6 +937,57 @@ def cmd_report(args: argparse.Namespace) -> int:
 ARM_ACK_PHRASE = "I UNDERSTAND LIVE CAPITAL IS AT RISK"
 
 
+def _measure_ws_feed(seconds: int) -> dict:
+    """Public-stream feed-age p99 + trade-ID gap rate (no credentials)."""
+    import time as _time
+
+    from cryptobot.market_data.ws import WsClient, WsClosed
+
+    symbols = ("btcusdt", "ethusdt")
+    streams = "/".join(f"{s}@{k}" for s in symbols
+                       for k in ("aggTrade", "bookTicker"))
+    url = f"wss://fstream.binance.com/stream?streams={streams}"
+    ages: list[float] = []
+    last_id: dict[str, int] = {}
+    gaps = records = malformed = 0
+    deadline = _time.monotonic() + max(1, seconds)
+    client = WsClient.connect(url, timeout_s=10.0)
+    try:
+        while _time.monotonic() < deadline:
+            try:
+                _kind, raw = client.recv_message(timeout_s=1.0)
+            except WsClosed as exc:
+                if "timeout" in str(exc).lower():
+                    continue
+                raise
+            try:
+                envelope = json.loads(raw.decode("utf-8"))
+                data = envelope.get("data", envelope)
+                event_ms = int(data["E"])
+            except (ValueError, KeyError, TypeError):
+                malformed += 1
+                continue
+            records += 1
+            ages.append(max(0.0, _time.time() * 1000.0 - event_ms))
+            if data.get("e") == "aggTrade":
+                sym = str(data.get("s", ""))
+                tid = int(data.get("a", 0))
+                prev = last_id.get(sym)
+                if prev is not None and tid != prev + 1:
+                    gaps += 1
+                last_id[sym] = tid
+    finally:
+        client.close()
+    ordered = sorted(ages)
+    p99 = ordered[min(len(ordered) - 1, int(0.99 * len(ordered)))] \
+        if ordered else None
+    return {"p99_feed_age_ms": round(p99, 2) if p99 is not None else None,
+            "feed_age_samples": len(ordered),
+            "drop_rate": round(gaps / records, 6) if records else 1.0,
+            "trade_id_gaps": gaps, "records": records,
+            "malformed": malformed}
+
+
 def cmd_latency_probe(args: argparse.Namespace) -> int:
     """WS/REST round-trip + clock skew + feed-age probe (T2.3, JSON).
 
@@ -958,10 +1009,18 @@ def cmd_latency_probe(args: argparse.Namespace) -> int:
         out["rest_rtt_ms"] = round(rtt_ms, 2)
         out["clock_skew_ms"] = int(payload["serverTime"]) \
             - int(_time.time() * 1000)
-        out["verdict"] = "MEASURED-REST-ONLY"
-        out["note"] = ("WS feed-age p99 must be measured on the live "
-                       "feed on the candidate host; see OWNER_ACTIONS.md")
-        rc = 0
+        if getattr(args, "feed_seconds", 0):
+            feed = _measure_ws_feed(int(args.feed_seconds))
+            out.update(feed)
+            out["verdict"] = "PASS" if (
+                feed.get("p99_feed_age_ms", 1e9) <= 250.0
+                and feed.get("drop_rate", 1.0) <= 0.001) else "FAIL"
+        else:
+            out["verdict"] = "MEASURED-REST-ONLY"
+            out["note"] = ("WS feed-age p99 must be measured on the live "
+                           "feed on the candidate host; use --feed-seconds")
+        rc = 0 if out["verdict"] == "PASS" or out["verdict"] == \
+            "MEASURED-REST-ONLY" else 2
     except Exception as exc:  # noqa: BLE001 — probe reports, never hides
         out["verdict"] = "FAIL"
         out["error"] = f"{type(exc).__name__}: {exc}"
@@ -1000,11 +1059,40 @@ def cmd_data(args: argparse.Namespace) -> int:
 
 
 def cmd_verdict(args: argparse.Namespace) -> int:
-    """Hash-bound verdict from a trades JSONL file (T5.5)."""
+    """Hash-bound verdict from trades JSONL or a sealed CONFIRM chunk."""
+    from cryptobot.data.vault import Vault, VaultError
     from cryptobot.research.verdict import evaluate_trades, verdict_document
 
-    rows = [json.loads(ln) for ln in
-            Path(args.trades).read_text().splitlines() if ln.strip()]
+    provenance = "OBSERVED"
+    seal_sha = None
+    if getattr(args, "vault_token", None):
+        if not getattr(args, "vault_chunk", None):
+            print("verdict: REFUSED --vault-chunk required with token",
+                  file=sys.stderr)
+            return 2
+        try:
+            vault = Vault(args.vault_root)
+            rows = vault.load_chunk(args.vault_chunk, token=args.vault_token,
+                                    hypothesis=args.hypothesis,
+                                    consumer="verdict")
+        except (VaultError, OSError) as exc:
+            print(f"verdict: REFUSED {exc}", file=sys.stderr)
+            return 2
+        header = next((r for r in rows if r.get("type") == "header"), {})
+        if str(header.get("input_class", "")).upper() == "SYNTHETIC":
+            print("verdict: REFUSED synthetic CONFIRM data", file=sys.stderr)
+            return 2
+        provenance = "SEALED-CONFIRM"
+        seal_sha = next((e["sha256"] for e in vault.registry["entries"]
+                         if e["chunk_id"] == args.vault_chunk), None)
+        rows = [r for r in rows if "net_bps" in r]
+    else:
+        if not args.trades:
+            print("verdict: REFUSED provide --trades or --vault-token",
+                  file=sys.stderr)
+            return 2
+        rows = [json.loads(ln) for ln in
+                Path(args.trades).read_text().splitlines() if ln.strip()]
     result = evaluate_trades(
         [float(r["net_bps"]) for r in rows],
         adverse_bps=[float(r.get("adverse_bps", r["net_bps"]))
@@ -1016,7 +1104,10 @@ def cmd_verdict(args: argparse.Namespace) -> int:
     commit = os.environ.get("CRYPTOBOT_CODE_COMMIT", "unknown")
     doc = verdict_document(hypothesis=args.hypothesis, result=result,
                            config_path=args.config,
-                           data_manifest=args.trades, code_commit=commit)
+                           data_manifest=args.trades or args.vault_chunk,
+                           code_commit=commit,
+                           data_provenance=provenance,
+                           sealed_chunk_sha256=seal_sha)
     text = json.dumps(doc, indent=1, sort_keys=True)
     print(text)
     if args.out:
@@ -1033,23 +1124,101 @@ def _read_json(path: str | None) -> dict:
         return {}
 
 
+def _age_days(stamp: object) -> float | None:
+    try:
+        when = datetime.fromisoformat(str(stamp))
+    except (TypeError, ValueError):
+        return None
+    if when.tzinfo is None:
+        when = when.replace(tzinfo=timezone.utc)
+    return (datetime.now(timezone.utc) - when).total_seconds() / 86400.0
+
+
+def _sha256_file(path: str | Path) -> str:
+    import hashlib
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def _current_commit() -> str:
+    import subprocess
+    try:
+        return subprocess.run(["git", "rev-parse", "HEAD"],
+                              capture_output=True, text=True,
+                              check=True).stdout.strip()
+    except (OSError, subprocess.SubprocessError):
+        return os.environ.get("CRYPTOBOT_CODE_COMMIT", "unknown")
+
+
 def cmd_gate(args: argparse.Namespace) -> int:
-    """GO/NO-GO gate (T6.1 step 1). Writes gate.json (24h expiry)."""
+    """GO/NO-GO gate (F5.1). Machine evidence only; 24h expiry."""
     verdict = _read_json(args.verdict_json)
     drill = _read_json(args.drill_json)
     latency = _read_json(args.latency_json)
+    autopilot = _read_json(getattr(args, "autopilot_state", None))
+    cost = _read_json(getattr(args, "cost_model", None))
+    host = _read_json(getattr(args, "host_check", None))
+    heartbeat = _read_json(getattr(args, "watchdog_heartbeat", None))
     state_text = Path("STATE.md").read_text() \
         if Path("STATE.md").exists() else ""
+    verdict_hashes = verdict.get("hashes", {}) if isinstance(
+        verdict.get("hashes"), dict) else {}
+    provenance = str(verdict.get("data_provenance", "UNKNOWN")).upper()
+    auto_prov = str(autopilot.get("provenance", "UNKNOWN")).upper()
     checks = {
         "verdict_pass": verdict.get("verdict") == "PASS",
-        "demo_drill_pass": drill.get("verdict") == "PASS",
-        "latency_pass": latency.get("verdict") in ("PASS", "MEASURED-REST-ONLY")
-        and latency.get("rest_rtt_ms") is not None,
+        "verdict_provenance_sealed": provenance in (
+            "OBSERVED", "SEALED-CONFIRM")
+        and provenance != "SYNTHETIC",
+        "autopilot_gate_ready": autopilot.get("state") == "GATE_READY",
+        "autopilot_provenance_observed": auto_prov not in (
+            "SYNTHETIC", "UNKNOWN"),
+        "autopilot_config_matches_verdict": bool(
+            autopilot.get("config_sha256")
+            and verdict_hashes.get("config_sha256_16")
+            and str(autopilot.get("config_sha256", ""))[:16]
+            == str(verdict_hashes.get("config_sha256_16"))),
+        "cost_model_fresh": bool(cost.get("version")
+                                 and (_age_days(cost.get("created_utc"))
+                                      is not None)
+                                 and _age_days(cost.get("created_utc")) <= 30),
+        "host_check_pass_fresh": host.get("verdict") == "PASS"
+        and (_age_days(host.get("generated_utc")) is not None)
+        and _age_days(host.get("generated_utc")) <= 7,
+        "demo_drill_pass_fresh": drill.get("verdict") == "PASS"
+        and (_age_days(drill.get("created_utc", drill.get("generated_utc")))
+             is not None)
+        and _age_days(drill.get("created_utc",
+                                drill.get("generated_utc"))) <= 7,
+        "latency_ws_pass": latency.get("verdict") == "PASS"
+        and isinstance(latency.get("p99_feed_age_ms"), (int, float))
+        and float(latency["p99_feed_age_ms"]) <= 250.0
+        and isinstance(latency.get("drop_rate"), (int, float))
+        and float(latency["drop_rate"]) <= 0.001,
+        "watchdog_heartbeat_fresh": bool(heartbeat.get("ts_utc"))
+        and (_age_days(heartbeat.get("ts_utc")) is not None)
+        and _age_days(heartbeat.get("ts_utc")) <= (90.0 / 86400.0)
+        and "has_exposure" in heartbeat,
         "no_blocked_in_state": "| BLOCKED |" not in state_text,
-        "prod_submission_default_off": True,  # configs/prod.toml switch
     }
-    go = all(checks.values())
+    details: dict[str, object] = {}
+    if getattr(args, "config", None):
+        try:
+            cfg_sha = _sha256_file(args.config)[:16]
+            details["config_sha256_16"] = cfg_sha
+            checks["config_matches_verdict"] = bool(
+                verdict_hashes.get("config_sha256_16") == cfg_sha)
+        except OSError:
+            checks["config_matches_verdict"] = False
+    if getattr(args, "require_commit", False):
+        commit = _current_commit()
+        details["code_commit"] = commit
+        checks["commit_matches_verdict"] = bool(
+            verdict_hashes.get("code_commit") == commit
+            and commit != "unknown")
+    go = bool(checks) and all(checks.values())
     doc = {"gate": "GO" if go else "NO-GO", "checks": checks,
+           "details": details,
+           "hypothesis": getattr(args, "hypothesis", None),
            "expires_utc": datetime.fromtimestamp(
                datetime.now(timezone.utc).timestamp() + 86400,
                tz=timezone.utc).isoformat(),
@@ -1060,9 +1229,19 @@ def cmd_gate(args: argparse.Namespace) -> int:
 
 
 def cmd_arm(args: argparse.Namespace) -> int:
-    """Arm prod (T6.1 step 2). Refuses without gate + env ack + typed
-    confirmation. Never enables submission by itself — it only writes
-    the armed record the (separately reviewed) prod path must check."""
+    """Arm prod (F5.2): human TTY only, typed phrase, fresh GO gate."""
+    if not sys.stdin.isatty():
+        print("arm: REFUSED (interactive TTY required)", file=sys.stderr)
+        return 2
+    if any(os.environ.get(k) for k in (
+            "CI", "GITHUB_ACTIONS", "GITLAB_CI", "JENKINS_URL",
+            "BUILDKITE", "TF_BUILD")):
+        print("arm: REFUSED (CI environment detected)", file=sys.stderr)
+        return 2
+    if args.capital_usdt <= 0 or args.max_daily_loss <= 0:
+        print("arm: REFUSED (capital and daily loss must be positive)",
+              file=sys.stderr)
+        return 2
     gate = _read_json(args.gate_json)
     if gate.get("gate") != "GO":
         print("arm: REFUSED (no valid GO gate.json)", file=sys.stderr)
@@ -1081,7 +1260,7 @@ def cmd_arm(args: argparse.Namespace) -> int:
         return 2
     try:
         typed = input("type the acknowledgement phrase: ")
-    except EOFError:
+    except (EOFError, OSError):
         typed = ""
     if typed.strip() != ARM_ACK_PHRASE:
         print("arm: REFUSED (typed confirmation mismatch)",
@@ -1090,6 +1269,10 @@ def cmd_arm(args: argparse.Namespace) -> int:
     doc = {"armed": True, "capital_usdt": args.capital_usdt,
            "max_daily_loss": args.max_daily_loss,
            "canary_trades": 10,
+           "gate_sha256": _sha256_file(args.gate_json),
+           "gate_expires_utc": gate.get("expires_utc"),
+           "hypothesis": gate.get("hypothesis"),
+           "code_commit": _current_commit(),
            "armed_utc": datetime.now(timezone.utc).isoformat()}
     Path(args.out).write_text(json.dumps(doc, indent=1) + "\n")
     print(f"arm: ARMED record written {args.out} (canary 10 trades)")
@@ -1125,6 +1308,192 @@ def cmd_demo_drill(args: argparse.Namespace) -> int:
     if args.out:
         Path(args.out).write_text(text + "\n")
     return 2
+
+
+def cmd_recorder(args: argparse.Namespace) -> int:
+    """Standalone public-data recorder: start|stop|status|verify (F3.6)."""
+    from cryptobot.market_data.live_recorder import (
+        RecorderConfig, integrity_report, run_recorder)
+
+    out = Path(args.out)
+    out.mkdir(parents=True, exist_ok=True)
+    stop_file = Path(args.stop_file) if args.stop_file else out / "STOP"
+    if args.recorder_cmd == "stop":
+        stop_file.write_text(datetime.now(timezone.utc).isoformat() + "\n")
+        print(f"recorder: stop requested via {stop_file}")
+        return 0
+    if args.recorder_cmd == "status":
+        path = out / "status.json"
+        if not path.exists():
+            print(f"recorder: NO STATUS ({path})")
+            return 2
+        print(path.read_text())
+        return 0
+    if args.recorder_cmd == "verify":
+        import json as _json
+        report = integrity_report(out)
+        print(_json.dumps(report, indent=1, sort_keys=True))
+        return 0 if report["ok"] else 2
+    symbols = tuple(s.strip().upper() for s in (args.symbols or "BTCUSDT,ETHUSDT"
+                                                ).split(",") if s.strip())
+    venues = tuple(s.strip().lower() for s in (args.venues or "binance"
+                                               ).split(",") if s.strip())
+    cfg = RecorderConfig(out_dir=str(out), symbols=symbols, venues=venues,
+                         stop_file=str(stop_file),
+                         chunk_seconds=int(args.chunk_seconds),
+                         disk_budget_mb=int(args.disk_budget_mb),
+                         input_class=args.input_class)
+    (out / "recorder.pid").write_text(str(os.getpid()) + "\n")
+    try:
+        status = run_recorder(cfg, duration_s=args.duration_s)
+    finally:
+        (out / "recorder.pid").unlink(missing_ok=True)
+    print(json.dumps(status, indent=1, sort_keys=True))
+    return 0 if status.get("dropped", 0) == 0 else 3
+
+
+def cmd_vault(args: argparse.Namespace) -> int:
+    """Sealed vault operations (machinery only; never hand-edit data)."""
+    import hashlib
+
+    from cryptobot.data.vault import Vault
+    vault = Vault(args.root)
+    if args.vault_cmd == "verify":
+        print(json.dumps(vault.verify(), indent=1, sort_keys=True))
+        return 0 if vault.verify()["ok"] else 2
+    if args.vault_cmd == "freeze":
+        digest = hashlib.sha256(Path(args.config).read_bytes()).hexdigest()
+        doc = vault.freeze_hypothesis(
+            args.hypothesis, config_sha256=digest, commit=args.commit,
+            prereg_path=args.prereg)
+        print(json.dumps(doc, indent=1, sort_keys=True))
+        return 0
+    if args.vault_cmd == "seal":
+        chunk = vault.seal_chunk(
+            args.source, class_=args.data_class,
+            hypothesis=args.hypothesis, config_sha256=args.config_sha256,
+            first_ms=args.first_ms, last_ms=args.last_ms)
+        print(json.dumps(chunk.__dict__, indent=1, sort_keys=True, default=str))
+        return 0
+    if args.vault_cmd == "issue-token":
+        print(vault.issue_token(args.hypothesis))
+        return 0
+    print(f"vault: unknown command {args.vault_cmd}", file=sys.stderr)
+    return 2
+
+
+def cmd_calibrate(args: argparse.Namespace) -> int:
+    """F2.2: fit a versioned, monotonic cost model from recorded fills."""
+    from cryptobot.research.calibration import (
+        fit_cost_model, load_model, parse_fills, update_cost_model,
+        write_model)
+
+    rows = [json.loads(line) for line in Path(args.fills).read_text(
+        encoding="utf-8").splitlines() if line.strip()]
+    try:
+        samples = parse_fills(rows)
+        fitted = fit_cost_model(samples, source=args.fills)
+        previous = load_model(args.previous) if args.previous else None
+        model = update_cost_model(previous, fitted,
+                                  verdict_path=args.verdict_json)
+        write_model(args.out, model)
+    except (ValueError, OSError) as exc:
+        print(f"calibrate: REFUSED {exc}", file=sys.stderr)
+        return 2
+    print(json.dumps(model, indent=1, sort_keys=True))
+    return 0
+
+
+def cmd_fixtures(args: argparse.Namespace) -> int:
+    """F2.3: validate and install recorded demo/testnet fixtures."""
+    from cryptobot.fixtures import FixtureError, ingest_fixtures
+
+    try:
+        index = ingest_fixtures(args.source, args.dest, force=args.force)
+    except FixtureError as exc:
+        print(f"fixtures ingest: REFUSED {exc}", file=sys.stderr)
+        return 2
+    print(json.dumps(index, indent=1, sort_keys=True))
+    return 0
+
+
+def cmd_host_check(args: argparse.Namespace) -> int:
+    """F2.4/F2.6: host provisioning checks (offline-safe, fail closed)."""
+    from cryptobot.ops.host_check import run_host_check
+
+    report = run_host_check(
+        min_free_gb=args.min_free_gb,
+        max_clock_skew_ms=args.max_clock_skew_ms,
+        check_network=not args.no_network,
+        out=args.out)
+    print(json.dumps(report, indent=1, sort_keys=True))
+    return 0 if report["verdict"] == "PASS" else 2
+
+
+def cmd_autopilot(args: argparse.Namespace) -> int:
+    """F4.6: idempotent research autopilot state machine."""
+    from cryptobot.research.autopilot import Autopilot
+
+    bot = Autopilot(args.root, allow_synthetic=args.allow_synthetic)
+    if args.autopilot_cmd == "status":
+        print(json.dumps(bot.report(), indent=1, sort_keys=True))
+        return 0
+    if args.autopilot_cmd == "report":
+        report = bot.report()
+        print(json.dumps(report, indent=1, sort_keys=True))
+        bot._write_daily(report)
+        return 0
+    if args.autopilot_cmd == "run-once":
+        result = bot.run_once()
+        print(json.dumps(result, indent=1, sort_keys=True))
+        return 0
+    print(f"autopilot: unknown command {args.autopilot_cmd}", file=sys.stderr)
+    return 2
+
+
+def cmd_research(args: argparse.Namespace) -> int:
+    """Research registry / power tools (F4.1, F4.4)."""
+    import hashlib
+
+    from cryptobot.research.autopilot import Autopilot
+    if args.research_cmd == "register":
+        bot = Autopilot(args.root)
+        digest = hashlib.sha256(Path(args.config).read_bytes()).hexdigest()
+        entry = bot.register(args.hypothesis, prereg=args.prereg,
+                             config_sha256=digest, commit=args.commit,
+                             family_size=args.family_size)
+        print(json.dumps(entry, indent=1, sort_keys=True))
+        return 0
+    if args.research_cmd == "power":
+        from cryptobot.research.power import estimate_power
+        rows = [json.loads(line) for line in Path(args.trades).read_text(
+            encoding="utf-8").splitlines() if line.strip()]
+        est = estimate_power([float(r["net_bps"]) for r in rows],
+                             trades_per_day=args.trades_per_day)
+        print(json.dumps(est.as_dict(), indent=1, sort_keys=True))
+        return 0
+    print(f"research: unknown command {args.research_cmd}", file=sys.stderr)
+    return 2
+
+
+def cmd_dashboard(args: argparse.Namespace) -> int:
+    """F6.1: write the static HTML dashboard."""
+    from cryptobot.reporting.status import write_dashboard
+
+    status = write_dashboard(
+        args.out, recorder_root=args.recorder_root,
+        autopilot_root=args.autopilot_root, risk_state=args.risk_state)
+    print(json.dumps(status, indent=1, sort_keys=True))
+    print(f"dashboard: {args.out}")
+    return 0
+
+
+def cmd_acceptance(args: argparse.Namespace) -> int:
+    """F8.1: full/state-machine acceptance on synthetic + sandbox data."""
+    from cryptobot.acceptance import run_acceptance
+    doc = run_acceptance(full=args.full, root=args.root)
+    print(json.dumps(doc, indent=1, sort_keys=True))
+    return 0 if doc["verdict"] == "PASS" else 1
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -1196,23 +1565,35 @@ def build_parser() -> argparse.ArgumentParser:
     p.set_defaults(func=cmd_backtest)
     p = sub.add_parser("latency-probe")
     p.add_argument("--out", default=None)
+    p.add_argument("--feed-seconds", type=int, default=0,
+                   help="also measure public WS feed age/drops for N seconds")
     p.set_defaults(func=cmd_latency_probe)
     p = sub.add_parser("data")
     p.add_argument("data_cmd", choices=("verify",))
     p.add_argument("--capture", required=True)
     p.set_defaults(func=cmd_data)
     p = sub.add_parser("verdict")
-    p.add_argument("--trades", required=True,
+    p.add_argument("--trades", default=None,
                    help="JSONL rows {net_bps, adverse_bps, day, dd_bps}")
     p.add_argument("--hypothesis", required=True)
     p.add_argument("--config", default="configs/paper.toml")
     p.add_argument("--family-size", type=int, default=1)
+    p.add_argument("--vault-root", default="data/vault")
+    p.add_argument("--vault-token", default=None)
+    p.add_argument("--vault-chunk", default=None)
     p.add_argument("--out", default=None)
     p.set_defaults(func=cmd_verdict)
     p = sub.add_parser("gate")
     p.add_argument("--verdict-json", default=None)
     p.add_argument("--drill-json", default=None)
     p.add_argument("--latency-json", default=None)
+    p.add_argument("--autopilot-state", default=None)
+    p.add_argument("--cost-model", default=None)
+    p.add_argument("--host-check", default=None)
+    p.add_argument("--watchdog-heartbeat", default=None)
+    p.add_argument("--hypothesis", default=None)
+    p.add_argument("--config", default=None)
+    p.add_argument("--require-commit", action="store_true")
     p.add_argument("--out", default="gate.json")
     p.set_defaults(func=cmd_gate)
     p = sub.add_parser("arm")
@@ -1221,9 +1602,87 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--gate-json", default="gate.json")
     p.add_argument("--out", default="armed.json")
     p.set_defaults(func=cmd_arm)
+    p = sub.add_parser("autopilot",
+                       help="research autopilot state machine (F4.6)")
+    p.add_argument("autopilot_cmd",
+                   choices=("run-once", "status", "report"))
+    p.add_argument("--root", default="research/autopilot")
+    p.add_argument("--allow-synthetic", action="store_true",
+                   help="only for F8.1 acceptance; never for a real gate")
+    p.set_defaults(func=cmd_autopilot)
+    p = sub.add_parser("research", help="hypothesis registry / power (F4)")
+    p.add_argument("research_cmd", choices=("register", "power"))
+    p.add_argument("--root", default="research/autopilot")
+    p.add_argument("--hypothesis", default=None)
+    p.add_argument("--prereg", default=None)
+    p.add_argument("--config", default=None)
+    p.add_argument("--commit", default="unknown")
+    p.add_argument("--family-size", type=int, default=6)
+    p.add_argument("--trades", default=None)
+    p.add_argument("--trades-per-day", type=float, default=1.0)
+    p.set_defaults(func=cmd_research)
     p = sub.add_parser("demo-drill")
     p.add_argument("--out", default=None)
     p.set_defaults(func=cmd_demo_drill)
+    p = sub.add_parser("recorder",
+                       help="standalone public-data recorder (F3)")
+    p.add_argument("recorder_cmd",
+                   choices=("start", "stop", "status", "verify"))
+    p.add_argument("--out", default="data/recorder")
+    p.add_argument("--stop-file", default=None)
+    p.add_argument("--symbols", default="BTCUSDT,ETHUSDT")
+    p.add_argument("--venues", default="binance")
+    p.add_argument("--duration-s", type=float, default=None)
+    p.add_argument("--chunk-seconds", type=int, default=3600)
+    p.add_argument("--disk-budget-mb", type=int, default=50_000)
+    p.add_argument("--input-class", default="observed-public",
+                   choices=("observed-public", "SYNTHETIC"))
+    p.set_defaults(func=cmd_recorder)
+    p = sub.add_parser("vault", help="sealed data vault (F3.5)")
+    p.add_argument("vault_cmd",
+                   choices=("seal", "freeze", "issue-token", "verify"))
+    p.add_argument("--root", default="data/vault")
+    p.add_argument("--source", default=None)
+    p.add_argument("--hypothesis", default=None)
+    p.add_argument("--config", default=None)
+    p.add_argument("--config-sha256", default=None)
+    p.add_argument("--commit", default=None)
+    p.add_argument("--prereg", default=None)
+    p.add_argument("--data-class", default="DEV", choices=("DEV", "CONFIRM"))
+    p.add_argument("--first-ms", type=int, default=None)
+    p.add_argument("--last-ms", type=int, default=None)
+    p.set_defaults(func=cmd_vault)
+    p = sub.add_parser("calibrate",
+                       help="fit versioned cost model from fills (F2.2)")
+    p.add_argument("--fills", required=True)
+    p.add_argument("--out", default="research/cost-model.json")
+    p.add_argument("--previous", default=None)
+    p.add_argument("--verdict-json", default=None)
+    p.set_defaults(func=cmd_calibrate)
+    p = sub.add_parser("fixtures",
+                       help="validate/install recorded fixtures (F2.3)")
+    p.add_argument("fixtures_cmd", choices=("ingest",))
+    p.add_argument("source")
+    p.add_argument("--dest", default="tests/fixtures/recorded")
+    p.add_argument("--force", action="store_true")
+    p.set_defaults(func=cmd_fixtures)
+    p = sub.add_parser("host-check",
+                       help="host/NTP/disk/network readiness (F2.4/F2.6)")
+    p.add_argument("--min-free-gb", type=float, default=20.0)
+    p.add_argument("--max-clock-skew-ms", type=int, default=250)
+    p.add_argument("--no-network", action="store_true")
+    p.add_argument("--out", default=None)
+    p.set_defaults(func=cmd_host_check)
+    p = sub.add_parser("dashboard", help="static status dashboard (F6.1)")
+    p.add_argument("--out", default="reports/dashboard.html")
+    p.add_argument("--recorder-root", default="data/recorder")
+    p.add_argument("--autopilot-root", default="research/autopilot")
+    p.add_argument("--risk-state", default=None)
+    p.set_defaults(func=cmd_dashboard)
+    p = sub.add_parser("acceptance", help="end-to-end acceptance (F8.1)")
+    p.add_argument("--full", action="store_true")
+    p.add_argument("--root", default=None)
+    p.set_defaults(func=cmd_acceptance)
     return parser
 
 

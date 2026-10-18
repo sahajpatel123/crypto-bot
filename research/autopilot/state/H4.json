@@ -1,0 +1,16 @@
+{
+ "config_sha256": "b199dfdf445f5427d09864f9732e64c7f03d7835b3b5674c45a1ca668dc3c5bd",
+ "history": [
+  {
+   "reason": "prereg present; dev evaluation due",
+   "state": "DEV_EVAL",
+   "ts_utc": "2026-10-18T06:53:00.287089+00:00"
+  }
+ ],
+ "hypothesis": "H4",
+ "prereg": "research/prereg/H4-cross-venue-lead-lag.md",
+ "provenance": "OBSERVED",
+ "reason": "prereg present; dev evaluation due",
+ "state": "DEV_EVAL",
+ "updated_utc": "2026-10-18T06:53:00.287089+00:00"
+}

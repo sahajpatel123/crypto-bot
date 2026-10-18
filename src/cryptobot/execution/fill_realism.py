@@ -9,6 +9,78 @@ receive <= book VWAP.
 from __future__ import annotations
 
 import math
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class PaperFillParameters:
+    """Explicit adverse-fill model for paper/replay (F0.4c, F2.2).
+
+    The old rule ("always slip exactly one tick") was unfalsifiable and
+    ignored measured conditions. This model derives an expected adverse
+    move in ticks from three measured inputs:
+
+    * ``spread_bps`` — quoted spread at decision time (crossing cost);
+    * ``depth_multiple`` — order qty / visible top-of-book qty (impact);
+    * ``latency_ms`` — order-path latency, converted to drift with
+      ``latency_drift_bps_per_s`` measured from the replay tape.
+
+    ``floor_ticks`` keeps the model pessimistic when all measurements
+    look benign (a fill is never better than one tick adverse), and
+    ``cap_ticks`` bounds the paper simulator's one-tick Nautilus
+    primitive. ``calibrate`` (F2.2) fits these parameters from recorded
+    fills and may only make them MORE conservative automatically; a
+    relaxation requires a fresh verdict run.
+    """
+
+    tick_size_bps: float = 1.0
+    spread_bps: float = 2.0
+    depth_multiple: float = 1.0
+    latency_ms: float = 250.0
+    latency_drift_bps_per_s: float = 2.0
+    impact_bps_per_depth: float = 1.0
+    floor_ticks: float = 1.0
+    cap_ticks: float = 5.0
+
+    def __post_init__(self) -> None:
+        for name in ("tick_size_bps", "spread_bps", "latency_ms",
+                     "latency_drift_bps_per_s", "impact_bps_per_depth",
+                     "floor_ticks", "cap_ticks"):
+            value = getattr(self, name)
+            if not isinstance(value, (int, float)) or not math.isfinite(value):
+                raise ValueError(f"{name} must be finite")
+            if value < 0:
+                raise ValueError(f"{name} must be >= 0")
+        if self.depth_multiple < 1.0:
+            raise ValueError("depth_multiple must be >= 1 (order/visible)")
+        if self.tick_size_bps <= 0:
+            raise ValueError("tick_size_bps must be > 0")
+        if self.cap_ticks < self.floor_ticks:
+            raise ValueError("cap_ticks must be >= floor_ticks")
+
+    @property
+    def adverse_bps(self) -> float:
+        """Expected adverse price move in bps (never below floor)."""
+        half_spread = self.spread_bps / 2.0
+        impact = (self.depth_multiple - 1.0) * self.impact_bps_per_depth
+        drift = self.latency_ms / 1000.0 * self.latency_drift_bps_per_s
+        raw_ticks = (half_spread + impact + drift) / self.tick_size_bps
+        return max(self.floor_ticks, min(self.cap_ticks, raw_ticks)) \
+            * self.tick_size_bps
+
+    @property
+    def expected_ticks(self) -> float:
+        return self.adverse_bps / self.tick_size_bps
+
+    @property
+    def slippage_probability(self) -> float:
+        """Probability parameter for the one-tick Nautilus fill model.
+
+        The simulator applies at most one tick, so this saturates at
+        1.0; the bps value above is what replay/paper accounting and any
+        stress report must use. Keeping >=1.0 is the conservative rule.
+        """
+        return min(1.0, self.expected_ticks)
 
 
 def pessimistic_fill_price(side: str, *, qty: float,

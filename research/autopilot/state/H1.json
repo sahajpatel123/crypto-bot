@@ -1,0 +1,16 @@
+{
+ "config_sha256": "9e3de68888a25db929cf1035ac041a12a3482f6739d7a33392b5537cfc5adb9a",
+ "history": [
+  {
+   "reason": "prereg present; dev evaluation due",
+   "state": "DEV_EVAL",
+   "ts_utc": "2026-10-18T06:53:00.283401+00:00"
+  }
+ ],
+ "hypothesis": "H1",
+ "prereg": "research/prereg/H1-maker-ofi-scalp.md",
+ "provenance": "OBSERVED",
+ "reason": "prereg present; dev evaluation due",
+ "state": "DEV_EVAL",
+ "updated_utc": "2026-10-18T06:53:00.283401+00:00"
+}

@@ -1,0 +1,9 @@
+[Unit]
+Description=cryptobot static dashboard refresh
+
+[Service]
+Type=oneshot
+User=cryptobot
+WorkingDirectory=/opt/cryptobot
+ExecStart=/opt/cryptobot/.venv/bin/cryptobot dashboard --out /opt/cryptobot/reports/dashboard.html
+Nice=10

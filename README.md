@@ -1,70 +1,72 @@
-# Crypto scalping bot — Bot v0.1 application
+# cryptobot — evidence-gated crypto perp research and execution
 
-Status: implementation authorised for simulation and research only. No live orders.
-Production submission is disabled by default (see `configs/prod.toml`:
-`allow_live_submission = false`, and the P6 arming path in STATE.md). The
-E-007 Nautilus paper adapter IS integrated
-(`src/cryptobot/adapters/paper_engine.py` exists; an older revision of this
-README claimed it missing — corrected in T0.4); the reference engine still
-refuses paper by construction.
+Status: **NO-GO for live capital today.** No strategy has a PASS verdict
+(`research/verdicts/`). The arming path is built OFF and requires a human
+TTY ceremony. The recorder, sealed vault, autopilot, calibration and
+deployment kit are operational, so the system can discover (or disprove)
+edge over time without further prompts.
 
-This repository is managed by the engineering manager session (young-polaris)
-coordinating exactly three worker sessions. See [DECISIONS.md](/Users/sahajpatel/Code/cryto-bot/DECISIONS.md),
-[CONTRACTS.md](/Users/sahajpatel/Code/cryto-bot/CONTRACTS.md) and [coord/README.md](/Users/sahajpatel/Code/cryto-bot/coord/README.md).
+Read [ARCHITECTURE.md](ARCHITECTURE.md), [SECURITY.md](SECURITY.md),
+[RUNBOOK.md](RUNBOOK.md), [RESEARCH_VERDICTS.md](RESEARCH_VERDICTS.md),
+and the single ordered [OWNER_ACTIONS.md](OWNER_ACTIONS.md).
 
-## Quick start (locked environment)
+## Quick start (no credentials needed)
 
 ```sh
 uv sync --locked --extra dev
 uv run --locked cryptobot doctor --config configs/paper.toml
+uv run --locked cryptobot recorder start --out data/recorder --duration-s 120
+uv run --locked cryptobot recorder verify --out data/recorder
+uv run --locked cryptobot dashboard --out reports/dashboard.html
+uv run --locked cryptobot autopilot status
 uv run --locked pytest -q
 ```
 
-## Application commands (manager-owned, current)
+`recorder start` is public data only. It writes hourly gzip chunks and a
+hash-chained manifest. A short run is a smoke test, not confirmation data.
+
+## Research loop
 
 ```sh
-uv run --locked cryptobot doctor --config configs/paper.toml [--capture DIR]
-uv run --locked cryptobot run --mode replay --config configs/paper.toml --capture <retained-capture-directory> [--expect-class observed-public] [--run-id ID] [--resume]
-uv run --locked cryptobot replay --capture <retained-capture-directory> --config configs/paper.toml
-uv run --locked cryptobot status --run-id <actual-run-id>
-uv run --locked cryptobot stop --run-id <actual-run-id> [--flatten]
+cryptobot research register --hypothesis H4 --prereg research/prereg/H4-cross-venue-lead-lag.md \
+  --config research/configs/H4.toml --commit "$(git rev-parse HEAD)"
+cryptobot autopilot run-once
+cryptobot autopilot report
 ```
 
-- `run --mode paper` runs on the integrated E-007 Nautilus paper adapter
-  (`src/cryptobot/adapters/paper_engine.py`). It never routes through a live
-  client and needs no credentials. (This bullet previously claimed the
-  adapter was missing; corrected in T0.4.)
-- Replay runs strategies (S1–S4; S5 after the Q-005-F1 adapter fixup) through
-  selector → risk → fee-bearing reference fills → protective exits → ledger,
-  with crash/resume recovery. Reference fills are loop mechanics, not profit
-  evidence. Economics await the Nautilus paper path (E-007) and V-006 hardening.
-- Per-run evidence lives under `runs/<run-id>/` (untracked): `report.json`,
-  `report.md`, `ledger.json`, `order_manager.jsonl`, plus the shared
-  `runs/cryptobot.db` SQLite store. See [reports/runs_index.md](/Users/sahajpatel/Code/cryto-bot/reports/runs_index.md)
-  for the current run log format. Historical outputs (`reports/m1_report.json`,
-  `data/observed/stream_cap-30min_report.*`) are frozen records, not current
-  results.
+States: REGISTERED → DEV_EVAL → {KILLED | AWAIT_CONFIRM_DATA} → CONFIRM →
+{FAIL | PASS} → PAPER_14D → PAPER_COMPARE → GATE_READY. A failed
+hypothesis is permanently KILLED. Confirmation uses only sealed CONFIRM
+chunks and a one-shot vault token.
 
-Worker-owned entry points (accepted, live on main):
+## Confirmation and gate
 
-- `python tools/capture_public.py discover` — list current USDT-perp symbols
-  from Binance USD-M metadata (no hardcoded whitelist).
-- `python tools/capture_public.py capture` — record public klines to JSONL
-  under data/observed/.
-- `python tools/replay_public.py --in <recording>` — deterministic replay
-  with gap/stale detection.
-- `python tools/replay_stream.py replay --run-dir <capture>` — numeric
-  per-symbol ordered full-record bar agreement (mutating any value, adding a
-  duplicate, or removing a record fails the gate).
+```sh
+cryptobot vault freeze --hypothesis H2 --config research/configs/H2.toml \
+  --commit "$(git rev-parse HEAD)" --prereg research/prereg/H2-trend-vol-regime.md
+cryptobot vault seal --source <sealed-chunk> --data-class CONFIRM --hypothesis H2
+cryptobot vault issue-token --hypothesis H2
+cryptobot verdict --vault-token <token> --vault-chunk <chunk-id> --hypothesis H2 \
+  --config research/configs/H2.toml --family-size 6 --out research/verdicts/H2.json
+cryptobot gate --hypothesis H2 --verdict-json research/verdicts/H2.json \
+  --autopilot-state research/autopilot/state/H2.json \
+  --cost-model research/cost-model.json --host-check host.json \
+  --drill-json drill.json --latency-json latency.json \
+  --watchdog-heartbeat runs/watchdog.json --config research/configs/H2.toml \
+  --out gate.json --require-commit
+```
 
-Accepted scope so far: E-001 through E-007 (E-007 in flight: Nautilus runtime),
-Q-001 through Q-005 (Q-006 + Q-005-F1 in flight), V-001 through V-005 (V-006 in
-flight). No strategy is validated; nothing here is profitability evidence.
-Task state lives in [coord/tasks.json](/Users/sahajpatel/Code/cryto-bot/coord/tasks.json).
-Documented commands only; no invented package commands in status reports.
+The gate is NO-GO unless every machine check passes. `arm` is separate,
+interactive, and refuses CI/non-TTY. It writes a record; it does not
+submit an order.
 
-## Safety
+## Safety invariants
 
-No withdrawal-enabled credentials, fund transfers, paid subscriptions, external
-publication or live orders. Research and verification workers use public or
-simulation data only. Secrets are never pasted into messages, commits or logs.
+- No live/demo orders are placed by research, tests or this repo's setup.
+- Keys are env/0600-only and never logged; withdrawals must be disabled.
+- One position; stop-first independent reduce-only exits; fail-closed on
+  stale/unknown venue truth.
+- Synthetic data is stamped and rejected by verdict/gate.
+- Recorder writer overflow is counted and flagged, never silent.
+- `data/captures/campaign-1day-*` is untouched confirmation data; only its
+  metadata was read.

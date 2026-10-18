@@ -1,0 +1,55 @@
+{
+ "format": "cryptobot-autopilot-report/1",
+ "generated_utc": "2026-10-18T06:53:00.290113+00:00",
+ "hypotheses": [
+  {
+   "hypothesis": "H1",
+   "power": null,
+   "provenance": "OBSERVED",
+   "reason": "prereg present; dev evaluation due",
+   "state": "DEV_EVAL",
+   "updated_utc": "2026-10-18T06:53:00.283401+00:00"
+  },
+  {
+   "hypothesis": "H2",
+   "power": null,
+   "provenance": "OBSERVED",
+   "reason": "prereg present; dev evaluation due",
+   "state": "DEV_EVAL",
+   "updated_utc": "2026-10-18T06:53:00.285067+00:00"
+  },
+  {
+   "hypothesis": "H3",
+   "power": null,
+   "provenance": "OBSERVED",
+   "reason": "prereg present; dev evaluation due",
+   "state": "DEV_EVAL",
+   "updated_utc": "2026-10-18T06:53:00.286159+00:00"
+  },
+  {
+   "hypothesis": "H4",
+   "power": null,
+   "provenance": "OBSERVED",
+   "reason": "prereg present; dev evaluation due",
+   "state": "DEV_EVAL",
+   "updated_utc": "2026-10-18T06:53:00.287089+00:00"
+  },
+  {
+   "hypothesis": "H5",
+   "power": null,
+   "provenance": "OBSERVED",
+   "reason": "prereg present; dev evaluation due",
+   "state": "DEV_EVAL",
+   "updated_utc": "2026-10-18T06:53:00.287884+00:00"
+  },
+  {
+   "hypothesis": "H6",
+   "power": null,
+   "provenance": "OBSERVED",
+   "reason": "prereg present; dev evaluation due",
+   "state": "DEV_EVAL",
+   "updated_utc": "2026-10-18T06:53:00.288730+00:00"
+  }
+ ],
+ "log_problems": []
+}

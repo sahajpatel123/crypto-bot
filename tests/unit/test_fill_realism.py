@@ -42,3 +42,44 @@ def test_paper_engine_default_is_pessimistic(tmp_path):
 
     src = inspect.getsource(paper_engine)
     assert "prob_slippage=0.0" not in src
+
+
+def test_paper_fill_parameters_derive_from_spread_depth_latency():
+    from cryptobot.execution.fill_realism import PaperFillParameters
+
+    base = PaperFillParameters(tick_size_bps=1.0, spread_bps=2.0,
+                               depth_multiple=1.0, latency_ms=250.0,
+                               latency_drift_bps_per_s=2.0)
+    # 1 (half spread) + 0 (depth) + 0.5 (latency) = 1.5 ticks
+    assert base.expected_ticks == pytest.approx(1.5)
+    assert base.adverse_bps == pytest.approx(1.5)
+    assert base.slippage_probability == 1.0
+
+    wider = PaperFillParameters(tick_size_bps=1.0, spread_bps=10.0,
+                                depth_multiple=1.0, latency_ms=250.0)
+    deeper = PaperFillParameters(tick_size_bps=1.0, spread_bps=2.0,
+                                 depth_multiple=4.0, latency_ms=250.0)
+    slower = PaperFillParameters(tick_size_bps=1.0, spread_bps=2.0,
+                                 depth_multiple=1.0, latency_ms=2000.0)
+    assert wider.expected_ticks > base.expected_ticks
+    assert deeper.expected_ticks > base.expected_ticks
+    assert slower.expected_ticks > base.expected_ticks
+    # Floor: a benign quote still costs at least one adverse tick.
+    benign = PaperFillParameters(spread_bps=0.0, latency_ms=0.0,
+                                 depth_multiple=1.0)
+    assert benign.expected_ticks == pytest.approx(1.0)
+    # Cap keeps the paper stress bounded.
+    extreme = PaperFillParameters(tick_size_bps=0.1, spread_bps=100.0,
+                                  latency_ms=10000.0, cap_ticks=5.0)
+    assert extreme.expected_ticks == pytest.approx(5.0)
+
+
+def test_paper_fill_parameters_reject_invalid():
+    from cryptobot.execution.fill_realism import PaperFillParameters
+
+    with pytest.raises(ValueError):
+        PaperFillParameters(tick_size_bps=0.0)
+    with pytest.raises(ValueError):
+        PaperFillParameters(depth_multiple=0.5)
+    with pytest.raises(ValueError):
+        PaperFillParameters(floor_ticks=3.0, cap_ticks=2.0)

@@ -1,0 +1,15 @@
+# H4 frozen research config (prereg 2026-10-18); not a live config.
+hypothesis = "H4"
+symbols = ["BTCUSDT", "ETHUSDT"]
+leader_venues = ["bybit", "okx"]
+lead_windows_ms = [100, 250, 500]
+lead_thresholds_bps = [2, 5, 10]
+max_holding_s = 60
+stop_bps = 25.0
+target_bps = 50.0
+taker_bps = 5.0
+spread_bps = 2.0
+slippage_bps = 7.0
+min_dev_trades = 100
+promotion_mean_bps = 2.0
+family_size = 6

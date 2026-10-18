@@ -1,0 +1,16 @@
+{
+ "config_sha256": "0885b908ffe137692040ac7a3701b02a6dbc420b8fd9106e098659a1314c991b",
+ "history": [
+  {
+   "reason": "prereg present; dev evaluation due",
+   "state": "DEV_EVAL",
+   "ts_utc": "2026-10-18T06:53:00.286159+00:00"
+  }
+ ],
+ "hypothesis": "H3",
+ "prereg": "research/prereg/H3-funding-skew-tilt.md",
+ "provenance": "OBSERVED",
+ "reason": "prereg present; dev evaluation due",
+ "state": "DEV_EVAL",
+ "updated_utc": "2026-10-18T06:53:00.286159+00:00"
+}

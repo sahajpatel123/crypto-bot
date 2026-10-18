@@ -1,0 +1,18 @@
+[Unit]
+Description=cryptobot external watchdog (stale heartbeat + exposure)
+After=cryptobot-bot.service
+
+[Service]
+Type=simple
+User=cryptobot
+Group=cryptobot
+WorkingDirectory=/opt/cryptobot
+EnvironmentFile=-/etc/cryptobot.env
+ExecStart=/opt/cryptobot/.venv/bin/python /opt/cryptobot/tools/watchdog.py --heartbeat /opt/cryptobot/runs/watchdog.json --max-age-s 90 --flatten-cmd "${CRYPTOBOT_FLATTEN_CMD}"
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

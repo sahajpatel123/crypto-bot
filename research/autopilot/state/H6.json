@@ -1,0 +1,16 @@
+{
+ "config_sha256": "f9fc17a44f770d35b0ba3c84c1601708d129a0200a67d1eaab528d0a85f38f53",
+ "history": [
+  {
+   "reason": "prereg present; dev evaluation due",
+   "state": "DEV_EVAL",
+   "ts_utc": "2026-10-18T06:53:00.288730+00:00"
+  }
+ ],
+ "hypothesis": "H6",
+ "prereg": "research/prereg/H6-vol-shock-regime-filter.md",
+ "provenance": "OBSERVED",
+ "reason": "prereg present; dev evaluation due",
+ "state": "DEV_EVAL",
+ "updated_utc": "2026-10-18T06:53:00.288730+00:00"
+}

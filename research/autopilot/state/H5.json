@@ -1,0 +1,16 @@
+{
+ "config_sha256": "0e239da8664edf588ca63cd0d7d6872522f6667ed618142225d3ad0ca56c0cf1",
+ "history": [
+  {
+   "reason": "prereg present; dev evaluation due",
+   "state": "DEV_EVAL",
+   "ts_utc": "2026-10-18T06:53:00.287884+00:00"
+  }
+ ],
+ "hypothesis": "H5",
+ "prereg": "research/prereg/H5-liquidation-cascade-fade.md",
+ "provenance": "OBSERVED",
+ "reason": "prereg present; dev evaluation due",
+ "state": "DEV_EVAL",
+ "updated_utc": "2026-10-18T06:53:00.287884+00:00"
+}

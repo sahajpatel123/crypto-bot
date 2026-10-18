@@ -1,0 +1,25 @@
+[Unit]
+Description=cryptobot public-data recorder
+After=network-online.target chrony.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=cryptobot
+Group=cryptobot
+WorkingDirectory=/opt/cryptobot
+EnvironmentFile=-/etc/cryptobot.env
+ExecStart=/opt/cryptobot/.venv/bin/cryptobot recorder start --out /opt/cryptobot/data/recorder --symbols BTCUSDT,ETHUSDT
+Restart=always
+RestartSec=5
+StartLimitIntervalSec=300
+StartLimitBurst=5
+KillSignal=SIGTERM
+TimeoutStopSec=60
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/opt/cryptobot/data /opt/cryptobot/runs
+
+[Install]
+WantedBy=multi-user.target

@@ -80,15 +80,19 @@ def evaluate_trades(trades_bps: list[float], *, adverse_bps: list[float],
 
 def verdict_document(*, hypothesis: str, result: dict[str, Any],
                      config_path: str | Path, data_manifest: str,
-                     code_commit: str) -> dict[str, Any]:
+                     code_commit: str,
+                     data_provenance: str = "OBSERVED",
+                     sealed_chunk_sha256: str | None = None) -> dict[str, Any]:
     """Bind a verdict to config/data/code hashes (no manual override)."""
     cfg_hash = hashlib.sha256(
         Path(config_path).read_bytes()).hexdigest()[:16] \
         if Path(config_path).exists() else "missing"
     doc = {"hypothesis": hypothesis, **result,
+           "data_provenance": data_provenance,
            "hashes": {"config_sha256_16": cfg_hash,
                       "data_manifest": data_manifest,
-                      "code_commit": code_commit}}
+                      "code_commit": code_commit,
+                      "sealed_chunk_sha256": sealed_chunk_sha256}}
     doc["document_sha256"] = hashlib.sha256(
         json.dumps(doc, sort_keys=True).encode()).hexdigest()
     return doc

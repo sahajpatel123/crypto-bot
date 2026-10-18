@@ -27,6 +27,7 @@ from cryptobot.market_data.bars import (BarAggregator, BarMissing,
 from cryptobot.market_data.bridge import load_snapshots
 from cryptobot.market_data.replayer import assert_input_class
 from cryptobot.market_data.views import DepthStore, book_flow_for
+from cryptobot.risk.margin import bracket_admission_check
 from cryptobot.risk.policy import RiskPolicy
 from cryptobot.risk.rounding import ceil_to_tick, floor_to_step, floor_to_tick
 from cryptobot.risk.types import (AccountSnapshot, Approved, HealthStatus,
@@ -306,6 +307,26 @@ class Session:
         self._tick_ctx: dict[str, Any] | None = None  # control_tick pacing.
         self._filter_call: Any | None = None  # in-flight async filter fetch.
         self._dropped_feed = 0  # producer overflow count (loud).
+        # B5: the external watchdog needs a heartbeat writer. Write one
+        # immediately so a stale/missing file cannot masquerade as
+        # exposure before the first supervision tick.
+        self._write_watchdog_heartbeat()
+
+    def _write_watchdog_heartbeat(self) -> None:
+        """Atomic watchdog heartbeat: loop alive + current exposure truth."""
+        try:
+            doc = {"ts_utc": self.now_utc().isoformat(),
+                   "wall_ts_utc": datetime.now(timezone.utc).isoformat(),
+                   "has_exposure": bool(self.ledger.has_position()
+                                        or self._position is not None),
+                   "run_id": self.run_id, "pid": self._pid}
+            path = self.workdir / "watchdog.json"
+            tmp = path.with_suffix(".json.tmp")
+            tmp.write_text(json.dumps(doc, sort_keys=True) + "\n",
+                           encoding="utf-8")
+            os.replace(tmp, path)
+        except OSError:
+            pass  # heartbeat failure is surfaced by the watchdog itself.
 
     # -- lifecycle ---------------------------------------------------------
     def _set_state(self, state: str, reason: str = "") -> None:
@@ -464,8 +485,10 @@ class Session:
         for _ in range(max(1, attempts)):
             try:
                 self._flatten(f"safe-mode:{reason}")
-                flatten_ok = True
-                break
+                self._drain_engine()
+                flatten_ok = not self.ledger.has_position()
+                if flatten_ok:
+                    break
             except Exception:  # noqa: BLE001 — safe mode must not raise
                 flatten_ok = False
         out = {"kind": "safe-mode", "reason": str(reason),
@@ -488,7 +511,15 @@ class Session:
                 snap = snap_fn()
             except Exception:  # noqa: BLE001 — unconfirmed, not flat
                 return False
-            if snap is not None and getattr(snap, "positions", ()):
+            if snap is None:
+                # Adversarial review B1: an unreachable venue is UNKNOWN,
+                # never flat. The reference replay engine models no venue
+                # account, so its None is the documented ledger fallback.
+                if getattr(self.engine, "model_label", "")                         != "reference-fake-venue":
+                    return False
+            if snap is not None and getattr(snap, "complete", True) is not True:
+                return False
+            if getattr(snap, "positions", ()):
                 return False
         return True
 
@@ -504,12 +535,36 @@ class Session:
             if not legs:
                 raise ValueError("leave-protected refused: open position "
                                  "has no confirmed protection legs")
+            # B7: local intent is not venue truth. Verify the first leg
+            # (the stop) is OPEN/PARTIAL at the venue and covers the
+            # ledger exposure; otherwise flatten instead of walking away.
+            net = abs(float(self.ledger.position_qty()))
+            status = None
+            for getter_name in ("order_status", "lookup"):
+                getter = getattr(self.engine, getter_name, None)
+                if not callable(getter):
+                    continue
+                try:
+                    status = getter(legs[0])
+                except Exception:  # noqa: BLE001 — unknown is not protected
+                    status = None
+                if status is not None:
+                    break
+            state = getattr(status, "state", None)
+            qty = float(getattr(status, "qty", 0.0) or 0.0)
+            filled = float(getattr(status, "filled_qty", 0.0) or 0.0)
+            if state not in ("open", "partial") or qty - filled + 1e-9 < net:
+                raise ValueError(
+                    "leave-protected refused: venue stop is "
+                    f"{state or 'missing'} with cover {qty - filled}/{net}")
             return {"left_protected": True, "confirmed_flat": False,
-                    "legs": legs}
+                    "legs": legs, "venue_stop_state": state,
+                    "venue_cover_qty": qty - filled}
         last_exc: Exception | None = None
         for _ in range(max(1, attempts)):
             try:
                 self._flatten("shutdown")
+                self._drain_engine()
             except Exception as exc:  # noqa: BLE001 — retry bounded
                 last_exc = exc
                 continue
@@ -621,7 +676,7 @@ class Session:
         if callable(account_margin):
             try:
                 margins = account_margin()
-            except (ValueError, KeyError, AttributeError):
+            except Exception:  # noqa: BLE001 — 429/timeout => unknown
                 margins = None
             if margins is not None:
                 available = float(margins[0])
@@ -664,7 +719,7 @@ class Session:
         pending = 0.0
         try:
             statuses = self.engine.open_orders()
-        except (ValueError, KeyError, AttributeError):
+        except Exception:  # noqa: BLE001 — 429/timeout => unknown
             statuses = []
         for status in statuses:
             role = getattr(status, "role", "entry")
@@ -997,10 +1052,47 @@ class Session:
             return None
         return self._age_verdict(mark_ts, limit_ms / 1000.0, "mark", now)
 
+    def _prod_arm_problem(self) -> str | None:
+        """F5.5: prod + submission enabled still needs a valid arm record.
+
+        Checks are repeated on every admission (cheap file reads) so a
+        restart/resume/watchdog cannot bypass the human ceremony.
+        """
+        if self.config.mode != "prod" or not self.config.allow_live_submission:
+            return None
+        armed_path = Path(os.environ.get("CRYPTOBOT_ARMED_JSON",
+                                         "armed.json"))
+        gate_path = Path(os.environ.get("CRYPTOBOT_GATE_JSON", "gate.json"))
+        try:
+            armed = json.loads(armed_path.read_text(encoding="utf-8"))
+            gate = json.loads(gate_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return "config:prod-not-armed"
+        if not armed.get("armed"):
+            return "config:prod-not-armed"
+        if gate.get("gate") != "GO":
+            return "config:prod-gate-not-go"
+        try:
+            expiry = datetime.fromisoformat(str(gate.get("expires_utc", "")))
+            if expiry < datetime.now(timezone.utc):
+                return "config:prod-gate-expired"
+            digest = hashlib.sha256(gate_path.read_bytes()).hexdigest()
+        except (ValueError, OSError):
+            return "config:prod-gate-unreadable"
+        if armed.get("gate_sha256") != digest:
+            return "config:prod-arm-gate-mismatch"
+        if float(armed.get("capital_usdt", 0.0)) <= 0 \
+                or float(armed.get("max_daily_loss", 0.0)) <= 0:
+            return "config:prod-arm-invalid"
+        return None
+
     def _admission_hold(self) -> str | None:
         """Hard admission holds: prod default-off, reconcile, unknowns."""
         if self.config.mode == "prod" and not self.config.allow_live_submission:
             return "config:prod-submission-disabled"
+        arm_problem = self._prod_arm_problem()
+        if arm_problem is not None:
+            return arm_problem
         if not self._reconciled or self._flatten_pending:
             return "reconcile:restart-pending"
         if self._booking_blocked is not None:
@@ -1157,6 +1249,20 @@ class Session:
                 intent.instrument, intent.side.value, "rejected",
                 reason, self.now_utc().isoformat())
             return
+        # F0.4a: tiered maintenance-margin / liquidation admission on the
+        # LIVE path (not just a sizing helper). Paper/reference engines do
+        # not expose brackets and are intentionally exempt.
+        bracket_reason = self._bracket_admission(intent, executable)
+        if bracket_reason is not None:
+            self.policy.release(verdict.reservation_id)
+            reason = f"risk:{bracket_reason}"
+            self._note_reject(reason, intent.strategy, intent.instrument,
+                              intent.side.value)
+            self.store.record_intent(
+                self.run_id, intent.evidence_ref, intent.strategy,
+                intent.instrument, intent.side.value, "rejected",
+                reason, self.now_utc().isoformat())
+            return
         try:
             stop, target, time_exit, legacy = self._derive_exits(intent)
         except ValueError:
@@ -1194,22 +1300,58 @@ class Session:
                     pre_id = submit_protected(order, cap)
                 except NotImplementedError:
                     pre_id = self.engine.submit(order)
-        except (ValueError, PermissionError, OverflowError) as exc:
-            # B2/F3: an unsubmittable opportunity (dust below the venue
-            # step, full queue, exit-only race) is rejected, never fatal.
-            # The risk hold is freed (zero booked: actually freed).
+        except Exception as exc:  # noqa: BLE001 — classify, never die
+            from cryptobot.adapters.binance_live import (
+                UnknownOutcomeError, classify_exception)
             try:
                 self.store.update_command(cmd_id, "failed")
             except (ValueError, KeyError):
                 pass
-            self.policy.release(verdict.reservation_id)
-            reason = f"execution:submit-rejected:{type(exc).__name__}"
-            self._note_reject(reason, intent.strategy, intent.instrument,
-                              intent.side.value)
-            self.store.record_intent(
-                self.run_id, intent.evidence_ref, intent.strategy,
-                intent.instrument, intent.side.value, "rejected",
-                reason, self.now_utc().isoformat())
+            # A1/A2 (adversarial review): the old narrow catch let an
+            # UNKNOWN submit or a deterministic reject escape the run,
+            # leaving an unsupervised venue order and a leaked hold.
+            if isinstance(exc, UnknownOutcomeError):
+                # The venue may have filled it. Keep the hold, create a
+                # supervised shell so lookup/protection can adopt fills,
+                # and halt new entries until the outcome resolves.
+                self._halt_entries("unknown-entry-submit")
+                self._position = {
+                    "reservation_id": verdict.reservation_id,
+                    "instrument": intent.instrument,
+                    "side": intent.side.value,
+                    "entry_pre_id": exc.client_id, "entry_id": None,
+                    "legs": [], "stop": None, "target": None,
+                    "time_exit": None, "legacy_exit": False,
+                    "protected": False, "protect_attempts": 0,
+                    "entry_cap": cap, "approved_qty": verdict.qty,
+                    "executable_qty": executable,
+                    "exposure_noted": False, "executable_noted": False,
+                    "close_ids": [], "emergency_latched": False,
+                    "strategy": intent.strategy,
+                    "admit_snapshot": snapshot,
+                    "admit_budget": verdict.reserved_risk,
+                    "admit_intent": intent,
+                    "unknown_submit": True}
+                self.store.checkpoint(self.run_id, "unknown-entry-submit",
+                                      {"client_id": exc.client_id,
+                                       "reservation_id":
+                                       verdict.reservation_id})
+                self._save_position_shell()
+                return
+            policy = classify_exception(exc)
+            if policy.action in ("reject_intent", "retry_backoff"):
+                self.policy.release(verdict.reservation_id)
+                reason = f"execution:submit-rejected:{type(exc).__name__}"
+                self._note_reject(reason, intent.strategy, intent.instrument,
+                                  intent.side.value)
+                self.store.record_intent(
+                    self.run_id, intent.evidence_ref, intent.strategy,
+                    intent.instrument, intent.side.value, "rejected",
+                    reason, self.now_utc().isoformat())
+                return
+            # Lookup-first / safe-mode class: unknown exposure direction.
+            self._halt_entries(f"submit-{policy.action}")
+            self.enter_safe_mode(f"submit-{type(exc).__name__}")
             return
         self._submit_ts[pre_id] = self.now_utc()
         try:
@@ -1367,6 +1509,55 @@ class Session:
                 return "margin:insufficient"
         if notional > cfg.leverage_cap * snapshot.reconciled_equity:
             return "leverage:cap-exceeded"
+        return None
+
+    def _bracket_admission(self, intent: Any, qty: float) -> str | None:
+        """Reject live entries whose liquidation sits inside the stop.
+
+        Only engines that expose ``leverage_brackets`` (the live
+        adapter) are checked. Any fetch/parse/staleness failure is a
+        rejection: an unknown bracket is indistinguishable from an
+        understated maintenance margin.
+        """
+        getter = getattr(self.engine, "leverage_brackets", None)
+        if not callable(getter):
+            return None
+        # Enforce on the real-money path and on demo drills; synthetic
+        # replay/paper harnesses inject a live engine without venue
+        # bracket fixtures and are not live admission.
+        if self.config.mode != "prod" \
+                and not bool(getattr(self.config, "engine_demo", False)):
+            return None
+        try:
+            data = getter(intent.instrument)
+        except Exception as exc:  # noqa: BLE001 — unknown => reject
+            return f"margin:brackets-unavailable:{type(exc).__name__}"
+        if not isinstance(data, dict):
+            return "margin:brackets-unavailable"
+        if data.get("stale"):
+            return "margin:brackets-stale"
+        try:
+            stop, _target, _time_exit, _legacy = self._derive_exits(intent)
+        except ValueError:
+            return "selection:exit-undecodable"
+        leverage = float(getattr(self.engine, "_leverage",
+                                 self.policy.config.leverage_cap))
+        result = bracket_admission_check(
+            entry=float(getattr(intent, "entry_high", 0.0))
+            if intent.side.value == "LONG" else float(
+                getattr(intent, "entry_low", 0.0)),
+            stop=float(stop), qty=float(qty), side=intent.side.value,
+            leverage=leverage, brackets=data.get("brackets"),
+            observed_ms=data.get("observed_ms"),
+            now_ms=int(data.get("now_ms", self.now_utc().timestamp() * 1000)),
+            max_age_ms=int(getattr(self.engine, "BRACKET_MAX_AGE_MS",
+                                   300_000)),
+            stressed_slippage_bps=float(
+                self.policy.config.stress_slippage_bps
+                if hasattr(self.policy.config, "stress_slippage_bps")
+                else 50.0))
+        if not result.get("ok"):
+            return str(result.get("reason", "margin:brackets-rejected"))
         return None
 
     def _narrow_entry_executable(self, pos: dict[str, Any],
@@ -1724,17 +1915,29 @@ class Session:
         if callable(setter):
             setter(False, reason)
 
+    # Adversarial review B2: day-roll / emergency recovery was clearing
+    # UNRELATED safety halts (safe-mode, funding mismatch, dust, ...).
+    # Hard reasons survive routine releases and need explicit operator
+    # reconciliation (which itself must go through the documented path).
+    _HARD_HALT_PREFIXES = ("safe-mode:", "funding", "flatten", "protection",
+                           "booking:", "shutdown", "income", "dust",
+                           "reconcile:")
+
     def _release_all_exit_only(self, why: str) -> None:
-        """Lift every Session-owned reason (recovery points only).
+        """Lift recoverable Session reasons; hard safety halts survive.
 
         Stream/adapter reasons are never touched (R3); level-evaluated
         Session reasons re-assert on their next tick if still true.
         """
+        kept: set[str] = set()
         for reason in sorted(self._exit_only_reasons):
+            if reason.startswith(self._HARD_HALT_PREFIXES):
+                kept.add(reason)
+                continue
             setter = getattr(self.engine, "set_exit_only", None)
             if callable(setter):
                 setter(False, reason)
-        self._exit_only_reasons.clear()
+        self._exit_only_reasons = kept
         # F2: a wipe releases the health gate's tracking too, so a still-
         # failing condition re-latches on the next snapshot (fail-closed)
         # instead of being suppressed by stale bookkeeping.
@@ -2307,10 +2510,28 @@ class Session:
         try:
             pos["legs"] = self.engine.attach_protection(
                 pos["entry_id"] or "", pos["stop"], pos["target"])
-        except (ValueError, KeyError) as exc:
+        except Exception as exc:  # noqa: BLE001 — unknown must not crash
+            # Adversarial review B3: a timeout/UNKNOWN on the target leg
+            # used to escape the run loop and exit with exposure. Retain
+            # the position, let the attempt bound / protection budget
+            # drive an explicit emergency flatten next tick.
             self.store.checkpoint(self.run_id, "protection-failed",
                                   {"attempt": pos["protect_attempts"],
-                                   "reason": str(exc)})
+                                   "reason": str(exc),
+                                   "type": type(exc).__name__})
+            if pos["protect_attempts"] >= 3:
+                if not pos.get("emergency_latched"):
+                    pos["emergency_latched"] = True
+                    self.store.checkpoint(
+                        self.run_id, "protection-emergency",
+                        {"attempts": pos["protect_attempts"],
+                         "reason": "attach-failed",
+                         "type": type(exc).__name__})
+                try:
+                    self._flatten("protection-emergency-close")
+                    self._drain_engine()
+                except Exception:  # noqa: BLE001 — bounded, retry next tick
+                    pass
             return
         # Acknowledgement gate: queued legs resolve on a later drain.
         try:
@@ -2442,6 +2663,17 @@ class Session:
                 snap = snap_fn()
             except Exception:
                 return False  # unreadable venue position: not agreed.
+            if snap is None:
+                # B1: adapter returned no account truth (transport failure).
+                # Reference replay intentionally models no venue account.
+                if getattr(self.engine, "model_label", "") \
+                        == "reference-fake-venue":
+                    snap = None
+                else:
+                    self.store.checkpoint(
+                        self.run_id, "flat-blocked",
+                        {"reason": "venue-snapshot-unavailable"})
+                    return False
             if snap is not None and hasattr(snap, "complete") \
                     and hasattr(snap, "positions"):
                 if snap.complete is False or snap.complete is None:
@@ -2568,6 +2800,34 @@ class Session:
             if symbol is None:
                 raise ValueError("cannot flatten: exposure without instrument")
             side = "SELL" if net > 0 else "BUY"
+            # B10/A10: never spam a deterministic dust reject. Latch a
+            # loud manual-intervention state once; admissions stay held.
+            filt = self.policy.config.instrument_filters.get(symbol)
+            min_notional = float(filt.min_notional_usdt) if filt else 0.0
+            if min_notional <= 0:
+                ef = getattr(self.engine, "_filters", {}).get(symbol, {})
+                min_notional = float(ef.get("min_notional", 0.0) or 0.0)
+            try:
+                mark = float(self._reference_mark())
+            except (TypeError, ValueError):
+                mark = 0.0
+            if min_notional > 0 and mark > 0 \
+                    and abs(net) * mark < min_notional * (1.0 - 1e-3):
+                if not (pos or {}).get("dust_latched"):
+                    if pos is not None:
+                        pos["dust_latched"] = True
+                    self._halt_entries("dust-position")
+                    self._set_state("halted", "dust-position")
+                    self.alerts.append({
+                        "kind": "dust-position", "symbol": symbol,
+                        "qty": abs(net), "notional": abs(net) * mark,
+                        "min_notional": min_notional,
+                        "action": "manual close required; no auto-retry"})
+                    self.store.checkpoint(self.run_id, "dust-position", {
+                        "symbol": symbol, "qty": abs(net), "mark": mark,
+                        "notional": abs(net) * mark,
+                        "min_notional": min_notional})
+                return
             if pos is not None:
                 close_rid = pos["reservation_id"]
             else:
@@ -3087,8 +3347,13 @@ class Session:
         alert fires once per latch. Emergency clears only through
         reconciled flat — time alone never recovers.
         """
-        snapshot = self._snapshot_account()
-        actions = self.policy.pending_stop_actions(snapshot)
+        try:
+            snapshot = self._snapshot_account()
+            actions = self.policy.pending_stop_actions(snapshot)
+        except Exception as exc:  # noqa: BLE001 — retry next tick
+            self.store.checkpoint(self.run_id, "stop-actions-deferred",
+                                  {"reason": f"{type(exc).__name__}: {exc}"})
+            return
         if "alert_operator" in actions and not self._stop_alerted:
             self._stop_alerted = True
             self._append_run_file("risk.jsonl", {
@@ -3100,7 +3365,7 @@ class Session:
         if "cancel_pending_orders" in actions:
             try:
                 orders = self.engine.open_orders()
-            except (ValueError, KeyError, AttributeError):
+            except Exception:  # noqa: BLE001 — retry next tick
                 orders = []
             for status in orders:
                 if getattr(status, "role", "entry") != "entry":
@@ -3126,7 +3391,8 @@ class Session:
                         self._snapshot_account()):
                     self._stop_alerted = False
                     self._release_all_exit_only("emergency-recovered")
-                    self._set_state("ready", "emergency-recovered")
+                    if not self._exit_only_reasons:
+                        self._set_state("ready", "emergency-recovered")
 
     def _stop_refresh(self) -> None:
         """Stop the background official-source refresher, if running."""
@@ -3347,7 +3613,8 @@ class Session:
             marked = self.ledger.marked_equity(self._reference_mark())
             self.policy.reconcile_day(marked, self.ledger.total_flows())
             self._release_all_exit_only("day-reconciled")
-            self._set_state("ready", "day-reconciled")
+            if not self._exit_only_reasons:
+                self._set_state("ready", "day-reconciled")
             self._sample_equity("day-roll", force=True)
             self.store.checkpoint(self.run_id, "day-roll",
                                   {"day": today, "marked": marked})
@@ -3854,10 +4121,61 @@ class Session:
             self._set_state("halted", ";".join(tick.reasons))
         self._run_stop_actions()
         self._drain_unknown_outcomes()
+        # A6: leverage can be changed externally mid-run. Re-check it
+        # periodically; a mismatch halts entries and alerts.
+        lev_now = getattr(self.engine, "leverage_now", None)
+        live_mode = (self.config.mode == "prod"
+                     or bool(getattr(self.config, "engine_demo", False)))
+        if callable(lev_now) and live_mode and self._position is not None:
+            last = getattr(self, "_last_leverage_check", 0.0)
+            if now_mono - last >= 60.0:
+                self._last_leverage_check = now_mono
+                symbol = self._position.get("instrument", "")
+                try:
+                    cur = lev_now(symbol)
+                except Exception:  # noqa: BLE001 — unknown is not safe
+                    cur = None
+                expected = int(getattr(self.engine, "_leverage", 0) or 0)
+                if cur is None or (expected and int(cur) != expected):
+                    self._halt_entries("leverage-mismatch")
+                    self.store.checkpoint(self.run_id, "leverage-mismatch",
+                                          {"symbol": symbol,
+                                           "expected": expected,
+                                           "venue": cur})
+        # A4: wire the local shadow stop (previously defined but never
+        # called). If the venue legs are missing and the mark has crossed
+        # the stop, flatten immediately rather than waiting 30s.
+        if self._position is not None and not self._position.get("protected"):
+            try:
+                mark = float(self._reference_mark())
+            except (TypeError, ValueError):
+                mark = 0.0
+            if mark > 0 and self.shadow_stop_breached(mark):
+                self.store.checkpoint(self.run_id, "shadow-stop",
+                                      {"mark": mark,
+                                       "stop": self._position.get("stop")})
+                try:
+                    self._flatten("shadow-stop")
+                    self._drain_engine()
+                except Exception as exc:  # noqa: BLE001
+                    self.enter_safe_mode(
+                        f"shadow-stop-flatten:{type(exc).__name__}")
+        # B6: a late fill after the local position was cleared must not
+        # ride naked. Flatten orphan exposure on the supervision tick.
+        if self._position is None and self.ledger.has_position() \
+                and not self._flatten_pending:
+            self.store.checkpoint(self.run_id, "orphan-exposure",
+                                  {"qty": self.ledger.position_qty()})
+            try:
+                self._flatten("orphan-exposure")
+                self._drain_engine()
+            except Exception as exc:  # noqa: BLE001
+                self.enter_safe_mode(f"orphan-flatten:{type(exc).__name__}")
         self._refresh_filters_if_stale()
         if now_mono - ctx["last_beat"] >= 30.0:
             ctx["last_beat"] = now_mono
             self.store.heartbeat(self.run_id, self._pid)
+            self._write_watchdog_heartbeat()
             self._persist_local_state()
         stop = self._stop_flag or self.store.stop_requested(self.run_id)
         if stop is not None:
@@ -3946,7 +4264,15 @@ class Session:
                 # stream (if any): pump-thread input applies here on
                 # the owner, never on the pump thread itself.
                 if self._user_stream_attachment is not None:
-                    self._user_stream_attachment.drain_owner()
+                    try:
+                        self._user_stream_attachment.drain_owner()
+                    except Exception as exc:  # noqa: BLE001 — B4
+                        # A non-USDT fee/unknown stream shape used to
+                        # escape the loop and crash with exposure.
+                        self.enter_safe_mode(
+                            f"user-stream:{type(exc).__name__}")
+                        end_reason = f"safe-mode:{type(exc).__name__}"
+                        break
                 # Control-step latency is decision work, not the poll
                 # wait: the timer starts after the tick wake fires.
                 step_start = time.perf_counter()

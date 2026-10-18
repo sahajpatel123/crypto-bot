@@ -27,11 +27,11 @@ def maintenance_margin(notional_usdt: float,
         raise ValueError("leverage brackets required")
     for tier in sorted(brackets, key=lambda b: float(b["notionalCap"])):
         if notional <= float(tier["notionalCap"]):
-            return notional * float(tier["maintMarginRatio"]) \
-                - float(tier.get("cum", 0.0))
+            return max(0.0, notional * float(tier["maintMarginRatio"])
+                       - float(tier.get("cum", 0.0)))
     top = max(brackets, key=lambda b: float(b["notionalCap"]))
-    return notional * float(top["maintMarginRatio"]) \
-        - float(top.get("cum", 0.0))
+    return max(0.0, notional * float(top["maintMarginRatio"])
+               - float(top.get("cum", 0.0)))
 
 
 def liquidation_price_isolated(*, entry: float, qty: float,
@@ -72,6 +72,65 @@ def liquidation_ok(*, entry: float, stop: float, liq: float,
     if side == "SHORT":
         return liq > stop + slip_abs
     raise ValueError(f"side must be LONG or SHORT, got {side!r}")
+
+
+def bracket_admission_check(*, entry: float, stop: float, qty: float,
+                            side: str, leverage: float,
+                            brackets: list[dict] | None,
+                            observed_ms: int | None,
+                            now_ms: int,
+                            max_age_ms: int = 300_000,
+                            stressed_slippage_bps: float = 50.0) -> dict:
+    """Live admission gate for tiered maintenance margin + liquidation.
+
+    Fail-closed semantics (F0.4a): missing, empty, malformed or stale
+    bracket data rejects with ``margin:brackets-*``. A stale bracket can
+    understate maintenance margin after a venue tier change, so it is
+    never silently used.
+    """
+    if not brackets:
+        return {"ok": False, "reason": "margin:brackets-missing"}
+    if observed_ms is None:
+        return {"ok": False, "reason": "margin:brackets-unobserved"}
+    try:
+        age = int(now_ms) - int(observed_ms)
+    except (TypeError, ValueError):
+        return {"ok": False, "reason": "margin:brackets-invalid-timestamp"}
+    if age < 0:
+        return {"ok": False, "reason": "margin:brackets-future-timestamp"}
+    if age > int(max_age_ms):
+        return {"ok": False, "reason": "margin:brackets-stale",
+                "age_ms": age, "max_age_ms": int(max_age_ms)}
+    try:
+        entry_f = _finite(entry, "entry")
+        stop_f = _finite(stop, "stop")
+        qty_f = _finite(qty, "qty")
+        lev_f = _finite(leverage, "leverage")
+    except ValueError as exc:
+        return {"ok": False, "reason": f"margin:invalid-input:{exc}"}
+    if qty_f <= 0 or lev_f <= 0 or entry_f <= 0:
+        return {"ok": False, "reason": "margin:invalid-input"}
+    if side not in ("LONG", "SHORT"):
+        return {"ok": False, "reason": "margin:invalid-side"}
+    notional = qty_f * entry_f
+    try:
+        maintenance = maintenance_margin(notional, brackets)
+    except (KeyError, TypeError, ValueError):
+        return {"ok": False, "reason": "margin:brackets-malformed"}
+    margin = notional / lev_f
+    liq = liquidation_price_isolated(
+        entry=entry_f, qty=qty_f if side == "LONG" else -qty_f,
+        isolated_margin=margin, maint_margin=maintenance)
+    ok = liquidation_ok(entry=entry_f, stop=stop_f, liq=liq,
+                        stressed_slippage_bps=stressed_slippage_bps,
+                        side=side)
+    return {"ok": ok,
+            "reason": "margin:ok" if ok else "margin:liquidation-too-close",
+            "notional_usdt": notional,
+            "maintenance_margin_usdt": maintenance,
+            "isolated_margin_usdt": margin,
+            "liquidation_price": liq,
+            "leverage": lev_f}
 
 
 def minimum_viable_equity(*, min_notional_usdt: float,

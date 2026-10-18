@@ -1,0 +1,10 @@
+[Unit]
+Description=daily cryptobot autopilot + dashboard
+
+[Timer]
+OnCalendar=*-*-* 00:15:00 UTC
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target
