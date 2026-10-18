@@ -41,7 +41,7 @@ vault/autopilot artifacts, every claim cites command+output or file path.
 | E4.4 | Leak detectors as tests | DONE | shift/shuffle/SR3/no-lookahead signals |
 | E4.5 | Reviewer sub-agent breaks E4; fix findings | DONE | 15 findings; all CRITICAL/HIGH fixed + tested (37 E4/E5 tests green) |
 | E5 | Statistics module + tests (WF, bootstrap, DSR, PBO, SPA, plateau, regimes, DD, capacity) | DONE | `slow_stats.py`, 9 tests |
-| E6.1 | DEV evaluation, all trials counted, kill failures | IN PROGRESS (mine) | foreign B1/B2/B3/B7 VOID (rerun mismatch, D-040); my wave-1 running; vault clean (0 decodes, 0 freezes) |
+| E6.1 | DEV evaluation, all trials counted, kill failures | IN PROGRESS | wave-1 mine: B1 FAIL(0.59) B2 FAIL(-0.33) B3 FAIL(0.02) B7 FAIL(0.15); B4/B5/B6 await spot/metrics; vault clean |
 | E6.2 | Freeze survivors, holdout screen once via verdict | CODE DONE | verdict screen + CLI + E2E test; runs when holdout sealed |
 | E6.3 | Autopilot Family B extension (FROZEN/HOLDOUT_SCREEN/SCREEN_PASS/FORWARD_*) | DONE | B-machine + 8 tests; forward rule in D-037 |
 | E6.4 | RESEARCH_VERDICTS_B.md from machine JSONs | TODO | |
