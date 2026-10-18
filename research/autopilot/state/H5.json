@@ -1,16 +1,34 @@
 {
  "config_sha256": "0e239da8664edf588ca63cd0d7d6872522f6667ed618142225d3ad0ca56c0cf1",
+ "data_required": "liquidation prints plus depth. No liquidation history in the allowed stores",
  "history": [
   {
    "reason": "prereg present; dev evaluation due",
    "state": "DEV_EVAL",
    "ts_utc": "2026-10-18T06:53:00.287884+00:00"
+  },
+  {
+   "reason": "UNDERPOWERED/AWAIT_DATA: no evaluable dev trades. power status IMPOSSIBLE: fewer than 2 dev trades. Prereg floor 50 dev trades / 10 days, confirm 300.",
+   "state": "AWAIT_DATA",
+   "ts_utc": "2026-10-18T19:24:00.419570+00:00"
   }
  ],
  "hypothesis": "H5",
+ "outcome": "UNDERPOWERED",
+ "power": {
+  "days_required": null,
+  "mean_bps": 0.0,
+  "reason": "fewer than 2 dev trades",
+  "required_trades": null,
+  "status": "IMPOSSIBLE",
+  "stdev_bps": 0.0,
+  "trades_per_day": 1.0
+ },
  "prereg": "research/prereg/H5-liquidation-cascade-fade.md",
  "provenance": "OBSERVED",
- "reason": "prereg present; dev evaluation due",
- "state": "DEV_EVAL",
- "updated_utc": "2026-10-18T06:53:00.287884+00:00"
+ "reason": "UNDERPOWERED/AWAIT_DATA: no evaluable dev trades. power status IMPOSSIBLE: fewer than 2 dev trades. Prereg floor 50 dev trades / 10 days, confirm 300.",
+ "required_confirm_trades": 300,
+ "required_dev_trades": 50,
+ "state": "AWAIT_DATA",
+ "updated_utc": "2026-10-18T19:24:00.419570+00:00"
 }

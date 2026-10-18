@@ -29,9 +29,9 @@ from typing import Any
 
 from cryptobot.research.verdict import evaluate_trades
 
-STATES = ("REGISTERED", "DEV_EVAL", "KILLED", "AWAIT_CONFIRM_DATA",
-          "CONFIRM", "FAIL", "PASS", "PAPER_14D", "PAPER_COMPARE",
-          "GATE_READY")
+STATES = ("REGISTERED", "DEV_EVAL", "KILLED", "AWAIT_DATA",
+          "AWAIT_CONFIRM_DATA", "CONFIRM", "FAIL", "PASS", "PAPER_14D",
+          "PAPER_COMPARE", "GATE_READY")
 # E6.3 Family B extension (separate registry roots carry family "B"):
 # REGISTERED -> DEV_EVAL -> {KILLED | FROZEN} -> HOLDOUT_SCREEN ->
 # {FAIL | SCREEN_PASS} -> FORWARD_PAPER -> FORWARD_COMPARE -> GATE_READY.
@@ -260,6 +260,20 @@ class Autopilot:
             if dev is None:
                 return {"state": cur, "changed": False,
                         "blocked": "dev/<H>.json not present"}
+            if dev.get("status") == "AWAIT_DATA":
+                return {"state": self._transition(
+                    hyp, "AWAIT_DATA",
+                    reason=str(dev.get("reason")
+                               or "UNDERPOWERED: dev data missing"),
+                    details={"outcome": dev.get("outcome", "UNDERPOWERED"),
+                             "power": dev.get("power"),
+                             "data_required": dev.get("data_required"),
+                             "required_confirm_trades": dev.get(
+                                 "required_confirm_trades"),
+                             "required_dev_trades": dev.get(
+                                 "required_dev_trades")},
+                    provenance=self._provenance(dev))["state"],
+                    "changed": True}
             trades = dev.get("trades", [])
             ok, detail = self.dev_promotes(trades)
             if not ok:
@@ -280,6 +294,9 @@ class Autopilot:
                          "paper_days": PAPER_DAYS},
                 provenance=self._provenance(dev))["state"],
                 "changed": True}
+        if cur == "AWAIT_DATA":
+            return {"state": cur, "changed": False,
+                    "blocked": "UNDERPOWERED/AWAIT_DATA"}
         if cur == "AWAIT_CONFIRM_DATA":
             confirm = self._artifact("confirm", hyp)
             blocked = self._guard_synthetic(confirm)
@@ -404,9 +421,32 @@ class Autopilot:
                      "vault_frozen": frozen},
             provenance=self._provenance(dev))["state"], "changed": True}
 
+    def _refuse_invalidated_verdict(self, hyp: str) -> str | None:
+        verdict = self._artifact("verdicts_b", hyp)
+        if verdict is None:
+            alt = self.root.parent / "verdicts_b" / f"{hyp}.json"
+            if not alt.exists():
+                return None
+            try:
+                verdict = json.loads(alt.read_text(encoding="utf-8"))
+            except ValueError:
+                return "verdict refused: unreadable"
+            verdict["_path"] = str(alt)
+        from cryptobot.research.invalidation import (
+            load_chain, sibling_chain, verdict_consumption,
+        )
+        allowed, why = verdict_consumption(
+            verdict, load_chain(sibling_chain(verdict.get("_path"))))
+        if not allowed:
+            return f"verdict refused: {why}"
+        return None
+
     def _advance_b(self, hyp: str, entry: dict) -> dict:
         state = self.read_state(hyp)
         cur = state["state"]
+        refusal = self._refuse_invalidated_verdict(hyp)
+        if refusal:
+            return {"state": cur, "changed": False, "blocked": refusal}
         if cur == "FROZEN":
             verdict = self._artifact("verdicts_b", hyp)
             if verdict is None:

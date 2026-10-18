@@ -1,0 +1,25 @@
+{
+ "data_required": "L2 top-of-book depth chain (prereg DEV stores data/pilot, datasets/benchmark_30d)",
+ "hypothesis": "H1",
+ "outcome": "UNDERPOWERED",
+ "power": {
+  "days_required": null,
+  "mean_bps": 0.0,
+  "reason": "fewer than 2 dev trades",
+  "required_trades": null,
+  "status": "IMPOSSIBLE",
+  "stdev_bps": 0.0,
+  "trades_per_day": 1.0
+ },
+ "provenance": "OBSERVED",
+ "reason": "UNDERPOWERED/AWAIT_DATA: no evaluable dev trades. power status IMPOSSIBLE: fewer than 2 dev trades. Prereg floor 100 dev trades / 10 days, confirm 300.",
+ "required_confirm_trades": 300,
+ "required_dev_days": 10,
+ "required_dev_trades": 100,
+ "status": "AWAIT_DATA",
+ "stores_present": {
+  "data/pilot": false,
+  "datasets/benchmark_30d": false
+ },
+ "trades": []
+}

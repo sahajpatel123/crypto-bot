@@ -2,7 +2,8 @@
 
 Worktree: `/Users/sahajpatel/Code/cryto-bot-edge`
 Branch: `live/edge-sprint` from `live/final-hardening` tip `a313254`
-Date: 2026-10-18. Memory for this run; resume at first non-DONE task.
+Date: 2026-10-18. Closeout 2026-10-19: read `PROJECT_CLOSEOUT.md` first.
+Review date 2026-12-18. Resume at the closeout section, not at a new hypothesis.
 Prior run (F0–F9) history is in git (`a313254` and below).
 Rules: no orders, no keys, human-only arm, machine-written verdict/gate/
 vault/autopilot artifacts, every claim cites command+output or file path.
@@ -11,12 +12,12 @@ vault/autopilot artifacts, every claim cites command+output or file path.
 
 | Item | Status | Evidence |
 |---|---|---|
-| Suite green, 0 failed | DONE | 1528 passed, 1 skipped, 0 failed |
+| Suite green, 0 failed | DONE | closeout: 1640 passed, 1 skipped, 0 failed in 1566.76s (`/tmp/closeout-suite.log`, EXIT:0) |
 | Split + holdout sealed BEFORE analysis | DONE | chunk-2a22e52c3c8f50db before lake returns; B4 screen chunk sealed before its decode |
 | Preregs committed before evaluations | DONE | b0b4ac4 / 70e2f38 |
 | Leak tests present and passing | DONE | shift, shuffle, Sharpe>3, B1 future-bar test |
 | Differential test passes | DONE | `test_differential_vectorized_vs_event` |
-| Every verdict machine-written | DONE | `research/verdicts_b/B4.json` |
+| Every verdict machine-written | DONE | `research/verdicts_b/B4.json` is void; `invalidations.json` names `2974cc1a…` (D-042) |
 | RESEARCH_VERDICTS_B.md maps to verdict JSONs | DONE | |
 | Arm/gate refusal tests pass | DONE | `test_autopilot_gate.py` arm refusals |
 | OWNER_ACTIONS.md one ordered list | DONE | steps 1–17 |
@@ -26,7 +27,7 @@ vault/autopilot artifacts, every claim cites command+output or file path.
 | ID | Task | Status | Evidence |
 |---|---|---|---|
 | E0.1 | Re-entry: read memory, full suite 0 failed | DONE | 1501 passed/1 skipped nobench + 27 bench = 1528/1/0 failed |
-| E0.2 | Autopilot run-once Family A, record dev outcomes | DONE | all H1–H6 DEV_EVAL, no dev artifacts; left to timer |
+| E0.2 | Autopilot run-once Family A, record dev outcomes | DONE | closeout: H1–H6 UNDERPOWERED/AWAIT_DATA (`research/autopilot/dev/H*.json`) |
 | E1.1 | Vision inventory, DATA_INVENTORY.md | DONE | `tools/vision_inventory.py`, `DATA_INVENTORY.md`; probes verified |
 | E1.2 | Checksummed download | DONE | resume pull 118137 ok / 0 failed (terminal 972826); 49077 dev + 118548 holdout zips |
 | E1.3 | Parquet store + hash manifest + DQ report | DONE (code) | `research/lake.py`, 4 tests; build runs when bytes land |
@@ -41,22 +42,38 @@ vault/autopilot artifacts, every claim cites command+output or file path.
 | E4.4 | Leak detectors as tests | DONE | shift/shuffle/SR3/no-lookahead signals |
 | E4.5 | Reviewer sub-agent breaks E4; fix findings | DONE | 15 findings; all CRITICAL/HIGH fixed + tested (37 E4/E5 tests green) |
 | E5 | Statistics module + tests (WF, bootstrap, DSR, PBO, SPA, plateau, regimes, DD, capacity) | DONE | `slow_stats.py`, 9 tests |
-| E6.1 | DEV evaluation, all trials counted, kill failures | DONE | only B4 promotes; B1 B2 B3 B5 B6 B7 KILLED |
-| E6.2 | Freeze survivors, holdout screen once via verdict | DONE | `research/verdicts_b/B4.json` SCREEN_PASS |
-| E6.3 | Autopilot Family B extension (FROZEN/HOLDOUT_SCREEN/SCREEN_PASS/FORWARD_*) | DONE | B4 is SCREEN_PASS; log verifies |
+| E6.1 | DEV evaluation, all trials counted, kill failures | DONE | B1–B7 KILLED; 59 trials (`dev/B*.json` n_trials) |
+| E6.2 | Freeze survivors, holdout screen once via verdict | DONE | B4 screen void (D-042); chain `research/verdicts_b/invalidations.json` |
+| E6.3 | Autopilot Family B extension (FROZEN/HOLDOUT_SCREEN/SCREEN_PASS/FORWARD_*) | DONE | B1–B7 state KILLED; invalidated verdicts are refused |
 | E6.4 | RESEARCH_VERDICTS_B.md from machine JSONs | DONE | |
-| E7 | Slow paper path for the SCREEN_PASS | DONE | `slow_path.py`; forward clock not started |
+| E7 | Slow paper path for the SCREEN_PASS | DONE | no survivor; `SLOW_ENGINE_DESIGN.md`; forward clock not started |
 | E8 | OWNER_ACTIONS + README/ARCHITECTURE/RUNBOOK | DONE | steps 15–17 |
-| E9 | FINAL_STATUS.md | DONE | live = MIN = 3/10 |
+| E9 | FINAL_STATUS.md | DONE | see FINAL_STATUS.md; closeout supersedes any SCREEN_PASS reading |
 
-## E0.2 Family A dev outcomes (2026-10-18)
+## Closeout (2026-10-19)
 
-Command: `PYTHONPATH=src python -m cryptobot.cli autopilot run-once` → RC=0.
-Result: H1–H6 all remain `DEV_EVAL`, blocked `dev/<H>.json not present`.
-No DEV trades exist for Family A; nothing to promote or kill. Preregs
-unedited. Family A confirmation still waits for recorder data; left to
-the systemd timer. Machine report updated:
-`research/autopilot/reports/2026-10-18.json`.
+Evidence page: `PROJECT_CLOSEOUT.md`. Tag `closeout-v1`.
+
+- C1: `research/verdicts_b/B4.json` document_sha256
+  `2974cc1a24cdc1ef99238380919a9070e271427798482a5ded351e03bda028e8`
+  is invalidated in `research/verdicts_b/invalidations.json` (D-042,
+  25% per-leg clip). Verdict, autopilot, and gate refuse a listed hash
+  and refuse a broken chain. Tests: `tests/unit/test_invalidation.py`.
+- C2: three holdout decodes, all consumer `verdict`, hypothesis B4
+  (chunks `c87821b135ac9667` twice, `74e0747f6d1aab3a` once). Holdout
+  is clean for H1–H6 and B1–B3, B5–B7. BURNED for B4 and any B4
+  variant. Future carry variants confirm on FORWARD data only.
+- C3: H1–H6 `AWAIT_DATA`. `estimate_power([])` is IMPOSSIBLE
+  ("fewer than 2 dev trades"); `days_required` is null. Stores
+  `data/pilot` and `datasets/benchmark_30d` are absent. Preregs
+  unedited.
+- C4: `PROJECT_CLOSEOUT.md`. Review date 2026-12-18.
+- C5: suite 1640 passed, 1 skipped, 0 failed, 1566.76s,
+  `/tmp/closeout-suite.log` EXIT:0.
+
+No new research. Recorder disk/day and CPU were not measured: no
+recorder process on this host, and `/opt/cryptobot/data/recorder` is
+absent.
 
 ## E1.1 inventory (measured, subagent ses_eb1a1a8e9ffe0y708UEU0wkeyt)
 

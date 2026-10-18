@@ -1,54 +1,102 @@
 {
  "format": "cryptobot-autopilot-report/1",
- "generated_utc": "2026-10-18T09:35:53.441486+00:00",
+ "generated_utc": "2026-10-18T19:24:00.421472+00:00",
  "hypotheses": [
   {
    "hypothesis": "H1",
-   "power": null,
+   "power": {
+    "days_required": null,
+    "mean_bps": 0.0,
+    "reason": "fewer than 2 dev trades",
+    "required_trades": null,
+    "status": "IMPOSSIBLE",
+    "stdev_bps": 0.0,
+    "trades_per_day": 1.0
+   },
    "provenance": "OBSERVED",
-   "reason": "prereg present; dev evaluation due",
-   "state": "DEV_EVAL",
-   "updated_utc": "2026-10-18T06:53:00.283401+00:00"
+   "reason": "UNDERPOWERED/AWAIT_DATA: no evaluable dev trades. power status IMPOSSIBLE: fewer than 2 dev trades. Prereg floor 100 dev trades / 10 days, confirm 300.",
+   "state": "AWAIT_DATA",
+   "updated_utc": "2026-10-18T19:24:00.415559+00:00"
   },
   {
    "hypothesis": "H2",
-   "power": null,
+   "power": {
+    "days_required": null,
+    "mean_bps": 0.0,
+    "reason": "fewer than 2 dev trades",
+    "required_trades": null,
+    "status": "IMPOSSIBLE",
+    "stdev_bps": 0.0,
+    "trades_per_day": 1.0
+   },
    "provenance": "OBSERVED",
-   "reason": "prereg present; dev evaluation due",
-   "state": "DEV_EVAL",
-   "updated_utc": "2026-10-18T06:53:00.285067+00:00"
+   "reason": "UNDERPOWERED/AWAIT_DATA: no evaluable dev trades. power status IMPOSSIBLE: fewer than 2 dev trades. Prereg floor 100 dev trades / 20 days, confirm 300.",
+   "state": "AWAIT_DATA",
+   "updated_utc": "2026-10-18T19:24:00.417142+00:00"
   },
   {
    "hypothesis": "H3",
-   "power": null,
+   "power": {
+    "days_required": null,
+    "mean_bps": 0.0,
+    "reason": "fewer than 2 dev trades",
+    "required_trades": null,
+    "status": "IMPOSSIBLE",
+    "stdev_bps": 0.0,
+    "trades_per_day": 1.0
+   },
    "provenance": "OBSERVED",
-   "reason": "prereg present; dev evaluation due",
-   "state": "DEV_EVAL",
-   "updated_utc": "2026-10-18T06:53:00.286159+00:00"
+   "reason": "UNDERPOWERED/AWAIT_DATA: no evaluable dev trades. power status IMPOSSIBLE: fewer than 2 dev trades. Prereg floor 100 dev trades / 30 days, confirm 300.",
+   "state": "AWAIT_DATA",
+   "updated_utc": "2026-10-18T19:24:00.417970+00:00"
   },
   {
    "hypothesis": "H4",
-   "power": null,
+   "power": {
+    "days_required": null,
+    "mean_bps": 0.0,
+    "reason": "fewer than 2 dev trades",
+    "required_trades": null,
+    "status": "IMPOSSIBLE",
+    "stdev_bps": 0.0,
+    "trades_per_day": 1.0
+   },
    "provenance": "OBSERVED",
-   "reason": "prereg present; dev evaluation due",
-   "state": "DEV_EVAL",
-   "updated_utc": "2026-10-18T06:53:00.287089+00:00"
+   "reason": "UNDERPOWERED/AWAIT_DATA: no evaluable dev trades. power status IMPOSSIBLE: fewer than 2 dev trades. Prereg floor 100 dev trades / 10 days, confirm 300.",
+   "state": "AWAIT_DATA",
+   "updated_utc": "2026-10-18T19:24:00.418746+00:00"
   },
   {
    "hypothesis": "H5",
-   "power": null,
+   "power": {
+    "days_required": null,
+    "mean_bps": 0.0,
+    "reason": "fewer than 2 dev trades",
+    "required_trades": null,
+    "status": "IMPOSSIBLE",
+    "stdev_bps": 0.0,
+    "trades_per_day": 1.0
+   },
    "provenance": "OBSERVED",
-   "reason": "prereg present; dev evaluation due",
-   "state": "DEV_EVAL",
-   "updated_utc": "2026-10-18T06:53:00.287884+00:00"
+   "reason": "UNDERPOWERED/AWAIT_DATA: no evaluable dev trades. power status IMPOSSIBLE: fewer than 2 dev trades. Prereg floor 50 dev trades / 10 days, confirm 300.",
+   "state": "AWAIT_DATA",
+   "updated_utc": "2026-10-18T19:24:00.419570+00:00"
   },
   {
    "hypothesis": "H6",
-   "power": null,
+   "power": {
+    "days_required": null,
+    "mean_bps": 0.0,
+    "reason": "fewer than 2 dev trades",
+    "required_trades": null,
+    "status": "IMPOSSIBLE",
+    "stdev_bps": 0.0,
+    "trades_per_day": 1.0
+   },
    "provenance": "OBSERVED",
-   "reason": "prereg present; dev evaluation due",
-   "state": "DEV_EVAL",
-   "updated_utc": "2026-10-18T06:53:00.288730+00:00"
+   "reason": "UNDERPOWERED/AWAIT_DATA: no evaluable dev trades. power status IMPOSSIBLE: fewer than 2 dev trades. Prereg floor 100 dev trades / 20 days, confirm 300.",
+   "state": "AWAIT_DATA",
+   "updated_utc": "2026-10-18T19:24:00.420670+00:00"
   }
  ],
  "log_problems": [],

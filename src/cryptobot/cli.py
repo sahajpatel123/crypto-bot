@@ -1065,6 +1065,19 @@ def cmd_verdict(args: argparse.Namespace) -> int:
 
     if getattr(args, "holdout_screen", False):
         return _cmd_verdict_holdout(args)
+    from cryptobot.research.invalidation import (
+        load_chain, sibling_chain, verdict_consumption,
+    )
+    prior = sibling_chain(getattr(args, "out", None))
+    if prior is not None:
+        allowed, why = verdict_consumption(
+            _read_json(str(prior.parent / f"{args.hypothesis}.json"))
+            if getattr(args, "hypothesis", None) else {},
+            load_chain(prior))
+        # A chain that fails verification refuses the command outright.
+        if not allowed:
+            print(f"verdict: REFUSED {why}", file=sys.stderr)
+            return 2
     provenance = "OBSERVED"
     seal_sha = None
     if getattr(args, "vault_token", None):
@@ -1131,6 +1144,26 @@ def _cmd_verdict_holdout(args: argparse.Namespace) -> int:
         if not getattr(args, need, None):
             print(f"verdict: REFUSED --{need.replace('_', '-')} required "
                   f"for --holdout-screen", file=sys.stderr)
+            return 2
+    from cryptobot.research.invalidation import (
+        holdout_burned,
+        load_chain,
+        sibling_chain,
+        verify_invalidation_chain,
+    )
+    chain_path = sibling_chain(getattr(args, "out", None)) or Path(
+        "research/verdicts_b/invalidations.json")
+    chain = load_chain(chain_path)
+    if chain is not None:
+        broken = verify_invalidation_chain(chain)
+        if broken:
+            print("verdict: REFUSED invalidation chain broken: "
+                  + "; ".join(broken), file=sys.stderr)
+            return 2
+        if holdout_burned(args.hypothesis, chain=chain):
+            print("verdict: REFUSED holdout BURNED for "
+                  f"{args.hypothesis}; FORWARD data only (D-042)",
+                  file=sys.stderr)
             return 2
     try:
         vault = Vault(args.vault_root)
@@ -1250,7 +1283,16 @@ def cmd_gate(args: argparse.Namespace) -> int:
         verdict.get("hashes"), dict) else {}
     provenance = str(verdict.get("data_provenance", "UNKNOWN")).upper()
     auto_prov = str(autopilot.get("provenance", "UNKNOWN")).upper()
+    from cryptobot.research.invalidation import (
+        load_chain, sibling_chain, verdict_consumption,
+    )
+    inv_arg = getattr(args, "invalidations_json", None)
+    inv_path = Path(inv_arg) if inv_arg else sibling_chain(
+        getattr(args, "verdict_json", None))
+    chain = load_chain(inv_path) if inv_path else None
+    allowed, inv_reason = verdict_consumption(verdict, chain)
     checks = {
+        "verdict_not_invalidated": allowed,
         "verdict_pass": verdict.get("verdict") in ("PASS", "SCREEN_PASS"),
         "verdict_provenance_sealed": provenance in (
             "OBSERVED", "SEALED-CONFIRM", "SEALED-HOLDOUT")
@@ -1291,6 +1333,8 @@ def cmd_gate(args: argparse.Namespace) -> int:
         "no_blocked_in_state": "| BLOCKED |" not in state_text,
     }
     details: dict[str, object] = {}
+    if not allowed:
+        details["invalidation"] = inv_reason
     if getattr(args, "config", None):
         try:
             cfg_sha = _sha256_file(args.config)[:16]

@@ -1,16 +1,34 @@
 {
  "config_sha256": "b199dfdf445f5427d09864f9732e64c7f03d7835b3b5674c45a1ca668dc3c5bd",
+ "data_required": "Binance plus Bybit and OKX books. No cross-venue dev capture in the allowed stores",
  "history": [
   {
    "reason": "prereg present; dev evaluation due",
    "state": "DEV_EVAL",
    "ts_utc": "2026-10-18T06:53:00.287089+00:00"
+  },
+  {
+   "reason": "UNDERPOWERED/AWAIT_DATA: no evaluable dev trades. power status IMPOSSIBLE: fewer than 2 dev trades. Prereg floor 100 dev trades / 10 days, confirm 300.",
+   "state": "AWAIT_DATA",
+   "ts_utc": "2026-10-18T19:24:00.418746+00:00"
   }
  ],
  "hypothesis": "H4",
+ "outcome": "UNDERPOWERED",
+ "power": {
+  "days_required": null,
+  "mean_bps": 0.0,
+  "reason": "fewer than 2 dev trades",
+  "required_trades": null,
+  "status": "IMPOSSIBLE",
+  "stdev_bps": 0.0,
+  "trades_per_day": 1.0
+ },
  "prereg": "research/prereg/H4-cross-venue-lead-lag.md",
  "provenance": "OBSERVED",
- "reason": "prereg present; dev evaluation due",
- "state": "DEV_EVAL",
- "updated_utc": "2026-10-18T06:53:00.287089+00:00"
+ "reason": "UNDERPOWERED/AWAIT_DATA: no evaluable dev trades. power status IMPOSSIBLE: fewer than 2 dev trades. Prereg floor 100 dev trades / 10 days, confirm 300.",
+ "required_confirm_trades": 300,
+ "required_dev_trades": 100,
+ "state": "AWAIT_DATA",
+ "updated_utc": "2026-10-18T19:24:00.418746+00:00"
 }

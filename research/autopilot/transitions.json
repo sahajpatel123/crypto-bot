@@ -1,5 +1,5 @@
 {
- "chain_head": "5f5673b98d6230395a821f48e73312d959022e3c65654567cab3d579c90337a8",
+ "chain_head": "5dd8aeace6d7480aff1249e983d5b95086cf5d410d37fd1ea1b8faf017edce74",
  "entries": [
   {
    "details": {
@@ -84,6 +84,156 @@
    "reason": "prereg present; dev evaluation due",
    "to": "DEV_EVAL",
    "ts_utc": "2026-10-18T06:53:00.288730+00:00"
+  },
+  {
+   "details": {
+    "data_required": "L2 top-of-book depth chain (prereg DEV stores data/pilot, datasets/benchmark_30d)",
+    "outcome": "UNDERPOWERED",
+    "power": {
+     "days_required": null,
+     "mean_bps": 0.0,
+     "reason": "fewer than 2 dev trades",
+     "required_trades": null,
+     "status": "IMPOSSIBLE",
+     "stdev_bps": 0.0,
+     "trades_per_day": 1.0
+    },
+    "required_confirm_trades": 300,
+    "required_dev_trades": 100
+   },
+   "entry_hash": "9ae309c5c4f7171e1f6c0978b07320bb41f1f08161847e33355528fb972be945",
+   "from": "DEV_EVAL",
+   "hypothesis": "H1",
+   "prev": "5f5673b98d6230395a821f48e73312d959022e3c65654567cab3d579c90337a8",
+   "provenance": "OBSERVED",
+   "reason": "UNDERPOWERED/AWAIT_DATA: no evaluable dev trades. power status IMPOSSIBLE: fewer than 2 dev trades. Prereg floor 100 dev trades / 10 days, confirm 300.",
+   "to": "AWAIT_DATA",
+   "ts_utc": "2026-10-18T19:24:00.415559+00:00"
+  },
+  {
+   "details": {
+    "data_required": "book-walk depth when recorded; otherwise taker replay. No dev trade file",
+    "outcome": "UNDERPOWERED",
+    "power": {
+     "days_required": null,
+     "mean_bps": 0.0,
+     "reason": "fewer than 2 dev trades",
+     "required_trades": null,
+     "status": "IMPOSSIBLE",
+     "stdev_bps": 0.0,
+     "trades_per_day": 1.0
+    },
+    "required_confirm_trades": 300,
+    "required_dev_trades": 100
+   },
+   "entry_hash": "9d350c9fbba86032c8462f25291d946252f447ce9860c73b14d747a7c7b661a7",
+   "from": "DEV_EVAL",
+   "hypothesis": "H2",
+   "prev": "9ae309c5c4f7171e1f6c0978b07320bb41f1f08161847e33355528fb972be945",
+   "provenance": "OBSERVED",
+   "reason": "UNDERPOWERED/AWAIT_DATA: no evaluable dev trades. power status IMPOSSIBLE: fewer than 2 dev trades. Prereg floor 100 dev trades / 20 days, confirm 300.",
+   "to": "AWAIT_DATA",
+   "ts_utc": "2026-10-18T19:24:00.417142+00:00"
+  },
+  {
+   "details": {
+    "data_required": "funding-settlement prints with position timing. No dev trade file",
+    "outcome": "UNDERPOWERED",
+    "power": {
+     "days_required": null,
+     "mean_bps": 0.0,
+     "reason": "fewer than 2 dev trades",
+     "required_trades": null,
+     "status": "IMPOSSIBLE",
+     "stdev_bps": 0.0,
+     "trades_per_day": 1.0
+    },
+    "required_confirm_trades": 300,
+    "required_dev_trades": 100
+   },
+   "entry_hash": "c09a2367f7e3762a301b2abd2de5c328a1b536c0b063046f2737adb979ff60f1",
+   "from": "DEV_EVAL",
+   "hypothesis": "H3",
+   "prev": "9d350c9fbba86032c8462f25291d946252f447ce9860c73b14d747a7c7b661a7",
+   "provenance": "OBSERVED",
+   "reason": "UNDERPOWERED/AWAIT_DATA: no evaluable dev trades. power status IMPOSSIBLE: fewer than 2 dev trades. Prereg floor 100 dev trades / 30 days, confirm 300.",
+   "to": "AWAIT_DATA",
+   "ts_utc": "2026-10-18T19:24:00.417970+00:00"
+  },
+  {
+   "details": {
+    "data_required": "Binance plus Bybit and OKX books. No cross-venue dev capture in the allowed stores",
+    "outcome": "UNDERPOWERED",
+    "power": {
+     "days_required": null,
+     "mean_bps": 0.0,
+     "reason": "fewer than 2 dev trades",
+     "required_trades": null,
+     "status": "IMPOSSIBLE",
+     "stdev_bps": 0.0,
+     "trades_per_day": 1.0
+    },
+    "required_confirm_trades": 300,
+    "required_dev_trades": 100
+   },
+   "entry_hash": "989628965bf8da5cbbafb2e6c552d938280a8c9cd55252b1c8b9656e4ad778e5",
+   "from": "DEV_EVAL",
+   "hypothesis": "H4",
+   "prev": "c09a2367f7e3762a301b2abd2de5c328a1b536c0b063046f2737adb979ff60f1",
+   "provenance": "OBSERVED",
+   "reason": "UNDERPOWERED/AWAIT_DATA: no evaluable dev trades. power status IMPOSSIBLE: fewer than 2 dev trades. Prereg floor 100 dev trades / 10 days, confirm 300.",
+   "to": "AWAIT_DATA",
+   "ts_utc": "2026-10-18T19:24:00.418746+00:00"
+  },
+  {
+   "details": {
+    "data_required": "liquidation prints plus depth. No liquidation history in the allowed stores",
+    "outcome": "UNDERPOWERED",
+    "power": {
+     "days_required": null,
+     "mean_bps": 0.0,
+     "reason": "fewer than 2 dev trades",
+     "required_trades": null,
+     "status": "IMPOSSIBLE",
+     "stdev_bps": 0.0,
+     "trades_per_day": 1.0
+    },
+    "required_confirm_trades": 300,
+    "required_dev_trades": 50
+   },
+   "entry_hash": "c92f1608c9c346c0ef6944a9db8a969983a15d9a94875650259266dcfaba96a9",
+   "from": "DEV_EVAL",
+   "hypothesis": "H5",
+   "prev": "989628965bf8da5cbbafb2e6c552d938280a8c9cd55252b1c8b9656e4ad778e5",
+   "provenance": "OBSERVED",
+   "reason": "UNDERPOWERED/AWAIT_DATA: no evaluable dev trades. power status IMPOSSIBLE: fewer than 2 dev trades. Prereg floor 50 dev trades / 10 days, confirm 300.",
+   "to": "AWAIT_DATA",
+   "ts_utc": "2026-10-18T19:24:00.419570+00:00"
+  },
+  {
+   "details": {
+    "data_required": "filter on H2/H3; those have no dev trades, so H6 cannot be scored",
+    "outcome": "UNDERPOWERED",
+    "power": {
+     "days_required": null,
+     "mean_bps": 0.0,
+     "reason": "fewer than 2 dev trades",
+     "required_trades": null,
+     "status": "IMPOSSIBLE",
+     "stdev_bps": 0.0,
+     "trades_per_day": 1.0
+    },
+    "required_confirm_trades": 300,
+    "required_dev_trades": 100
+   },
+   "entry_hash": "5dd8aeace6d7480aff1249e983d5b95086cf5d410d37fd1ea1b8faf017edce74",
+   "from": "DEV_EVAL",
+   "hypothesis": "H6",
+   "prev": "c92f1608c9c346c0ef6944a9db8a969983a15d9a94875650259266dcfaba96a9",
+   "provenance": "OBSERVED",
+   "reason": "UNDERPOWERED/AWAIT_DATA: no evaluable dev trades. power status IMPOSSIBLE: fewer than 2 dev trades. Prereg floor 100 dev trades / 20 days, confirm 300.",
+   "to": "AWAIT_DATA",
+   "ts_utc": "2026-10-18T19:24:00.420670+00:00"
   }
  ],
  "format": "cryptobot-autopilot-transitions/1"
