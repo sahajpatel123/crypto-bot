@@ -381,3 +381,23 @@ def test_b7_invvol_quintile():
     w = tgt[dates[0]]
     assert set(w) == {"V0", "V5"}
     assert w["V0"] > 0 > w["V5"]
+
+
+def test_b4_legs_sized_half_not_clipped():
+    from cryptobot.research.family_b import MarketData, signals_b4
+
+    idx = pd.date_range("2023-01-01", periods=12, freq="D", tz="UTC")
+    close = [100.0] * 12
+    daily = {"BTCUSDT": _daily_frame("2023-01-01", close)}
+    calcs = pd.date_range("2023-01-01", periods=12 * 3, freq="8h", tz="UTC")
+    funding = {"BTCUSDT": pd.DataFrame(
+        {"calc_time": calcs, "last_funding_rate": 0.0004})}
+    spot = {"BTCUSDT": _daily_frame("2023-01-01", close)}
+    data = MarketData(daily=daily, funding=funding, oi={}, hourly={},
+                      spot=spot)
+    dates = [pd.Timestamp("2023-01-09", tz="UTC")]
+    tgt, _ = signals_b4(data, {"k": 1.5, "max_hold_d": 7}, dates,
+                        lambda d: ["BTCUSDT"])
+    # Prereg: 50%/leg for the delta-neutral pair (not the 25% default).
+    assert tgt[dates[0]]["SPOT:BTCUSDT"] == pytest.approx(0.5)
+    assert tgt[dates[0]]["BTCUSDT"] == pytest.approx(-0.5)

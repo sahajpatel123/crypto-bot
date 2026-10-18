@@ -58,8 +58,9 @@ def _trail_vol(logrets: pd.Series, window: int, end_pos: int) -> float | None:
     return sd * np.sqrt(PERIODS)
 
 
-def _cap_weights(w: dict[str, float]) -> dict[str, float]:
-    w = {s: float(np.clip(v, -PER_SYM_CAP, PER_SYM_CAP))
+def _cap_weights(w: dict[str, float],
+                 cap: float = PER_SYM_CAP) -> dict[str, float]:
+    w = {s: float(np.clip(v, -cap, cap))
          for s, v in w.items() if v != 0.0}
     gross = sum(abs(v) for v in w.values())
     if gross > GROSS_CAP:
@@ -296,7 +297,9 @@ def signals_b4(data: MarketData, params: dict, dates: list[pd.Timestamp],
             if cur["side"] != 0:
                 w[f"SPOT:{sym}"] = 0.5
                 w[sym] = -0.5
-        targets[d] = _cap_weights(w)
+        # B4 prereg allows 50%/leg (delta-neutral pair); the 25% default
+        # is for the directional stock-picking strategies.
+        targets[d] = _cap_weights(w, cap=0.5)
         info[d] = day_info
     return targets, {"positions": st, "history": info}
 

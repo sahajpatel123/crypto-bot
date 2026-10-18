@@ -411,3 +411,12 @@ Meta Muse Spark.
   premature KILL (foreign artifact, metrics missing) is remediated by
   proper rerun: corroborated FAIL stands; a PROMOTE forks to B5R (8th
   budget slot) to preserve append-only terminal semantics.
+- D-042 (B4 sizing bug; screen voided + rerun): the shared 25%/leg clip
+  silently halved B4's preregistered 50%/leg delta-neutral size (signal
+  code said 0.5, _cap_weights clipped to 0.25; tests only pinned signs).
+  Sharpe is near scale-free so gates were likely unaffected, but dust/
+  step-quantization differ, so: fixed via per-hypothesis cap param +
+  exact-size test, VOIDED the in-flight 0.25-code screen (its decode of
+  chunk-74e0 stands logged but unused), and reran DEV B4 + a fresh-chunk
+  single screen on the fixed tree. No results from the voided run were
+  adopted. Lesson: pin economic magnitudes in tests, not just signs.
