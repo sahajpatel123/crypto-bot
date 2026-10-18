@@ -1,0 +1,62 @@
+{
+ "created_utc": "2026-10-18T10:28:20.926469+00:00",
+ "format": "cryptobot-autopilot-registry/1",
+ "hypotheses": {
+  "B1": {
+   "commit": "b0b4ac424f70d7974f2ce84806ba890765e013c1",
+   "config_sha256": "b7f8083409c6d8a46d49e8b6a9fe1ccb7ba4150015406480d2453d04da8b45b8",
+   "family_size": 7,
+   "hypothesis": "B1",
+   "prereg": "research/prereg/B1-vol-scaled-trend.md",
+   "registered_utc": "2026-10-18T10:28:20.927101+00:00"
+  },
+  "B2": {
+   "commit": "b0b4ac424f70d7974f2ce84806ba890765e013c1",
+   "config_sha256": "df5d83cef70b85fdc639f729f3f1292840ed56bfd9da339d20f4ea87c90cf1f6",
+   "family_size": 7,
+   "hypothesis": "B2",
+   "prereg": "research/prereg/B2-xsec-momentum.md",
+   "registered_utc": "2026-10-18T10:28:20.927368+00:00"
+  },
+  "B3": {
+   "commit": "b0b4ac424f70d7974f2ce84806ba890765e013c1",
+   "config_sha256": "c75d0502dabe23218e4fa51678139ea54a59d00521d6c1b439dffdc6250540fd",
+   "family_size": 7,
+   "hypothesis": "B3",
+   "prereg": "research/prereg/B3-funding-carry.md",
+   "registered_utc": "2026-10-18T10:28:20.927567+00:00"
+  },
+  "B4": {
+   "commit": "b0b4ac424f70d7974f2ce84806ba890765e013c1",
+   "config_sha256": "81e057641702d6f08ca7fc9ae8f0098a48a88f8b5d57e3a21c0d30fdb4dfb116",
+   "family_size": 7,
+   "hypothesis": "B4",
+   "prereg": "research/prereg/B4-delta-neutral-basis.md",
+   "registered_utc": "2026-10-18T10:28:20.927755+00:00"
+  },
+  "B5": {
+   "commit": "b0b4ac424f70d7974f2ce84806ba890765e013c1",
+   "config_sha256": "51cf19e87630a04c079803a049f4d1e46972be609b55f527808c684c217e4836",
+   "family_size": 7,
+   "hypothesis": "B5",
+   "prereg": "research/prereg/B5-extreme-move-reversion.md",
+   "registered_utc": "2026-10-18T10:28:20.927986+00:00"
+  },
+  "B6": {
+   "commit": "b0b4ac424f70d7974f2ce84806ba890765e013c1",
+   "config_sha256": "fa599d2d783536dece1f9bb5282510a5ebdcb361d718a088a2f96ccb6b1aac0e",
+   "family_size": 7,
+   "hypothesis": "B6",
+   "prereg": "research/prereg/B6-oi-divergence.md",
+   "registered_utc": "2026-10-18T10:28:20.928200+00:00"
+  },
+  "B7": {
+   "commit": "b0b4ac424f70d7974f2ce84806ba890765e013c1",
+   "config_sha256": "b389aa63e67ec1a51ef796aa2036463dde2f9f8e8fd5588d00e783d714460416",
+   "family_size": 7,
+   "hypothesis": "B7",
+   "prereg": "research/prereg/B7-low-vol-tilt.md",
+   "registered_utc": "2026-10-18T10:28:20.928407+00:00"
+  }
+ }
+}
