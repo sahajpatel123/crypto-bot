@@ -45,7 +45,9 @@ def _paper_fill(engine, quote, side, qty, kind="MARKET", price=None):
     engine.submit(EngineOrder("BTCUSDT", side, qty, kind, price=price,
                               reservation_id="r-1", role="entry"))
     fills = []
-    for i in range(1, 8):
+    # Generous tick bound: fill_delay is sim-time, but loaded CI
+    # must never flake on scheduling (ticks are 1s sim-time each).
+    for i in range(1, 16):
         quote(i)
         fills += [e for e in engine.poll() if e.kind == "fill"]
         if fills:

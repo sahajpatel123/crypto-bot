@@ -409,8 +409,13 @@ class OrderManager:
         now = now_utc or self._now_utc()
         events: list[dict[str, Any]] = []
         for order in list(self.orders.values()):
-            if order.reservation_id is not None and self._reservation_resolved(order.reservation_id):
-                continue  # resolved reservations need no further venue reads.
+            # F1.2 REAL-BUG (mutation triage): resolved reservations still
+            # need venue READS (a fill racing a venue-side cancel lands
+            # after the zero-fill release; skipping the read drops it
+            # and risk undercounts exposure fail-open). Only expiry
+            # ACTIONS are skipped below for resolved reservations.
+            resolved = (order.reservation_id is not None
+                        and self._reservation_resolved(order.reservation_id))
             if order.state == OrderState.REJECTED:
                 continue  # rejected can never fill.
             settling = (
@@ -441,6 +446,8 @@ class OrderManager:
                     order.settle_polls += 1
                     self._log(order.client_id, "settle-poll", {"settle_polls": order.settle_polls})
                 continue
+            if resolved:
+                continue  # fills adopted above; no expiry actions post-release.
             # F-E001-05 (live note): expiry covers entries only. Stop/target legs
             # never expire here — accepted for M1 (legs die only by fill or by
             # the sibling winner's verified cancel). A live venue needs leg

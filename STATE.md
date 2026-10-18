@@ -400,6 +400,14 @@ never read. Campaign `data/captures/campaign-1day-*` events never read
   no-seed-A + reseed-B, cid linkage resolves at resume, B#19
   releases cleanly). No src reversals — all triage fixes stood.
   18 passed (lifecycle+release). Final F0 suite relaunched.
+- F0-final-7 DONE: final suite exposed 7 (rel fee identity vs drift
+  top-up → updated to raw+drift from fills_drift.jsonl; differential
+  IOC load flake → tick bound 8→15; 5 mutation_kills mid-edit
+  collection artifacts → file green 189 + lint-clean at HEAD).
+  F1.2 REAL-BUG fixed: OrderManager.poll skipped resolved
+  reservations (cancel/fill race lost fills fail-open); resolved
+  keeps venue reads, skips only expiry actions; xfail flipped to a
+  passing kill-test. After-scores loop relaunches post-commit.
 
   | ID | Severity | Finding | Verdict |
   |---|---|---|---|
