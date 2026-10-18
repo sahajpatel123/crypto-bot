@@ -398,4 +398,4 @@ Meta Muse Spark.
   the verified tree disagreed (best cell AND cell sharpes differ, e.g.
   turnover ~2x off). Saved to /tmp/foreign-dev-artifacts for the record;
   official E6.1 = this session's reruns on the audited tree, each
-  determinism-checked. Lesson reinforced: reproduce, never adopt, чужое.
+  determinism-checked. Lesson reinforced: reproduce, never adopt, foreign results.
