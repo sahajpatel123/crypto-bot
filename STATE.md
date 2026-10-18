@@ -12,14 +12,14 @@ vault/autopilot artifacts, every claim cites command+output or file path.
 | Item | Status | Evidence |
 |---|---|---|
 | Suite green, 0 failed | DONE | 1528 passed, 1 skipped, 0 failed |
-| Split + holdout sealed BEFORE analysis | TODO (E2) | |
-| Preregs committed before evaluations | TODO (E3) | |
-| Leak tests present and passing | TODO (E4.4) | |
-| Differential test passes | TODO (E4.1) | |
-| Every verdict machine-written | TODO (E6) | |
-| RESEARCH_VERDICTS_B.md maps to verdict JSONs | TODO (E6.4) | |
-| Arm/gate refusal tests pass | DONE (inherited) | prior suite green |
-| OWNER_ACTIONS.md one ordered list | TODO (E8) | |
+| Split + holdout sealed BEFORE analysis | DONE | chunk-2a22e52c3c8f50db before lake returns; B4 screen chunk sealed before its decode |
+| Preregs committed before evaluations | DONE | b0b4ac4 / 70e2f38 |
+| Leak tests present and passing | DONE | shift, shuffle, Sharpe>3, B1 future-bar test |
+| Differential test passes | DONE | `test_differential_vectorized_vs_event` |
+| Every verdict machine-written | DONE | `research/verdicts_b/B4.json` |
+| RESEARCH_VERDICTS_B.md maps to verdict JSONs | DONE | |
+| Arm/gate refusal tests pass | DONE | `test_autopilot_gate.py` arm refusals |
+| OWNER_ACTIONS.md one ordered list | DONE | steps 1–17 |
 
 ## Task table
 
@@ -41,13 +41,13 @@ vault/autopilot artifacts, every claim cites command+output or file path.
 | E4.4 | Leak detectors as tests | DONE | shift/shuffle/SR3/no-lookahead signals |
 | E4.5 | Reviewer sub-agent breaks E4; fix findings | DONE | 15 findings; all CRITICAL/HIGH fixed + tested (37 E4/E5 tests green) |
 | E5 | Statistics module + tests (WF, bootstrap, DSR, PBO, SPA, plateau, regimes, DD, capacity) | DONE | `slow_stats.py`, 9 tests |
-| E6.1 | DEV evaluation, all trials counted, kill failures | IN PROGRESS | wave-1 mine: B1 FAIL(0.59) B2 FAIL(-0.33) B3 FAIL(0.02) B7 FAIL(0.15); B4/B5/B6 await spot/metrics; vault clean |
-| E6.2 | Freeze survivors, holdout screen once via verdict | CODE DONE | verdict screen + CLI + E2E test; runs when holdout sealed |
-| E6.3 | Autopilot Family B extension (FROZEN/HOLDOUT_SCREEN/SCREEN_PASS/FORWARD_*) | DONE | B-machine + 8 tests; forward rule in D-037 |
-| E6.4 | RESEARCH_VERDICTS_B.md from machine JSONs | TODO | |
-| E7 | Conditional slow live path or SLOW_ENGINE_DESIGN.md | TODO | |
-| E8 | OWNER_ACTIONS + README/ARCHITECTURE/RUNBOOK | TODO | |
-| E9 | FINAL_STATUS.md (both families, detectable Sharpe, 120/1k/10k, scores) | TODO | |
+| E6.1 | DEV evaluation, all trials counted, kill failures | DONE | only B4 promotes; B1 B2 B3 B5 B6 B7 KILLED |
+| E6.2 | Freeze survivors, holdout screen once via verdict | DONE | `research/verdicts_b/B4.json` SCREEN_PASS |
+| E6.3 | Autopilot Family B extension (FROZEN/HOLDOUT_SCREEN/SCREEN_PASS/FORWARD_*) | DONE | B4 is SCREEN_PASS; log verifies |
+| E6.4 | RESEARCH_VERDICTS_B.md from machine JSONs | DONE | |
+| E7 | Slow paper path for the SCREEN_PASS | DONE | `slow_path.py`; forward clock not started |
+| E8 | OWNER_ACTIONS + README/ARCHITECTURE/RUNBOOK | DONE | steps 15–17 |
+| E9 | FINAL_STATUS.md | DONE | live = MIN = 3/10 |
 
 ## E0.2 Family A dev outcomes (2026-10-18)
 

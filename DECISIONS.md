@@ -420,3 +420,15 @@ Meta Muse Spark.
   chunk-74e0 stands logged but unused), and reran DEV B4 + a fresh-chunk
   single screen on the fixed tree. No results from the voided run were
   adopted. Lesson: pin economic magnitudes in tests, not just signs.
+- D-043 (autopilot_b state reset; foreign transitions voided): the
+  parallel session drove autopilot_b on void artifacts: B4 to
+  SCREEN_PASS (foreign 0.25-code screen), B6 to KILLED (no-metrics
+  premature dev), and my own run consumed their premature B5 dev
+  (KILLED on incomplete data). B1/B2/B3/B7 KILLED transitions are VALID
+  (my artifacts, corroborated). Remediation: (1) quarantined foreign
+  verdict/cell/dev files to /tmp/void-foreign (moved, never deleted);
+  (2) B4 rerun officially on fixed code -> KILLED on turnover 15.48>12
+  (sole failing bullet; OOS 4.28 retained); (3) B5/B6 rerun properly
+  once metrics land; (4) autopilot_b state/ + transitions.json RESET
+  (old chain preserved as transitions.json.VOIDED) and re-driven SOLELY
+  from verified artifacts. Terminal states are never edited in place.
