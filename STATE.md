@@ -65,7 +65,7 @@ vault/autopilot artifacts, every claim cites command+output or file path.
 | Z4 | C1 B4b prereg before any forward read | DONE | `research/prereg/C1-b4b-carry.md` and `research/configs/C1.toml` committed before any forward read. Confirmation cell k=1.5, drift_band=0.05. Holdout BURNED |
 | Z5 | Adjudication table + cryptobot adjudicate | DONE | `research/prereg/ADJUDICATION.md` committed before launchd. `cryptobot adjudicate` hash chain. Tests: ARCHIVE_NEGATIVE unloads plists, PAPER_ONLY, READY_FOR_HUMAN_DECISION, SYNTHETIC refused, AWAIT_DATA force-closed. C1 holdout burn appended on `invalidations.json` |
 | Z6 | PROJECT_FINAL_REPORT.md + final-status | DONE | `PROJECT_FINAL_REPORT.md`. `cryptobot final-status` prints H1–H6 AWAIT_DATA, B1–B7 KILLED, C1 AWAIT_FORWARD, adjudication WAITING |
-| Z7 | Suite green, tag v1.0-final | PENDING | |
+| Z7 | Suite green, tag v1.0-final | DONE | Python 3.12 full suite: 1656 passed, 1 skipped, 0 failed, 1634.42s (`/tmp/z7-suite.log` EXIT:0). Tag `v1.0-final` |
 
 ## Closeout (2026-10-19)
 

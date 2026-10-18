@@ -22,6 +22,7 @@ runs/
 outputs/hr2/windows/
 .hypothesis/
 data/lake/
+data/recorder/
 vision-plan-*.json
 vision-pull-*.json
 data/vault/chunks/

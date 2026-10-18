@@ -1,5 +1,5 @@
 {
- "chain_head": "38aa707c422c9d03dcc1e4405f0ccce82d8f1d4a7d93a54b71c636f1ea3548d7",
+ "chain_head": "18a43d7403861528202bee63ac9d9be489358f9ed6e20df84f0c36408151a87e",
  "entries": [
   {
    "actions": [],
@@ -88,6 +88,100 @@
    "prev": "genesis",
    "snapshot": "05262b4630ce9ad7079ef4e421067af4e9bd9da4ae6d5c9b10bde630113f854a",
    "ts_utc": "2026-10-18T21:40:43.915607+00:00"
+  },
+  {
+   "actions": [],
+   "closed": [
+    {
+     "family": "A",
+     "hypothesis": "H1",
+     "provenance": "OBSERVED",
+     "state": "AWAIT_DATA"
+    },
+    {
+     "family": "A",
+     "hypothesis": "H2",
+     "provenance": "OBSERVED",
+     "state": "AWAIT_DATA"
+    },
+    {
+     "family": "A",
+     "hypothesis": "H3",
+     "provenance": "OBSERVED",
+     "state": "AWAIT_DATA"
+    },
+    {
+     "family": "A",
+     "hypothesis": "H4",
+     "provenance": "OBSERVED",
+     "state": "AWAIT_DATA"
+    },
+    {
+     "family": "A",
+     "hypothesis": "H5",
+     "provenance": "OBSERVED",
+     "state": "AWAIT_DATA"
+    },
+    {
+     "family": "A",
+     "hypothesis": "H6",
+     "provenance": "OBSERVED",
+     "state": "AWAIT_DATA"
+    },
+    {
+     "family": "B",
+     "hypothesis": "B1",
+     "provenance": "OBSERVED_PUBLIC",
+     "state": "KILLED"
+    },
+    {
+     "family": "B",
+     "hypothesis": "B2",
+     "provenance": "OBSERVED_PUBLIC",
+     "state": "KILLED"
+    },
+    {
+     "family": "B",
+     "hypothesis": "B3",
+     "provenance": "OBSERVED_PUBLIC",
+     "state": "KILLED"
+    },
+    {
+     "family": "B",
+     "hypothesis": "B4",
+     "provenance": "OBSERVED_PUBLIC",
+     "state": "KILLED"
+    },
+    {
+     "family": "B",
+     "hypothesis": "B5",
+     "provenance": "OBSERVED_PUBLIC",
+     "state": "KILLED"
+    },
+    {
+     "family": "B",
+     "hypothesis": "B6",
+     "provenance": "OBSERVED_PUBLIC",
+     "state": "KILLED"
+    },
+    {
+     "family": "B",
+     "hypothesis": "B7",
+     "provenance": "OBSERVED_PUBLIC",
+     "state": "KILLED"
+    },
+    {
+     "family": "C",
+     "hypothesis": "C1",
+     "provenance": "OBSERVED",
+     "state": "AWAIT_FORWARD"
+    }
+   ],
+   "decision": "WAITING",
+   "entry_hash": "18a43d7403861528202bee63ac9d9be489358f9ed6e20df84f0c36408151a87e",
+   "prev": "38aa707c422c9d03dcc1e4405f0ccce82d8f1d4a7d93a54b71c636f1ea3548d7",
+   "snapshot": "56ad090c7fbde8a61731ab5eb08cb4601e32c11b57b75f0694f88ade7a3e42de",
+   "ts_utc": "2026-10-18T22:15:05.314342+00:00"
   }
  ],
  "format": "cryptobot-adjudication/1"
