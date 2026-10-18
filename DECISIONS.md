@@ -361,3 +361,19 @@ Meta Muse Spark.
   does not exist yet); (e) CJK symbol URLs percent-encoded (31 pull
   failures root-caused to UnicodeEncodeError); retry via rebuilt plan +
   same state file after the running pull completes.
+- D-038 (leg-wise seal-before-analysis + universe hygiene, pre-evaluation):
+  (a) The vault enforces CONFIRM eligibility PER HOLDOUT CHUNK (per data
+  leg). Sequencing follows the same granularity: a DEV evaluation touching
+  only 1d+funding bytes is cleared once the klines-1d/1h and fundingRate
+  holdout legs are sealed; metrics/spot legs seal before any evaluation
+  touching them. No evaluation has decoded any unsealed holdout leg.
+  (b) 13 BUSD-margined symbols enter DEV top-30 weeks; the frozen universe
+  rule is followed LITERALLY (settled as USDT, ~0 tracking error,
+  disclosed in E6.4) — no post-freeze universe change. (c) Zero *SETTLED /
+  quarterly symbols qualified in DEV; a fail-closed tripwire in
+  run_family_b.py aborts any evaluation (DEV or holdout) if one ever
+  qualifies, rather than backtesting fiction. (d) data/vault/chunks/ and
+  tokens/ are host-local (gitignored); registry.json + access_log.json
+  are committed. The parallel session's all-in-one HOLDOUT manifest
+  (absolute paths) coexists harmlessly (append-only); E6.2 uses the
+  per-leg manifests.

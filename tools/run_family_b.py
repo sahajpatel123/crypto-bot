@@ -80,12 +80,20 @@ def evaluate_cell(hypothesis: str, params: dict, data: FB.MarketData,
     ucfg = cfg["universe"]
 
     def universe_fn(d):
+        import re
         out = eligible_universe(
             d, data.daily, top_n=int(ucfg["top_n"]),
             min_listing_age_days=int(ucfg["min_listing_age_days"]),
             min_quote_volume_30d=float(ucfg["min_quote_volume_30d"]))
         if hypothesis == "B4":
             out = [s for s in out if s in ("BTCUSDT", "ETHUSDT")]
+        # D-038 tripwire: settlement indices / expired quarterlies were
+        # never tradable as USDT perps. The frozen rule stands literally,
+        # but if one ever qualifies, abort loudly instead of backtesting
+        # fiction. (Zero qualified in DEV; verified in scope step.)
+        bad = [s for s in out if "SETTLED" in s or re.search(r"_[0-9]{6}$", s)]
+        if bad:
+            raise ValueError(f"untradeable symbols in universe at {d}: {bad}")
         return out
 
     full_params = dict(params)

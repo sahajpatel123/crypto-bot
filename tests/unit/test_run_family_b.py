@@ -74,3 +74,32 @@ def test_runner_b2_schema_counts_determinism(tmp_path, monkeypatch):
     assert doc["provenance"] == "OBSERVED_PUBLIC"
     assert doc["vault_frozen"] is None
     assert len(doc["cell_sharpes"]) == 6
+
+
+def test_universe_tripwire_aborts_on_settlement_symbol(tmp_path, monkeypatch):
+    import importlib.util
+
+    import pandas as pd
+
+    spec = importlib.util.spec_from_file_location(
+        "run_family_b",
+        Path(__file__).resolve().parents[2] / "tools" / "run_family_b.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    monkeypatch.chdir(tmp_path)
+    lake = _micro_lake(tmp_path)
+    # Inject a fake high-volume SETTLED symbol into the built lake.
+    idx = pd.date_range("2020-01-01", "2023-12-31", freq="D", tz="UTC")
+    df = pd.DataFrame({"open_time": idx, "open": 1.0, "high": 1.0,
+                       "low": 1.0, "close": 1.0, "quote_volume": 1e12})
+    dest = lake / "klines" / "interval=1d" / "symbol=FAKEUSDTSETTLED"
+    dest.mkdir(parents=True, exist_ok=True)
+    df.to_parquet(dest / "data.parquet", index=False)
+    (tmp_path / "research" / "configs").mkdir(parents=True)
+    real = Path(__file__).resolve().parents[2] / "research" / "configs"
+    (tmp_path / "research" / "configs" / "B2.toml").write_text(
+        (real / "B2.toml").read_text())
+    import pytest
+
+    with pytest.raises(ValueError, match="untradeable"):
+        mod.evaluate_hypothesis("B2", lake, equity=1000.0)

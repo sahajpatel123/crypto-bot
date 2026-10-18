@@ -1,5 +1,5 @@
 {
- "chain_head": "b1f9c36f583f4c5e5bf13b1eeb410bdd7dfde6e53ae70ee1378c41b7bec339d1",
+ "chain_head": "ed818fb2969184836ba68637dc663970644f48b674b363504385fdcbd5e7297f",
  "created_utc": "2026-10-18T08:21:25.061228+00:00",
  "entries": [
   {
@@ -17,6 +17,70 @@
    "prev": "genesis",
    "sealed_utc": "2026-10-18T12:49:25.531913+00:00",
    "sha256": "2a22e52c3c8f50dba21c5a68c25ee78dad096603f75c5ae45025449e9c28aa79"
+  },
+  {
+   "bytes": 7557267,
+   "chunk_id": "chunk-e3ca720beb53a5c5",
+   "class": "HOLDOUT",
+   "config_sha256": null,
+   "decode_policy": "verdict-only",
+   "entry_hash": "238289841f3ff22880877bb56d77c6e5b5eae3536c179f10049f084f355b4ce7",
+   "file": "chunks/chunk-e3ca720beb53a5c5.json",
+   "first_ms": null,
+   "hypothesis": null,
+   "input_class": "OBSERVED_PUBLIC",
+   "last_ms": null,
+   "prev": "b1f9c36f583f4c5e5bf13b1eeb410bdd7dfde6e53ae70ee1378c41b7bec339d1",
+   "sealed_utc": "2026-10-18T12:51:33.404493+00:00",
+   "sha256": "e3ca720beb53a5c567974333d5937993122b285f84b3753e24ef0dca3a870f72"
+  },
+  {
+   "bytes": 8034376,
+   "chunk_id": "chunk-4cb7240d5d9a923a",
+   "class": "HOLDOUT",
+   "config_sha256": null,
+   "decode_policy": "verdict-only",
+   "entry_hash": "0950900c1f15d6e170df02ee1d42e633e0322618c38d05f58cc63f6e1cfb48b3",
+   "file": "chunks/chunk-4cb7240d5d9a923a.json",
+   "first_ms": null,
+   "hypothesis": null,
+   "input_class": "OBSERVED_PUBLIC",
+   "last_ms": null,
+   "prev": "238289841f3ff22880877bb56d77c6e5b5eae3536c179f10049f084f355b4ce7",
+   "sealed_utc": "2026-10-18T12:51:51.148792+00:00",
+   "sha256": "4cb7240d5d9a923a21f369e3b85b3fbe0e3398d66dccf22eea29fc54e54d6274"
+  },
+  {
+   "bytes": 7372543,
+   "chunk_id": "chunk-af97c4d426d1a489",
+   "class": "HOLDOUT",
+   "config_sha256": null,
+   "decode_policy": "verdict-only",
+   "entry_hash": "02a0e45461a255dcfcd8223ed98ecca790fe7604a61787327e6746f1866db571",
+   "file": "chunks/chunk-af97c4d426d1a489.json",
+   "first_ms": null,
+   "hypothesis": null,
+   "input_class": "OBSERVED_PUBLIC",
+   "last_ms": null,
+   "prev": "0950900c1f15d6e170df02ee1d42e633e0322618c38d05f58cc63f6e1cfb48b3",
+   "sealed_utc": "2026-10-18T12:52:01.701990+00:00",
+   "sha256": "af97c4d426d1a489a951d2a58d43b8ec0be511f4bd7ffcdee01f1f298f57e7e0"
+  },
+  {
+   "bytes": 3711713,
+   "chunk_id": "chunk-24045b38ad2d98a5",
+   "class": "HOLDOUT",
+   "config_sha256": null,
+   "decode_policy": "verdict-only",
+   "entry_hash": "ed818fb2969184836ba68637dc663970644f48b674b363504385fdcbd5e7297f",
+   "file": "chunks/chunk-24045b38ad2d98a5.json",
+   "first_ms": null,
+   "hypothesis": null,
+   "input_class": "OBSERVED_PUBLIC",
+   "last_ms": null,
+   "prev": "02a0e45461a255dcfcd8223ed98ecca790fe7604a61787327e6746f1866db571",
+   "sealed_utc": "2026-10-18T12:52:07.839704+00:00",
+   "sha256": "24045b38ad2d98a5c9a57294b20267a8deff7ca5cd48f1a88ebc0dd5207a635d"
   }
  ],
  "format": "cryptobot-vault-registry/1",

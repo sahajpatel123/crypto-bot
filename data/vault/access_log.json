@@ -1,5 +1,5 @@
 {
- "chain_head": "828a1df56fb5a40b8c3ce96fc738f4b13f0c23fcf12c37c4dec032f1477b30d3",
+ "chain_head": "7041c12ce747bfdefe9bae7f655ddf21c9bf636873c73244b7293d4c205bb7fc",
  "created_utc": "2026-10-18T08:21:25.061578+00:00",
  "entries": [
   {
@@ -12,6 +12,50 @@
    "prev": "genesis",
    "sha256": "2a22e52c3c8f50dba21c5a68c25ee78dad096603f75c5ae45025449e9c28aa79",
    "ts_utc": "2026-10-18T12:49:25.531913+00:00"
+  },
+  {
+   "action": "seal",
+   "chunk_id": "chunk-e3ca720beb53a5c5",
+   "class": "HOLDOUT",
+   "entry_hash": "72abf1caaaecb65bbb6333b6f0f126c723a453cbc38fdd60b5b543a9d6f5c64a",
+   "hypothesis": null,
+   "input_class": "OBSERVED_PUBLIC",
+   "prev": "828a1df56fb5a40b8c3ce96fc738f4b13f0c23fcf12c37c4dec032f1477b30d3",
+   "sha256": "e3ca720beb53a5c567974333d5937993122b285f84b3753e24ef0dca3a870f72",
+   "ts_utc": "2026-10-18T12:51:33.404493+00:00"
+  },
+  {
+   "action": "seal",
+   "chunk_id": "chunk-4cb7240d5d9a923a",
+   "class": "HOLDOUT",
+   "entry_hash": "586f44d9e384cec110576ed2f7104af02d928595a81fb95499307d25c69bb7a9",
+   "hypothesis": null,
+   "input_class": "OBSERVED_PUBLIC",
+   "prev": "72abf1caaaecb65bbb6333b6f0f126c723a453cbc38fdd60b5b543a9d6f5c64a",
+   "sha256": "4cb7240d5d9a923a21f369e3b85b3fbe0e3398d66dccf22eea29fc54e54d6274",
+   "ts_utc": "2026-10-18T12:51:51.148792+00:00"
+  },
+  {
+   "action": "seal",
+   "chunk_id": "chunk-af97c4d426d1a489",
+   "class": "HOLDOUT",
+   "entry_hash": "8288a9b34ff205a83e217a9d66e0d3c18f0f2f2effeb6f5c099a5c6d8c406bcb",
+   "hypothesis": null,
+   "input_class": "OBSERVED_PUBLIC",
+   "prev": "586f44d9e384cec110576ed2f7104af02d928595a81fb95499307d25c69bb7a9",
+   "sha256": "af97c4d426d1a489a951d2a58d43b8ec0be511f4bd7ffcdee01f1f298f57e7e0",
+   "ts_utc": "2026-10-18T12:52:01.701990+00:00"
+  },
+  {
+   "action": "seal",
+   "chunk_id": "chunk-24045b38ad2d98a5",
+   "class": "HOLDOUT",
+   "entry_hash": "7041c12ce747bfdefe9bae7f655ddf21c9bf636873c73244b7293d4c205bb7fc",
+   "hypothesis": null,
+   "input_class": "OBSERVED_PUBLIC",
+   "prev": "8288a9b34ff205a83e217a9d66e0d3c18f0f2f2effeb6f5c099a5c6d8c406bcb",
+   "sha256": "24045b38ad2d98a5c9a57294b20267a8deff7ca5cd48f1a88ebc0dd5207a635d",
+   "ts_utc": "2026-10-18T12:52:07.839704+00:00"
   }
  ],
  "format": "cryptobot-vault-access/1"

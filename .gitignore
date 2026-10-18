@@ -24,3 +24,5 @@ outputs/hr2/windows/
 data/lake/
 vision-plan-*.json
 vision-pull-*.json
+data/vault/chunks/
+data/vault/tokens/
