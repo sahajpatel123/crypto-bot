@@ -1369,12 +1369,29 @@ def cmd_vault(args: argparse.Namespace) -> int:
         print(json.dumps(doc, indent=1, sort_keys=True))
         return 0
     if args.vault_cmd == "seal":
-        chunk = vault.seal_chunk(
-            args.source, class_=args.data_class,
-            hypothesis=args.hypothesis, config_sha256=args.config_sha256,
-            first_ms=args.first_ms, last_ms=args.last_ms)
+        try:
+            chunk = vault.seal_chunk(
+                args.source, class_=args.data_class,
+                hypothesis=args.hypothesis, config_sha256=args.config_sha256,
+                input_class=getattr(args, "input_class", None),
+                first_ms=args.first_ms, last_ms=args.last_ms)
+        except Exception as exc:  # noqa: BLE001 — seal refusals are data
+            print(f"vault seal: REFUSED {exc}", file=sys.stderr)
+            return 2
         print(json.dumps(chunk.__dict__, indent=1, sort_keys=True, default=str))
         return 0
+    if args.vault_cmd == "verify-holdout":
+        try:
+            report = vault.verify_holdout(args.source)
+        except Exception as exc:  # noqa: BLE001 — verify reports, never hides
+            print(f"vault verify-holdout: REFUSED {exc}", file=sys.stderr)
+            return 2
+        print(json.dumps(report, indent=1, sort_keys=True))
+        return 0 if report["ok"] else 2
+    if args.vault_cmd == "holdout-eligible":
+        report = vault.holdout_confirm_eligible(args.source, args.hypothesis)
+        print(json.dumps(report, indent=1, sort_keys=True))
+        return 0 if report["eligible"] else 2
     if args.vault_cmd == "issue-token":
         print(vault.issue_token(args.hypothesis))
         return 0
@@ -1640,7 +1657,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.set_defaults(func=cmd_recorder)
     p = sub.add_parser("vault", help="sealed data vault (F3.5)")
     p.add_argument("vault_cmd",
-                   choices=("seal", "freeze", "issue-token", "verify"))
+                   choices=("seal", "freeze", "issue-token", "verify",
+                            "verify-holdout", "holdout-eligible"))
     p.add_argument("--root", default="data/vault")
     p.add_argument("--source", default=None)
     p.add_argument("--hypothesis", default=None)
@@ -1648,7 +1666,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--config-sha256", default=None)
     p.add_argument("--commit", default=None)
     p.add_argument("--prereg", default=None)
-    p.add_argument("--data-class", default="DEV", choices=("DEV", "CONFIRM"))
+    p.add_argument("--data-class", default="DEV",
+                   choices=("DEV", "CONFIRM", "HOLDOUT"))
+    p.add_argument("--input-class", default=None,
+                   help="required for HOLDOUT seals (never sniffed)")
     p.add_argument("--first-ms", type=int, default=None)
     p.add_argument("--last-ms", type=int, default=None)
     p.set_defaults(func=cmd_vault)

@@ -301,3 +301,15 @@ Meta Muse Spark.
   over-penalize both families and answer neither question cleanly.
   DSR trial counts are kept per family. Registry:
   research/autopilot_b/registry.json with its own hash chain.
+- D-033 (E2.2 vault HOLDOUT): new class HOLDOUT seals a manifest of raw
+  holdout files by byte-hash (no content sniff; explicit input_class
+  required). Family-level manifests sealed BEFORE any Family B freeze.
+  Decode is verdict-only via authorize_holdout_decode (one-shot token,
+  integrity verified before the token burns, decode logged). Eligibility
+  = zero decode/read log entries before the hypothesis frozen_utc, which
+  forces batch-freezing all E6.2 survivors in one commit before the first
+  screen (a late freeze after any screen is correctly ineligible: the
+  human could have tuned on published screen results). load_chunk refuses
+  HOLDOUT; import lint extended to authorize_holdout_decode/
+  decode_holdout/holdout_frames. Legal per E2.2: no Family B hypothesis
+  is frozen yet; Family A CONFIRM path untouched (14/14 vault tests green).

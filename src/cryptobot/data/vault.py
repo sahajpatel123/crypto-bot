@@ -12,6 +12,14 @@ Rules enforced here, not by convention:
   appended to a hash-chained access log.
 * The default ``load_chunk`` refuses CONFIRM outright, so research code
   that forgets the token fails closed.
+* E2.2 (Family B): class ``HOLDOUT`` seals a *manifest* of raw holdout
+  files by byte-hash, sealed BEFORE any Family B freeze and NEVER
+  content-sniffed at seal time (explicit ``input_class`` required).
+  Decoding is verdict-only via ``authorize_holdout_decode`` (one-shot
+  token, logged). A HOLDOUT chunk is CONFIRM-eligible for hypothesis H
+  only if the access log shows zero decode/read accesses before H's
+  frozen-config timestamp — which forces batch freezing of survivors
+  before the first screen (see DECISIONS.md D-033).
 """
 from __future__ import annotations
 
@@ -28,10 +36,13 @@ from typing import Any
 
 REGISTRY_FORMAT = "cryptobot-vault-registry/1"
 ACCESS_FORMAT = "cryptobot-vault-access/1"
+HOLDOUT_MANIFEST_FORMAT = "cryptobot-holdout-manifest/1"
 DEV = "DEV"
 CONFIRM = "CONFIRM"
+HOLDOUT = "HOLDOUT"
 SYNTHETIC = "SYNTHETIC"
 OBSERVED = "observed-public"
+OBSERVED_PUBLIC = "OBSERVED_PUBLIC"
 
 
 def _utc_now() -> str:
@@ -161,11 +172,18 @@ class Vault:
         source = Path(source)
         if not source.exists():
             raise VaultError(f"chunk not found: {source}")
-        if class_ not in (DEV, CONFIRM):
-            raise VaultError("class must be DEV or CONFIRM")
-        provenance = input_class or self._chunk_input_class(source)
-        if provenance == SYNTHETIC and class_ == CONFIRM:
-            raise VaultError("SYNTHETIC chunks can never be CONFIRM")
+        if class_ not in (DEV, CONFIRM, HOLDOUT):
+            raise VaultError("class must be DEV, CONFIRM or HOLDOUT")
+        if class_ == HOLDOUT:
+            if input_class is None:
+                raise VaultError(
+                    "HOLDOUT seal requires explicit input_class "
+                    "(content is never sniffed pre-freeze)")
+            provenance = input_class
+        else:
+            provenance = input_class or self._chunk_input_class(source)
+        if provenance == SYNTHETIC and class_ in (CONFIRM, HOLDOUT):
+            raise VaultError(f"SYNTHETIC chunks can never be {class_}")
         if class_ == CONFIRM:
             if not hypothesis:
                 raise VaultError("CONFIRM seal needs a hypothesis")
@@ -180,6 +198,16 @@ class Vault:
             if datetime.now(timezone.utc) <= frozen_utc:
                 raise VaultError(
                     "CONFIRM seal refused: chunk must be sealed after freeze")
+        if class_ == HOLDOUT and hypothesis:
+            frozen = self.registry.get("frozen", {}).get(hypothesis)
+            if frozen is None:
+                raise VaultError(
+                    f"HOLDOUT seal refused: {hypothesis} is not frozen")
+            if config_sha256 and config_sha256 != frozen["config_sha256"]:
+                raise VaultError(
+                    "HOLDOUT seal refused: config hash differs from freeze")
+            # No after-freeze timing rule: family HOLDOUT manifests are
+            # sealed BEFORE any Family B freeze by design (E2.2).
         digest = _sha256_file(source)
         chunk_id = f"chunk-{digest[:16]}"
         target = self.chunks_dir / f"{chunk_id}{source.suffix}"
@@ -197,6 +225,8 @@ class Vault:
             "first_ms": first_ms, "last_ms": last_ms,
             "sealed_utc": _utc_now(),
         }
+        if class_ == HOLDOUT:
+            entry["decode_policy"] = "verdict-only"
         _chain_append(self.registry, entry)
         _chain_append(self.access, {
             "action": "seal", "chunk_id": chunk_id, "class": class_,
@@ -275,12 +305,93 @@ class Vault:
                 return entry
         raise VaultError(f"unknown chunk {chunk_id}")
 
+    def verify_holdout(self, chunk_id: str) -> dict:
+        """Re-hash a HOLDOUT manifest and every referenced raw file."""
+        entry = self._entry(chunk_id)
+        if entry["class"] != HOLDOUT:
+            raise VaultError(f"{chunk_id} is not a HOLDOUT chunk")
+        path = self.root / entry["file"]
+        if not path.exists() or _sha256_file(path) != entry["sha256"]:
+            raise VaultError(f"chunk integrity failure: {chunk_id}")
+        manifest = json.loads(path.read_text(encoding="utf-8"))
+        bad: list[str] = []
+        missing: list[str] = []
+        for ref in manifest.get("files", []):
+            rp = Path(ref["path"])
+            if not rp.exists():
+                missing.append(ref["path"])
+            elif _sha256_file(rp) != ref["sha256"]:
+                bad.append(ref["path"])
+        return {"ok": not bad and not missing, "bad_files": bad,
+                "missing_files": missing,
+                "files": len(manifest.get("files", []))}
+
+    def holdout_confirm_eligible(self, chunk_id: str,
+                                 hypothesis: str) -> dict:
+        """Eligibility: zero decode/read accesses before H's freeze."""
+        self.registry = json.loads(
+            self.registry_path.read_text(encoding="utf-8"))
+        self.access = json.loads(
+            self.access_path.read_text(encoding="utf-8"))
+        frozen = self.registry.get("frozen", {}).get(hypothesis)
+        if frozen is None:
+            return {"eligible": False, "reason": "hypothesis not frozen"}
+        frozen_utc = datetime.fromisoformat(frozen["frozen_utc"])
+        for e in self.access.get("entries", []):
+            if e.get("action") not in ("decode", "read"):
+                continue
+            if e.get("chunk_id") != chunk_id:
+                continue
+            try:
+                ts = datetime.fromisoformat(str(e.get("ts_utc", "")))
+            except ValueError:
+                continue
+            if ts < frozen_utc:
+                return {"eligible": False,
+                        "reason": f"pre-freeze decode at {e.get('ts_utc')}"}
+        return {"eligible": True, "reason": "zero pre-freeze decodes"}
+
+    def authorize_holdout_decode(self, chunk_id: str, *,
+                                 token: str, hypothesis: str) -> dict:
+        """Verdict-only one-shot authorization to decode a HOLDOUT chunk.
+
+        Verifies integrity BEFORE consuming the token (a tampered chunk
+        must not burn the single screen). Logs the decode. Returns the
+        manifest (file list + hashes) so `verdict` can decode bytes.
+        """
+        entry = self._entry(chunk_id)
+        if entry["class"] != HOLDOUT:
+            raise VaultError(f"{chunk_id} is not a HOLDOUT chunk")
+        report = self.verify_holdout(chunk_id)
+        if not report["ok"]:
+            raise VaultError(
+                f"HOLDOUT integrity failure: bad={report['bad_files']} "
+                f"missing={report['missing_files']}")
+        doc = self._consume_token(token, hypothesis)
+        path = self.root / entry["file"]
+        manifest = json.loads(path.read_text(encoding="utf-8"))
+        _chain_append(self.access, {
+            "action": "decode", "chunk_id": chunk_id,
+            "hypothesis": hypothesis,
+            "token_sha256": doc["token_sha256"],
+            "files": len(manifest.get("files", [])),
+            "ts_utc": _utc_now()})
+        self._save()
+        return {"chunk_id": chunk_id, "hypothesis": hypothesis,
+                "files": manifest.get("files", []),
+                "manifest_sha256": entry["sha256"]}
+
     def load_chunk(self, chunk_id: str, *,
                    token: str | None = None,
                    hypothesis: str | None = None,
                    consumer: str = "research") -> list[dict]:
         """Load a chunk. CONFIRM requires a verdict token, always."""
         entry = self._entry(chunk_id)
+        if entry["class"] == HOLDOUT:
+            self._deny("holdout-via-load-chunk", str(hypothesis))
+            raise VaultError(
+                f"HOLDOUT chunk {chunk_id}: use verdict holdout-screen "
+                "path (authorize_holdout_decode)")
         if entry["class"] == CONFIRM:
             if consumer != "verdict":
                 self._deny("confirm-non-verdict-consumer", str(hypothesis))
@@ -344,5 +455,37 @@ def load_dev_chunk(root: str | Path, chunk_id: str) -> list[dict]:
     return vault.load_chunk(chunk_id, consumer="research")
 
 
-__all__ = ["Vault", "Chunk", "VaultError", "DEV", "CONFIRM",
-           "SYNTHETIC", "OBSERVED", "load_dev_chunk"]
+def _filename_date(name: str) -> str | None:
+    import re
+    m = re.search(r"(\d{4}-\d{2}(?:-\d{2})?)", name)
+    return m.group(1) if m else None
+
+
+def build_holdout_manifest(raw_files: list[str | Path],
+                           out_path: str | Path) -> dict:
+    """Hash raw holdout bytes into a manifest WITHOUT decoding content.
+
+    Returns {"manifest_path", "files", "sha256"}. Hashing reads bytes;
+    no CSV/JSON parsing happens here, so building the manifest is not a
+    statistical look and leaves no decode entries in any access log.
+    """
+    files: list[dict] = []
+    for raw in raw_files:
+        p = Path(raw)
+        if not p.exists():
+            raise VaultError(f"holdout file not found: {p}")
+        files.append({"path": str(p), "sha256": _sha256_file(p),
+                      "bytes": p.stat().st_size,
+                      "filename_date": _filename_date(p.name)})
+    doc = {"format": HOLDOUT_MANIFEST_FORMAT, "created_utc": _utc_now(),
+           "files": files}
+    out = Path(out_path)
+    _atomic_json(out, doc)
+    doc["manifest_path"] = out
+    doc["sha256"] = _sha256_file(out)
+    return doc
+
+
+__all__ = ["Vault", "Chunk", "VaultError", "DEV", "CONFIRM", "HOLDOUT",
+           "SYNTHETIC", "OBSERVED", "OBSERVED_PUBLIC",
+           "build_holdout_manifest", "load_dev_chunk"]
