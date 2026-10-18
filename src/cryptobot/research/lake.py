@@ -178,7 +178,9 @@ def read_rest_tail_csv(path: str | Path, kind: str) -> pd.DataFrame:
 
 def _write_parquet(df: pd.DataFrame, dest: Path) -> None:
     dest.parent.mkdir(parents=True, exist_ok=True)
-    df.to_parquet(dest, index=False, compression="zstd")
+    tmp = dest.with_suffix(".parquet.tmp")
+    df.to_parquet(tmp, index=False, compression="zstd")
+    os.replace(tmp, dest)
 
 
 def _build_one_klines(args) -> dict | None:
