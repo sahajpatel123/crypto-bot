@@ -147,7 +147,7 @@ def load_grid_from_toml(hypothesis: str,
 
 
 def run_holdout_screen(hypothesis: str, cell: dict, *,
-                       dev_frames: dict, holdout_frames: dict,
+                       dev_frames: dict, sealed_frames: dict,
                        dev_sharpe: float, costs, equity: float = 1000.0,
                        holdout_start: str = "2024-01-01") -> dict:
     """Screen ONE frozen cell on sealed holdout (E6.2 orchestration).
@@ -166,17 +166,17 @@ def run_holdout_screen(hypothesis: str, cell: dict, *,
     merged: dict[str, dict] = {}
     for key in ("daily", "hourly", "funding", "spot"):
         merged[key] = {}
-        syms = set(dev_frames.get(key, {})) | set(holdout_frames.get(key, {}))
+        syms = set(dev_frames.get(key, {})) | set(sealed_frames.get(key, {}))
         for sym in syms:
             parts = [f for f in (dev_frames.get(key, {}).get(sym),
-                                 holdout_frames.get(key, {}).get(sym))
+                                 sealed_frames.get(key, {}).get(sym))
                      if f is not None]
             df = pd.concat(parts, ignore_index=True)
             tcol = "calc_time" if key == "funding" else "open_time"
             merged[key][sym] = df.sort_values(tcol).drop_duplicates(
                 tcol, keep="first").reset_index(drop=True)
     merged_oi = dict(dev_frames.get("oi", {}))
-    for sym, ser in holdout_frames.get("oi", {}).items():
+    for sym, ser in sealed_frames.get("oi", {}).items():
         base = merged_oi.get(sym)
         merged_oi[sym] = ser if base is None else pd.concat(
             [base, ser]).sort_index().loc[~pd.concat(

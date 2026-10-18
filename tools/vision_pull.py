@@ -275,7 +275,8 @@ def _fetch_text(url: str) -> str:
 
 
 def _fetch_file(url: str, dest_tmp: Path) -> int:
-    req = urllib.request.Request(url, headers={"User-Agent": "cryptobot-edge-pull/1"})
+    req = urllib.request.Request(_ascii_url(url),
+                                 headers={"User-Agent": "cryptobot-edge-pull/1"})
     total = 0
     with urllib.request.urlopen(req, timeout=120) as resp, \
             dest_tmp.open("wb") as fh:

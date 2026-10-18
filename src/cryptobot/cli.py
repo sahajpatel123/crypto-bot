@@ -1173,7 +1173,7 @@ def _cmd_verdict_holdout(args: argparse.Namespace) -> int:
             slip_k=float(cfg["costs"]["slip_k"]))
         cell = json.loads(Path(args.cell_params).read_text())
         metrics = run_holdout_screen(
-            args.hypothesis, cell, dev_frames=dev, holdout_frames=holdout,
+            args.hypothesis, cell, dev_frames=dev, sealed_frames=holdout,
             dev_sharpe=float(args.dev_sharpe), costs=costs,
             equity=float(getattr(args, "equity", 1000.0)))
     except (ValueError, OSError, KeyError) as exc:

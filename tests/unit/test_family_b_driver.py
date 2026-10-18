@@ -100,7 +100,7 @@ def test_run_holdout_screen_cold_start_and_metrics():
         "close": 101.0, "quote_volume": 1e8})}
     out = run_holdout_screen(
         "B1", {"lookback_d": 20, "vol_window_d": 20, "target_vol": 0.20},
-        dev_frames={"daily": dev}, holdout_frames={"daily": hold},
+        dev_frames={"daily": dev}, sealed_frames={"daily": hold},
         dev_sharpe=1.0, costs=CostModel(), equity=1000.0)
     assert set(out) >= {"point_sharpe", "dev_sharpe", "lb80", "sharpe_2x",
                         "max_dd", "n_rebalances", "turnover", "final_equity"}

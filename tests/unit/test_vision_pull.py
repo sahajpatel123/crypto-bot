@@ -15,6 +15,16 @@ vision_pull = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(vision_pull)
 
 
+def test_ascii_url_quotes_non_ascii_symbol():
+    url = vision_pull._ascii_url(
+        "https://data.binance.vision/data/futures/um/monthly/klines/币安人生USDT/1d/x.zip")
+    assert url.isascii()
+    assert "%E5" in url or "币" not in url
+    # ASCII paths are unchanged apart from already-safe characters.
+    plain = "https://data.binance.vision/data/futures/um/monthly/klines/BTCUSDT/1d/x.zip"
+    assert vision_pull._ascii_url(plain) == plain
+
+
 def test_split_monthly_boundary():
     assert vision_pull.split_of("BTCUSDT-1d-2023-12.zip") == "dev"
     assert vision_pull.split_of("BTCUSDT-1d-2024-01.zip") == "holdout"
