@@ -118,3 +118,14 @@ before `build_lake` or any return statistic.
 - E0.2 autopilot run-once → RC=0, all DEV_EVAL.
 - E1.1 `tools/vision_inventory.py --out /tmp/vision-inventory.json`.
 - Probes: metrics/funding curl 200, formats confirmed.
+
+## Official holdout chunks (E6.2 use; latest per leg, zero pre-freeze decodes)
+- klines: chunk-3f104eec72e7d745 (34,760)
+- markPriceKlines: chunk-62e972497f0e2c52 (35,494)
+- premiumIndexKlines: chunk-d77aca777ad358c9 (32,189)
+- fundingRate: chunk-2c330fb27f671e68 (16,105)
+- metrics: chunk-231cc79b795dd852 (123,414)
+- spot: chunk-10f9e3e4e089375a (66)
+- rest_tail: chunk-2df6f950d29a75ac (6,712)
+Superseded (same bytes, older seals): chunk-e3ca72/chunk-4cb724/chunk-af97c4/chunk-24045b.
+Foreign all-in-one chunk-2a22 + foreign B4-screen chunk-c878 (2 post-freeze decodes) exist but are NOT used officially. My voided B4 screen decoded chunk-74e0 once (superseded by D-042 rerun).
