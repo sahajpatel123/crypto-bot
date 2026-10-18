@@ -256,7 +256,7 @@ never read. Campaign `data/captures/campaign-1day-*` events never read
 | F1.2 | Mutation testing risk/execution/adapters | IN_PROGRESS (scoped loop sh_14c4e13c in mut worktree: sizing/margin/rounding/fillrealism/policy/ordermanager) |
 | F1.3 | Chaos matrix sandbox venue | TODO |
 | F1.4 | Determinism replay byte-identical | DONE |
-| F1.5 | Differential paper vs sandbox | TODO |
+| F1.5 | Differential paper vs sandbox | DONE |
 | F1.6 | Fuzz REST/WS parsers | TODO |
 | F1.7 | Perf regression thresholds | TODO |
 | F2.1 | Close PARTIAL/BLOCKED non-credentialed | TODO |
@@ -470,6 +470,10 @@ never read. Campaign `data/captures/campaign-1day-*` events never read
   dumps; report identical modulo declared perf noise + workdir.
   Failed 2 first on pristine (wall bytes), 46 passed with replay
   regression.
+- F1.5 DONE: paper-vs-sandbox differential on frozen book (MARKET
+  both sides + LIMIT IOC): qty exact, price within 1.5 ticks
+  (1 slip tick + half-tick feed rounding, declared), fees within
+  5% relative. 2 passed.
 - F3.1-F3.3 DONE (builder ses_eb3fdca9, owner-verified): recorder
   package (writer/streams/plugins/integrity/service, 1399 lines),
   16 tests green (overflow loud-drop, tamper-evident chain,
