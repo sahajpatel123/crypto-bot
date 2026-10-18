@@ -39,6 +39,32 @@ States: REGISTERED → DEV_EVAL → {KILLED | AWAIT_CONFIRM_DATA} → CONFIRM �
 hypothesis is permanently KILLED. Confirmation uses only sealed CONFIRM
 chunks and a one-shot vault token.
 
+## Family B: low-frequency research on public history
+
+Multi-year Binance Vision data (klines, funding, OI metrics) lives in a
+versioned parquet lake (`data/lake/`, see `DATA_INVENTORY.md`). The
+split is preregistered (`research/prereg/SPLIT.md`): DEV before
+2024-01-01, sealed HOLDOUT after, FORWARD for paper. Slow strategies
+(B1–B7, `research/prereg/B*.md`) run in a dual-engine backtester
+(`research/slow_backtest.py`, differential-tested) with walk-forward
+OOS, deflated Sharpe, PBO and reality-check statistics
+(`research/slow_stats.py`).
+
+```sh
+python tools/run_family_b.py dev-all --lake data/lake/dev   # frozen 59-cell DEV eval
+cryptobot autopilot run-once --root research/autopilot_b --family B
+cryptobot verdict --holdout-screen --hypothesis B1 --config research/configs/B1.toml \
+  --vault-root data/vault --vault-token <tok> --holdout-chunk <id> \
+  --cell-params cell.json --lake data/lake/dev --dev-sharpe 1.2 \
+  --out research/verdicts_b/B1.json
+```
+
+Family B states: REGISTERED → DEV_EVAL → {KILLED | FROZEN} →
+HOLDOUT_SCREEN → {FAIL | SCREEN_PASS} → FORWARD_PAPER →
+FORWARD_COMPARE → GATE_READY. The holdout is a SCREEN, not proof
+(detectable Sharpe ≈ 0.98, see SPLIT.md). HOLDOUT bytes are hashed at
+seal time and decoded only by `verdict` with a one-shot token.
+
 ## Confirmation and gate
 
 ```sh

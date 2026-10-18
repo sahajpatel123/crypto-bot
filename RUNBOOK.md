@@ -88,3 +88,42 @@ Symptom: `watchdog: TRIGGERED`, exit 3.
 
 Normal today. Read `gate.json` `checks`; fix the first false check. Never
 edit gate.json by hand; re-run `cryptobot gate` with fresh evidence.
+
+## Lake pull stalls or fails files
+
+Symptom: `vision_pull.py pull` exits non-zero or `report` shows gaps.
+1. Read the state failures (`pull-*.json`): checksum mismatches vs 404s
+   vs timeouts have different causes (re-try, delisted key, backoff).
+2. Re-run the same `pull` command: completed files resume from state;
+   only pending/failed keys are retried.
+3. CJK symbol names need percent-encoded URLs (fixed in the tool; older
+   plans must be rebuilt).
+4. Never hand-edit a zip into place: `verify` re-hashes everything.
+
+## Lake build breaks on a file
+
+Symptom: `build_lake` raises on a zip (shape/units/columns).
+1. The failure names the file: inspect its first rows (DEV files only —
+   holdout bytes must never be decoded outside `verdict`).
+2. Vision drifts formats (kline header rows appear on newer listings);
+   extend the reader + add a fixture test, never a silent skip.
+3. Re-run the build; `verify_lake_manifest` must be clean after.
+
+## Holdout seal/eligibility problems
+
+Symptom: `vault holdout-eligible` false, or `verdict` REFUSED.
+1. `holdout-eligible` false + "not frozen": freeze first
+   (`vault freeze` with the committed config hash).
+2. "pre-freeze decode": the chunk was decoded before the freeze — it can
+   never confirm that hypothesis. Seal a fresh window, do not override.
+3. `verify-holdout` lists bad/missing files: re-pull the exact keys,
+   re-seal as a NEW chunk (never rewrite a sealed manifest).
+
+## Monthly lake refresh (owner/operator)
+
+1. Run the pull with a new plan (same datasets); new months land in
+   `holdout_raw/` or FORWARD per filename date (DEV never grows).
+2. FORWARD files (dated after ingestion end) feed forward-paper only.
+3. Re-run `report` + `verify`; append the monthly summary to the lake
+   report. Never re-cut DEV/HOLDOUT: the split is frozen in
+   `research/prereg/SPLIT.md`.

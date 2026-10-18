@@ -25,6 +25,24 @@ public venues ──► recorder (standalone, public data only)
         live session (one position, reduce-only exits, ladder)
 ```
 
+```
+data.binance.vision ──► lake pull (checksummed, filename-date split)
+(public, no keys)         │  DEV zips ──► parquet (decoded, DQ'd)
+                          │  HOLDOUT zips ──► sealed by byte-hash, never decoded
+                          ▼
+                 vault HOLDOUT manifests (verdict-only decode, access-log
+                          │  eligibility: zero pre-freeze decodes)
+                          ▼
+          Family B backtester (59 frozen cells, dual-engine,
+                          │  walk-forward OOS, DSR/PBO/reality-check)
+                          ▼
+          verdict --holdout-screen (exactly once per survivor,
+                          │  SEALED-HOLDOUT provenance, SCREEN_PASS/FAIL)
+                          ▼
+          autopilot_b → FORWARD_PAPER → FORWARD_COMPARE → GATE_READY
+                          │  (same gate/arm ceremony as Family A)
+```
+
 ## Boundaries
 
 - **Recorder** never imports the trading session and uses no credentials.
@@ -59,6 +77,8 @@ public venues ──► recorder (standalone, public data only)
 | `SYNTHETIC` | tests/acceptance | never gate/verdict; gate rejects |
 | `DEV` | already-inspected dev data | research exploration only |
 | `CONFIRM` | sealed after hypothesis freeze | exactly-once verdict only |
+| `HOLDOUT` | sealed BEFORE any Family B freeze | verdict-only decode; eligible only with zero pre-freeze decodes |
+| `OBSERVED_PUBLIC` | data.binance.vision / public REST | lake provenance (DEV decoded; HOLDOUT hashed) |
 
 `data/pilot` and `datasets/benchmark_30d` are DEVELOPMENT data.
 `data/captures/campaign-1day-*` is untouched confirmation data; this
@@ -74,3 +94,7 @@ program only read its manifest/heartbeat/status metadata.
 - `risk/ladder.py` — canary, demotion reasons.
 - `app/session.py` — one order lifecycle, protection, flatten, safe mode.
 - `adapters/binance_live.py` — signed REST/WS adapter, live-off by default.
+- `research/lake.py`, `research/universe.py` — parquet lake + point-in-time universe.
+- `research/family_b.py`, `research/slow_backtest.py` — frozen signals + dual-engine backtester.
+- `research/slow_stats.py`, `research/family_b_driver.py` — inference + frozen evaluation runner.
+- `tools/vision_pull.py`, `tools/run_family_b.py`, `tools/lake_finalize.py` — data + eval CLIs.
