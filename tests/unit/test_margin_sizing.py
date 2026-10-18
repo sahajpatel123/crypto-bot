@@ -147,6 +147,8 @@ def test_session_bracket_admission_uses_live_engine_and_fails_closed():
             "stale": False}
     stale = {**good, "observed_ms": now - 600_000}
     fake = SimpleNamespace(engine=_Engine(good), policy=_Policy(),
+                           config=SimpleNamespace(mode="prod",
+                                                  leverage_cap=3),
                            _derive_exits=lambda intent: (
                                99.0, 101.0, None, False),
                            now_utc=lambda: __import__("datetime").datetime

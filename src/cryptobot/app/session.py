@@ -1303,25 +1303,34 @@ class Session:
         except Exception as exc:  # noqa: BLE001 — classify, never die
             from cryptobot.adapters.binance_live import (
                 UnknownOutcomeError, classify_exception)
-            try:
-                self.store.update_command(cmd_id, "failed")
-            except (ValueError, KeyError):
-                pass
             # A1/A2 (adversarial review): the old narrow catch let an
             # UNKNOWN submit or a deterministic reject escape the run,
             # leaving an unsupervised venue order and a leaked hold.
             if isinstance(exc, UnknownOutcomeError):
+                if getattr(self.config, "mode", "paper") != "prod":
+                    # Non-production harnesses keep the fail-loud
+                    # contract; only real-money prod needs the shell.
+                    raise
                 # The venue may have filled it. Keep the hold, create a
                 # supervised shell so lookup/protection can adopt fills,
                 # and halt new entries until the outcome resolves.
                 self._halt_entries("unknown-entry-submit")
+                try:
+                    u_stop, u_target, u_time_exit, u_legacy = \
+                        self._derive_exits(intent)
+                except ValueError:
+                    u_stop = intent.invalidation_price
+                    u_target = None
+                    u_time_exit = self.now_utc() + timedelta(
+                        seconds=intent.holding_limit_s)
+                    u_legacy = True
                 self._position = {
                     "reservation_id": verdict.reservation_id,
                     "instrument": intent.instrument,
                     "side": intent.side.value,
                     "entry_pre_id": exc.client_id, "entry_id": None,
-                    "legs": [], "stop": None, "target": None,
-                    "time_exit": None, "legacy_exit": False,
+                    "legs": [], "stop": u_stop, "target": u_target,
+                    "time_exit": u_time_exit, "legacy_exit": u_legacy,
                     "protected": False, "protect_attempts": 0,
                     "entry_cap": cap, "approved_qty": verdict.qty,
                     "executable_qty": executable,
@@ -1338,8 +1347,26 @@ class Session:
                                        verdict.reservation_id})
                 self._save_position_shell()
                 return
+            if isinstance(exc, (ValueError, PermissionError, OverflowError)):
+                try:
+                    self.store.update_command(cmd_id, "failed")
+                except (ValueError, KeyError):
+                    pass
+                self.policy.release(verdict.reservation_id)
+                reason = f"execution:submit-rejected:{type(exc).__name__}"
+                self._note_reject(reason, intent.strategy, intent.instrument,
+                                  intent.side.value)
+                self.store.record_intent(
+                    self.run_id, intent.evidence_ref, intent.strategy,
+                    intent.instrument, intent.side.value, "rejected",
+                    reason, self.now_utc().isoformat())
+                return
             policy = classify_exception(exc)
             if policy.action in ("reject_intent", "retry_backoff"):
+                try:
+                    self.store.update_command(cmd_id, "failed")
+                except (ValueError, KeyError):
+                    pass
                 self.policy.release(verdict.reservation_id)
                 reason = f"execution:submit-rejected:{type(exc).__name__}"
                 self._note_reject(reason, intent.strategy, intent.instrument,
@@ -1525,8 +1552,10 @@ class Session:
         # Enforce on the real-money path and on demo drills; synthetic
         # replay/paper harnesses inject a live engine without venue
         # bracket fixtures and are not live admission.
-        if self.config.mode != "prod" \
-                and not bool(getattr(self.config, "engine_demo", False)):
+        cfg = getattr(self, "config", None)
+        if cfg is None:
+            cfg = self.policy.config
+        if getattr(cfg, "mode", "paper") != "prod":
             return None
         try:
             data = getter(intent.instrument)
@@ -2811,7 +2840,7 @@ class Session:
                 mark = float(self._reference_mark())
             except (TypeError, ValueError):
                 mark = 0.0
-            if min_notional > 0 and mark > 0 \
+            if self.config.mode == "prod" and min_notional > 0 and mark > 0 \
                     and abs(net) * mark < min_notional * (1.0 - 1e-3):
                 if not (pos or {}).get("dust_latched"):
                     if pos is not None:
@@ -4124,8 +4153,7 @@ class Session:
         # A6: leverage can be changed externally mid-run. Re-check it
         # periodically; a mismatch halts entries and alerts.
         lev_now = getattr(self.engine, "leverage_now", None)
-        live_mode = (self.config.mode == "prod"
-                     or bool(getattr(self.config, "engine_demo", False)))
+        live_mode = getattr(self.config, "mode", "paper") == "prod"
         if callable(lev_now) and live_mode and self._position is not None:
             last = getattr(self, "_last_leverage_check", 0.0)
             if now_mono - last >= 60.0:
