@@ -137,15 +137,15 @@ produces GATE_READY.
 - `cryptobot acceptance --full` → PASS, final state GATE_READY,
   provenance SYNTHETIC, gate NO-GO.
 - Definitive suite (same worktree; only the three benchmark files were
-  split out because they take 12 minutes together): **1500 passed,
+  split out because they take 12 minutes together): **1501 passed,
   1 skipped** with
   `pytest -q --ignore=tests/unit/test_bench_run.py
   --ignore=tests/unit/test_bench_run_multi.py
   --ignore=tests/unit/test_bench_restart_equivalence.py`; plus
   **27 passed** for the three benchmark files. Combined:
-  **1527 passed, 1 skipped, 0 failed**.
+  **1528 passed, 1 skipped, 0 failed**.
 
-## Remaining work — ONLY owner-dependent (ordered)
+## Remaining live work — owner-dependent (ordered)
 
 1. Provision the host and pass `host-check` (OWNER_ACTIONS 1).
 2. Start/verify the recorder and leave it running (2).

@@ -98,3 +98,33 @@ def test_leave_protected_requires_live_venue_stop():
     self.engine = Engine()
     with pytest.raises(ValueError, match="venue stop is cancelled"):
         self.shutdown_flatten()
+
+
+def test_prod_arm_problem_requires_valid_armed_and_gate(tmp_path, monkeypatch):
+    import hashlib
+    import json
+    from datetime import datetime, timedelta, timezone
+
+    gate = tmp_path / "gate.json"
+    armed = tmp_path / "armed.json"
+    monkeypatch.setenv("CRYPTOBOT_GATE_JSON", str(gate))
+    monkeypatch.setenv("CRYPTOBOT_ARMED_JSON", str(armed))
+    self = _fake_session()
+    self.config = types.SimpleNamespace(mode="prod",
+                                        allow_live_submission=True)
+    assert self._prod_arm_problem() == "config:prod-not-armed"
+    gate.write_text(json.dumps({
+        "gate": "GO",
+        "expires_utc": (datetime.now(timezone.utc)
+                        + timedelta(hours=1)).isoformat()}))
+    armed.write_text(json.dumps({"armed": False}))
+    assert self._prod_arm_problem() == "config:prod-not-armed"
+    digest = hashlib.sha256(gate.read_bytes()).hexdigest()
+    armed.write_text(json.dumps({
+        "armed": True, "capital_usdt": 100.0, "max_daily_loss": 5.0,
+        "gate_sha256": digest}))
+    assert self._prod_arm_problem() is None
+    armed.write_text(json.dumps({
+        "armed": True, "capital_usdt": 100.0, "max_daily_loss": 5.0,
+        "gate_sha256": "wrong"}))
+    assert self._prod_arm_problem() == "config:prod-arm-gate-mismatch"
