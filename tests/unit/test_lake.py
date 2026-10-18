@@ -159,3 +159,15 @@ def test_build_lake_workers_and_symbol_filter_match(tmp_path):
     assert len(paths2) < len(paths1)
     assert verify_lake_manifest(tmp_path / "lake1")["ok"] is True
     assert verify_lake_manifest(tmp_path / "lake2")["ok"] is True
+
+
+def test_build_lake_staged_datasets_merge_manifest(tmp_path):
+    from cryptobot.research.lake import build_lake, verify_lake_manifest
+
+    raw = _dev_tree(tmp_path)
+    build_lake(raw, tmp_path / "lake", datasets=["klines:1d"], workers=2)
+    assert verify_lake_manifest(tmp_path / "lake")["ok"] is True
+    build_lake(raw, tmp_path / "lake", datasets=["fundingRate"], workers=2)
+    rep = verify_lake_manifest(tmp_path / "lake")
+    assert rep["ok"] is True
+    assert rep["files"] == 3  # 2 klines + 1 funding

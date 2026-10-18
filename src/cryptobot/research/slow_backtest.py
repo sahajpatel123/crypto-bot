@@ -214,9 +214,11 @@ class MarketIndex:
                 if exact:
                     self.fund_exact[(sym, d)] = exact
                 w = k
-                window: list[float] = []
+                window: list[tuple[pd.Timestamp, float]] = []
                 while w < n and ts_ns[w] < hi:
-                    window.append(float(rates[w]))
+                    window.append((
+                        pd.Timestamp(int(ts_ns[w]), unit="ns", tz="UTC"),
+                        float(rates[w])))
                     w += 1
                 if window:
                     self.fund_window[(sym, d)] = window
@@ -241,8 +243,18 @@ class MarketIndex:
         return float(closes[i - 1])
 
     def trail_of(self, sym: str, d: pd.Timestamp, *, spot: bool = False):
+        import bisect
         src = self.spot_trail if spot else self.trail
-        return src.get((sym, d), (FALLBACK_SIGMA_D, FALLBACK_ADV))
+        hit = src.get((sym, d))
+        if hit is not None:
+            return hit
+        times = (self.spot_times if spot else self.daily_times).get(sym)
+        if not times:
+            return (FALLBACK_SIGMA_D, FALLBACK_ADV)
+        i = bisect.bisect_left(times, d)
+        if i <= 0:
+            return (FALLBACK_SIGMA_D, FALLBACK_ADV)
+        return src.get((sym, times[i - 1]), (FALLBACK_SIGMA_D, FALLBACK_ADV))
 
 
 class _Panel:
@@ -295,7 +307,8 @@ def _settle(frames_f, sym: str, ts: pd.Timestamp):
 def _settle_window(frames_f, sym: str, lo, hi):
     if isinstance(frames_f, MarketIndex):
         # Precomputed on the same next-bar boundary the simulator uses.
-        return list(frames_f.fund_window.get((sym, lo), ()))
+        rows = frames_f.fund_window.get((sym, lo), ())
+        return [rate for _ts, rate in rows] if rows else []
     df = frames_f.get(sym)
     if df is None:
         return []
@@ -392,21 +405,41 @@ def _desired_quantities(desired: dict[str, float], equity: float,
             out[key] = 0.0
             continue
         raw = notion / opens[key]
-        floored = float(np.sign(raw) * floor_to_step(abs(raw), cfg.qty_step)) \
-            if raw != 0 else 0.0
+        if raw == 0.0:
+            out[key] = 0.0
+            continue
+        floored = float(np.sign(raw) * floor_to_step(abs(raw), cfg.qty_step))
         if floored == 0.0:
             book.drops += 1
         out[key] = floored
     return out
 
 
+def _sharpe_dd(eq: pd.Series) -> tuple[float, float]:
+    """Annualized Sharpe and positive drawdown magnitude.
+
+    A strictly positive constant return has infinite Sharpe and must
+    trip the leak flag. Drawdown is a positive fraction in both engines.
+    """
+    rets = eq.pct_change().dropna()
+    dd = float((1.0 - eq / eq.cummax()).max()) if len(eq) else 0.0
+    if len(rets) < 2:
+        return 0.0, dd
+    sd = float(rets.std(ddof=1))
+    mu = float(rets.mean())
+    if not np.isfinite(sd) or sd <= 0.0:
+        if mu > 0:
+            return float("inf"), dd
+        if mu < 0:
+            return float("-inf"), dd
+        return 0.0, dd
+    return float(mu / sd * np.sqrt(PERIODS)), dd
+
+
 def _finish(book: _Book, idx: list, equity_vals: list,
             cfg: SimConfig) -> BacktestResult:
     eq = pd.Series(equity_vals, index=pd.DatetimeIndex(idx))
-    rets = eq.pct_change().dropna()
-    sd = float(rets.std(ddof=1)) if len(rets) >= 2 else 0.0
-    sharpe = (float(rets.mean()) / sd * np.sqrt(PERIODS)) if sd > 0 else 0.0
-    dd = float((eq / eq.cummax() - 1.0).min()) if len(eq) else 0.0
+    sharpe, dd = _sharpe_dd(eq)
     years = max(len(eq) / 365.0, 1 / 365.0)
     avg_eq = float(eq.mean()) if len(eq) else cfg.initial_equity
     turnover = book.traded / max(avg_eq, 1e-12) / years
@@ -425,16 +458,33 @@ def _finish(book: _Book, idx: list, equity_vals: list,
 
 def _stop_touch(hourly: dict[str, pd.DataFrame], sym: str, d: pd.Timestamp,
                 nxt: pd.Timestamp, side: int, stop: float):
-    """First hourly close beyond the stop inside [d, nxt), else None."""
+    """First hourly close beyond the stop inside [d, min(nxt, d+1d)).
+
+    Returns (fill_price, bar_open_time) or None. Rows are sorted by
+    time so a later print cannot fill before an earlier one.
+    """
     df = hourly.get(sym)
     if df is None:
         return None
-    win = df[(df["open_time"] >= d) & (df["open_time"] < nxt)]
+    end = min(pd.Timestamp(nxt), pd.Timestamp(d) + pd.Timedelta(days=1))
+    win = df[(df["open_time"] >= d) & (df["open_time"] < end)]
+    win = win.sort_values("open_time")
     for _, row in win.iterrows():
         c = float(row["close"])
         if (side > 0 and c <= stop) or (side < 0 and c >= stop):
-            return c
+            return c, row["open_time"]
     return None
+
+
+def _window_rates(index: MarketIndex, sym: str, d: pd.Timestamp,
+                  until: pd.Timestamp | None) -> list[float]:
+    rows = index.fund_window.get((sym, d), ())
+    out: list[float] = []
+    for ts, rate in rows:
+        if until is not None and ts >= until:
+            continue
+        out.append(rate)
+    return out
 
 
 def simulate_vectorized(targets: dict, daily: dict, funding: dict, *,
@@ -482,13 +532,9 @@ def simulate_vectorized(targets: dict, daily: dict, funding: dict, *,
                 sd, adv = _trail_stats(
                     spot if _is_spot(key) else frames, _sym_of(key), d)
                 book.trade(key, q, opens[key], sd, adv, costs)
-        # 3. intraday funding 08:00/16:00 on post-trade positions.
-        for key in list(book.qty):
-            if _is_spot(key):
-                continue
-            for rate in _settle_window(funding, _sym_of(key), d, nxt):
-                book.fund(key, _open_px(frames, spot, key, d), rate)
-        # 4. B5 stops on hourly closes.
+        # 3-4. Stops are known before the 08:00/16:00 funding so a
+        # position flattened at 01:00 does not pay later settlements.
+        pending: dict[str, tuple] = {}
         for key in list(book.qty):
             if _is_spot(key):
                 continue
@@ -500,9 +546,19 @@ def simulate_vectorized(targets: dict, daily: dict, funding: dict, *,
             hit = _stop_touch(hourly, _sym_of(key), d, nxt, side,
                               rule["stop"])
             if hit is not None:
-                sd, adv = _trail_stats(frames, _sym_of(key), d)
-                book.trade(key, 0.0, hit, sd, adv, costs)
-                book.flags.append(f"stop:{_sym_of(key)}")
+                pending[key] = hit
+        for key in list(book.qty):
+            if _is_spot(key):
+                continue
+            until = pending[key][1] if key in pending else None
+            for rate in _window_rates(funding, _sym_of(key), d, until):
+                book.fund(key, _open_px(frames, spot, key, d), rate)
+        for key, (px, _ts) in pending.items():
+            if key not in book.qty:
+                continue
+            sd, adv = _trail_stats(frames, _sym_of(key), d)
+            book.trade(key, 0.0, float(px), sd, adv, costs)
+            book.flags.append(f"stop:{_sym_of(key)}")
         # 5. liq proxy + 6. delist + 7. mark.
         _supervise_and_mark(book, frames, spot, dates, n, d, costs, config,
                             marks)
@@ -549,18 +605,20 @@ def _supervise_and_mark(book: _Book, frames, spot, dates, n: int,
         entry = book.entry.get(key)
         if entry:
             side = 1 if book.qty[key] > 0 else -1
-            # Trigger on the adverse wick (conservative: intraday
-            # excursions liquidate even if the close recovers); the
-            # forced exit prints at the close (disclosed simplification).
+            # Fill at the wick that breached the liquidation distance.
+            # Printing the recovered close would book the loss as free.
             wick = float(bar["low"]) if side > 0 else float(bar["high"])
             adverse = side * (entry - wick) / entry
             if adverse > cfg.liq_adverse:
                 sd, adv = _trail_stats(src, _sym_of(key), d)
-                book.trade(key, 0.0, marks[key], sd, adv, costs)
+                book.trade(key, 0.0, wick, sd, adv, costs)
                 book.flags.append(f"liquidation:{_sym_of(key)}")
+                marks.pop(key, None)
     eq = book.equity(marks)
-    gross = sum(abs(q) * marks.get(k, 0.0)
-                for k, q in book.qty.items()) / max(eq, 1e-12)
+    gross = (sum(abs(q) * marks.get(k, 0.0) for k, q in book.qty.items())
+             / eq) if eq > 1e-8 else (float("inf") if book.qty else 0.0)
+    if eq <= 1e-8 and book.qty and "ruined" not in book.flags:
+        book.flags.append("ruined")
     book.max_gross = max(book.max_gross, gross)
 
 
@@ -677,21 +735,21 @@ class _EventBook:
                 adverse = side * (entry - wick) / entry
                 if adverse > cfg.liq_adverse:
                     sig, adv = _trail_stats(src, _sym_of(key), d)
-                    self.execute(key, 0.0, marks[key], sig, adv, costs)
+                    self.execute(key, 0.0, wick, sig, adv, costs)
                     self.flags.append(f"liquidation:{_sym_of(key)}")
+                    marks.pop(key, None)
         eq = self.cash + sum(
             q * marks.get(k, 0.0) for k, q in self.qty.items())
-        gross = sum(abs(q) * marks.get(k, 0.0)
-                    for k, q in self.qty.items()) / max(eq, 1e-12)
+        gross = (sum(abs(q) * marks.get(k, 0.0)
+                     for k, q in self.qty.items()) / eq) if eq > 1e-8 \
+            else (float("inf") if self.qty else 0.0)
+        if eq <= 1e-8 and self.qty and "ruined" not in self.flags:
+            self.flags.append("ruined")
         self.maxgross = max(self.maxgross, gross)
 
     def to_result(self, idx, vals, cfg: SimConfig) -> BacktestResult:
         eq = pd.Series(vals, index=pd.DatetimeIndex(idx))
-        rets = eq.pct_change().dropna()
-        sd = float(rets.std(ddof=1)) if len(rets) >= 2 else 0.0
-        sr = float(rets.mean() / sd * np.sqrt(PERIODS)) \
-            if sd > 0 and sd >= 1e-9 else 0.0
-        dd = float((1.0 - eq / eq.cummax()).max()) if len(eq) else 0.0
+        sr, dd = _sharpe_dd(eq)
         years = max(len(eq) / 365.0, 1 / 365.0)
         avg = float(eq.mean()) if len(eq) else cfg.initial_equity
         flags = list(self.flags)
@@ -759,13 +817,7 @@ def simulate_event(targets: dict, daily: dict, funding: dict, *,
                         spot if _is_spot(key) else frames, _sym_of(key), d)
                     book.execute(key, q, opens[key], sd, adv, costs)
             elif ev.kind == "settle-day":
-                for key in list(book.qty):
-                    if _is_spot(key):
-                        continue
-                    for rate in _settle_window(funding, _sym_of(key), d, nxt):
-                        book.settle(key, _open_px(frames, spot, key, d),
-                                    rate)
-            elif ev.kind == "stop":
+                pending: dict[str, tuple] = {}
                 for key in list(book.qty):
                     if _is_spot(key):
                         continue
@@ -777,9 +829,21 @@ def simulate_event(targets: dict, daily: dict, funding: dict, *,
                     hit = _stop_touch(hourly, _sym_of(key), d, nxt, side,
                                       rule["stop"])
                     if hit is not None:
-                        sd, adv = _trail_stats(frames, _sym_of(key), d)
-                        book.execute(key, 0.0, hit, sd, adv, costs)
-                        book.flags.append(f"stop:{_sym_of(key)}")
+                        pending[key] = hit
+                for key in list(book.qty):
+                    if _is_spot(key):
+                        continue
+                    until = pending[key][1] if key in pending else None
+                    for rate in _window_rates(funding, _sym_of(key), d, until):
+                        book.settle(key, _open_px(frames, spot, key, d), rate)
+                for key, (px, _ts) in pending.items():
+                    if key not in book.qty:
+                        continue
+                    sd, adv = _trail_stats(frames, _sym_of(key), d)
+                    book.execute(key, 0.0, float(px), sd, adv, costs)
+                    book.flags.append(f"stop:{_sym_of(key)}")
+            elif ev.kind == "stop":
+                pass
             elif ev.kind == "mark":
                 book.supervise(frames, spot, d, costs, config, marks)
         idx.append(d)

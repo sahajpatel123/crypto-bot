@@ -1,7 +1,24 @@
 {
- "chain_head": "genesis",
+ "chain_head": "b1f9c36f583f4c5e5bf13b1eeb410bdd7dfde6e53ae70ee1378c41b7bec339d1",
  "created_utc": "2026-10-18T08:21:25.061228+00:00",
- "entries": [],
+ "entries": [
+  {
+   "bytes": 31180384,
+   "chunk_id": "chunk-2a22e52c3c8f50db",
+   "class": "HOLDOUT",
+   "config_sha256": null,
+   "decode_policy": "verdict-only",
+   "entry_hash": "b1f9c36f583f4c5e5bf13b1eeb410bdd7dfde6e53ae70ee1378c41b7bec339d1",
+   "file": "chunks/chunk-2a22e52c3c8f50db.json",
+   "first_ms": null,
+   "hypothesis": null,
+   "input_class": "OBSERVED_PUBLIC",
+   "last_ms": null,
+   "prev": "genesis",
+   "sealed_utc": "2026-10-18T12:49:25.531913+00:00",
+   "sha256": "2a22e52c3c8f50dba21c5a68c25ee78dad096603f75c5ae45025449e9c28aa79"
+  }
+ ],
  "format": "cryptobot-vault-registry/1",
  "frozen": {}
 }

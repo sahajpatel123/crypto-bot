@@ -1,6 +1,18 @@
 {
- "chain_head": "genesis",
+ "chain_head": "828a1df56fb5a40b8c3ce96fc738f4b13f0c23fcf12c37c4dec032f1477b30d3",
  "created_utc": "2026-10-18T08:21:25.061578+00:00",
- "entries": [],
+ "entries": [
+  {
+   "action": "seal",
+   "chunk_id": "chunk-2a22e52c3c8f50db",
+   "class": "HOLDOUT",
+   "entry_hash": "828a1df56fb5a40b8c3ce96fc738f4b13f0c23fcf12c37c4dec032f1477b30d3",
+   "hypothesis": null,
+   "input_class": "OBSERVED_PUBLIC",
+   "prev": "genesis",
+   "sha256": "2a22e52c3c8f50dba21c5a68c25ee78dad096603f75c5ae45025449e9c28aa79",
+   "ts_utc": "2026-10-18T12:49:25.531913+00:00"
+  }
+ ],
  "format": "cryptobot-vault-access/1"
 }

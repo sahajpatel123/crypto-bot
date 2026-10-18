@@ -204,7 +204,7 @@ def run_holdout_screen(hypothesis: str, cell: dict, *,
     rx = rx[rx.index >= start]
     lo, _ = _st.stationary_bootstrap_ci(
         list(rx), lambda v: _st.sharpe(v), mean_block=BOOTSTRAP_BLOCK_D,
-        rounds=1000, alpha=0.20, seed=7)
+        rounds=1000, alpha=0.20, lower_q=0.20, seed=7)
     import copy as _copy
     costs2x = _copy.replace(costs, adverse_mult=2.0)
     res2 = _bt.simulate_vectorized(

@@ -114,6 +114,8 @@ def read_klines_zip(path: str | Path) -> pd.DataFrame:
     for col in ("open", "high", "low", "close", "volume", "quote_volume",
                 "trades", "taker_buy_base", "taker_buy_quote"):
         df[col] = pd.to_numeric(df[col], errors="raise")
+    # Vision leaves this unused field as text "0" in some months.
+    df["ignore"] = pd.to_numeric(df["ignore"], errors="coerce")
     df = _finalize_time(df, "open_time")
     df = _finalize_time(df, "close_time")
     n = len(df)
@@ -218,24 +220,34 @@ def _build_one_aux(args) -> dict | None:
 
 def build_lake(raw_dir: str | Path, lake_dir: str | Path, *,
                symbols: list[str] | None = None,
+               datasets: list[str] | None = None,
                workers: int = 1) -> dict:
     """Decode DEV zips -> partitioned parquet + hash-chained manifest.
 
     symbols: restrict to a subset (e.g. hourly build for the metrics
-    universe only). workers: ThreadPoolExecutor parallelism (GIL-light
-    CSV/parquet work; deterministic manifest via sorted post-pass).
+    universe only). datasets: restrict legs (e.g. ["klines:1d",
+    "fundingRate"] for a fast first pass). workers: ThreadPoolExecutor
+    parallelism (deterministic manifest via sorted post-pass).
     """
     import concurrent.futures
     from datetime import datetime
 
     raw, lake = Path(raw_dir), Path(lake_dir)
     keep = set(symbols) if symbols else None
+    legs = set(datasets) if datasets else None
+
+    def _wanted(ds: str, iv: str | None = None) -> bool:
+        if legs is None:
+            return True
+        return ds in legs or (iv is not None and f"{ds}:{iv}" in legs)
     klines_tasks, aux_tasks = [], []
     for dataset in ("klines", "markPriceKlines", "premiumIndexKlines",
                     "spot"):
         if not (raw / dataset).exists():
             continue
         for iv_dir in sorted((raw / dataset).glob("*")):
+            if not _wanted(dataset, iv_dir.name):
+                continue
             for sym_dir in sorted(iv_dir.glob("*")):
                 if keep is not None and sym_dir.name not in keep:
                     continue
@@ -244,6 +256,8 @@ def build_lake(raw_dir: str | Path, lake_dir: str | Path, *,
                     klines_tasks.append((dataset, iv_dir.name, sym_dir.name,
                                          zips, str(lake)))
     for dataset in ("fundingRate", "metrics"):
+        if not _wanted(dataset):
+            continue
         base = raw / dataset
         if not base.exists():
             continue
@@ -273,13 +287,30 @@ def build_lake(raw_dir: str | Path, lake_dir: str | Path, *,
             res = _build_one_aux(t)
             if res is not None:
                 entries.append(res["entry"])
+    mp = lake / "manifest.json"
+    kept: list[dict] = []
+    created = datetime.now(timezone.utc).isoformat()
+    if mp.exists():
+        old = json.loads(mp.read_text(encoding="utf-8"))
+        problems = _chain_verify(old)
+        if problems:
+            raise ValueError(f"existing lake manifest broken: {problems}")
+        if old.get("schema_version") != SCHEMA_VERSION:
+            raise ValueError("lake schema version mismatch")
+        created = old.get("created_utc", created)
+        rebuilt = {e["path"] for e in entries}
+        kept = [{k: v for k, v in e.items()
+                 if k in ("path", "sha256", "bytes", "rows")}
+                for e in old.get("entries", []) if e["path"] not in rebuilt]
     manifest: dict[str, Any] = {
         "format": MANIFEST_FORMAT, "schema_version": SCHEMA_VERSION,
         "provenance": PROVENANCE, "chain_head": "genesis", "entries": [],
-        "created_utc": datetime.now(timezone.utc).isoformat()}
-    for e in sorted(entries, key=lambda x: x["path"]):
+        "created_utc": created,
+        "updated_utc": datetime.now(timezone.utc).isoformat()}
+    # Re-link the whole chain from sorted entries: staged builds stay
+    # a single self-consistent tamper-evident record.
+    for e in sorted(kept + entries, key=lambda x: x["path"]):
         _chain_append(manifest, e)
-    mp = lake / "manifest.json"
     mp.write_text(json.dumps(manifest, indent=1, sort_keys=True) + "\n")
     return manifest
 

@@ -48,9 +48,12 @@ def test_dsr_exact_and_monotone():
     # K=1, zero mean -> exactly 0.5 (SR0=0 under a single draw).
     assert deflated_sharpe([0.01, -0.01] * 500, [0.0]) == pytest.approx(
         0.5, abs=1e-12)
-    # Standout SR=2 with 20 trials -> near 1.
+    # Annualized SR≈2 over 1000 days, 20 trials. The paper's
+    # non-annualized formula is about 0.971. Plugging the annualized
+    # Sharpe into the same expression would exceed 0.99.
     rets = [0.001047 + 0.01, 0.001047 - 0.01] * 500
-    assert deflated_sharpe(rets, [2.0] + [0.0] * 19) > 0.99
+    assert deflated_sharpe(rets, [2.0] + [0.0] * 19) == pytest.approx(
+        0.97137, abs=1e-4)
     # More trials at fixed variance -> lower DSR.
     d2 = deflated_sharpe(rets, [2.0, -2.0])
     d50 = deflated_sharpe(rets, [2.0, -2.0] * 25)

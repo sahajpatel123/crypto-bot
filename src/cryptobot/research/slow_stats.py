@@ -66,7 +66,8 @@ def _stationary_indices(n: int, mean_block: float, rng: random.Random):
 def stationary_bootstrap_ci(values, stat_fn: Callable, *,
                             mean_block: float = 5.0, rounds: int = 1000,
                             alpha: float = 0.05,
-                            seed: int = 7) -> tuple[float, float]:
+                            seed: int = 7,
+                            lower_q: float | None = None) -> tuple[float, float]:
     vals = list(values)
     if not vals:
         return (0.0, 0.0)
@@ -75,7 +76,12 @@ def stationary_bootstrap_ci(values, stat_fn: Callable, *,
                                   _stationary_indices(len(vals), mean_block,
                                                       rng)]))
                    for _ in range(rounds))
-    lo_i = min(rounds - 1, int(alpha / 2 * rounds))
+    # lower_q is a one-sided order statistic (0.20 = 80% lower bound).
+    # The default remains a two-sided interval at ``alpha``.
+    if lower_q is None:
+        lo_i = min(rounds - 1, int(alpha / 2 * rounds))
+    else:
+        lo_i = min(rounds - 1, int(lower_q * rounds))
     hi_i = min(rounds - 1, int((1 - alpha / 2) * rounds))
     return (stats[lo_i], stats[hi_i])
 
@@ -118,19 +124,27 @@ def deflated_sharpe(selected_returns, trial_sharpes_ann,
                     periods_per_year: int = 365) -> float:
     """Deflated Sharpe ratio (Bailey & Lopez de Prado 2014).
 
-    H0: the selected Sharpe is the max of K chance Sharpes. Returns
-    P(SR_true > 0 | data) under the paper's approximations.
+    ``trial_sharpes_ann`` are annualized (the same units ``sharpe()``
+    returns). The formula itself uses the non-annualized Sharpe
+    mean/std: the sqrt(T-1) factor is derived for that scaling.
+    Plugging the annualized number in inflates DSR toward 1.
     """
     r = np.asarray(list(selected_returns), dtype=float)
-    trials = [float(t) for t in trial_sharpes_ann]
-    k = len(trials)
-    if len(r) < 2:
+    r = r[np.isfinite(r)]
+    n = len(r)
+    if n < 2:
         return 0.5
-    sr = sharpe(r, periods=periods_per_year)
+    mu, sd = float(r.mean()), float(r.std(ddof=1))
+    if sd <= 0:
+        return 1.0 if mu > 0 else (0.0 if mu < 0 else 0.5)
+    sr = mu / sd
+    scale = math.sqrt(periods_per_year)
+    trials = [float(t) / scale for t in trial_sharpes_ann if math.isfinite(float(t))]
+    k = len(trials)
     if k <= 1:
         expected_max = 0.0
     else:
-        var_t = float(np.var(trials, ddof=1)) if k >= 2 else 0.0
+        var_t = float(np.var(trials, ddof=1))
         if var_t <= 0:
             expected_max = 0.0
         else:
@@ -138,16 +152,14 @@ def deflated_sharpe(selected_returns, trial_sharpes_ann,
             expected_max = math.sqrt(var_t) * (
                 (1 - gamma) * _phi_inv(1 - 1 / k)
                 + gamma * _phi_inv(1 - 1 / (k * math.e)))
-    mu, sd = float(r.mean()), float(r.std(ddof=1))
-    if sd <= 0:
-        return 1.0 if mu > 0 else (0.0 if mu < 0 else 0.5)
     z = (r - mu) / sd
     skew = float((z ** 3).mean())
     kurt = float((z ** 4).mean())  # Pearson (normal = 3)
-    var_sr = (1 - skew * sr + (kurt - 1) / 4 * sr ** 2) / len(r)
-    if var_sr <= 0:
+    inner = 1.0 - skew * sr + (kurt - 1.0) / 4.0 * sr * sr
+    if inner <= 0:
         return 1.0 if sr > expected_max else 0.0
-    return _phi((sr - expected_max) / math.sqrt(var_sr))
+    stat = (sr - expected_max) * math.sqrt(n - 1) / math.sqrt(inner)
+    return _phi(stat)
 
 
 def _sharpe_raw(values) -> float:

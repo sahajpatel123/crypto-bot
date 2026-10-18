@@ -240,9 +240,13 @@ def probability_backtest_overfitting(returns_matrix: np.ndarray, *,
         best = int(np.argmax(is_sr))
         # Rank 0 = worst. Median and below counts as overfit.
         worse = int(np.sum(oos_sr < oos_sr[best]))
-        # logit(rel) < 0 iff rel < 0.5. Ties at the median are not overfit.
-        rel = worse / (n_strat - 1)
-        over += int(rel < 0.5)
+        better = int(np.sum(oos_sr > oos_sr[best]))
+        tied = n_strat - worse - better
+        # Mid-rank of the tied group. omega < 0.5 iff logit < 0.
+        # A complete tie sits at 0.5 and is not overfitting.
+        mid = worse + (tied - 1) / 2.0
+        omega = mid / (n_strat - 1)
+        over += int(omega < 0.5)
         total += 1
     return float(over / total) if total else 0.0
 

@@ -28,11 +28,11 @@ vault/autopilot artifacts, every claim cites command+output or file path.
 | E0.1 | Re-entry: read memory, full suite 0 failed | DONE | 1501 passed/1 skipped nobench + 27 bench = 1528/1/0 failed |
 | E0.2 | Autopilot run-once Family A, record dev outcomes | DONE | all H1–H6 DEV_EVAL, no dev artifacts; left to timer |
 | E1.1 | Vision inventory, DATA_INVENTORY.md | DONE | `tools/vision_inventory.py`, `DATA_INVENTORY.md`; probes verified |
-| E1.2 | Checksummed download | IN_PROGRESS | pass-1 pull ADOPTED from concurrent session (audited 0/2000 split mismatches, 0 failures); 167,625 jobs, 1.52GB; see D-036 |
+| E1.2 | Checksummed download | DONE | resume pull 118137 ok / 0 failed (terminal 972826); 49077 dev + 118548 holdout zips |
 | E1.3 | Parquet store + hash manifest + DQ report | DONE (code) | `research/lake.py`, 4 tests; build runs when bytes land |
 | E1.4 | Point-in-time universe + no-lookahead test | DONE | `research/universe.py`, 5 tests incl. lookahead proof |
 | E2.1 | SPLIT.md prereg + commit (DEV/HOLDOUT/FORWARD, detectable Sharpe) | DONE | `research/prereg/SPLIT.md` fb95e02 |
-| E2.2 | Vault HOLDOUT class + seal holdout pre-analysis + import lint | PARTIAL | code+CLI+8 tests done (d9ec258); sealing when bytes land |
+| E2.2 | Vault HOLDOUT class + seal holdout pre-analysis + import lint | DONE | chunk-2a22e52c3c8f50db, 118548 files, manifest sha 2a22e52c…, decode_accesses 0, before any return statistic |
 | E2.3 | Family B budget (8) + Holm family justification | DONE | SPLIT.md + D-032 |
 | E3 | Family B preregs B1–B7 committed pre-evaluation | DONE | 7 preregs + configs + registry b0b4ac4/70e2f38; D-035 pre-eval corrections |
 | E4.1 | Slow backtester vectorized + event reference + differential | DONE | `slow_backtest.py`, differential 1e-9, 10 engine tests |
@@ -91,6 +91,25 @@ the systemd timer. Machine report updated:
   universe membership uses klines closes — a return look. Restrict
   membership computation to DEV-period klines; holdout-only entrants get
   metrics pulled at verdict time if needed. Document in pull plan.)
+
+## Resume note (2026-10-18 evening)
+
+First non-DONE task is E1.2, then E6.1. Do not decode holdout.
+Independent reviewers confirmed, and this run fixed before any lake eval:
+- `slow_stats.deflated_sharpe` now uses non-annualized SR and sqrt(T-1)
+  (annualized plug-in was a false DSR≈1). Pinned at 0.97137 in
+  `test_dsr_exact_and_monotone`.
+- Holdout lb80 is the 20% bootstrap order statistic (`lower_q=0.20`),
+  not the 10% end of a two-sided 80% interval.
+- Backtester: liquidation fills at the breaching wick; stops are
+  time-sorted inside [d, d+1d) and later funding is not charged after
+  the stop; drawdown is a positive fraction in both engines; zero-vol
+  positive equity is infinite Sharpe and leak-flagged; missing-bar
+  trail stats fall back to the previous bar; exact-zero targets are
+  not counted as drops.
+CJK vision URLs are percent-encoded (`_ascii_url`). Pull resumed after
+that fix; seal holdout bytes (hash only) the moment the pull exits,
+before `build_lake` or any return statistic.
 
 ## Commands run
 

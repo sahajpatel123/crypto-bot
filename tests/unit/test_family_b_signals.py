@@ -52,6 +52,28 @@ def test_b1_sign_and_relative_sizing():
     assert st3["adopted"] == {"UP": 1, "DN": -1}
 
 
+def test_b1_does_not_read_the_rebalance_bar_or_the_future():
+    from cryptobot.research.family_b import signals_b1
+
+    closes = [100.0 * (1.01 ** i) for i in range(40)]
+    frame = _daily_frame("2023-01-01", closes)
+    data = _data({"UP": frame})
+    d = pd.Timestamp("2023-02-05", tz="UTC")
+    params = {"lookback_d": 20, "vol_window_d": 20, "target_vol": 0.20}
+    base, _ = signals_b1(data, params, [d], lambda _d: ["UP"])
+    # A bar opening at d, and bars after d, are not inputs.
+    future = frame.copy()
+    extra = _daily_frame("2023-02-05", [1.0, 1e9, 1e9])
+    future = pd.concat([future[future["open_time"] < d], extra], ignore_index=True)
+    bumped, _ = signals_b1(_data({"UP": future}), params, [d], lambda _d: ["UP"])
+    assert base[d] == bumped[d]
+    # Changing the last included close does change the signal.
+    past = frame[frame["open_time"] < d].copy()
+    past.loc[past.index[-1], "close"] = 1.0
+    changed, _ = signals_b1(_data({"UP": past}), params, [d], lambda _d: ["UP"])
+    assert changed[d] != base[d]
+
+
 def test_b1_zero_vol_is_flat():
     from cryptobot.research.family_b import signals_b1
 
