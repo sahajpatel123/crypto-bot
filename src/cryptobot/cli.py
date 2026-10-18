@@ -1289,6 +1289,24 @@ def cmd_calibrate(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_fixtures(args: argparse.Namespace) -> int:
+    """`cryptobot fixtures ingest --dir DIR` (F2.3)."""
+    from cryptobot.testing.fixtures import FixtureRefused, ingest
+
+    if args.fixtures_cmd != "ingest":
+        print(f"fixtures: unknown command {args.fixtures_cmd!r}",
+              file=sys.stderr)
+        return 2
+    try:
+        installed = ingest(args.dir, force=bool(args.force))
+    except FixtureRefused as exc:
+        print(f"fixtures ingest: REFUSED ({exc})", file=sys.stderr)
+        return 2
+    print(f"fixtures ingest: installed {len(installed)} files "
+          f"({', '.join(installed)})")
+    return 0
+
+
 def cmd_demo_drill(args: argparse.Namespace) -> int:
     """Offline demo-drill scaffold (T4.2): hashed JSON, sandbox steps.
 
@@ -1414,6 +1432,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--gate-json", default="gate.json")
     p.add_argument("--out", default="armed.json")
     p.set_defaults(func=cmd_arm)
+    p = sub.add_parser("fixtures")
+    p.add_argument("fixtures_cmd", choices=["ingest"])
+    p.add_argument("--dir", required=True)
+    p.add_argument("--force", action="store_true")
+    p.set_defaults(func=cmd_fixtures)
     p = sub.add_parser("demo-drill")
     p.add_argument("--out", default=None)
     p.set_defaults(func=cmd_demo_drill)

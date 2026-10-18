@@ -261,7 +261,7 @@ never read. Campaign `data/captures/campaign-1day-*` events never read
 | F1.7 | Perf regression thresholds | DONE |
 | F2.1 | Close PARTIAL/BLOCKED non-credentialed | TODO |
 | F2.2 | calibrate CLI + conservative-only auto-update | DONE |
-| F2.3 | fixtures ingest CLI | TODO |
+| F2.3 | fixtures ingest CLI | DONE |
 | F2.4 | deploy kit + host-check | TODO |
 | F2.5 | Credential safety checks | TODO |
 | F2.6 | Clock-skew guard halts entries | TODO |
