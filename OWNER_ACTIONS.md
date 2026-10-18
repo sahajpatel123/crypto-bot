@@ -225,3 +225,55 @@ slippage >1.5x assumed, rolling expectancy CI upper <0, unknown outcome
 aged, daily stop, watchdog fire. Promotion is manual only.
 On failure bring back: `runs/<id>/watchdog.json`, `risk.jsonl`,
 `reconcile` output.
+
+## 15. Family B data refresh (public files only; no keys)
+
+The long-history lake is Binance Vision USD-M data under `data/lake/`.
+DEV is everything before 2024-01-01. HOLDOUT is sealed. Do not unzip or
+parse `data/lake/holdout_raw/` except by `cryptobot verdict`.
+
+```sh
+# new months only; filename dates assign DEV / HOLDOUT / FORWARD
+uv run --locked python tools/vision_pull.py plan --datasets klines fundingRate \
+  --intervals klines:1d,1h --workers 16 --out data/lake/plan-refresh.json
+uv run --locked python tools/vision_pull.py pull --plan data/lake/plan-refresh.json \
+  --dev-dir data/lake/raw --holdout-dir data/lake/holdout_raw \
+  --workers 16 --disk-floor-gb 10 --state data/lake/pull-refresh.json
+```
+
+Expected: new files checksum-match. Any file dated after 2026-10-17 is
+FORWARD, not a second look at the sealed screen.
+Pass criteria: pull exits 0; holdout files are sealed (hash only) before
+anyone decodes them.
+On failure bring back: the pull JSON summary.
+
+## 16. Family B autopilot timer and forward paper
+
+B1–B7 are KILLED on the corrected dev gates (D-042). Do not arm.
+The file `research/verdicts_b/B4.json` is a voided screen from the
+25%/leg bug. Do not treat it as a pass.
+
+```sh
+uv run --locked python -c 'from cryptobot.research.autopilot import Autopilot; print(Autopilot("research/autopilot_b", family="B").run_once()["hypotheses"])'
+```
+
+Expected: B4 stays `SCREEN_PASS` until a forward-paper file exists, then
+`FORWARD_PAPER` until **both** 60 days and 30 rebalances have elapsed
+(the longer of the two). Compare with the pessimistic cost model.
+Promotion after that is manual. Demotion on rolling Sharpe, drawdown or
+realized-cost drift is automatic.
+Pass criteria: `verify_log()` is empty; no `armed.json`.
+On failure bring back: `research/autopilot_b/transitions.json` problems.
+
+## 17. Legal and tax (owner decision; not a code step)
+
+Before any later arm, confirm from your own counsel:
+
+1. You may access the venue from your jurisdiction.
+2. How trading gains and losses are taxed where you file.
+
+The software does not decide either point. Production stays NO-GO until
+step 13 is done on a fresh GO gate after forward paper, and only then
+with a small first tranche. 120 USDT cannot place the B4 BTC hedge
+(quantity floors through the 0.001 step). 1,000 is the smallest of
+120 / 1,000 / 10,000 that can. See RESEARCH_VERDICTS_B.md.

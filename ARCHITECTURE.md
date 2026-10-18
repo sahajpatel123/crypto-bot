@@ -4,7 +4,7 @@
 public venues ──► recorder (standalone, public data only)
                      │  hourly gzip chunks + SHA-256 hash-chained manifest
                      ▼
-                sealed vault (DEV / CONFIRM, hash-chained access log)
+                sealed vault (DEV / CONFIRM / HOLDOUT, hash-chained access log)
                      │  CONFIRM readable only by verdict + one-shot token
                      ▼
              research autopilot (H1–H6, ≤8 budget)
@@ -97,4 +97,6 @@ program only read its manifest/heartbeat/status metadata.
 - `research/lake.py`, `research/universe.py` — parquet lake + point-in-time universe.
 - `research/family_b.py`, `research/slow_backtest.py` — frozen signals + dual-engine backtester.
 - `research/slow_stats.py`, `research/family_b_driver.py` — inference + frozen evaluation runner.
+- `research/slow_path.py` — paper-only portfolio caps, TWAP slices, quarter-Kelly from the return lower bound. No venue client.
+- Family B autopilot (`research/autopilot_b`): REGISTERED → DEV_EVAL → {KILLED \| FROZEN} → HOLDOUT_SCREEN → {FAIL \| SCREEN_PASS} → FORWARD_PAPER → FORWARD_COMPARE → GATE_READY. All seven hypotheses are KILLED after D-042. HOLDOUT bytes are decoded only by `verdict`.
 - `tools/vision_pull.py`, `tools/run_family_b.py`, `tools/lake_finalize.py` — data + eval CLIs.

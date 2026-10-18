@@ -1,5 +1,5 @@
 {
- "chain_head": "7041c12ce747bfdefe9bae7f655ddf21c9bf636873c73244b7293d4c205bb7fc",
+ "chain_head": "aa6e283aa271fa7a333bd345fa09cbf5954e5bda6410096c32bc5d86f5592b02",
  "created_utc": "2026-10-18T08:21:25.061578+00:00",
  "entries": [
   {
@@ -56,6 +56,96 @@
    "prev": "8288a9b34ff205a83e217a9d66e0d3c18f0f2f2effeb6f5c099a5c6d8c406bcb",
    "sha256": "24045b38ad2d98a5c9a57294b20267a8deff7ca5cd48f1a88ebc0dd5207a635d",
    "ts_utc": "2026-10-18T12:52:07.839704+00:00"
+  },
+  {
+   "action": "seal",
+   "chunk_id": "chunk-c87821b135ac9667",
+   "class": "HOLDOUT",
+   "entry_hash": "6cbe3ebb8b3b5bce276e25710522830f820fdde3ec9894996fb029c33df11925",
+   "hypothesis": null,
+   "input_class": "OBSERVED_PUBLIC",
+   "prev": "7041c12ce747bfdefe9bae7f655ddf21c9bf636873c73244b7293d4c205bb7fc",
+   "sha256": "c87821b135ac9667d8ef780fe3fa2ed611c905b567e7809ab9f67917d2890b8e",
+   "ts_utc": "2026-10-18T15:14:34.602994+00:00"
+  },
+  {
+   "action": "freeze",
+   "commit": "fdb8967",
+   "config_sha256": "81e057641702d6f08ca7fc9ae8f0098a48a88f8b5d57e3a21c0d30fdb4dfb116",
+   "entry_hash": "cdff69d7c2f6873665b49cb6d9ebbdd49318924b2ff0e18aa5f30d2e30756ee1",
+   "frozen_utc": "2026-10-18T15:14:34.605562+00:00",
+   "hypothesis": "B4",
+   "prereg_path": "research/prereg/B4-delta-neutral-basis.md",
+   "prev": "6cbe3ebb8b3b5bce276e25710522830f820fdde3ec9894996fb029c33df11925",
+   "ts_utc": "2026-10-18T15:14:34.605562+00:00"
+  },
+  {
+   "action": "issue-token",
+   "consumer": "verdict",
+   "entry_hash": "024d0011fcad73ad151ac2b83aa91d3e161ca207ba5bc562c34c4fa501d864c8",
+   "hypothesis": "B4",
+   "prev": "cdff69d7c2f6873665b49cb6d9ebbdd49318924b2ff0e18aa5f30d2e30756ee1",
+   "token_sha256": "32a0fae8819ed99066d2ef604a83c03993bf7075f35a8709ec3df73067d249ba",
+   "ts_utc": "2026-10-18T15:14:52.793855+00:00"
+  },
+  {
+   "action": "decode",
+   "chunk_id": "chunk-c87821b135ac9667",
+   "entry_hash": "fac5bf147fe50cfdf2096ad60af7ec6fab72b946ab16bf41517459c0ef369244",
+   "files": 198,
+   "hypothesis": "B4",
+   "prev": "024d0011fcad73ad151ac2b83aa91d3e161ca207ba5bc562c34c4fa501d864c8",
+   "token_sha256": "32a0fae8819ed99066d2ef604a83c03993bf7075f35a8709ec3df73067d249ba",
+   "ts_utc": "2026-10-18T15:14:54.552172+00:00"
+  },
+  {
+   "action": "issue-token",
+   "consumer": "verdict",
+   "entry_hash": "7f238bc52a788c639297291a39609b8fb565a720d5ead72bd5085e2f63410cb9",
+   "hypothesis": "B4",
+   "prev": "fac5bf147fe50cfdf2096ad60af7ec6fab72b946ab16bf41517459c0ef369244",
+   "token_sha256": "8faf71e2a1d7754291e7a5127e3ec7c46c11d2ca7d2fdb142b281c8b5d5ba3d7",
+   "ts_utc": "2026-10-18T15:15:54.153641+00:00"
+  },
+  {
+   "action": "decode",
+   "chunk_id": "chunk-c87821b135ac9667",
+   "entry_hash": "afeff05e216a3fc48a19e8380e647923481596f947e626222d02c6dc3fdfb84b",
+   "files": 198,
+   "hypothesis": "B4",
+   "prev": "7f238bc52a788c639297291a39609b8fb565a720d5ead72bd5085e2f63410cb9",
+   "token_sha256": "8faf71e2a1d7754291e7a5127e3ec7c46c11d2ca7d2fdb142b281c8b5d5ba3d7",
+   "ts_utc": "2026-10-18T15:15:55.691572+00:00"
+  },
+  {
+   "action": "seal",
+   "chunk_id": "chunk-74e0747f6d1aab3a",
+   "class": "HOLDOUT",
+   "entry_hash": "f1d54f60c5cdaa7ea505274afd03fdc47fa260af1dfe763f98e2ec5d3feae28c",
+   "hypothesis": null,
+   "input_class": "OBSERVED_PUBLIC",
+   "prev": "afeff05e216a3fc48a19e8380e647923481596f947e626222d02c6dc3fdfb84b",
+   "sha256": "74e0747f6d1aab3aabec91f3bf524298895440cc560f0835dca430566b576f1f",
+   "ts_utc": "2026-10-18T15:25:18.235983+00:00"
+  },
+  {
+   "action": "issue-token",
+   "consumer": "verdict",
+   "entry_hash": "2afbb9836203ae757f1e0634fc32a928b40056a67a067f6e383ab492fd6ceae1",
+   "hypothesis": "B4",
+   "prev": "f1d54f60c5cdaa7ea505274afd03fdc47fa260af1dfe763f98e2ec5d3feae28c",
+   "token_sha256": "0d6ee79f414a9a241d392c631f9753e424180da149a89ac8708637100008cf22",
+   "ts_utc": "2026-10-18T15:25:25.193836+00:00"
+  },
+  {
+   "action": "decode",
+   "chunk_id": "chunk-74e0747f6d1aab3a",
+   "entry_hash": "aa6e283aa271fa7a333bd345fa09cbf5954e5bda6410096c32bc5d86f5592b02",
+   "files": 202,
+   "hypothesis": "B4",
+   "prev": "2afbb9836203ae757f1e0634fc32a928b40056a67a067f6e383ab492fd6ceae1",
+   "token_sha256": "0d6ee79f414a9a241d392c631f9753e424180da149a89ac8708637100008cf22",
+   "ts_utc": "2026-10-18T15:25:38.237970+00:00"
   }
  ],
  "format": "cryptobot-vault-access/1"

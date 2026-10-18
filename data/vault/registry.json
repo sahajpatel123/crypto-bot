@@ -1,5 +1,5 @@
 {
- "chain_head": "ed818fb2969184836ba68637dc663970644f48b674b363504385fdcbd5e7297f",
+ "chain_head": "c9115c53a1db030dd1c846cee2d11a027b7052a9e63862ddde31d36729cfcb68",
  "created_utc": "2026-10-18T08:21:25.061228+00:00",
  "entries": [
   {
@@ -81,8 +81,47 @@
    "prev": "02a0e45461a255dcfcd8223ed98ecca790fe7604a61787327e6746f1866db571",
    "sealed_utc": "2026-10-18T12:52:07.839704+00:00",
    "sha256": "24045b38ad2d98a5c9a57294b20267a8deff7ca5cd48f1a88ebc0dd5207a635d"
+  },
+  {
+   "bytes": 50935,
+   "chunk_id": "chunk-c87821b135ac9667",
+   "class": "HOLDOUT",
+   "config_sha256": null,
+   "decode_policy": "verdict-only",
+   "entry_hash": "49c915f9e7ab64f37edff24df372b5b80688f8f5f9b7d9b25daf66f59295e2f7",
+   "file": "chunks/chunk-c87821b135ac9667.json",
+   "first_ms": null,
+   "hypothesis": null,
+   "input_class": "OBSERVED_PUBLIC",
+   "last_ms": null,
+   "prev": "ed818fb2969184836ba68637dc663970644f48b674b363504385fdcbd5e7297f",
+   "sealed_utc": "2026-10-18T15:14:34.602994+00:00",
+   "sha256": "c87821b135ac9667d8ef780fe3fa2ed611c905b567e7809ab9f67917d2890b8e"
+  },
+  {
+   "bytes": 44211,
+   "chunk_id": "chunk-74e0747f6d1aab3a",
+   "class": "HOLDOUT",
+   "config_sha256": null,
+   "decode_policy": "verdict-only",
+   "entry_hash": "c9115c53a1db030dd1c846cee2d11a027b7052a9e63862ddde31d36729cfcb68",
+   "file": "chunks/chunk-74e0747f6d1aab3a.json",
+   "first_ms": null,
+   "hypothesis": null,
+   "input_class": "OBSERVED_PUBLIC",
+   "last_ms": null,
+   "prev": "49c915f9e7ab64f37edff24df372b5b80688f8f5f9b7d9b25daf66f59295e2f7",
+   "sealed_utc": "2026-10-18T15:25:18.235983+00:00",
+   "sha256": "74e0747f6d1aab3aabec91f3bf524298895440cc560f0835dca430566b576f1f"
   }
  ],
  "format": "cryptobot-vault-registry/1",
- "frozen": {}
+ "frozen": {
+  "B4": {
+   "commit": "fdb8967",
+   "config_sha256": "81e057641702d6f08ca7fc9ae8f0098a48a88f8b5d57e3a21c0d30fdb4dfb116",
+   "frozen_utc": "2026-10-18T15:14:34.605562+00:00",
+   "prereg_path": "research/prereg/B4-delta-neutral-basis.md"
+  }
+ }
 }

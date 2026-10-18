@@ -1,10 +1,10 @@
 # cryptobot — evidence-gated crypto perp research and execution
 
-Status: **NO-GO for live capital today.** No strategy has a PASS verdict
-(`research/verdicts/`). The arming path is built OFF and requires a human
-TTY ceremony. The recorder, sealed vault, autopilot, calibration and
-deployment kit are operational, so the system can discover (or disprove)
-edge over time without further prompts.
+Status: **NO-GO for live capital today.** Family A (H1–H6) has no dev
+edge. Family B killed all seven hypotheses on the frozen gates after
+the B4 leg-size correction (D-042). An earlier B4 holdout screen is
+void and is not a pass. Arming still requires a human TTY. Read
+[RESEARCH_VERDICTS_B.md](RESEARCH_VERDICTS_B.md).
 
 Read [ARCHITECTURE.md](ARCHITECTURE.md), [SECURITY.md](SECURITY.md),
 [RUNBOOK.md](RUNBOOK.md), [RESEARCH_VERDICTS.md](RESEARCH_VERDICTS.md),

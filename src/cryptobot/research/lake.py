@@ -67,6 +67,8 @@ def _chain_verify(doc: dict) -> list[str]:
 
 def _to_ms(values: pd.Series, name: str) -> pd.Series:
     med = float(values.median())
+    if 1e14 < med < 1e17:
+        return (values.astype("int64") // 1000)  # microseconds -> ms
     if 1e11 < med < 1e14:
         return values.astype("int64")  # milliseconds
     if 1e8 < med < 1e11:

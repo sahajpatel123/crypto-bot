@@ -64,6 +64,11 @@ def test_read_klines_normalizes_units_sorts_dedupes(tmp_path):
                               "1704153599,1005,5,5,502.5,0"])
     df = read_klines_zip(sec)
     assert df["open_time"].iloc[0].isoformat() == "2024-01-01T00:00:00+00:00"
+    usec = tmp_path / "usec.zip"
+    _write_zip(usec, "u.csv", ["1704067200000000,100,101,99,100.5,10,"
+                               "1704153599000000,1005,5,5,502.5,0"])
+    dfu = read_klines_zip(usec)
+    assert dfu["open_time"].iloc[0].isoformat() == "2024-01-01T00:00:00+00:00"
     bad = tmp_path / "bad.zip"
     _write_zip(bad, "b.csv", ["999,100,101,99,100.5,10,"
                               "999,1005,5,5,502.5,0"])
