@@ -393,3 +393,9 @@ Meta Muse Spark.
   behavior battery after any suspected foreign change. E6.1 wave-1
   killed pre-output (perf: uncached universes) — no results existed, so
   the memoized relaunch is result-identical.
+- D-040 (foreign E6.1 artifacts VOID): parallel session wrote B1/B2/B3/B7
+  dev artifacts with unknown code provenance; independent rerun of B1 on
+  the verified tree disagreed (best cell AND cell sharpes differ, e.g.
+  turnover ~2x off). Saved to /tmp/foreign-dev-artifacts for the record;
+  official E6.1 = this session's reruns on the audited tree, each
+  determinism-checked. Lesson reinforced: reproduce, never adopt, чужое.
