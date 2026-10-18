@@ -1,6 +1,6 @@
 {
  "format": "cryptobot-autopilot-report/1",
- "generated_utc": "2026-10-18T06:53:00.290113+00:00",
+ "generated_utc": "2026-10-18T09:35:53.441486+00:00",
  "hypotheses": [
   {
    "hypothesis": "H1",
@@ -51,5 +51,6 @@
    "updated_utc": "2026-10-18T06:53:00.288730+00:00"
   }
  ],
- "log_problems": []
+ "log_problems": [],
+ "terminal_no_edge": false
 }
