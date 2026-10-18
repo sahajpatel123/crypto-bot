@@ -254,7 +254,7 @@ never read. Campaign `data/captures/campaign-1day-*` events never read
 | F3.6 | recorder CLI + systemd + compose | DONE |
 | F1.1 | Property tests (Hypothesis) | DONE |
 | F1.2 | Mutation testing risk/execution/adapters | IN_PROGRESS (scoped loop sh_14c4e13c in mut worktree: sizing/margin/rounding/fillrealism/policy/ordermanager) |
-| F1.3 | Chaos matrix sandbox venue | TODO |
+| F1.3 | Chaos matrix sandbox venue | DONE (40 cells green) |
 | F1.4 | Determinism replay byte-identical | DONE |
 | F1.5 | Differential paper vs sandbox | DONE |
 | F1.6 | Fuzz REST/WS parsers | DONE |
@@ -474,6 +474,14 @@ never read. Campaign `data/captures/campaign-1day-*` events never read
   both sides + LIMIT IOC): qty exact, price within 1.5 ticks
   (1 slip tick + half-tick feed rounding, declared), fees within
   5% relative. 2 passed.
+- F1.3 DONE: chaos matrix 10 faults x 4 stages = 40 cells green on
+  the sandbox venue (frozen walk, script+stream+harness faults).
+  Invariant per cell: flat or protected (venue-min dust exempt,
+  documented), exec-id uniqueness, venue-tape vs ledger totals
+  agree. Non-vacuous guards prove each fault fired. Documented
+  mappings: timeout/5xx->503-unknown, SIGKILL->rebuild-equivalence
+  (real kill-9 is an OWNER demo-drill step), venue signature skew
+  -> credentialed drill; session skew covered here.
 - F3.1-F3.3 DONE (builder ses_eb3fdca9, owner-verified): recorder
   package (writer/streams/plugins/integrity/service, 1399 lines),
   16 tests green (overflow loud-drop, tamper-evident chain,
