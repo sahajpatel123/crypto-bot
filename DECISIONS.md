@@ -337,6 +337,7 @@ Meta Muse Spark.
   none exist. Adversarial-review fixes E4.5: stale-key flatten, B5 exits,
   B4/B5 state round-trip, OI strictly-before-d, raw B6 z, wick liq,
   00:00 mark=open, independent event ledger, WF eval0 + 2x-hold gaps.
+- D-035 (E3 pre-evaluation prereg corrections; zero lake bytes decoded): adversarial review of E4/E5 against frozen preregs found 4 frozen-input bugs + 1 gap, corrected in prereg text BEFORE any evaluation (pass-1 pull still in flight; only inventory metadata + synthetic fixtures touched): (a) B4 round-trip 49->53bps (spread+slip double-count fix); (b) B2 skip-1 words clarified to the frozen formula (closes strictly before rebalance date); (c) B6 min-obs 4->3 for W=30 (90d admit 3 non-overlapping 30d windows); raw z-scores kept literal; (d) B5 OI window max(W,24h) on daily prints, strictly-before-d (lookahead-safe; intraday OI unobservable); (e) B3 28d forced exit + 7d no-re-entry block (prereg silent; without a block max-hold is a no-op). No threshold was tuned to results (none exist); grids/criteria/promotion anchors unchanged. Code fixes in the same batch: stale-key flatten, B5 exits/cooldown, B4/B5 state round-trip, OI precede-d, wick liq trigger, 00:00 mark=open, independent event ledger, WF eval0 + max(35,2xHold) gaps, turnover gate helper.
 - D-036 (concurrent-session incident 2026-10-18 ~16:19 UTC): an
   unidentified parallel Cursor process modified tools/vision_pull.py in
   this worktree (parallelized plan listings + test) and launched the

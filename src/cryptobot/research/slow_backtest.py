@@ -93,6 +93,9 @@ def _side_cost_bps(notional: float, sigma_d: float, adv: float,
 
 def _trail_stats(frames: dict[str, pd.DataFrame], sym: str,
                  d: pd.Timestamp, window: int = 30):
+    panel = getattr(frames, "index", None)
+    if panel is not None and hasattr(frames, "spot"):
+        return panel.trail_of(sym, d, spot=bool(frames.spot))
     df = frames.get(sym)
     if df is None:
         return FALLBACK_SIGMA_D, FALLBACK_ADV
@@ -139,6 +142,10 @@ class MarketIndex:
             df = df.sort_values("open_time").drop_duplicates("open_time")
             opens = df["open"].to_numpy(dtype=float)
             closes = df["close"].to_numpy(dtype=float)
+            highs = (df["high"].to_numpy(dtype=float)
+                     if "high" in df.columns else closes)
+            lows = (df["low"].to_numpy(dtype=float)
+                    if "low" in df.columns else closes)
             vols = df["quote_volume"].to_numpy(dtype=float)
             times = list(df["open_time"])
             logret = np.zeros(len(closes))
@@ -148,7 +155,8 @@ class MarketIndex:
             # std of log-diff inside that slice, fallback if fewer than 10.
             window = 30
             for i, ts in enumerate(times):
-                bars[(sym, ts)] = (float(opens[i]), float(closes[i]))
+                bars[(sym, ts)] = (float(opens[i]), float(highs[i]),
+                                   float(lows[i]), float(closes[i]))
                 p0 = max(0, i - window)
                 n_past = i - p0
                 adv_seg = vols[p0:i]
@@ -209,15 +217,25 @@ class MarketIndex:
         hit = src.get((sym, d))
         if hit is None:
             return None
-        return {"open": hit[0], "close": hit[1]}
+        return {"open": hit[0], "high": hit[1], "low": hit[2], "close": hit[3]}
 
     def trail_of(self, sym: str, d: pd.Timestamp, *, spot: bool = False):
         src = self.spot_trail if spot else self.trail
         return src.get((sym, d), (FALLBACK_SIGMA_D, FALLBACK_ADV))
 
 
-def _bar_on(frames: dict[str, pd.DataFrame], sym: str,
-            d: pd.Timestamp) -> dict | None:
+class _Panel:
+    """Perp or spot view of one MarketIndex."""
+
+    def __init__(self, index: MarketIndex, *, spot: bool) -> None:
+        self.index = index
+        self.spot = spot
+
+
+def _bar_on(frames, sym: str, d: pd.Timestamp) -> dict | None:
+    panel = getattr(frames, "index", None)
+    if panel is not None and hasattr(frames, "spot"):
+        return panel.bar(sym, d, spot=bool(frames.spot))
     if isinstance(frames, MarketIndex):
         return frames.bar(sym, d)
     df = frames.get(sym)
@@ -240,7 +258,9 @@ def _last_bar_before(frames: dict[str, pd.DataFrame], sym: str,
     return past.iloc[-1].to_dict()
 
 
-def _settle(frames_f: dict[str, pd.DataFrame], sym: str, ts: pd.Timestamp):
+def _settle(frames_f, sym: str, ts: pd.Timestamp):
+    if isinstance(frames_f, MarketIndex):
+        return list(frames_f.fund_exact.get((sym, ts), ()))
     df = frames_f.get(sym)
     if df is None:
         return []

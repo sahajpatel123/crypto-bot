@@ -43,7 +43,7 @@ vault/autopilot artifacts, every claim cites command+output or file path.
 | E5 | Statistics module + tests (WF, bootstrap, DSR, PBO, SPA, plateau, regimes, DD, capacity) | DONE | `slow_stats.py`, 9 tests |
 | E6.1 | DEV evaluation, all trials counted, kill failures | TODO | driver contract must freeze first (reviewer risk 1); blocks=hold (risk 2); lock promotion script (risk 3) |
 | E6.2 | Freeze survivors, holdout screen once via verdict | TODO | |
-| E6.3 | Autopilot Family B extension (FROZEN/HOLDOUT_SCREEN/SCREEN_PASS/FORWARD_*) | TODO | |
+| E6.3 | Autopilot Family B extension (FROZEN/HOLDOUT_SCREEN/SCREEN_PASS/FORWARD_*) | TODO | write + test on synthetic before data lands |
 | E6.4 | RESEARCH_VERDICTS_B.md from machine JSONs | TODO | |
 | E7 | Conditional slow live path or SLOW_ENGINE_DESIGN.md | TODO | |
 | E8 | OWNER_ACTIONS + README/ARCHITECTURE/RUNBOOK | TODO | |
