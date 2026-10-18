@@ -172,7 +172,8 @@ def build_lake(raw_dir: str | Path, lake_dir: str | Path) -> dict:
         "format": MANIFEST_FORMAT, "schema_version": SCHEMA_VERSION,
         "provenance": PROVENANCE, "chain_head": "genesis", "entries": [],
         "created_utc": datetime.now(timezone.utc).isoformat()}
-    for dataset in ("klines", "markPriceKlines", "premiumIndexKlines"):
+    for dataset in ("klines", "markPriceKlines", "premiumIndexKlines",
+                    "spot"):
         for iv_dir in sorted((raw / dataset).glob("*")) if (raw / dataset).exists() else []:
             for sym_dir in sorted(iv_dir.glob("*")):
                 frames = [read_klines_zip(z) for z in sorted(sym_dir.glob("*.zip"))]
@@ -181,7 +182,10 @@ def build_lake(raw_dir: str | Path, lake_dir: str | Path) -> dict:
                 df = pd.concat(frames, ignore_index=True)
                 df = df.sort_values("open_time").drop_duplicates(
                     subset="open_time", keep="first").reset_index(drop=True)
-                dest = lake / dataset / f"interval={iv_dir.name}" / f"symbol={sym_dir.name}" / "data.parquet"
+                if dataset == "spot":
+                    dest = lake / "spot" / f"symbol={sym_dir.name}" / "data.parquet"
+                else:
+                    dest = lake / dataset / f"interval={iv_dir.name}" / f"symbol={sym_dir.name}" / "data.parquet"
                 _write_parquet(df, dest)
                 _chain_append(manifest, _file_entry(lake, dest, rows=len(df)))
     for dataset, reader in (("fundingRate", read_funding_zip),

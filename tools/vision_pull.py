@@ -128,7 +128,7 @@ def list_symbols(dataset: str, cadence: str = "monthly") -> list[str]:
 
 # -- plan ----------------------------------------------------------------------
 DATASETS = ("klines", "markPriceKlines", "premiumIndexKlines", "fundingRate",
-            "metrics")
+            "metrics", "spot")
 
 
 def _zips_under(prefix: str, ds: str, sym: str, iv: str | None, *,
@@ -175,6 +175,18 @@ def build_plan(datasets: list[str], *, symbols_file: str | None = None,
             for sym in syms:
                 tasks.append((f"data/futures/um/daily/metrics/{sym}/",
                               ds, sym, None, False))
+        elif ds == "spot":
+            _, prefixes = s3_list_keys("data/spot/monthly/klines/",
+                                       delimiter="/")
+            syms = sorted({p.rstrip("/").rsplit("/", 1)[-1]
+                           for p in prefixes})
+            if sym_filter:
+                syms = [s for s in syms if s in sym_filter]
+            for iv in intervals.get(ds, ["1d"]):
+                for sym in syms:
+                    tasks.append((
+                        f"data/spot/monthly/klines/{sym}/{iv}/",
+                        ds, sym, iv, False))
         else:
             syms = list_symbols(ds)
             if sym_filter:
