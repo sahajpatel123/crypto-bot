@@ -116,9 +116,9 @@ def evaluate_cell(hypothesis: str, params: dict, data: FB.MarketData,
             rules = {}
             for sym, st in per.items():
                 if st.get("side") and st.get("stop"):
-                    rules[sym] = {"stop": st["stop"],
-                                  "expiry": pd.Timestamp(
-                                      st.get("expiry") or d, tz="UTC")}
+                    exp = pd.Timestamp(st.get("expiry") or d)
+                    exp = exp.tz_localize("UTC") if exp.tzinfo is None else exp.tz_convert("UTC")
+                    rules[sym] = {"stop": st["stop"], "expiry": exp}
             if rules:
                 stops_by_day[d] = rules
     res = BT.simulate_vectorized(targets, data.daily, data.funding,
