@@ -82,12 +82,57 @@ def replay_hash(records: Iterable[dict[str, Any]]) -> str:
 
 def load_events(path: str | Path) -> list[dict[str, Any]]:
     """Load a normalized event stream (cryptobot-events/1), enforcing labels."""
-    records = [json.loads(ln) for ln in Path(path).read_text(encoding="utf-8").splitlines()
-               if ln.strip()]
-    for record in records:
-        if "input_class" not in record:
-            raise ValueError("event record missing mandatory input_class label")
-    return records
+    return list(iter_events(path))
+
+
+def iter_events(path: str | Path) -> Iterator[dict[str, Any]]:
+    """Yield normalized events in file order without materializing the stream.
+
+    Blank lines are skipped. Malformed JSON and missing ``input_class``
+    labels raise ``ValueError`` naming the offending line. This is the bulk
+    path: multi-million-event captures must stream, never ``load_events``.
+    """
+    with Path(path).open(encoding="utf-8") as fh:
+        for lineno, line in enumerate(fh, 1):
+            if not line.strip():
+                continue
+            try:
+                record = json.loads(line)
+            except json.JSONDecodeError as exc:
+                raise ValueError(f"{path}: line {lineno}: invalid JSON ({exc})") from exc
+            if "input_class" not in record:
+                raise ValueError(f"{path}: line {lineno}: missing mandatory input_class label")
+            yield record
+
+
+def streaming_events_hash(path: str | Path, *, expect_class: str) -> tuple[str, int]:
+    """SHA-256 over the arrival-ordered event file in O(1) memory.
+
+    Byte-identical to ``events_hash(load_events(path))`` whenever the file
+    is arrival-ordered (what the collector writes): same per-event digest
+    updates, same order. Enforces strictly increasing ``seq`` (proving the
+    file order IS arrival order, so no sort is needed) and ``input_class``
+    on every record. Returns (hexdigest, event count).
+    """
+    digest = hashlib.sha256()
+    count = 0
+    last_seq: int | None = None
+    for record in iter_events(path):
+        seq = int(record["seq"])
+        if last_seq is not None and seq <= last_seq:
+            raise ValueError(
+                f"{path}: seq {seq} after {last_seq}: file is not arrival-ordered; "
+                "streaming arrival replay requires seq order"
+            )
+        last_seq = seq
+        if record["input_class"] != expect_class:
+            raise ValueError(
+                f"input_class mismatch: expected {expect_class!r}, "
+                f"got {record['input_class']!r} at seq {seq}"
+            )
+        digest.update(json.dumps(record, sort_keys=True).encode("utf-8"))
+        count += 1
+    return digest.hexdigest(), count
 
 
 def replay_events(

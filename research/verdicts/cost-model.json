@@ -1,0 +1,41 @@
+{
+ "canonical_25_25_at_26bps": {
+  "p_star": 1.02,
+  "verdict": "INFEASIBLE"
+ },
+ "document_sha256": "d385c6db435030e1653f7c49953eb079019a836788627c7f66ae1bfc59b23af4",
+ "ev": "EV=p*T-(1-p)*S-c",
+ "formula": "p*=(S+c)/(T+S)",
+ "infeasible": [
+  {
+   "entry": "taker",
+   "feasible": false,
+   "required_win_rate": 1.04,
+   "round_trip_bps": 27.0,
+   "stop_bps": 25.0,
+   "stress": 1.5,
+   "target_bps": 25.0
+  },
+  {
+   "entry": "taker",
+   "feasible": false,
+   "required_win_rate": 1.22,
+   "round_trip_bps": 36.0,
+   "stop_bps": 25.0,
+   "stress": 2.0,
+   "target_bps": 25.0
+  },
+  {
+   "entry": "maker",
+   "feasible": false,
+   "required_win_rate": 1.1,
+   "round_trip_bps": 30.0,
+   "stop_bps": 25.0,
+   "stress": 2.0,
+   "target_bps": 25.0
+  }
+ ],
+ "mismatches": [],
+ "rows_checked": 30,
+ "tool": "verify_breakeven"
+}

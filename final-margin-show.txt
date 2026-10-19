@@ -1,0 +1,647 @@
+############ cryptobot.risk.margin.x__finite__mutmut_1
+-    if not isinstance(value, (int, float)) or not math.isfinite(value):
++    if not isinstance(value, (int, float)) and not math.isfinite(value):
+############ cryptobot.risk.margin.x__finite__mutmut_2
+-    if not isinstance(value, (int, float)) or not math.isfinite(value):
++    if isinstance(value, (int, float)) or not math.isfinite(value):
+############ cryptobot.risk.margin.x__finite__mutmut_3
+-    if not isinstance(value, (int, float)) or not math.isfinite(value):
++    if not isinstance(value, (int, float)) or math.isfinite(value):
+############ cryptobot.risk.margin.x__finite__mutmut_4
+-    if not isinstance(value, (int, float)) or not math.isfinite(value):
++    if not isinstance(value, (int, float)) or not math.isfinite(None):
+############ cryptobot.risk.margin.x__finite__mutmut_5
+-        raise ValueError(f"{name} must be finite, got {value!r}")
++        raise ValueError(None)
+############ cryptobot.risk.margin.x__finite__mutmut_6
+-    return float(value)
++    return float(None)
+############ cryptobot.risk.margin.x_maintenance_margin__mutmut_1
+-    notional = _finite(notional_usdt, "notional_usdt")
++    notional = None
+############ cryptobot.risk.margin.x_maintenance_margin__mutmut_2
+-    notional = _finite(notional_usdt, "notional_usdt")
++    notional = _finite(None, "notional_usdt")
+############ cryptobot.risk.margin.x_maintenance_margin__mutmut_3
+-    notional = _finite(notional_usdt, "notional_usdt")
++    notional = _finite(notional_usdt, None)
+############ cryptobot.risk.margin.x_maintenance_margin__mutmut_4
+-    notional = _finite(notional_usdt, "notional_usdt")
++    notional = _finite("notional_usdt")
+############ cryptobot.risk.margin.x_maintenance_margin__mutmut_5
+-    notional = _finite(notional_usdt, "notional_usdt")
++    notional = _finite(notional_usdt, )
+############ cryptobot.risk.margin.x_maintenance_margin__mutmut_6
+-    notional = _finite(notional_usdt, "notional_usdt")
++    notional = _finite(notional_usdt, "XXnotional_usdtXX")
+############ cryptobot.risk.margin.x_maintenance_margin__mutmut_7
+-    notional = _finite(notional_usdt, "notional_usdt")
++    notional = _finite(notional_usdt, "NOTIONAL_USDT")
+############ cryptobot.risk.margin.x_maintenance_margin__mutmut_8
+-    if notional < 0:
++    if notional <= 0:
+############ cryptobot.risk.margin.x_maintenance_margin__mutmut_9
+-    if notional < 0:
++    if notional < 1:
+############ cryptobot.risk.margin.x_maintenance_margin__mutmut_10
+-        raise ValueError("notional_usdt must be >= 0")
++        raise ValueError(None)
+############ cryptobot.risk.margin.x_maintenance_margin__mutmut_11
+-        raise ValueError("notional_usdt must be >= 0")
++        raise ValueError("XXnotional_usdt must be >= 0XX")
+############ cryptobot.risk.margin.x_maintenance_margin__mutmut_12
+-        raise ValueError("notional_usdt must be >= 0")
++        raise ValueError("NOTIONAL_USDT MUST BE >= 0")
+############ cryptobot.risk.margin.x_maintenance_margin__mutmut_13
+-    if not brackets:
++    if brackets:
+############ cryptobot.risk.margin.x_maintenance_margin__mutmut_14
+-        raise ValueError("leverage brackets required")
++        raise ValueError(None)
+############ cryptobot.risk.margin.x_maintenance_margin__mutmut_15
+-        raise ValueError("leverage brackets required")
++        raise ValueError("XXleverage brackets requiredXX")
+############ cryptobot.risk.margin.x_maintenance_margin__mutmut_16
+-        raise ValueError("leverage brackets required")
++        raise ValueError("LEVERAGE BRACKETS REQUIRED")
+############ cryptobot.risk.margin.x_maintenance_margin__mutmut_17
+-    for tier in sorted(brackets, key=lambda b: float(b["notionalCap"])):
++    for tier in sorted(None, key=lambda b: float(b["notionalCap"])):
+############ cryptobot.risk.margin.x_maintenance_margin__mutmut_18
+-    for tier in sorted(brackets, key=lambda b: float(b["notionalCap"])):
++    for tier in sorted(brackets, key=None):
+############ cryptobot.risk.margin.x_maintenance_margin__mutmut_19
+-    for tier in sorted(brackets, key=lambda b: float(b["notionalCap"])):
++    for tier in sorted(key=lambda b: float(b["notionalCap"])):
+############ cryptobot.risk.margin.x_maintenance_margin__mutmut_20
+-    for tier in sorted(brackets, key=lambda b: float(b["notionalCap"])):
++    for tier in sorted(brackets, ):
+############ cryptobot.risk.margin.x_maintenance_margin__mutmut_21
+-    for tier in sorted(brackets, key=lambda b: float(b["notionalCap"])):
++    for tier in sorted(brackets, key=lambda b: None):
+############ cryptobot.risk.margin.x_maintenance_margin__mutmut_22
+-    for tier in sorted(brackets, key=lambda b: float(b["notionalCap"])):
++    for tier in sorted(brackets, key=lambda b: float(None)):
+############ cryptobot.risk.margin.x_maintenance_margin__mutmut_23
+-    for tier in sorted(brackets, key=lambda b: float(b["notionalCap"])):
++    for tier in sorted(brackets, key=lambda b: float(b["XXnotionalCapXX"])):
+############ cryptobot.risk.margin.x_maintenance_margin__mutmut_24
+-    for tier in sorted(brackets, key=lambda b: float(b["notionalCap"])):
++    for tier in sorted(brackets, key=lambda b: float(b["notionalcap"])):
+############ cryptobot.risk.margin.x_maintenance_margin__mutmut_25
+-    for tier in sorted(brackets, key=lambda b: float(b["notionalCap"])):
++    for tier in sorted(brackets, key=lambda b: float(b["NOTIONALCAP"])):
+############ cryptobot.risk.margin.x_maintenance_margin__mutmut_26
+-        if notional <= float(tier["notionalCap"]):
++        if notional < float(tier["notionalCap"]):
+############ cryptobot.risk.margin.x_maintenance_margin__mutmut_27
+-        if notional <= float(tier["notionalCap"]):
++        if notional <= float(None):
+############ cryptobot.risk.margin.x_maintenance_margin__mutmut_28
+-        if notional <= float(tier["notionalCap"]):
++        if notional <= float(tier["XXnotionalCapXX"]):
+############ cryptobot.risk.margin.x_maintenance_margin__mutmut_29
+-        if notional <= float(tier["notionalCap"]):
++        if notional <= float(tier["notionalcap"]):
+############ cryptobot.risk.margin.x_maintenance_margin__mutmut_30
+-        if notional <= float(tier["notionalCap"]):
++        if notional <= float(tier["NOTIONALCAP"]):
+############ cryptobot.risk.margin.x_maintenance_margin__mutmut_31
+-            return notional * float(tier["maintMarginRatio"]) \
+-                - float(tier.get("cum", 0.0))
++            return notional * float(tier["maintMarginRatio"]) + float(tier.get("cum", 0.0))
+############ cryptobot.risk.margin.x_maintenance_margin__mutmut_32
+-            return notional * float(tier["maintMarginRatio"]) \
++            return notional / float(tier["maintMarginRatio"]) \
+############ cryptobot.risk.margin.x_maintenance_margin__mutmut_33
+-            return notional * float(tier["maintMarginRatio"]) \
++            return notional * float(None) \
+############ cryptobot.risk.margin.x_maintenance_margin__mutmut_34
+-            return notional * float(tier["maintMarginRatio"]) \
++            return notional * float(tier["XXmaintMarginRatioXX"]) \
+############ cryptobot.risk.margin.x_maintenance_margin__mutmut_35
+-            return notional * float(tier["maintMarginRatio"]) \
++            return notional * float(tier["maintmarginratio"]) \
+############ cryptobot.risk.margin.x_maintenance_margin__mutmut_36
+-            return notional * float(tier["maintMarginRatio"]) \
++            return notional * float(tier["MAINTMARGINRATIO"]) \
+############ cryptobot.risk.margin.x_maintenance_margin__mutmut_37
+-                - float(tier.get("cum", 0.0))
++                - float(None)
+############ cryptobot.risk.margin.x_maintenance_margin__mutmut_38
+-                - float(tier.get("cum", 0.0))
++                - float(tier.get(None, 0.0))
+############ cryptobot.risk.margin.x_maintenance_margin__mutmut_39
+-                - float(tier.get("cum", 0.0))
++                - float(tier.get("cum", None))
+############ cryptobot.risk.margin.x_maintenance_margin__mutmut_40
+-                - float(tier.get("cum", 0.0))
++                - float(tier.get(0.0))
+############ cryptobot.risk.margin.x_maintenance_margin__mutmut_41
+-                - float(tier.get("cum", 0.0))
++                - float(tier.get("cum", ))
+############ cryptobot.risk.margin.x_maintenance_margin__mutmut_42
+-                - float(tier.get("cum", 0.0))
++                - float(tier.get("XXcumXX", 0.0))
+############ cryptobot.risk.margin.x_maintenance_margin__mutmut_43
+-                - float(tier.get("cum", 0.0))
++                - float(tier.get("CUM", 0.0))
+############ cryptobot.risk.margin.x_maintenance_margin__mutmut_44
+-                - float(tier.get("cum", 0.0))
++                - float(tier.get("cum", 1.0))
+############ cryptobot.risk.margin.x_maintenance_margin__mutmut_45
+-    top = max(brackets, key=lambda b: float(b["notionalCap"]))
++    top = None
+############ cryptobot.risk.margin.x_maintenance_margin__mutmut_46
+-    top = max(brackets, key=lambda b: float(b["notionalCap"]))
++    top = max(None, key=lambda b: float(b["notionalCap"]))
+############ cryptobot.risk.margin.x_maintenance_margin__mutmut_47
+-    top = max(brackets, key=lambda b: float(b["notionalCap"]))
++    top = max(brackets, key=None)
+############ cryptobot.risk.margin.x_maintenance_margin__mutmut_48
+-    top = max(brackets, key=lambda b: float(b["notionalCap"]))
++    top = max(key=lambda b: float(b["notionalCap"]))
+############ cryptobot.risk.margin.x_maintenance_margin__mutmut_49
+-    top = max(brackets, key=lambda b: float(b["notionalCap"]))
++    top = max(brackets, )
+############ cryptobot.risk.margin.x_maintenance_margin__mutmut_50
+-    top = max(brackets, key=lambda b: float(b["notionalCap"]))
++    top = max(brackets, key=lambda b: None)
+############ cryptobot.risk.margin.x_maintenance_margin__mutmut_51
+-    top = max(brackets, key=lambda b: float(b["notionalCap"]))
++    top = max(brackets, key=lambda b: float(None))
+############ cryptobot.risk.margin.x_maintenance_margin__mutmut_52
+-    top = max(brackets, key=lambda b: float(b["notionalCap"]))
++    top = max(brackets, key=lambda b: float(b["XXnotionalCapXX"]))
+############ cryptobot.risk.margin.x_maintenance_margin__mutmut_53
+-    top = max(brackets, key=lambda b: float(b["notionalCap"]))
++    top = max(brackets, key=lambda b: float(b["notionalcap"]))
+############ cryptobot.risk.margin.x_maintenance_margin__mutmut_54
+-    top = max(brackets, key=lambda b: float(b["notionalCap"]))
++    top = max(brackets, key=lambda b: float(b["NOTIONALCAP"]))
+############ cryptobot.risk.margin.x_maintenance_margin__mutmut_55
+-    return notional * float(top["maintMarginRatio"]) \
+-        - float(top.get("cum", 0.0))
++    return notional * float(top["maintMarginRatio"]) + float(top.get("cum", 0.0))
+############ cryptobot.risk.margin.x_maintenance_margin__mutmut_56
+-    return notional * float(top["maintMarginRatio"]) \
++    return notional / float(top["maintMarginRatio"]) \
+############ cryptobot.risk.margin.x_maintenance_margin__mutmut_57
+-    return notional * float(top["maintMarginRatio"]) \
++    return notional * float(None) \
+############ cryptobot.risk.margin.x_maintenance_margin__mutmut_58
+-    return notional * float(top["maintMarginRatio"]) \
++    return notional * float(top["XXmaintMarginRatioXX"]) \
+############ cryptobot.risk.margin.x_maintenance_margin__mutmut_59
+-    return notional * float(top["maintMarginRatio"]) \
++    return notional * float(top["maintmarginratio"]) \
+############ cryptobot.risk.margin.x_maintenance_margin__mutmut_60
+-    return notional * float(top["maintMarginRatio"]) \
++    return notional * float(top["MAINTMARGINRATIO"]) \
+############ cryptobot.risk.margin.x_maintenance_margin__mutmut_61
+-        - float(top.get("cum", 0.0))
++        - float(None)
+############ cryptobot.risk.margin.x_maintenance_margin__mutmut_62
+-        - float(top.get("cum", 0.0))
++        - float(top.get(None, 0.0))
+############ cryptobot.risk.margin.x_maintenance_margin__mutmut_63
+-        - float(top.get("cum", 0.0))
++        - float(top.get("cum", None))
+############ cryptobot.risk.margin.x_maintenance_margin__mutmut_64
+-        - float(top.get("cum", 0.0))
++        - float(top.get(0.0))
+############ cryptobot.risk.margin.x_maintenance_margin__mutmut_65
+-        - float(top.get("cum", 0.0))
++        - float(top.get("cum", ))
+############ cryptobot.risk.margin.x_maintenance_margin__mutmut_66
+-        - float(top.get("cum", 0.0))
++        - float(top.get("XXcumXX", 0.0))
+############ cryptobot.risk.margin.x_maintenance_margin__mutmut_67
+-        - float(top.get("cum", 0.0))
++        - float(top.get("CUM", 0.0))
+############ cryptobot.risk.margin.x_maintenance_margin__mutmut_68
+-        - float(top.get("cum", 0.0))
++        - float(top.get("cum", 1.0))
+############ cryptobot.risk.margin.x_liquidation_price_isolated__mutmut_1
+-    entry = _finite(entry, "entry")
++    entry = None
+############ cryptobot.risk.margin.x_liquidation_price_isolated__mutmut_2
+-    entry = _finite(entry, "entry")
++    entry = _finite(None, "entry")
+############ cryptobot.risk.margin.x_liquidation_price_isolated__mutmut_3
+-    entry = _finite(entry, "entry")
++    entry = _finite(entry, None)
+############ cryptobot.risk.margin.x_liquidation_price_isolated__mutmut_4
+-    entry = _finite(entry, "entry")
++    entry = _finite("entry")
+############ cryptobot.risk.margin.x_liquidation_price_isolated__mutmut_5
+-    entry = _finite(entry, "entry")
++    entry = _finite(entry, )
+############ cryptobot.risk.margin.x_liquidation_price_isolated__mutmut_6
+-    entry = _finite(entry, "entry")
++    entry = _finite(entry, "XXentryXX")
+############ cryptobot.risk.margin.x_liquidation_price_isolated__mutmut_7
+-    entry = _finite(entry, "entry")
++    entry = _finite(entry, "ENTRY")
+############ cryptobot.risk.margin.x_liquidation_price_isolated__mutmut_8
+-    qty = _finite(qty, "qty")
++    qty = None
+############ cryptobot.risk.margin.x_liquidation_price_isolated__mutmut_9
+-    qty = _finite(qty, "qty")
++    qty = _finite(None, "qty")
+############ cryptobot.risk.margin.x_liquidation_price_isolated__mutmut_10
+-    qty = _finite(qty, "qty")
++    qty = _finite(qty, None)
+############ cryptobot.risk.margin.x_liquidation_price_isolated__mutmut_11
+-    qty = _finite(qty, "qty")
++    qty = _finite("qty")
+############ cryptobot.risk.margin.x_liquidation_price_isolated__mutmut_12
+-    qty = _finite(qty, "qty")
++    qty = _finite(qty, )
+############ cryptobot.risk.margin.x_liquidation_price_isolated__mutmut_13
+-    qty = _finite(qty, "qty")
++    qty = _finite(qty, "XXqtyXX")
+############ cryptobot.risk.margin.x_liquidation_price_isolated__mutmut_14
+-    qty = _finite(qty, "qty")
++    qty = _finite(qty, "QTY")
+############ cryptobot.risk.margin.x_liquidation_price_isolated__mutmut_15
+-    if qty == 0:
++    if qty != 0:
+############ cryptobot.risk.margin.x_liquidation_price_isolated__mutmut_16
+-    if qty == 0:
++    if qty == 1:
+############ cryptobot.risk.margin.x_liquidation_price_isolated__mutmut_17
+-        raise ValueError("qty must be non-zero")
++        raise ValueError(None)
+############ cryptobot.risk.margin.x_liquidation_price_isolated__mutmut_18
+-        raise ValueError("qty must be non-zero")
++        raise ValueError("XXqty must be non-zeroXX")
+############ cryptobot.risk.margin.x_liquidation_price_isolated__mutmut_19
+-        raise ValueError("qty must be non-zero")
++        raise ValueError("QTY MUST BE NON-ZERO")
+############ cryptobot.risk.margin.x_liquidation_price_isolated__mutmut_20
+-    buffer = _finite(isolated_margin, "isolated_margin") \
+-        - _finite(maint_margin, "maint_margin")
++    buffer = None
+############ cryptobot.risk.margin.x_liquidation_price_isolated__mutmut_21
+-    buffer = _finite(isolated_margin, "isolated_margin") \
+-        - _finite(maint_margin, "maint_margin")
++    buffer = _finite(isolated_margin, "isolated_margin") + _finite(maint_margin, "maint_margin")
+############ cryptobot.risk.margin.x_liquidation_price_isolated__mutmut_22
+-    buffer = _finite(isolated_margin, "isolated_margin") \
++    buffer = _finite(None, "isolated_margin") \
+############ cryptobot.risk.margin.x_liquidation_price_isolated__mutmut_23
+-    buffer = _finite(isolated_margin, "isolated_margin") \
++    buffer = _finite(isolated_margin, None) \
+############ cryptobot.risk.margin.x_liquidation_price_isolated__mutmut_24
+-    buffer = _finite(isolated_margin, "isolated_margin") \
++    buffer = _finite("isolated_margin") \
+############ cryptobot.risk.margin.x_liquidation_price_isolated__mutmut_25
+-    buffer = _finite(isolated_margin, "isolated_margin") \
++    buffer = _finite(isolated_margin, ) \
+############ cryptobot.risk.margin.x_liquidation_price_isolated__mutmut_26
+-    buffer = _finite(isolated_margin, "isolated_margin") \
++    buffer = _finite(isolated_margin, "XXisolated_marginXX") \
+############ cryptobot.risk.margin.x_liquidation_price_isolated__mutmut_27
+-    buffer = _finite(isolated_margin, "isolated_margin") \
++    buffer = _finite(isolated_margin, "ISOLATED_MARGIN") \
+############ cryptobot.risk.margin.x_liquidation_price_isolated__mutmut_28
+-        - _finite(maint_margin, "maint_margin")
++        - _finite(None, "maint_margin")
+############ cryptobot.risk.margin.x_liquidation_price_isolated__mutmut_29
+-        - _finite(maint_margin, "maint_margin")
++        - _finite(maint_margin, None)
+############ cryptobot.risk.margin.x_liquidation_price_isolated__mutmut_30
+-        - _finite(maint_margin, "maint_margin")
++        - _finite("maint_margin")
+############ cryptobot.risk.margin.x_liquidation_price_isolated__mutmut_31
+-        - _finite(maint_margin, "maint_margin")
++        - _finite(maint_margin, )
+############ cryptobot.risk.margin.x_liquidation_price_isolated__mutmut_32
+-        - _finite(maint_margin, "maint_margin")
++        - _finite(maint_margin, "XXmaint_marginXX")
+############ cryptobot.risk.margin.x_liquidation_price_isolated__mutmut_33
+-        - _finite(maint_margin, "maint_margin")
++        - _finite(maint_margin, "MAINT_MARGIN")
+############ cryptobot.risk.margin.x_liquidation_price_isolated__mutmut_34
+-    return entry - buffer / qty
++    return entry + buffer / qty
+############ cryptobot.risk.margin.x_liquidation_price_isolated__mutmut_35
+-    return entry - buffer / qty
++    return entry - buffer * qty
+############ cryptobot.risk.margin.x_liquidation_ok__mutmut_1
+-    entry = _finite(entry, "entry")
++    entry = None
+############ cryptobot.risk.margin.x_liquidation_ok__mutmut_2
+-    entry = _finite(entry, "entry")
++    entry = _finite(None, "entry")
+############ cryptobot.risk.margin.x_liquidation_ok__mutmut_3
+-    entry = _finite(entry, "entry")
++    entry = _finite(entry, None)
+############ cryptobot.risk.margin.x_liquidation_ok__mutmut_4
+-    entry = _finite(entry, "entry")
++    entry = _finite("entry")
+############ cryptobot.risk.margin.x_liquidation_ok__mutmut_5
+-    entry = _finite(entry, "entry")
++    entry = _finite(entry, )
+############ cryptobot.risk.margin.x_liquidation_ok__mutmut_6
+-    entry = _finite(entry, "entry")
++    entry = _finite(entry, "XXentryXX")
+############ cryptobot.risk.margin.x_liquidation_ok__mutmut_7
+-    entry = _finite(entry, "entry")
++    entry = _finite(entry, "ENTRY")
+############ cryptobot.risk.margin.x_liquidation_ok__mutmut_8
+-    stop = _finite(stop, "stop")
++    stop = None
+############ cryptobot.risk.margin.x_liquidation_ok__mutmut_9
+-    stop = _finite(stop, "stop")
++    stop = _finite(None, "stop")
+############ cryptobot.risk.margin.x_liquidation_ok__mutmut_10
+-    stop = _finite(stop, "stop")
++    stop = _finite(stop, None)
+############ cryptobot.risk.margin.x_liquidation_ok__mutmut_11
+-    stop = _finite(stop, "stop")
++    stop = _finite("stop")
+############ cryptobot.risk.margin.x_liquidation_ok__mutmut_12
+-    stop = _finite(stop, "stop")
++    stop = _finite(stop, )
+############ cryptobot.risk.margin.x_liquidation_ok__mutmut_13
+-    stop = _finite(stop, "stop")
++    stop = _finite(stop, "XXstopXX")
+############ cryptobot.risk.margin.x_liquidation_ok__mutmut_14
+-    stop = _finite(stop, "stop")
++    stop = _finite(stop, "STOP")
+############ cryptobot.risk.margin.x_liquidation_ok__mutmut_15
+-    liq = _finite(liq, "liq")
++    liq = None
+############ cryptobot.risk.margin.x_liquidation_ok__mutmut_16
+-    liq = _finite(liq, "liq")
++    liq = _finite(None, "liq")
+############ cryptobot.risk.margin.x_liquidation_ok__mutmut_17
+-    liq = _finite(liq, "liq")
++    liq = _finite(liq, None)
+############ cryptobot.risk.margin.x_liquidation_ok__mutmut_18
+-    liq = _finite(liq, "liq")
++    liq = _finite("liq")
+############ cryptobot.risk.margin.x_liquidation_ok__mutmut_19
+-    liq = _finite(liq, "liq")
++    liq = _finite(liq, )
+############ cryptobot.risk.margin.x_liquidation_ok__mutmut_20
+-    liq = _finite(liq, "liq")
++    liq = _finite(liq, "XXliqXX")
+############ cryptobot.risk.margin.x_liquidation_ok__mutmut_21
+-    liq = _finite(liq, "liq")
++    liq = _finite(liq, "LIQ")
+############ cryptobot.risk.margin.x_liquidation_ok__mutmut_22
+-    slip = _finite(stressed_slippage_bps, "stressed_slippage_bps")
++    slip = None
+############ cryptobot.risk.margin.x_liquidation_ok__mutmut_23
+-    slip = _finite(stressed_slippage_bps, "stressed_slippage_bps")
++    slip = _finite(None, "stressed_slippage_bps")
+############ cryptobot.risk.margin.x_liquidation_ok__mutmut_24
+-    slip = _finite(stressed_slippage_bps, "stressed_slippage_bps")
++    slip = _finite(stressed_slippage_bps, None)
+############ cryptobot.risk.margin.x_liquidation_ok__mutmut_25
+-    slip = _finite(stressed_slippage_bps, "stressed_slippage_bps")
++    slip = _finite("stressed_slippage_bps")
+############ cryptobot.risk.margin.x_liquidation_ok__mutmut_26
+-    slip = _finite(stressed_slippage_bps, "stressed_slippage_bps")
++    slip = _finite(stressed_slippage_bps, )
+############ cryptobot.risk.margin.x_liquidation_ok__mutmut_27
+-    slip = _finite(stressed_slippage_bps, "stressed_slippage_bps")
++    slip = _finite(stressed_slippage_bps, "XXstressed_slippage_bpsXX")
+############ cryptobot.risk.margin.x_liquidation_ok__mutmut_28
+-    slip = _finite(stressed_slippage_bps, "stressed_slippage_bps")
++    slip = _finite(stressed_slippage_bps, "STRESSED_SLIPPAGE_BPS")
+############ cryptobot.risk.margin.x_liquidation_ok__mutmut_29
+-    stop_dist = abs(entry - stop)
++    stop_dist = None
+############ cryptobot.risk.margin.x_liquidation_ok__mutmut_30
+-    stop_dist = abs(entry - stop)
++    stop_dist = abs(None)
+############ cryptobot.risk.margin.x_liquidation_ok__mutmut_31
+-    stop_dist = abs(entry - stop)
++    stop_dist = abs(entry + stop)
+############ cryptobot.risk.margin.x_liquidation_ok__mutmut_32
+-    if stop_dist <= 0:
++    if stop_dist < 0:
+############ cryptobot.risk.margin.x_liquidation_ok__mutmut_33
+-    if stop_dist <= 0:
++    if stop_dist <= 1:
+############ cryptobot.risk.margin.x_liquidation_ok__mutmut_34
+-        return False
++        return True
+############ cryptobot.risk.margin.x_liquidation_ok__mutmut_35
+-    liq_dist = abs(entry - liq)
++    liq_dist = None
+############ cryptobot.risk.margin.x_liquidation_ok__mutmut_36
+-    liq_dist = abs(entry - liq)
++    liq_dist = abs(None)
+############ cryptobot.risk.margin.x_liquidation_ok__mutmut_37
+-    liq_dist = abs(entry - liq)
++    liq_dist = abs(entry + liq)
+############ cryptobot.risk.margin.x_liquidation_ok__mutmut_38
+-    if liq_dist < 3.0 * stop_dist:
++    if liq_dist <= 3.0 * stop_dist:
+############ cryptobot.risk.margin.x_liquidation_ok__mutmut_39
+-    if liq_dist < 3.0 * stop_dist:
++    if liq_dist < 3.0 / stop_dist:
+############ cryptobot.risk.margin.x_liquidation_ok__mutmut_40
+-    if liq_dist < 3.0 * stop_dist:
++    if liq_dist < 4.0 * stop_dist:
+############ cryptobot.risk.margin.x_liquidation_ok__mutmut_41
+-        return False
++        return True
+############ cryptobot.risk.margin.x_liquidation_ok__mutmut_42
+-    slip_abs = entry * slip / 10000.0
++    slip_abs = None
+############ cryptobot.risk.margin.x_liquidation_ok__mutmut_43
+-    slip_abs = entry * slip / 10000.0
++    slip_abs = entry * slip * 10000.0
+############ cryptobot.risk.margin.x_liquidation_ok__mutmut_44
+-    slip_abs = entry * slip / 10000.0
++    slip_abs = entry / slip / 10000.0
+############ cryptobot.risk.margin.x_liquidation_ok__mutmut_45
+-    slip_abs = entry * slip / 10000.0
++    slip_abs = entry * slip / 10001.0
+############ cryptobot.risk.margin.x_liquidation_ok__mutmut_46
+-    if side == "LONG":
++    if side != "LONG":
+############ cryptobot.risk.margin.x_liquidation_ok__mutmut_47
+-    if side == "LONG":
++    if side == "XXLONGXX":
+############ cryptobot.risk.margin.x_liquidation_ok__mutmut_48
+-    if side == "LONG":
++    if side == "long":
+############ cryptobot.risk.margin.x_liquidation_ok__mutmut_49
+-        return liq < stop - slip_abs
++        return liq <= stop - slip_abs
+############ cryptobot.risk.margin.x_liquidation_ok__mutmut_50
+-        return liq < stop - slip_abs
++        return liq < stop + slip_abs
+############ cryptobot.risk.margin.x_liquidation_ok__mutmut_51
+-    if side == "SHORT":
++    if side != "SHORT":
+############ cryptobot.risk.margin.x_liquidation_ok__mutmut_52
+-    if side == "SHORT":
++    if side == "XXSHORTXX":
+############ cryptobot.risk.margin.x_liquidation_ok__mutmut_53
+-    if side == "SHORT":
++    if side == "short":
+############ cryptobot.risk.margin.x_liquidation_ok__mutmut_54
+-        return liq > stop + slip_abs
++        return liq >= stop + slip_abs
+############ cryptobot.risk.margin.x_liquidation_ok__mutmut_55
+-        return liq > stop + slip_abs
++        return liq > stop - slip_abs
+############ cryptobot.risk.margin.x_liquidation_ok__mutmut_56
+-    raise ValueError(f"side must be LONG or SHORT, got {side!r}")
++    raise ValueError(None)
+############ cryptobot.risk.margin.x_minimum_viable_equity__mutmut_1
+-                          loss_budget_pct: float = 0.00125,
++                          loss_budget_pct: float = 1.00125,
+############ cryptobot.risk.margin.x_minimum_viable_equity__mutmut_2
+-                          stressed_cost_frac: float = 0.0) -> float:
++                          stressed_cost_frac: float = 1.0) -> float:
+############ cryptobot.risk.margin.x_minimum_viable_equity__mutmut_3
+-    min_notional = _finite(min_notional_usdt, "min_notional_usdt")
++    min_notional = None
+############ cryptobot.risk.margin.x_minimum_viable_equity__mutmut_4
+-    min_notional = _finite(min_notional_usdt, "min_notional_usdt")
++    min_notional = _finite(None, "min_notional_usdt")
+############ cryptobot.risk.margin.x_minimum_viable_equity__mutmut_5
+-    min_notional = _finite(min_notional_usdt, "min_notional_usdt")
++    min_notional = _finite(min_notional_usdt, None)
+############ cryptobot.risk.margin.x_minimum_viable_equity__mutmut_6
+-    min_notional = _finite(min_notional_usdt, "min_notional_usdt")
++    min_notional = _finite("min_notional_usdt")
+############ cryptobot.risk.margin.x_minimum_viable_equity__mutmut_7
+-    min_notional = _finite(min_notional_usdt, "min_notional_usdt")
++    min_notional = _finite(min_notional_usdt, )
+############ cryptobot.risk.margin.x_minimum_viable_equity__mutmut_8
+-    min_notional = _finite(min_notional_usdt, "min_notional_usdt")
++    min_notional = _finite(min_notional_usdt, "XXmin_notional_usdtXX")
+############ cryptobot.risk.margin.x_minimum_viable_equity__mutmut_9
+-    min_notional = _finite(min_notional_usdt, "min_notional_usdt")
++    min_notional = _finite(min_notional_usdt, "MIN_NOTIONAL_USDT")
+############ cryptobot.risk.margin.x_minimum_viable_equity__mutmut_10
+-    dist = _finite(stop_dist_frac, "stop_dist_frac")
++    dist = None
+############ cryptobot.risk.margin.x_minimum_viable_equity__mutmut_11
+-    dist = _finite(stop_dist_frac, "stop_dist_frac")
++    dist = _finite(None, "stop_dist_frac")
+############ cryptobot.risk.margin.x_minimum_viable_equity__mutmut_12
+-    dist = _finite(stop_dist_frac, "stop_dist_frac")
++    dist = _finite(stop_dist_frac, None)
+############ cryptobot.risk.margin.x_minimum_viable_equity__mutmut_13
+-    dist = _finite(stop_dist_frac, "stop_dist_frac")
++    dist = _finite("stop_dist_frac")
+############ cryptobot.risk.margin.x_minimum_viable_equity__mutmut_14
+-    dist = _finite(stop_dist_frac, "stop_dist_frac")
++    dist = _finite(stop_dist_frac, )
+############ cryptobot.risk.margin.x_minimum_viable_equity__mutmut_15
+-    dist = _finite(stop_dist_frac, "stop_dist_frac")
++    dist = _finite(stop_dist_frac, "XXstop_dist_fracXX")
+############ cryptobot.risk.margin.x_minimum_viable_equity__mutmut_16
+-    dist = _finite(stop_dist_frac, "stop_dist_frac")
++    dist = _finite(stop_dist_frac, "STOP_DIST_FRAC")
+############ cryptobot.risk.margin.x_minimum_viable_equity__mutmut_17
+-    budget = _finite(loss_budget_pct, "loss_budget_pct")
++    budget = None
+############ cryptobot.risk.margin.x_minimum_viable_equity__mutmut_18
+-    budget = _finite(loss_budget_pct, "loss_budget_pct")
++    budget = _finite(None, "loss_budget_pct")
+############ cryptobot.risk.margin.x_minimum_viable_equity__mutmut_19
+-    budget = _finite(loss_budget_pct, "loss_budget_pct")
++    budget = _finite(loss_budget_pct, None)
+############ cryptobot.risk.margin.x_minimum_viable_equity__mutmut_20
+-    budget = _finite(loss_budget_pct, "loss_budget_pct")
++    budget = _finite("loss_budget_pct")
+############ cryptobot.risk.margin.x_minimum_viable_equity__mutmut_21
+-    budget = _finite(loss_budget_pct, "loss_budget_pct")
++    budget = _finite(loss_budget_pct, )
+############ cryptobot.risk.margin.x_minimum_viable_equity__mutmut_22
+-    budget = _finite(loss_budget_pct, "loss_budget_pct")
++    budget = _finite(loss_budget_pct, "XXloss_budget_pctXX")
+############ cryptobot.risk.margin.x_minimum_viable_equity__mutmut_23
+-    budget = _finite(loss_budget_pct, "loss_budget_pct")
++    budget = _finite(loss_budget_pct, "LOSS_BUDGET_PCT")
+############ cryptobot.risk.margin.x_minimum_viable_equity__mutmut_24
+-    costs = _finite(stressed_cost_frac, "stressed_cost_frac")
++    costs = None
+############ cryptobot.risk.margin.x_minimum_viable_equity__mutmut_25
+-    costs = _finite(stressed_cost_frac, "stressed_cost_frac")
++    costs = _finite(None, "stressed_cost_frac")
+############ cryptobot.risk.margin.x_minimum_viable_equity__mutmut_26
+-    costs = _finite(stressed_cost_frac, "stressed_cost_frac")
++    costs = _finite(stressed_cost_frac, None)
+############ cryptobot.risk.margin.x_minimum_viable_equity__mutmut_27
+-    costs = _finite(stressed_cost_frac, "stressed_cost_frac")
++    costs = _finite("stressed_cost_frac")
+############ cryptobot.risk.margin.x_minimum_viable_equity__mutmut_28
+-    costs = _finite(stressed_cost_frac, "stressed_cost_frac")
++    costs = _finite(stressed_cost_frac, )
+############ cryptobot.risk.margin.x_minimum_viable_equity__mutmut_29
+-    costs = _finite(stressed_cost_frac, "stressed_cost_frac")
++    costs = _finite(stressed_cost_frac, "XXstressed_cost_fracXX")
+############ cryptobot.risk.margin.x_minimum_viable_equity__mutmut_30
+-    costs = _finite(stressed_cost_frac, "stressed_cost_frac")
++    costs = _finite(stressed_cost_frac, "STRESSED_COST_FRAC")
+############ cryptobot.risk.margin.x_minimum_viable_equity__mutmut_31
+-    if min_notional <= 0 or dist <= 0 or budget <= 0 or costs < 0:
++    if min_notional <= 0 or dist <= 0 or budget <= 0 and costs < 0:
+############ cryptobot.risk.margin.x_minimum_viable_equity__mutmut_32
+-    if min_notional <= 0 or dist <= 0 or budget <= 0 or costs < 0:
++    if min_notional <= 0 or dist <= 0 and budget <= 0 or costs < 0:
+############ cryptobot.risk.margin.x_minimum_viable_equity__mutmut_33
+-    if min_notional <= 0 or dist <= 0 or budget <= 0 or costs < 0:
++    if min_notional <= 0 and dist <= 0 or budget <= 0 or costs < 0:
+############ cryptobot.risk.margin.x_minimum_viable_equity__mutmut_34
+-    if min_notional <= 0 or dist <= 0 or budget <= 0 or costs < 0:
++    if min_notional < 0 or dist <= 0 or budget <= 0 or costs < 0:
+############ cryptobot.risk.margin.x_minimum_viable_equity__mutmut_35
+-    if min_notional <= 0 or dist <= 0 or budget <= 0 or costs < 0:
++    if min_notional <= 1 or dist <= 0 or budget <= 0 or costs < 0:
+############ cryptobot.risk.margin.x_minimum_viable_equity__mutmut_36
+-    if min_notional <= 0 or dist <= 0 or budget <= 0 or costs < 0:
++    if min_notional <= 0 or dist < 0 or budget <= 0 or costs < 0:
+############ cryptobot.risk.margin.x_minimum_viable_equity__mutmut_37
+-    if min_notional <= 0 or dist <= 0 or budget <= 0 or costs < 0:
++    if min_notional <= 0 or dist <= 1 or budget <= 0 or costs < 0:
+############ cryptobot.risk.margin.x_minimum_viable_equity__mutmut_38
+-    if min_notional <= 0 or dist <= 0 or budget <= 0 or costs < 0:
++    if min_notional <= 0 or dist <= 0 or budget < 0 or costs < 0:
+############ cryptobot.risk.margin.x_minimum_viable_equity__mutmut_39
+-    if min_notional <= 0 or dist <= 0 or budget <= 0 or costs < 0:
++    if min_notional <= 0 or dist <= 0 or budget <= 1 or costs < 0:
+############ cryptobot.risk.margin.x_minimum_viable_equity__mutmut_40
+-    if min_notional <= 0 or dist <= 0 or budget <= 0 or costs < 0:
++    if min_notional <= 0 or dist <= 0 or budget <= 0 or costs <= 0:
+############ cryptobot.risk.margin.x_minimum_viable_equity__mutmut_41
+-    if min_notional <= 0 or dist <= 0 or budget <= 0 or costs < 0:
++    if min_notional <= 0 or dist <= 0 or budget <= 0 or costs < 1:
+############ cryptobot.risk.margin.x_minimum_viable_equity__mutmut_42
+-        raise ValueError("minimum_viable_equity needs positive "
+-                         "min_notional/stop_dist/loss_budget")
++        raise ValueError(None)
+############ cryptobot.risk.margin.x_minimum_viable_equity__mutmut_43
+-        raise ValueError("minimum_viable_equity needs positive "
++        raise ValueError("XXminimum_viable_equity needs positive XX"
+############ cryptobot.risk.margin.x_minimum_viable_equity__mutmut_44
+-        raise ValueError("minimum_viable_equity needs positive "
++        raise ValueError("MINIMUM_VIABLE_EQUITY NEEDS POSITIVE "
+############ cryptobot.risk.margin.x_minimum_viable_equity__mutmut_45
+-                         "min_notional/stop_dist/loss_budget")
++                         "XXmin_notional/stop_dist/loss_budgetXX")
+############ cryptobot.risk.margin.x_minimum_viable_equity__mutmut_46
+-                         "min_notional/stop_dist/loss_budget")
++                         "MIN_NOTIONAL/STOP_DIST/LOSS_BUDGET")
+############ cryptobot.risk.margin.x_minimum_viable_equity__mutmut_47
+-    return min_notional * (dist + costs) / budget
++    return min_notional * (dist + costs) * budget
+############ cryptobot.risk.margin.x_minimum_viable_equity__mutmut_48
+-    return min_notional * (dist + costs) / budget
++    return min_notional / (dist + costs) / budget
+############ cryptobot.risk.margin.x_minimum_viable_equity__mutmut_49
+-    return min_notional * (dist + costs) / budget
++    return min_notional * (dist - costs) / budget

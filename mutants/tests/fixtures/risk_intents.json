@@ -1,0 +1,86 @@
+{
+  "_note": "Adversarial + canonical intents. Fixed UTC instants; tests run at NOW=2026-10-11T12:00:00Z. All prices BTCUSDT.",
+  "canonical_long": {
+    "strategy": "S1", "version": "0.1.0", "instrument": "BTCUSDT", "side": "LONG",
+    "evidence_ts_utc": "2026-10-11T11:59:55+00:00",
+    "entry_low": 67000.0, "entry_high": 67010.0,
+    "entry_expiry_utc": "2026-10-11T12:01:00+00:00",
+    "invalidation_price": 66850.0, "exit_rule": "invalidation-or-300s",
+    "holding_limit_s": 300,
+    "forecast_cost": {"fee_bps": 5, "spread_bps": 5, "slippage_bps": 5, "funding_bps": 0},
+    "evidence_ref": "rec-canonical-long", "data_quality": "clean"
+  },
+  "canonical_short": {
+    "strategy": "S1", "version": "0.1.0", "instrument": "BTCUSDT", "side": "SHORT",
+    "evidence_ts_utc": "2026-10-11T11:59:55+00:00",
+    "entry_low": 67000.0, "entry_high": 67010.0,
+    "entry_expiry_utc": "2026-10-11T12:01:00+00:00",
+    "invalidation_price": 67160.0, "exit_rule": "invalidation-or-300s",
+    "holding_limit_s": 300,
+    "forecast_cost": {"fee_bps": 5, "spread_bps": 5, "slippage_bps": 5, "funding_bps": 0},
+    "evidence_ref": "rec-canonical-short", "data_quality": "clean"
+  },
+  "tiny_stop": {
+    "_note": "2.2bps stop + 4.5bps stressed costs => ~4.6x notional at 10k equity: must breach 3x leverage cap.",
+    "strategy": "S1", "version": "0.1.0", "instrument": "BTCUSDT", "side": "LONG",
+    "evidence_ts_utc": "2026-10-11T11:59:55+00:00",
+    "entry_low": 67000.0, "entry_high": 67010.0,
+    "entry_expiry_utc": "2026-10-11T12:01:00+00:00",
+    "invalidation_price": 66999.0, "exit_rule": "invalidation-or-300s",
+    "holding_limit_s": 300,
+    "forecast_cost": {"fee_bps": 1, "spread_bps": 1, "slippage_bps": 1, "funding_bps": 0},
+    "evidence_ref": "rec-tiny-stop", "data_quality": "clean"
+  },
+  "dust": {
+    "_note": "Huge stop at 100 USDT equity => ~2.3 USDT notional: must skip below 5 USDT minimum.",
+    "strategy": "S1", "version": "0.1.0", "instrument": "BTCUSDT", "side": "LONG",
+    "evidence_ts_utc": "2026-10-11T11:59:55+00:00",
+    "entry_low": 67000.0, "entry_high": 67010.0,
+    "entry_expiry_utc": "2026-10-11T12:01:00+00:00",
+    "invalidation_price": 60000.0, "exit_rule": "invalidation-or-300s",
+    "holding_limit_s": 300,
+    "forecast_cost": {"fee_bps": 5, "spread_bps": 5, "slippage_bps": 5, "funding_bps": 0},
+    "evidence_ref": "rec-dust", "data_quality": "clean"
+  },
+  "expired": {
+    "strategy": "S1", "version": "0.1.0", "instrument": "BTCUSDT", "side": "LONG",
+    "evidence_ts_utc": "2026-10-11T11:58:00+00:00",
+    "entry_low": 67000.0, "entry_high": 67010.0,
+    "entry_expiry_utc": "2026-10-11T11:59:59+00:00",
+    "invalidation_price": 66850.0, "exit_rule": "invalidation-or-300s",
+    "holding_limit_s": 300,
+    "forecast_cost": {"fee_bps": 5, "spread_bps": 5, "slippage_bps": 5, "funding_bps": 0},
+    "evidence_ref": "rec-expired", "data_quality": "clean"
+  },
+  "stale_evidence": {
+    "_note": "Evidence 660s old; max age 120s.",
+    "strategy": "S1", "version": "0.1.0", "instrument": "BTCUSDT", "side": "LONG",
+    "evidence_ts_utc": "2026-10-11T11:49:00+00:00",
+    "entry_low": 67000.0, "entry_high": 67010.0,
+    "entry_expiry_utc": "2026-10-11T12:01:00+00:00",
+    "invalidation_price": 66850.0, "exit_rule": "invalidation-or-300s",
+    "holding_limit_s": 300,
+    "forecast_cost": {"fee_bps": 5, "spread_bps": 5, "slippage_bps": 5, "funding_bps": 0},
+    "evidence_ref": "rec-stale", "data_quality": "clean"
+  },
+  "halt_quality": {
+    "strategy": "S1", "version": "0.1.0", "instrument": "BTCUSDT", "side": "LONG",
+    "evidence_ts_utc": "2026-10-11T11:59:55+00:00",
+    "entry_low": 67000.0, "entry_high": 67010.0,
+    "entry_expiry_utc": "2026-10-11T12:01:00+00:00",
+    "invalidation_price": 66850.0, "exit_rule": "invalidation-or-300s",
+    "holding_limit_s": 300,
+    "forecast_cost": {"fee_bps": 5, "spread_bps": 5, "slippage_bps": 5, "funding_bps": 0},
+    "evidence_ref": "rec-haltq", "data_quality": "halt"
+  },
+  "degraded_quality": {
+    "strategy": "S1", "version": "0.1.0", "instrument": "BTCUSDT", "side": "LONG",
+    "evidence_ts_utc": "2026-10-11T11:59:55+00:00",
+    "entry_low": 67000.0, "entry_high": 67010.0,
+    "entry_expiry_utc": "2026-10-11T12:01:00+00:00",
+    "invalidation_price": 66850.0, "exit_rule": "invalidation-or-300s",
+    "holding_limit_s": 300,
+    "forecast_cost": {"fee_bps": 5, "spread_bps": 5, "slippage_bps": 5, "funding_bps": 0},
+    "evidence_ref": "rec-degradedq", "data_quality": "degraded"
+  }
+}

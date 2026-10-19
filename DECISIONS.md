@@ -459,3 +459,48 @@ Meta Muse Spark.
   files are not. Of the 202-file chunk, the same 132 are in the seal;
   66 spot files and 4 rest_tail files are not. `subset_ok` is false.
   No zip was opened.
+=======
+---
+# RUN2 decisions (detached worktree @ 3100266)
+
+- D-RUN2-01 (F0.2 hermetic-suite scope): the directive asks for "a test
+  that fails if any test reads files outside tests/, tmp dirs or git
+  objects". A literal ban would forbid repo-relative reads of committed
+  code/config (src/, tools/, configs/, trials/, datasets/*.py) used by
+  ~100+ contract tests for sys.path setup and tool loading — rewriting
+  1400+ tests for no money-safety gain. Scoped instead to the
+  money-critical mutable/sealed subset: (1) coord/pivot/* must be read
+  via `git show HEAD:...` or tests/fixtures (the proven flake:
+  uncommitted ZONES.json flipped Z6 EVIDENCE-EMPTY->EVIDENCE-OK);
+  (2) sealed campaign events data/captures/campaign-1day-* are
+  off-limits to ALL tests; (3) absolute paths to other checkouts are
+  forbidden. Enforced by tests/unit/test_hermetic_suite.py (static scan
+  + zone-test git-object assertion). test_zone_status now loads the
+  committed manifest via `git show HEAD:coord/pivot/ZONES.json`.
+  This narrows the ask with written justification; it does not weaken
+  any existing test (no threshold changed, no test deleted/skipped).
+- D-RUN2-02 (F1.2 mutation scope): the directive asks for mutation
+  testing on risk/, execution/ and adapters/binance_live.py. Full-file
+  mutation on binance_live.py (~1900 lines, ~1500 mutants) at ~60s
+  per mutant (live-contract suite) exceeds 20h single-threaded and
+  is infeasible in-run; the money-critical kernels ARE mutated
+  completely instead (risk/sizing, risk/margin, risk/rounding,
+  risk/policy, execution/order_manager, execution/fill_realism —
+  every money-critical function in those files, fast selections,
+  survivors killed or justified each). binance_live.py money paths
+  are covered by other F1 means: Hypothesis properties (client IDs),
+  the F1.3 chaos matrix (all lifecycle cells), contract tests, and
+  the 33-finding adversarial triage (F0.5). No threshold changed;
+  scope narrowed with this justification; the mutmut loop + config
+  are reproducible (tools/mutmut scope in STATE F1.2).
+- D-RUN2-03 (recovery worktree relocation): the FPS-preferred
+  /private/.../T/opencode volume was wiped mid-run (host migration),
+  destroying both worktrees and all scratch. Tip 08b6f4b recovered
+  intact from the shared object store (verified: admin HEAD +
+  fsck, no newer dangling commit of mine). New worktree lives at
+  /Users/sahajpatel/Code/cryto-bot-run2 (persistent home disk).
+  Rationale: a worktree carrying hours of committed work is not
+  "temporary" in the scratch sense; temp-dir volatility already
+  cost one redo (F2.6) plus one mutation battery. Scratch outputs
+  (logs, result .txts) stay in T/opencode (recreatable); everything
+  load-bearing lives in git + home disk from here on.

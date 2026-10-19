@@ -10,6 +10,15 @@
   "sealed_chunk_sha256": null
  },
  "hypothesis": "H2",
+ "document_sha256": "cf8badd60d1640273b8ad684eed2db27c36dad7d8a040e06b65ac89f28c6996e",
+ "expectancy_bps": null,
+ "family_size": 6,
+ "hashes": {
+  "code_commit": "9d05ff63a3de0965bdb1f713c38855cdce80a004",
+  "config_sha256_16": "d225c35fd277f743",
+  "data_manifest": "research/verdicts/trades/H2.jsonl"
+ },
+ "hypothesis": "H2-trend-vol-regime",
  "n_trades": 0,
  "reason": "n=0 < min_trades=300",
  "verdict": "UNDERPOWERED"

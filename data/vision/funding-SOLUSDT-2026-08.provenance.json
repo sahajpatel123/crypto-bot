@@ -1,0 +1,10 @@
+{
+ "name": "funding-SOLUSDT-2026-08",
+ "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/SOLUSDT/SOLUSDT-fundingRate-2026-08.zip",
+ "fetched_utc": "2026-10-16T14:14:48.655953+00:00",
+ "status": "present",
+ "http_status": 200,
+ "sha256": "593e99bb628c0b178a5a2c8f415e1ed489dfd7dea497366f1fee91b8768c704d",
+ "bytes": 899,
+ "csv_rows": 93
+}

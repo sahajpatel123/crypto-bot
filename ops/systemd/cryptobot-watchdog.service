@@ -1,0 +1,17 @@
+[Unit]
+Description=CryptoBot external watchdog (flatten on stale heartbeat + exposure, B#18)
+After=network-online.target cryptobot.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/cryptobot
+# Runs the watchdog ONCE per timer tick (pair with a 60s timer):
+# exit 0 heartbeat fresh/absent-exposure; exit 3 stale WITH exposure.
+# --flatten-cmd is EMPTY until the owner wires it per OWNER_ACTIONS
+# (demo flatten drill first; never countdownCancelAll — conditional
+# stop survival is unverified, T3.2). With an empty command the
+# watchdog REPORTS (exit 3) but takes no venue action. A first-class
+# `cryptobot flatten` command is tracked for F2.1; until then the
+# flatten-cmd is an explicit owner-configured step, never a guess.
+ExecStart=/opt/cryptobot/.venv/bin/python tools/watchdog.py --heartbeat /opt/cryptobot/runs/heartbeat.json --max-age-s 90 --flatten-cmd ""

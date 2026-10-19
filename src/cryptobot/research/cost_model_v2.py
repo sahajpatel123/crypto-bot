@@ -73,7 +73,12 @@ def breakeven_row(*, stop_bps: float, target_bps: float,
 
 
 def breakeven_table(model: CostModel | None = None) -> list[dict]:
-    """Rows for common geometries at 1x/1.5x/2x, taker vs maker entry."""
+    """Rows for common geometries at 1x/1.5x/2x, taker vs maker entry.
+
+    F0.4b: each row carries ``feasible`` (required p <= 100%). A row
+    with required_win_rate > 1.0 is INFEASIBLE — no win rate can break
+    even at that cost (e.g. 25/25 taker at 1.5x needs 104%).
+    """
     model = model or CostModel()
     rows: list[dict] = []
     for stop, target in ((25.0, 25.0), (25.0, 50.0), (50.0, 100.0),
@@ -89,4 +94,12 @@ def breakeven_table(model: CostModel | None = None) -> list[dict]:
                 row.update(breakeven_row(stop_bps=stop, target_bps=target,
                                          cost_bps=cost))
                 rows.append(row)
+                p_star = required_win_rate(
+                    stop_bps=stop, target_bps=target, cost_bps=cost)
+                rows.append({
+                    "stop_bps": stop, "target_bps": target,
+                    "entry": "maker" if maker else "taker",
+                    "stress": stress, "round_trip_bps": round(cost, 2),
+                    "required_win_rate": round(p_star, 4),
+                    "feasible": bool(p_star <= 1.0)})
     return rows

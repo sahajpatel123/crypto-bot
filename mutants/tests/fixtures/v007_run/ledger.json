@@ -1,0 +1,59 @@
+{
+  "journal": [
+    {
+      "exec_id": "e1",
+      "fee": 1.0,
+      "kind": "fill",
+      "price": 100.0,
+      "qty": 1.0,
+      "side": "BUY",
+      "symbol": "BTCUSDT",
+      "ts_utc": "2026-10-10T12:00:00+00:00"
+    },
+    {
+      "exec_id": "e2",
+      "fee": 1.0,
+      "kind": "fill",
+      "price": 110.0,
+      "qty": 0.4,
+      "side": "SELL",
+      "symbol": "BTCUSDT",
+      "ts_utc": "2026-10-10T13:00:00+00:00"
+    },
+    {
+      "amount": -0.5,
+      "event_id": "f1",
+      "kind": "funding",
+      "ts_utc": "2026-10-10T14:00:00+00:00"
+    },
+    {
+      "exec_id": "e3",
+      "fee": 1.0,
+      "kind": "fill",
+      "price": 108.0,
+      "qty": 0.6,
+      "side": "SELL",
+      "symbol": "BTCUSDT",
+      "ts_utc": "2026-10-10T15:00:00+00:00"
+    },
+    {
+      "amount": 100.0,
+      "event_id": "d1",
+      "flow_kind": "deposit",
+      "kind": "flow",
+      "ts_utc": "2026-10-10T16:00:00+00:00"
+    }
+  ],
+  "pilot_equity": 10000.0,
+  "seq": 0,
+  "snapshot": {
+    "avg_entry": 0.0,
+    "cash": 10105.3,
+    "funding_net": -0.5,
+    "paid_costs": 3.0,
+    "qty": 0.0,
+    "realised": 5.3,
+    "seq": 0
+  },
+  "version": 1
+}

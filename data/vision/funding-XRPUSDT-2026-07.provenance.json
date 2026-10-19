@@ -1,0 +1,10 @@
+{
+ "name": "funding-XRPUSDT-2026-07",
+ "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/XRPUSDT/XRPUSDT-fundingRate-2026-07.zip",
+ "fetched_utc": "2026-10-16T14:14:36.453978+00:00",
+ "status": "present",
+ "http_status": 200,
+ "sha256": "c705d06f311e974474a74dc2c5f572c9180630930cf2d5dbaf08cfb7f3d1948c",
+ "bytes": 972,
+ "csv_rows": 93
+}

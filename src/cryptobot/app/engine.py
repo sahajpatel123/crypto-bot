@@ -41,6 +41,11 @@ class EngineFill:
     fee: float             # modeled commission in quote (>= 0, labeled rate)
     ts_utc: datetime
     liquidity: str         # taker (maker disabled until a queue model exists)
+    # B#9: pessimistic drift (bps of notional) the paper engine's
+    # book-walk audit found vs this fill price (>= 0; 0 on live fills,
+    # which are real executions). The session books it as a
+    # conservative cost top-up (never better than pessimistic).
+    slippage_drift_bps: float = 0.0
 
 
 @dataclass(frozen=True)

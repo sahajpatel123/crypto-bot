@@ -19,6 +19,9 @@ from typing import Any, Callable
 
 from cryptobot.accounting.day import accounting_date
 from cryptobot.accounting.ledger import Ledger
+from cryptobot.adapters.binance_live import (
+    RateLimitedError, UnknownOutcomeError, VenueHttpError,
+    VenueRejectedError)
 from cryptobot.coordination.exits import decode_exit_rule
 from cryptobot.coordination.selector import (Candidate, Selector,
                                              SelectorConfig)
@@ -180,7 +183,8 @@ class WallClock:
 class Session:
     def __init__(self, config: AppConfig, store: RunStore, workdir: str | Path,
                  run_id: str, *, pid: int | None = None,
-                 clock: Any | None = None, engine: Any | None = None) -> None:
+                 clock: Any | None = None, engine: Any | None = None,
+                 wall_utc: Callable[[], datetime] | None = None) -> None:
         self.config = config
         self.store = store
         self.workdir = Path(workdir)
@@ -188,6 +192,11 @@ class Session:
         self.run_id = run_id
         self.clock = clock or ReplayClock()
         self.now_utc: Callable[[], datetime] = self.clock.now
+        # F1.4: wall timestamps (run-file provenance only, never
+        # decisions) come from an injectable clock so replays are
+        # byte-identical with a fixed wall time. Live uses real time.
+        self._wall_utc = wall_utc or (
+            lambda: datetime.now(timezone.utc))
         self.ledger = Ledger(config.paper_capital_usdt)
         # T1.1: venue-seeded equity for live (demo/prod) startup; None
         # until seed_from_venue() runs. Paper/replay keep the config seed.
@@ -276,6 +285,18 @@ class Session:
         # releases exactly the strings it latched once a fresh snapshot
         # proves the condition cleared. Empty == no health latch.
         self._health_halt_reasons: set[str] = set()
+        # A#4: set by _snapshot_account when a venue read inside it
+        # fails degraded (margin/inflight unknown). _health_tick turns
+        # it into a blocking gate reason (level-wise: auto-releases on
+        # the next fresh snapshot). Reset on every snapshot call.
+        self._reads_degraded = False
+        # A#2: orphan-exposure alert latch (one checkpoint per episode).
+        self._orphan_alerted = False
+        # F2.6: clock-skew refresh throttle (monotonic wall, 60s).
+        self._last_skew_mono = 0.0
+        # Transient health reasons are level-evaluated from complete
+        # snapshots. Policy loss/profit stops remain persistent latches.
+        self._health_halt_reasons: set[str] = set()
         self._user_stream_attachment: Any | None = None
         self._known_reservations: set[str] = set()
         self._cmd_seq = 0
@@ -349,7 +370,7 @@ class Session:
         self.store.set_state(self.run_id, state, reason)
         self._append_run_file("risk.jsonl", {
             "ts_utc": self.now_utc().isoformat(),
-            "wall_ts_utc": datetime.now(timezone.utc).isoformat(),
+            "wall_ts_utc": self._wall_utc().isoformat(),
             "kind": "run-state",
             "from_state": old, "to_state": state, "reason": reason})
 
@@ -400,6 +421,64 @@ class Session:
         self.store.checkpoint(self.run_id, "filters-armed",
                               {"origin": origin, "asof_utc": asof.isoformat(),
                                "symbols": sorted(built)})
+
+    def arm_brackets(self, brackets: dict[str, list[dict]],
+                     origin: str, *,
+                     asof_utc: datetime | None = None) -> None:
+        """Install leverage-bracket tiers for the LIVE liquidation gate.
+
+        Offline injection (F0.4a): the caller supplies tiers parsed via
+        ``parse_brackets_payload`` from a credentialed
+        GET /fapi/v1/leverageBracket fetch (demo/live readiness) or from
+        recorded fixtures. Fail-closed: empty maps and malformed tiers
+        raise (RiskConfig validation). Merges per symbol; refresh by
+        re-calling with a newer asof.
+        """
+        from dataclasses import replace
+
+        if not brackets:
+            raise ValueError("arm_brackets requires a non-empty map")
+        merged = dict(self.policy.config.leverage_brackets)
+        merged.update({k.upper(): v for k, v in brackets.items()})
+        asof = asof_utc or datetime.now(timezone.utc)
+        # replace() runs RiskConfig.__post_init__ validation (fail closed).
+        self.policy.config = replace(
+            self.policy.config, leverage_brackets=merged,
+            brackets_asof_utc=asof)
+        self.store.checkpoint(self.run_id, "brackets-armed",
+                              {"origin": origin, "asof_utc": asof.isoformat(),
+                               "symbols": sorted(merged)})
+
+    def arm_live_brackets(self, symbols: list[str]) -> dict[str, Any]:
+        """Fetch venue brackets + arm live run_mode (B#14 readiness).
+
+        Live/demo only: pulls signed leverageBracket tiers through the
+        engine (credentialed at runtime), parses + installs them, and
+        flips run_mode True with brackets REQUIRED. Any fetch/parse
+        failure raises (readiness refuses — fail closed, never trade
+        live without the liquidation gate).
+        """
+        from dataclasses import replace
+
+        from .filters import parse_brackets_payload
+
+        fetch = getattr(self.engine, "leverage_brackets", None)
+        if not callable(fetch):
+            raise ValueError("engine does not expose leverage_brackets")
+        payload = fetch(list(symbols))
+        brackets = parse_brackets_payload(payload, list(symbols))
+        asof = self.now_utc()
+        merged = dict(self.policy.config.leverage_brackets)
+        merged.update(brackets)
+        self.policy.config = replace(
+            self.policy.config, leverage_brackets=merged,
+            brackets_asof_utc=asof, run_mode=True,
+            brackets_required_in_run_mode=True)
+        self.store.checkpoint(self.run_id, "brackets-armed",
+                              {"origin": "live-readiness",
+                               "asof_utc": asof.isoformat(),
+                               "symbols": sorted(brackets)})
+        return {"symbols": sorted(brackets), "asof_utc": asof.isoformat()}
 
     def _ensure_symbol_filters(self, symbol: str) -> bool:
         """Arm filters for a newly seen paper symbol. False when blocked."""
@@ -491,10 +570,22 @@ class Session:
                     break
             except Exception:  # noqa: BLE001 — safe mode must not raise
                 flatten_ok = False
+        # B#7: a non-raising _flatten can still leave unknown closes
+        # (in flight, unconfirmed). Verify before reporting success.
+        unknown_ids = self._unknown_tracked_ids()
+        if flatten_ok and (unknown_ids or not self._is_flat_confirmed()):
+            flatten_ok = False
         out = {"kind": "safe-mode", "reason": str(reason),
                "flatten_attempted": attempted, "flatten_ok": flatten_ok,
+               "unknown_ids": unknown_ids,
                "ts_utc": self.now_utc().isoformat()}
         self.alerts.append(out)
+        # B#18: alerts persist to alerts.jsonl (durable, watchdog/
+        # operator readable); sink delivery (webhook/Telegram) is F6.
+        try:
+            self._append_run_file("alerts.jsonl", out)
+        except (OSError, ValueError):
+            pass
         try:
             self.store.checkpoint(self.run_id, "safe-mode", out)
         except Exception:  # noqa: BLE001 — checkpoint best-effort here
@@ -502,7 +593,12 @@ class Session:
         return out
 
     def _is_flat_confirmed(self) -> bool:
-        """Ledger flat and (when the engine can say) venue flat."""
+        """Ledger flat and (when the engine can say) venue flat.
+
+        B#8: venue-unreachable (snapshot None) is UNCONFIRMED, never
+        flat. Engines without account_snapshot fall back to the
+        ledger-only check (documented seam limitation).
+        """
         if self.ledger.has_position():
             return False
         snap_fn = getattr(self.engine, "account_snapshot", None)
@@ -519,9 +615,19 @@ class Session:
                     return False
             if snap is not None and getattr(snap, "complete", True) is not True:
                 return False
+                return False  # venue unknown: cannot confirm flat.
             if getattr(snap, "positions", ()):
                 return False
         return True
+
+    def _unknown_tracked_ids(self) -> list[str]:
+        """Tracked ids whose outcome is unknown (B#7 honest reporting)."""
+        try:
+            statuses = self._tracked_statuses_for(self._position)
+        except (ValueError, KeyError, AttributeError):
+            return []
+        return sorted(cid for cid, st in statuses.items()
+                      if getattr(st, "state", None) == "unknown")
 
     def shutdown_flatten(self, *, attempts: int = 3) -> dict[str, Any]:
         """Shutdown (T1.5): flatten + confirm flat, bounded retries.
@@ -529,6 +635,11 @@ class Session:
         With ``leave_protected`` set, an open position is left only
         when it carries protection legs; otherwise ValueError (fail
         closed — never exit silently on naked exposure).
+
+        A#3: legs stay live until the close CONFIRMS (drained between
+        attempts); stragglers cancel after confirmation. An
+        unconfirmed shutdown keeps venue protection AND reports
+        confirmed_flat False (the _supervise stop path safe-modes).
         """
         if self.leave_protected and self._position is not None:
             legs = list(self._position.get("legs") or [])
@@ -564,21 +675,93 @@ class Session:
         for _ in range(max(1, attempts)):
             try:
                 self._flatten("shutdown")
+                self._flatten("shutdown", keep_legs=True)
                 self._drain_engine()
             except Exception as exc:  # noqa: BLE001 — retry bounded
                 last_exc = exc
+                try:
+                    self._drain_engine()
+                except Exception:
+                    pass
                 continue
             if self._is_flat_confirmed():
+                try:
+                    self._flatten("shutdown-settle")
+                    self._drain_engine()
+                except Exception:
+                    pass
                 return {"left_protected": False, "confirmed_flat": True}
         return {"left_protected": False, "confirmed_flat": False,
                 "error": str(last_exc) if last_exc else "unconfirmed"}
+
+    def _mark_missing(self) -> bool:
+        """True when no valuation mark exists anywhere (A#6).
+
+        Exchange mark, then feed mark; 0.0/"none" means blind.
+        Blind + exposed must fail closed (block entries), never
+        evaluate stops on cash-as-equity fiction.
+        """
+        mark, source, _ts = self._reference_mark_full()
+        return not (mark > 0) or source == "none"
+
+    def _run_shadow_stop(self) -> None:
+        """Venue-independent stop backstop (B#3, wired in _supervise).
+
+        Fires only when ALL hold: an open position with a stop level,
+        ledger exposure, a REAL mark (never 0.0/missing — A#6) through
+        the stop, and NO live stop-role leg (the venue owns the exit
+        while its stop works). Flatten-on-breach, checkpointed.
+        """
+        pos = self._position
+        if pos is None or pos.get("stop") is None:
+            return
+        if not self.ledger.has_position():
+            return
+        if self._mark_missing():
+            return
+        mark = self._reference_mark()
+        if not self.shadow_stop_breached(mark):
+            return
+        try:
+            statuses = self._tracked_statuses_for(pos)
+        except (ValueError, KeyError, AttributeError):
+            statuses = {}
+        for lid in list(pos.get("legs") or []) \
+                + list(pos.get("retired") or []):
+            st = statuses.get(lid)
+            if st is not None \
+                    and getattr(st, "role", "") == "stop" \
+                    and getattr(st, "state", "") in ("open", "partial"):
+                return  # venue stop live: it owns the exit.
+        self.store.checkpoint(self.run_id, "shadow-stop",
+                               {"mark": mark, "stop": pos.get("stop")})
+        self._flatten("shadow-stop")
+
+    def _run_orphan_watch(self, ctx: dict[str, Any]) -> None:
+        """Flatten shell-less ledger exposure (A#2).
+
+        Cancel/fill races can clear _position while a fill still books
+        (live journal fallback). Ledger-exposed with no shell gets no
+        protection, no time exit, no run-end flatten from the tracked
+        paths — so supervision flattens it directly (reduce-only,
+        venue-safe) and alerts once per episode.
+        """
+        if self._position is not None or not self.ledger.has_position():
+            self._orphan_alerted = False
+            return
+        if not self._orphan_alerted:
+            self._orphan_alerted = True
+            self.store.checkpoint(self.run_id, "orphan-exposure",
+                                   {"net": self.ledger.position_qty()})
+        self._flatten("orphan-exposure")
 
     def shadow_stop_breached(self, mark: float) -> bool:
         """Local shadow stop (T1.4): mark crossed the position stop.
 
         Second layer behind venue conditional legs: if the venue stop
         is missing/failed and the mark trades through the stop, the
-        session flattens itself (wired in _supervise).
+        session flattens itself (wired in _supervise via
+        _run_shadow_stop).
         """
         pos = self._position
         if pos is None:
@@ -620,42 +803,109 @@ class Session:
     def book_settled_funding(self, symbol: str) -> int:
         """Book settled venue funding into the ledger (T1.7).
 
-        Idempotent by venue tranId (fallback time+income): re-running
-        books nothing twice. Returns the number of newly booked rows.
+        Idempotent by venue tranId (fallback time+income+row-index:
+        B#22 identical rows no longer collide). Returns the number of
+        newly booked rows. Malformed rows are skipped but LOUD
+        (funding-skipped checkpoint with count, never silent).
         """
         fetch = getattr(self.engine, "funding_income", None)
         if not callable(fetch):
             raise ValueError("engine does not expose funding_income")
         booked = 0
-        for row in fetch(symbol):
+        skipped = 0
+        for i, row in enumerate(fetch(symbol)):
             try:
                 amount = float(row.get("income", 0.0) or 0.0)
                 ts_ms = int(row.get("time", 0) or 0)
                 tran = row.get("tranId")
                 event_id = (f"funding:{symbol}:{tran}" if tran is not None
-                            else f"funding:{symbol}:{ts_ms}:{amount}")
+                            else f"funding:{symbol}:{ts_ms}:{amount}:{i}")
                 ts = datetime.fromtimestamp(ts_ms / 1000,
                                             tz=timezone.utc).isoformat()
             except (TypeError, ValueError, OverflowError, OSError):
-                continue  # malformed row: reconcile diff will surface it
-            if self.ledger.note_funding(event_id, amount, ts):
+                skipped += 1
+                continue
+            if self.ledger.note_funding(event_id, amount, ts,
+                                        symbol=symbol):
                 booked += 1
+        if skipped:
+            self.store.checkpoint(self.run_id, "funding-skipped",
+                                   {"symbol": symbol, "skipped": skipped})
         return booked
 
     def funding_reconcile(self, symbol: str) -> dict[str, Any]:
-        """Venue funding total vs booked ledger net (T1.7)."""
+        """Venue funding total vs booked ledger net, per symbol (T1.7/A#8).
+
+        Compares the venue symbol total against the ledger's
+        per-symbol booked total (A#8: the old global compare
+        misreported every multi-symbol run). Malformed venue rows are
+        counted in skipped_venue (loud, never silent agreement).
+        booked_net/diff stay global for back-compat; booked_symbol/
+        diff_symbol are the decision fields.
+        """
         fetch = getattr(self.engine, "funding_income", None)
         if not callable(fetch):
             raise ValueError("engine does not expose funding_income")
         venue_total = 0.0
+        skipped = 0
         for row in fetch(symbol):
             try:
                 venue_total += float(row.get("income", 0.0) or 0.0)
             except (TypeError, ValueError):
+                skipped += 1
                 continue
         booked = self.ledger.funding_net()
+        booked_symbol = self.ledger.funding_for(symbol)
         return {"symbol": symbol, "venue_total": venue_total,
-                "booked_net": booked, "diff": venue_total - booked}
+                "booked_net": booked, "diff": venue_total - booked,
+                "booked_symbol": booked_symbol,
+                "diff_symbol": venue_total - booked_symbol,
+                "skipped_venue": skipped,
+                "unattributed": self.ledger.unattributed_funding()}
+
+    def _book_live_funding(self) -> dict[str, int]:
+        """Book settled venue funding for every traded symbol (B#10).
+
+        Live engines expose funding_income (venue income endpoint);
+        paper/replay book funding via EngineFunding events instead.
+        Capability-guarded: engines without the endpoint return {}.
+        Per symbol: book new rows, reconcile vs booked, halt loudly on
+        any diff/skips (stops evaluate on booked equity — fiction is
+        worse than a halt). Venue faults degrade to next tick.
+        """
+        fetch = getattr(self.engine, "funding_income", None)
+        if not callable(fetch):
+            return {}
+        # Paper settles via EngineFunding events (double vision if we
+        # also pulled venue income here); live pulls the endpoint.
+        if getattr(self.engine, "model_label", "") == "nautilus-paper":
+            return {}
+        symbols: list[str] = []
+        if self._position is not None:
+            symbols.append(self._position["instrument"])
+        symbols.extend(s for s in self._feeds if s not in symbols)
+        booked: dict[str, int] = {}
+        for symbol in symbols:
+            try:
+                count = self.book_settled_funding(symbol)
+            except (ValueError, KeyError, AttributeError,
+                    VenueHttpError, UnknownOutcomeError):
+                continue  # venue fault: retry next throttle window.
+            booked[symbol] = count
+            try:
+                rec = self.funding_reconcile(symbol)
+            except (ValueError, KeyError, AttributeError,
+                    VenueHttpError, UnknownOutcomeError):
+                continue
+            if abs(rec["diff_symbol"]) > 1e-9 or rec["skipped_venue"]:
+                self.store.checkpoint(self.run_id, "funding-mismatch",
+                                       {"engine_total": rec["venue_total"],
+                                        "ledger_total": rec["booked_symbol"],
+                                        "symbol": symbol,
+                                        "skipped": rec["skipped_venue"]})
+                self._halt_entries("funding-mismatch")
+                self._set_state("halted", "funding-mismatch")
+        return booked
 
     def _snapshot_account(self, symbol: str | None = None) -> AccountSnapshot:
         mark = self._reference_mark()
@@ -664,6 +914,7 @@ class Session:
         # (None skips the margin gate), a round-trip fee buffer in margin
         # space, and the one-budget in-flight exposure figure.
         available: float | None = None
+        self._reads_degraded = False
         # T1.2: hot path prefers the cached margin variant only when
         # the CLI enabled it for a live run (scripted/drill dialogues
         # keep the exact one-REST-per-call contract).
@@ -677,6 +928,14 @@ class Session:
             try:
                 margins = account_margin()
             except Exception:  # noqa: BLE001 — 429/timeout => unknown
+            except (VenueHttpError, UnknownOutcomeError):
+                # A#4: venue reads fail degraded (margin None skips the
+                # margin gate; leverage cap still applies; venue
+                # rejections backstop sizing), never fatal. Local
+                # seam gaps (below) are NOT degradation.
+                margins = None
+                self._reads_degraded = True
+            except (ValueError, KeyError, AttributeError):
                 margins = None
             if margins is not None:
                 available = float(margins[0])
@@ -720,6 +979,13 @@ class Session:
         try:
             statuses = self.engine.open_orders()
         except Exception:  # noqa: BLE001 — 429/timeout => unknown
+        except (VenueHttpError, UnknownOutcomeError):
+            # A#4: unknown pending exposure degrades to ledger+booked
+            # only (venue rejects backstop any oversize); the health
+            # gate separately blocks entries on degraded reads.
+            statuses = []
+            self._reads_degraded = True
+        except (ValueError, KeyError, AttributeError):
             statuses = []
         for status in statuses:
             role = getattr(status, "role", "entry")
@@ -1220,7 +1486,7 @@ class Session:
                               intent.instrument, intent.side.value)
             self._append_run_file("risk.jsonl", {
                 "ts_utc": self.now_utc().isoformat(),
-                "wall_ts_utc": datetime.now(timezone.utc).isoformat(),
+                "wall_ts_utc": self._wall_utc().isoformat(),
                 "kind": "risk-decision",
                 "from_state": "", "to_state": "rejected",
                 "reason": verdict.reason})
@@ -1379,6 +1645,63 @@ class Session:
             # Lookup-first / safe-mode class: unknown exposure direction.
             self._halt_entries(f"submit-{policy.action}")
             self.enter_safe_mode(f"submit-{type(exc).__name__}")
+            return
+        except UnknownOutcomeError as exc:
+            # B#1: the submit MAY have executed (timeout/502/503/504).
+            # Fail-closed: KEEP the risk hold (re-entry blocked until
+            # lookup resolves), link the journaled engine id so
+            # _reconcile_commands + _drain_unknown_outcomes can adopt
+            # the outcome, and record submitted-unknown. Never raise:
+            # an ambiguous submit must not kill the run.
+            try:
+                self.store.update_command(
+                    cmd_id, "unknown",
+                    engine_client_id=exc.client_id)
+            except (ValueError, KeyError):
+                pass
+            reason = f"execution:submitted-unknown:{exc.client_id}"
+            self.store.record_intent(
+                self.run_id, intent.evidence_ref, intent.strategy,
+                intent.instrument, intent.side.value,
+                "submitted-unknown",
+                reason, self.now_utc().isoformat())
+            return
+        except VenueRejectedError as exc:
+            # B#1: deterministic venue rejection (incl. pre-send rate
+            # limits): NOTHING executed (adapter contract retry_safe).
+            # Free the hold, record rejected, continue the run.
+            try:
+                self.store.update_command(cmd_id, "failed")
+            except (ValueError, KeyError):
+                pass
+            self.policy.release(verdict.reservation_id)
+            kind = ("execution:rate-limited"
+                    if isinstance(exc, RateLimitedError)
+                    else "execution:venue-rejected")
+            reason = f"{kind}:{exc.status}:{exc.code}"
+            self._note_reject(reason, intent.strategy, intent.instrument,
+                              intent.side.value)
+            self.store.record_intent(
+                self.run_id, intent.evidence_ref, intent.strategy,
+                intent.instrument, intent.side.value, "rejected",
+                reason, self.now_utc().isoformat())
+            return
+        except VenueHttpError as exc:
+            # B#1: definitive venue failure that is neither a timeout
+            # (those surface as UnknownOutcomeError) nor a rejection:
+            # nothing executed. Free the hold, record rejected.
+            try:
+                self.store.update_command(cmd_id, "failed")
+            except (ValueError, KeyError):
+                pass
+            self.policy.release(verdict.reservation_id)
+            reason = f"execution:venue-error:{exc.status}:{exc.code}"
+            self._note_reject(reason, intent.strategy, intent.instrument,
+                              intent.side.value)
+            self.store.record_intent(
+                self.run_id, intent.evidence_ref, intent.strategy,
+                intent.instrument, intent.side.value, "rejected",
+                reason, self.now_utc().isoformat())
             return
         self._submit_ts[pre_id] = self.now_utc()
         try:
@@ -1738,18 +2061,23 @@ class Session:
                     if resolved == payload.client_order_id:
                         submitted = self._submit_ts.pop(key)
                         break
+            dispatch_ms: float | None = None
             if submitted is not None:
                 try:
-                    self._dispatch_ms.append(
-                        (payload.ts_utc - submitted).total_seconds() * 1000)
+                    dispatch_ms = (
+                        payload.ts_utc - submitted).total_seconds() * 1000
+                    self._dispatch_ms.append(dispatch_ms)
                 except (TypeError, AttributeError):
-                    pass
+                    dispatch_ms = None
             outcome = self._apply_fill(
                 client_order_id=payload.client_order_id,
                 execution_id=payload.execution_id,
                 instrument=payload.instrument, side=payload.side,
                 qty=payload.qty, price=payload.price, fee=payload.fee,
-                ts_utc=payload.ts_utc, liquidity=payload.liquidity)
+                ts_utc=payload.ts_utc, liquidity=payload.liquidity,
+                slippage_drift_bps=getattr(payload,
+                                           "slippage_drift_bps", 0.0),
+                dispatch_ms=dispatch_ms)
         elif event.kind in ("cancel", "reject", "expire"):
             if self.store.record_event(
                     self.run_id, payload.client_order_id, event.kind,
@@ -1774,7 +2102,8 @@ class Session:
             else:
                 try:
                     self.policy.note_funding(payload.event_id, payload.amount,
-                                             payload.ts_utc.isoformat())
+                                             payload.ts_utc.isoformat(),
+                                             symbol=payload.instrument)
                 except ValueError as exc:
                     self._block_booking(f"funding-rejected:{exc}")
                     outcome = "rejected"
@@ -1817,13 +2146,20 @@ class Session:
 
     def _apply_fill(self, *, client_order_id: str, execution_id: str,
                     instrument: str, side: str, qty: float, price: float,
-                    fee: float, ts_utc: Any, liquidity: str) -> str:
+                    fee: float, ts_utc: Any, liquidity: str,
+                    slippage_drift_bps: float = 0.0,
+                    dispatch_ms: float | None = None) -> str:
         """Book one fill increment exactly once (contract v1 §3).
 
         Returns applied|duplicate|unbooked|rejected. A staged legacy
         sink delta for the same execution_id is consumed (its client
         id comes from this event). Max-applied cumulative qty per
         order never rolls back.
+
+        B#9: paper fills carry slippage_drift_bps from the engine's
+        pessimistic audit; the drift notional books as a conservative
+        fee top-up (never better than pessimistic). Live fills carry
+        0 (real executions, already complete).
         """
         self._staged_deltas.pop(execution_id, None)
         ts_iso = ts_utc.isoformat() if hasattr(ts_utc, "isoformat") else str(ts_utc)
@@ -1846,10 +2182,15 @@ class Session:
                 "instrument": instrument, "qty": qty})
             self._block_booking(f"unknown-fill:{client_order_id}")
             return "unbooked"
+        drift_bps = float(slippage_drift_bps or 0.0)
+        if drift_bps < 0:
+            drift_bps = 0.0
+        drift_fee = float(qty or 0.0) * float(price or 0.0) * drift_bps / 10000.0
+        booked_fee = float(fee or 0.0) + drift_fee
         try:
             self.policy.note_fill_delta(
                 reservation_id, execution_id, instrument, side, qty,
-                price, fee, ts_iso)
+                price, booked_fee, ts_iso)
         except ValueError as exc:
             self.store.checkpoint(self.run_id, "booking-rejected", {
                 "exec_id": execution_id, "reason": str(exc)})
@@ -1858,12 +2199,23 @@ class Session:
         self._applied_exec.add(execution_id)
         self._order_cum[client_order_id] = self._order_cum.get(
             client_order_id, 0.0) + float(qty or 0.0)
+        # B#9: fills.jsonl keeps its FROZEN schema (fee := total modeled
+        # cost incl. drift, so reporting matches the ledger); the
+        # drift breakdown lives in fills_drift.jsonl (new file, keyed
+        # by execution_id) for F2.2 calibration + F5.4 attribution.
         self._append_run_file("fills.jsonl", {
             "execution_id": execution_id,
             "client_order_id": client_order_id,
             "instrument": instrument, "side": side,
-            "qty": qty, "price": price, "fee": fee,
+            "qty": qty, "price": price, "fee": booked_fee,
             "liquidity": liquidity, "ts_utc": ts_iso})
+        self._append_run_file("fills_drift.jsonl", {
+            "execution_id": execution_id,
+            "instrument": instrument,
+            "raw_fee": float(fee or 0.0),
+            "slippage_drift_bps": drift_bps, "drift_fee": drift_fee,
+            "booked_fee": booked_fee, "dispatch_ms": dispatch_ms,
+            "ts_utc": ts_iso})
         self._equity_dirty = True
         self._note_fill_exposure(client_order_id, execution_id)
         status = self._tracked_status(client_order_id)
@@ -1923,6 +2275,9 @@ class Session:
             self._booking_blocked = reason
 
     # -- exit-only halts (R3: Session owns its reasons) --------------------
+    _TRANSIENT_MARK_HALTS = frozenset({
+        "health:stale-mark", "health:mark-age-unknown"})
+
     def _halt_entries(self, reason: str) -> None:
         """Halt entries under a Session-owned reason (R3).
 
@@ -1930,19 +2285,33 @@ class Session:
         refuses entry submits); other subsystems' reasons survive.
         Engines without the seam (doubles) keep the Session record.
         """
-        if not reason:
+        if not reason or reason in self._exit_only_reasons:
             return
+        old = "exit-only" if self._exit_only_reasons else "session-clear"
         self._exit_only_reasons.add(reason)
         setter = getattr(self.engine, "set_exit_only", None)
         if callable(setter):
             setter(True, reason)
+        self._append_run_file("risk.jsonl", {
+            "ts_utc": self.now_utc().isoformat(),
+            "wall_ts_utc": datetime.now(timezone.utc).isoformat(),
+            "kind": "entry-halt", "from_state": old,
+            "to_state": "exit-only", "reason": reason})
 
     def _release_exit_only(self, reason: str) -> None:
         """Lift one Session-owned reason (R3: others survive)."""
+        if reason not in self._exit_only_reasons:
+            return
         self._exit_only_reasons.discard(reason)
         setter = getattr(self.engine, "set_exit_only", None)
         if callable(setter):
             setter(False, reason)
+        self._append_run_file("risk.jsonl", {
+            "ts_utc": self.now_utc().isoformat(),
+            "wall_ts_utc": datetime.now(timezone.utc).isoformat(),
+            "kind": "entry-halt-released", "from_state": "exit-only",
+            "to_state": "exit-only" if self._exit_only_reasons else
+                        "session-clear", "reason": reason})
 
     # Adversarial review B2: day-roll / emergency recovery was clearing
     # UNRELATED safety halts (safe-mode, funding mismatch, dust, ...).
@@ -1967,6 +2336,8 @@ class Session:
             if callable(setter):
                 setter(False, reason)
         self._exit_only_reasons = kept
+            self._release_exit_only(reason)
+        self._exit_only_reasons.clear()
         # F2: a wipe releases the health gate's tracking too, so a still-
         # failing condition re-latches on the next snapshot (fail-closed)
         # instead of being suppressed by stale bookkeeping.
@@ -1990,6 +2361,8 @@ class Session:
         - a reason string the gate latched before but no longer holds is
           released, mirroring it out of the engine's reason-keyed
           exit-only;
+        - a transient health reason no longer present is released;
+          policy loss/profit stops remain latched until reconciliation;
         - the run flips back to ready only when this gate released
           something AND nothing else blocks entries (other exit-only
           reasons, booking blocks, pending flattens).
@@ -2009,6 +2382,29 @@ class Session:
         released = False
         for reason in sorted(self._health_halt_reasons):
             if reason == desired:
+        reasons = set(health.reasons) if not health.ok else set()
+        if not health.ok and not reasons:
+            reasons.add("health:unknown")
+        engine_reasons = getattr(self.engine, "exit_only_reasons", None)
+        recovered = self._TRANSIENT_MARK_HALTS.intersection(
+            engine_reasons() if callable(engine_reasons) else ())
+        self._exit_only_reasons.update(recovered)
+        self._health_halt_reasons.update(recovered)
+        desired = {r for r in reasons if r.startswith("health:")}
+        mark_checked = not (desired - self._TRANSIENT_MARK_HALTS)
+        if not mark_checked:
+            # An invalid/unreconciled account cannot prove mark recovery.
+            desired.update(self._health_halt_reasons.intersection(
+                self._TRANSIENT_MARK_HALTS))
+        added = reasons - self._exit_only_reasons
+        # Engage replacements before releasing old reasons. Persistent
+        # daily-loss/profit stops remain outside this gate's ownership.
+        for reason in sorted(reasons):
+            self._halt_entries(reason)
+        self._health_halt_reasons.update(desired)
+        released = False
+        for reason in sorted(self._health_halt_reasons):
+            if reason in desired:
                 continue
             self._health_halt_reasons.discard(reason)
             self._release_exit_only(reason)
@@ -2026,6 +2422,85 @@ class Session:
                 and self._booking_blocked is None \
                 and not self._flatten_pending:
             self._set_state("ready", "health-recovered")
+
+    def _health_tick(self) -> None:
+        """One account-snapshot health evaluation, level-applied (F2).
+
+        A#4: venue reads that failed degraded inside the snapshot
+        (margin/inflight unknown) latch a blocking gate reason instead
+        of killing the run; the level-wise gate releases it on the
+        next fresh snapshot.
+        """
+        snapshot = self._snapshot_account()
+        health = self.policy.check_health(snapshot)
+        if self._reads_degraded:
+            health = HealthStatus(
+                False, tuple(health.reasons) + ("health:degraded-reads",),
+                health.latched)
+        if self._mark_missing() and (self.ledger.has_position()
+                                     or self._position is not None):
+            # A#6: blind + exposed (SHORT equity would read as cash
+            # fiction) blocks entries until marks return.
+            health = HealthStatus(
+                False, tuple(health.reasons) + ("health:mark-missing",),
+                health.latched)
+        skew_reason = self._check_clock_skew()
+        if skew_reason is not None:
+            health = HealthStatus(
+                False, tuple(health.reasons) + (skew_reason,),
+                health.latched)
+        self._apply_health_gate(health)
+
+    def _check_clock_skew(self) -> str | None:
+        """F2.6: halt entries when skew exceeds the recvWindow margin.
+
+        Refreshes the engine offset at most every 60s (one public
+        REST call); evaluates on the last-known offset otherwise.
+        Blocks at |skew| > 80% of recvWindow (signed requests die at
+        100%; the 20% margin covers drift between refreshes).
+        Capability-guarded: engines without skew reporting skip.
+        Returns the gate reason, or None when healthy/unsampled.
+        """
+        skew_fn = getattr(self.engine, "clock_skew_ms", None)
+        window_fn = getattr(self.engine, "recv_window_ms", None)
+        refresh_fn = getattr(self.engine, "refresh_clock_offset", None)
+        if not callable(skew_fn) or not callable(window_fn):
+            return None
+        now_mono = time.monotonic()
+        if callable(refresh_fn) and now_mono - self._last_skew_mono >= 60.0:
+            self._last_skew_mono = now_mono
+            try:
+                refresh_fn()
+            except Exception:  # noqa: BLE001 — keep last-known offset.
+                pass
+        try:
+            skew = skew_fn()
+            window = window_fn()
+        except (ValueError, KeyError, AttributeError):
+            return None
+        if skew is None:
+            return None
+        try:
+            if abs(float(skew)) > float(window) * 0.8:
+                return "health:clock-skew"
+        except (TypeError, ValueError):
+            return None
+        return None
+            # Keep compatibility with legacy bool-shaped test adapters;
+            # production and paper adapters now retain individual keys.
+            setter = getattr(self.engine, "set_exit_only", None)
+            if callable(setter):
+                setter(True, sorted(self._exit_only_reasons)[0])
+        if added:
+            self._set_state("halted", ";".join(sorted(reasons)))
+        if released and health.ok \
+                and not self._exit_only_reasons \
+                and not (callable(engine_reasons) and engine_reasons()) \
+                and self._admission_hold() is None \
+                and self._stop_flag is None \
+                and self.store.stop_requested(self.run_id) is None:
+            self._set_state("holding" if self._position is not None else
+                            "ready", "health-recovered")
 
     def _health_tick(self) -> None:
         """One account-snapshot health evaluation, level-applied (F2)."""
@@ -2297,6 +2772,15 @@ class Session:
         entry = statuses.get(pos["entry_id"] or "")
         # Sibling settling + terminal pruning (ids tracked to terminal).
         self._settle_leg_terminals(pos, statuses)
+        # B#2: a double-filled sibling pair inverts the book — flatten
+        # the reversal immediately; never attach wrong-way legs onto it.
+        if self._reversed_exposure(pos):
+            self.store.checkpoint(self.run_id, "position-reversed",
+                                   {"net": self.ledger.position_qty(),
+                                    "side": pos.get("side")})
+            self._cancel_tracked(pos, statuses, "reversal")
+            self._flatten("position-reversed")
+            return
         # Coverage supervision: verify until protected, re-verify on growth.
         if entry is not None and entry.filled_qty > 1e-12 \
                 and not pos["protected"]:
@@ -2476,8 +2960,38 @@ class Session:
         # Legs may have attached/retired: persist the structural change.
         self._save_position_shell()
 
+    def _reversed_exposure(self, pos: dict[str, Any]) -> bool:
+        """True when the ledger net materially opposes the entry side.
+
+        B#2/B#12: after a sibling double-fill (or any cancel/fill
+        race), both reduce-only legs can book against successive
+        partial nets and leave the book directionally inverted. The
+        venue backstops the full-size case, but the session must
+        never attach same-direction-as-entry "protection" onto a
+        reversed book (it would ADD to the inverted exposure):
+        reversed books flatten, never re-protect.
+        """
+        net = self.ledger.position_qty()
+        if abs(net) <= 1e-9:
+            return False
+        side = (pos.get("side") or "").upper()
+        if side == "LONG":
+            return net < 0
+        if side == "SHORT":
+            return net > 0
+        return False
+
     def _ensure_protection_inner(self, pos: dict[str, Any]) -> None:
         """Attach + verify body (see _ensure_protection)."""
+        if self._reversed_exposure(pos):
+            # B#2: flatten the inverted book; never protect it.
+            self.store.checkpoint(self.run_id, "position-reversed",
+                                   {"net": self.ledger.position_qty(),
+                                    "side": pos.get("side")})
+            self._cancel_tracked(
+                pos, self._tracked_statuses_for(pos), "reversal")
+            self._flatten("position-reversed")
+            return
         statuses = self._tracked_statuses_for(pos)
         self._mark_seen(pos, statuses)
         self._settle_leg_terminals(pos, statuses)
@@ -2544,6 +3058,22 @@ class Session:
             # used to escape the run loop and exit with exposure. Retain
             # the position, let the attempt bound / protection budget
             # drive an explicit emergency flatten next tick.
+        except UnknownOutcomeError as exc:
+            # B#11: the leg MAY be live with a journaled id — track
+            # it (unknown-drain resolves; never orphan).
+            if exc.client_id and exc.client_id not in pos["legs"]:
+                pos["legs"].append(exc.client_id)
+            self.store.checkpoint(self.run_id, "protection-failed",
+                                   {"attempt": pos["protect_attempts"],
+                                    "reason": f"unknown:{exc.client_id}"})
+            return
+        except (ValueError, KeyError, VenueHttpError) as exc:
+            # Venue attach faults (429/reject/5xx) retry next tick via
+            # the attempts bound, then emergency-flatten — like local
+            # attach faults, never safe-mode (no exposure change yet).
+            partial = getattr(exc, "partial_leg_id", None)
+            if partial and partial not in pos["legs"]:
+                pos["legs"].append(partial)
             self.store.checkpoint(self.run_id, "protection-failed",
                                   {"attempt": pos["protect_attempts"],
                                    "reason": str(exc),
@@ -2685,8 +3215,19 @@ class Session:
         snapshot (adapter models no venue account) or a
         pre-migration shape (raw dict) leaves the leg to order truth
         plus the legacy simulator-cache read below.
+
+        A#9: live runs with hot_cache_enabled read the TTL-cached
+        snapshot (<=1 REST/5s) instead of a fresh signed REST per
+        event; a stale/failed cache reads None and disagrees
+        (fail-closed: unconfirmed never releases). Scripted/drill
+        paths keep the exact direct-REST contract.
         """
         snap_fn = getattr(self.engine, "account_snapshot", None)
+        if getattr(self.engine, "hot_cache_enabled", False):
+            cached_fn = getattr(self.engine, "account_snapshot_cached",
+                                None)
+            if callable(cached_fn):
+                snap_fn = cached_fn
         if callable(snap_fn):
             try:
                 snap = snap_fn()
@@ -2737,6 +3278,7 @@ class Session:
     def _retry_pending_flatten(self, reason: str) -> None:
         if not self.ledger.has_position():
             self._flatten_pending = False
+            self._release_shell_less_risk()
             return
         try:
             self._flatten(reason)
@@ -2746,6 +3288,28 @@ class Session:
                                   {"reason": str(exc)})
         if not self.ledger.has_position():
             self._flatten_pending = False
+            self._release_shell_less_risk()
+
+    def _release_shell_less_risk(self) -> None:
+        """Release risk state after shell-less recovery flattens (B#19).
+
+        Without a position shell, _update_position's note_flat +
+        release path never runs: open_position would latch and block
+        entries forever after a correct recovery flatten. Clearing is
+        safe: note_flat no-ops unless booked nets zero, and release()
+        frees only zero-net holds (nonzero moves to unresolved and
+        keeps blocking — fail-closed).
+        """
+        if self._position is not None:
+            return
+        try:
+            self.policy.note_flat()
+            for rid in list(self.policy.live_reservations()):
+                self.policy.release(rid)
+            for rid in list(self.policy.unresolved_ids()):
+                self.policy.release(rid)
+        except (ValueError, KeyError, AttributeError):
+            pass
 
     def _position_symbol(self) -> str | None:
         """Instrument of the current ledger exposure (last fill's symbol)."""
@@ -2756,7 +3320,7 @@ class Session:
                 return entry["symbol"]
         return None
 
-    def _flatten(self, reason: str) -> None:
+    def _flatten(self, reason: str, *, keep_legs: bool = False) -> None:
         """Idempotent tracked close (READY-§5 inv 5).
 
         Cancels every tracked live child (entry, legs, retired — closes
@@ -2765,6 +3329,10 @@ class Session:
         flight. Unknown (absent) closes count as in flight: reconcile
         before retry, never duplicate. Checkpoints only when it ACTS, so
         repeated empty calls are silent instead of looping.
+
+        keep_legs (shutdown only): skip leg/retired cancels — the close
+        races while venue protection stays live; legs cancel after the
+        close confirms. The entry still cancels (no refills).
         """
         if self.config.mode == "prod" and not self.config.allow_live_submission:
             raise ValueError("config:prod-submission-disabled")
@@ -2772,11 +3340,12 @@ class Session:
             return  # push reentrancy: the outer pass already converges.
         self._in_flatten = True
         try:
-            self._flatten_inner(reason)
+            self._flatten_inner(reason, keep_legs=keep_legs)
         finally:
             self._in_flatten = False
 
-    def _flatten_inner(self, reason: str) -> None:
+    def _flatten_inner(self, reason: str, *,
+                       keep_legs: bool = False) -> None:
         """Tracked-close body (see _flatten)."""
         # No drain here: callers drain around flatten (_update_position runs
         # post-drain; others drain after), and draining would recurse via
@@ -2794,12 +3363,15 @@ class Session:
             self._mark_seen(pos, statuses)
             # Own in-flight closes are left to work (canceling them
             # would self-sabotage); legs/retired/entry must die first.
-            for lid in list(pos.get("legs") or []) \
-                    + list(pos.get("retired") or []):
-                if self._request_cancel(pos, lid, statuses, reason) \
-                        == "sent" and lid not in requested:
-                    requested.add(lid)
-                    acted = True
+            # keep_legs (shutdown): legs stay live until the close
+            # confirms; the entry still cancels (no refills).
+            if not keep_legs:
+                for lid in list(pos.get("legs") or []) \
+                        + list(pos.get("retired") or []):
+                    if self._request_cancel(pos, lid, statuses, reason) \
+                            == "sent" and lid not in requested:
+                        requested.add(lid)
+                        acted = True
             entry_id = pos.get("entry_id") or pos.get("entry_pre_id") or ""
             entry = statuses.get(entry_id)
             if entry is None or entry.state in ("open", "partial"):
@@ -2820,7 +3392,11 @@ class Session:
         close_live = False
         for cid in closes:
             st = statuses.get(cid)
-            if st is None or st.state in ("open", "partial"):
+            # A#1: live UNKNOWN/CANCEL_UNKNOWN surfaces as "unknown" and
+            # paper restart-lost too — both may have filled. Unknown
+            # counts as in flight: reconcile before retry, never
+            # duplicate (a second full-size close reverses the book).
+            if st is None or st.state in ("open", "partial", "unknown"):
                 close_live = True  # unknown counts as in flight.
                 break
         net = self.ledger.position_qty()
@@ -3280,6 +3856,11 @@ class Session:
         if self._flatten_pending:
             self._retry_pending_flatten("resume-reconcile-retry")
         self._roll_day_if_needed()
+        # Recover a transient mark hold before evaluating the next
+        # eligible bar. Do not let one stale startup observation poison
+        # every later, fresh economic submission.
+        self._apply_health_gate(
+            self.policy.check_health(self._snapshot_account()))
         if self._position is not None:
             # Time exits and flat inference run on market traffic too.
             self._update_position(EngineEvent("mark", None, self.now_utc()))
@@ -3367,7 +3948,7 @@ class Session:
             self._ms_t0_ms = cur
         return now.isoformat(), cur - self._ms_t0_ms
 
-    def _run_stop_actions(self) -> None:
+    def _run_stop_actions(self, snapshot: AccountSnapshot | None = None) -> None:
         """Execute stop ACTION demands: cancel, reduce, alert, recover.
 
         W3-24H P1: entries are already blocked by halt reasons; this is
@@ -3383,11 +3964,14 @@ class Session:
             self.store.checkpoint(self.run_id, "stop-actions-deferred",
                                   {"reason": f"{type(exc).__name__}: {exc}"})
             return
+        if snapshot is None:
+            snapshot = self._snapshot_account()
+        actions = self.policy.pending_stop_actions(snapshot)
         if "alert_operator" in actions and not self._stop_alerted:
             self._stop_alerted = True
             self._append_run_file("risk.jsonl", {
                 "ts_utc": self.now_utc().isoformat(),
-                "wall_ts_utc": datetime.now(timezone.utc).isoformat(),
+                "wall_ts_utc": self._wall_utc().isoformat(),
                 "kind": "operator-alert",
                 "from_state": "", "to_state": "emergency",
                 "reason": "halt:emergency:exposure-reduction"})
@@ -3395,6 +3979,11 @@ class Session:
             try:
                 orders = self.engine.open_orders()
             except Exception:  # noqa: BLE001 — retry next tick
+            except (ValueError, KeyError, AttributeError,
+                    VenueHttpError, UnknownOutcomeError):
+                # B#5: a 429/5xx while listing must not kill stop
+                # processing mid-emergency; skip cancels this tick,
+                # retry next tick (exposure retained meanwhile).
                 orders = []
             for status in orders:
                 if getattr(status, "role", "entry") != "entry":
@@ -3409,8 +3998,12 @@ class Session:
         if "reduce_exposure" in actions:
             try:
                 self._flatten("stop-action")
-            except (ValueError, KeyError, RuntimeError):
-                pass  # reduction retried next tick; exposure retained.
+            except Exception as exc:  # noqa: BLE001 — B#5: reduction
+                # retried next tick (unknown closes stay in flight per
+                # A#1; nothing duplicates); exposure retained meanwhile.
+                self.store.checkpoint(
+                    self.run_id, "stop-action-flatten-deferred",
+                    {"reason": f"{type(exc).__name__}:{exc}"})
         if self._stop_alerted or self.policy.emergency_active():
             # A latch stood: probe reconciled recovery only when no
             # exposure actions remain (cheap bool gate off the hot path).
@@ -3457,7 +4050,7 @@ class Session:
                 action = caller_action(exc) if caller_action else "retry"
                 self._append_run_file("risk.jsonl", {
                     "ts_utc": self.now_utc().isoformat(),
-                    "wall_ts_utc": datetime.now(timezone.utc).isoformat(),
+                    "wall_ts_utc": self._wall_utc().isoformat(),
                     "kind": "unknown-drain",
                     "from_state": cid, "to_state": action,
                     "reason": f"{type(exc).__name__}:still-blocking"})
@@ -3687,13 +4280,22 @@ class Session:
             name="filters")
 
     def _apply_run_filters(self, filters: dict, asof: Any) -> None:
-        """Install fetched venue filters on the control thread."""
+        """Install fetched venue filters on the control thread.
+
+        B#14: paper arming (public exchangeInfo, no signed endpoint)
+        cannot require venue brackets — the flag flips False here so
+        paper run_mode admissions flow; arming brackets later via
+        arm_brackets re-engages the gate (configured brackets always
+        enforce). Live/demo readiness arms brackets + run_mode
+        together via arm_live_brackets (fail closed).
+        """
         from dataclasses import replace
         merged = dict(self.policy.config.instrument_filters)
         merged.update(filters)
         self.policy.config = replace(
             self.policy.config, instrument_filters=merged,
-            filters_asof_utc=asof, run_mode=True)
+            filters_asof_utc=asof, run_mode=True,
+            brackets_required_in_run_mode=(self.config.mode != "paper"))
         self.store.checkpoint(self.run_id, "filters-armed",
                               {"symbols": sorted(filters),
                                "asof_utc": asof.isoformat()})
@@ -3960,7 +4562,8 @@ class Session:
                 try:
                     self.policy.note_funding(
                         row.get("execution_id"), payload.get("amount", 0.0),
-                        row.get("ts_utc", ""))
+                        row.get("ts_utc", ""),
+                        symbol=payload.get("instrument", ""))
                 except ValueError:
                     pass  # already booked, or invalid row: gates decide.
         try:
@@ -4125,7 +4728,7 @@ class Session:
             ctx["last_market_mono"] = now_mono
             self._append_run_file("risk.jsonl", {
                 "ts_utc": self.now_utc().isoformat(),
-                "wall_ts_utc": datetime.now(timezone.utc).isoformat(),
+                "wall_ts_utc": self._wall_utc().isoformat(),
                 "kind": "stream-stall",
                 "from_state": "streaming", "to_state": "resync",
                 "reason": "no market events for 60s; re-priming books"})
@@ -4135,11 +4738,36 @@ class Session:
         # Supervision on EVERY tick (stop recognition cannot wait for
         # traffic); heartbeat/persist stay on the slow beat.
         stop_reason = self._supervise(ctx, now_mono)
+        # Position/stop actions can emit fills and terminal events on
+        # this very wake. Book them before returning or honoring stop.
+        self._drain_engine(bounded=True)
         if stop_reason is not None:
             return stop_reason
         if now_mono >= deadline_mono:
             return "duration-elapsed"
         return None
+
+    def _write_watchdog_heartbeat(self) -> None:
+        """Write the external-watchdog heartbeat file (B#18).
+
+        tools/watchdog.py --heartbeat <this file>: {ts_utc,
+        has_exposure, run_id}. Stable path under storage_dir (one per
+        host, latest run wins); atomic replace so readers never see a
+        torn write. Best-effort: a failed write must not disturb the
+        run (the watchdog treats unreadable as stale+exposed).
+        """
+        try:
+            beat = {"ts_utc": self.now_utc().isoformat(),
+                    "has_exposure": bool(self.ledger.has_position()
+                                         or self._position is not None),
+                    "run_id": self.run_id}
+            base = Path(self.config.storage_dir)
+            base.mkdir(parents=True, exist_ok=True)
+            tmp = base / "heartbeat.json.tmp"
+            tmp.write_text(json.dumps(beat) + "\n", encoding="utf-8")
+            os.replace(tmp, base / "heartbeat.json")
+        except (OSError, ValueError):
+            pass
 
     def _supervise(self, ctx: dict[str, Any],
                    now_mono: float) -> str | None:
@@ -4148,7 +4776,35 @@ class Session:
         if not tick.ok:
             self._halt_entries(";".join(tick.reasons))
             self._set_state("halted", ";".join(tick.reasons))
+        # B#4: detection must also run WITHOUT market traffic (feed
+        # stall): a throttled full health evaluation (snapshot +
+        # policy check + gate) every 10s of supervision time. The
+        # event path evaluates every event; this covers idle wakes.
+        last_sup = ctx.get("last_sup_health_mono")
+        if last_sup is None or now_mono - last_sup >= 10.0:
+            ctx["last_sup_health_mono"] = now_mono
+            try:
+                self._health_tick()
+            except Exception:  # noqa: BLE001 — supervision never dies;
+                pass  # _health_tick already degrades venue reads.
         self._run_stop_actions()
+        self._run_shadow_stop()
+        self._run_orphan_watch(ctx)
+        # B#10: live venue funding booking (throttled: settlements are
+        # 8h apart; a 10min pull keeps booked equity fresh for stops).
+        last_fund = ctx.get("last_funding_mono")
+        if last_fund is None or now_mono - last_fund >= 600.0:
+            ctx["last_funding_mono"] = now_mono
+            try:
+                self._book_live_funding()
+            except Exception:  # noqa: BLE001 — booking never kills
+                pass  # supervision; faults retry next window.
+        # The existing stop-action snapshot also drives health: quiet
+        # ticks must detect stale prices AND observe later recovery.
+        snapshot = self._snapshot_account()
+        tick = self.policy.monitor_tick(account=snapshot)
+        self._apply_health_gate(tick)
+        self._run_stop_actions(snapshot)
         self._drain_unknown_outcomes()
         # A6: leverage can be changed externally mid-run. Re-check it
         # periodically; a mismatch halts entries and alerts.
@@ -4205,6 +4861,7 @@ class Session:
             self.store.heartbeat(self.run_id, self._pid)
             self._write_watchdog_heartbeat()
             self._persist_local_state()
+            self._write_watchdog_heartbeat()
         stop = self._stop_flag or self.store.stop_requested(self.run_id)
         if stop is not None:
             if stop == "flatten":
@@ -4213,9 +4870,17 @@ class Session:
             else:
                 # T1.5: graceful (SIGTERM/SIGINT) flattens by default
                 # and confirms flat; leave-protected is the opt-out.
+                # A#3: an UNCONFIRMED shutdown safe-modes loudly (halt
+                # + alert + legs retained by shutdown_flatten) instead
+                # of exiting silently on naked exposure.
                 try:
                     out = self.shutdown_flatten()
                     self.store.checkpoint(self.run_id, "shutdown", out)
+                    if not out.get("confirmed_flat") \
+                            and not out.get("left_protected"):
+                        self.enter_safe_mode("shutdown-unconfirmed")
+                        self.store.checkpoint(
+                            self.run_id, "shutdown-unconfirmed", out)
                 except ValueError as exc:
                     self.enter_safe_mode(f"shutdown:{exc}")
             return f"operator-stop:{stop}"
@@ -4246,6 +4911,8 @@ class Session:
         venue orders — the old "no submission on this path" wording was
         false for prod and is removed (T0.4). Prod submission stays off
         unless the P6 arming path enables it.
+        clock, wall duration budget. Execution uses the injected adapter;
+        production submission remains guarded and disabled by default.
         Resume continues wall-now with recovered state (no live cursor);
         any recovered exposure is flattened before continuing.
         """
@@ -4341,8 +5008,16 @@ class Session:
             self._prime_call.wait(timeout=wait_s)
             self._poll_async_prime()
         if self._position is not None and end_reason == "duration-elapsed":
-            self._flatten("duration-end")
+            try:
+                self._flatten("duration-end")
+            except Exception as exc:  # noqa: BLE001 — B#1: an
+                # unknown/failed duration-end close must enter safe
+                # mode (halt + alert), never exit with exposure while
+                # the process reports a clean run.
+                self.enter_safe_mode(f"duration-end:{type(exc).__name__}")
             self._drain_engine()
+        if end_reason in ("duration-elapsed", "operator-stop:flatten"):
+            self._settle_shutdown_exits()
         self._set_state("stopping", end_reason)
         # Final full drain: live wakes are bounded, so sweep the backlog
         # (bounded rounds; a pathological flood cannot hang shutdown).
@@ -4366,6 +5041,36 @@ class Session:
         self.policy.flush_state()  # T1.2: debounced tick state lands at end
         self._stop_refresh()
         return report
+
+    def _settle_shutdown_exits(self) -> None:
+        """Give already-requested closes bounded owner-thread settlement.
+
+        A private-stream fill can arrive after the stop wake. Keep
+        booking/protection active during closure rather than requiring
+        a restart to consume that fill. Exhaustion preserves exposure
+        and unknowns; it never declares flat or submits a new entry.
+        """
+        allowance = min(5.0, deadline_remaining_s(default=5.0) or 0.0)
+        deadline = time.monotonic() + allowance
+        while True:
+            stream = self._user_stream_attachment
+            if stream is not None:
+                stream.drain_owner()
+            self._advance_engine_clock()
+            self._drain_engine(bounded=True)
+            if self._position is not None:
+                self._update_position(EngineEvent("tick", None,
+                                                  self.now_utc()))
+            self._drain_engine(bounded=True)
+            if self._position is None and not self.ledger.has_position():
+                return
+            left = deadline - time.monotonic()
+            if left <= 0:
+                self.store.checkpoint(self.run_id, "shutdown-exposure-pending", {
+                    "qty": self.ledger.position_qty(),
+                    "position_tracked": self._position is not None})
+                return
+            time.sleep(min(self.config.control_tick_s, left))
 
     # -- report ------------------------------------------------------------------
     def _build_report(self, capture: str, expect_class: str,

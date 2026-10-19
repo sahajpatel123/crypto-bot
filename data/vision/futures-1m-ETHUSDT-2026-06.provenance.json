@@ -1,0 +1,10 @@
+{
+ "name": "futures-1m-ETHUSDT-2026-06",
+ "url": "https://data.binance.vision/data/futures/um/monthly/klines/ETHUSDT/1m/ETHUSDT-1m-2026-06.zip",
+ "fetched_utc": "2026-10-16T14:13:57.615310+00:00",
+ "status": "present",
+ "http_status": 200,
+ "sha256": "3b771e114b494805ac4cc677b34befb7e5f332bf5bd3a8a368cd21d65cd99cba",
+ "bytes": 1875936,
+ "csv_rows": 43200
+}

@@ -32,6 +32,20 @@ def test_idempotent_across_sweep():
             assert floor_to_step(once, step) == once
 
 
+def test_large_ratio_never_rounds_up():
+    # F1.1: the old multiplicative *(1+1e-9) epsilon rounded UP at
+    # large qty/step ratios (10.0/1e-8 -> 10.00000001). Additive
+    # epsilon errs down only.
+    assert floor_to_step(10.0, 1e-8) == 10.0
+    assert floor_to_step(99999999.95, 1) == 99999999
+    assert floor_to_step(1e8, 1) == 1e8
+    from cryptobot.risk.rounding import ceil_to_tick, floor_to_tick
+    assert floor_to_tick(100.50, 0.10) == 100.5
+    assert ceil_to_tick(100.50, 0.10) == 100.5
+    assert floor_to_tick(60000.0, 0.10) == 60000.0
+    assert ceil_to_tick(60000.0, 0.10) == 60000.0
+
+
 def test_invalid_step_raises():
     for bad in (0.0, -0.001, math.nan, math.inf, "0.001", True):
         with pytest.raises(ValueError):

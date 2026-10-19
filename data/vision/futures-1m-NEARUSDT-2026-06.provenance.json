@@ -1,0 +1,10 @@
+{
+ "name": "futures-1m-NEARUSDT-2026-06",
+ "url": "https://data.binance.vision/data/futures/um/monthly/klines/NEARUSDT/1m/NEARUSDT-1m-2026-06.zip",
+ "fetched_utc": "2026-10-16T14:14:03.039013+00:00",
+ "status": "present",
+ "http_status": 200,
+ "sha256": "39ea4b16815c63c051da8900e5d0c6cee92bbb59d51c03c8c3f82853527fe54d",
+ "bytes": 1422195,
+ "csv_rows": 43200
+}
