@@ -221,14 +221,27 @@ def cmd_owner(args: argparse.Namespace) -> int:
     ]
     done = set(state.get("done", []))
     if args.step:
+        if args.step not in {name for name, _ in steps}:
+            print(f"owner: REFUSED unknown step {args.step}")
+            return 2
         done.add(args.step)
     state["done"] = sorted(done)
     state_path.parent.mkdir(parents=True, exist_ok=True)
     state_path.write_text(json.dumps(state, indent=1, sort_keys=True) + "\n")
     print("owner wizard")
+    blocked_open = []
     for name, text in steps:
-        mark = "done" if name in done else "open"
+        mark = "PASS" if name in done else "TODO"
         print(f"  [{mark}] {name}: {text}")
+        if name not in done and text.startswith("BLOCKED-OWNER"):
+            blocked_open.append(name)
+    passed = len([n for n, _ in steps if n in done])
+    failed = len(steps) - passed
+    print(f"owner: {passed} passed, {failed} failed")
+    if blocked_open:
+        print(f"blocked-owner: {', '.join(blocked_open)}")
+    print("send back: owner-wizard state file + host-check, readiness, "
+          "drill, latency outputs for the steps you ran")
     print("gate: NO-GO until a real demo drill passes and you arm")
     print("no demonstrated edge")
     return 0

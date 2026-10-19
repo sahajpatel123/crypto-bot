@@ -6,6 +6,18 @@ NO-GO. There is no demonstrated edge.
 
 Hermetic check: `cryptobot selftest --all`.
 Operator actions on the emulator: `cryptobot ops status --mode emulator`.
+Full ops list: `status`, `positions`, `orders`, `pause`, `resume`,
+`cancel-all`, `cancel --client-id <id>`, `flatten [--symbol <s>]`,
+`kill` (cancel-all + flatten + halt), `order --kind MARKET|LIMIT|
+STOP_MARKET|TAKE_PROFIT_MARKET [--price <p>] [--stop-price <p>]
+[--post-only] [--reduce-only] [--client-id <id>]`.
+Background jobs: `cryptobot background status` (free disk, next
+adjudication date); `install`/`uninstall` wrap `deploy/macos/*.sh`.
+Owner steps: `cryptobot owner` (resumable via `--step <name>`).
+Certificate: `cryptobot certify --out COMPLETION_CERTIFICATE.md
+--matrix-out COMMAND_MATRIX.md` (fails unless selftest is 100% PASS).
+Adjudication clock: T0 = first sealed recorder chunk, T = T0+90d,
+C1 final = min(T+14, max(T, first day with 90 forward days)).
 Prod ops refuse without a human arm. A real demo drill is an owner step
 (`cryptobot owner`), not something the emulator can satisfy.
 
@@ -70,10 +82,13 @@ Symptom: systemd restart loop, `StartLimitBurst` hit.
 ## Disk full
 
 Symptom: recorder `disk-budget-exceeded`, write errors.
-1. Stop the recorder cleanly (`cryptobot recorder stop`).
-2. Move sealed chunks to cold storage; never delete a chunk referenced by
+1. The watchdog (`deploy/macos/watchdog.py`, every 60s) stops the
+   recorder at the 8192 MB guard; the recorder plist runs under
+   `caffeinate -is` so sleep does not silently gap the capture.
+2. Stop the recorder cleanly (`cryptobot recorder stop`) if still running.
+3. Move sealed chunks to cold storage; never delete a chunk referenced by
    the manifest without updating the vault registry through tooling.
-3. Free space, restart, `cryptobot recorder verify`.
+4. Free space, restart, `cryptobot recorder verify`.
 
 ## Recorder gap
 
