@@ -1,8 +1,8 @@
 # Completion certificate
 
-commit: `ba9fbf8e3870f1d36b5773477a27da8ed7dcd95f`
-selftest: PASS (118 passed, 0 failed)
-command-matrix coverage: 55 commands, 100% PASS
+commit: `e7babf202bc8850c09b6789db434632c934dd946`
+selftest: PASS (132 passed, 0 failed)
+command-matrix coverage: 57 commands, 100% PASS
 emulator drill: see selftest emulator-drill and emulator-soak (provenance EMULATED, not a demo drill)
 suite: see STATE.md
 BLOCKED-OWNER: real demo-account drill; legal access to the venue; tax treatment of gains and losses

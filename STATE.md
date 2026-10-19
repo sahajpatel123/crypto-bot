@@ -64,18 +64,18 @@ No demonstrated edge.
 
 | ID | Task | Status | Evidence |
 |---|---|---|---|
-| A | Command matrix + selftest | DONE | `cryptobot selftest --all` PASS, 55 commands, 118 checks, `COMMAND_MATRIX.md` |
-| B | Exchange emulator + drill + soak | DONE | `src/cryptobot/adapters/mockex_server.py`, `cryptobot emulator drill`, tests in `tests/unit/test_operational.py`. Provenance EMULATED. Gate rejects it |
-| C | Operator commands | DONE | `cryptobot ops`. Prod refuses without an arm. Emulator orders go through RiskPolicy |
+| A | Command matrix + selftest | DONE | `cryptobot selftest --all` PASS, 57 commands, 132 checks, `COMMAND_MATRIX.md`. Exact exits, creds/bare/monitor checks (D-048) |
+| B | Exchange emulator + drill + soak | DONE-MINIMAL | Real-socket drill 8 cells PASS + 24-step soak, EMULATED-stamped incl. lists, gate rejects. Full WS streams, tick/step server checks, 418/502/504, SIGKILL-resume are future work (D-048) |
+| C | Operator commands | DONE | `cryptobot ops` incl. STOP/TP via algo, post-only, cancel/cancel-all, flatten, kill; prod refuses every action; 10 tests in `test_ops_commands.py` (D-048) |
 | D1 | Move data root | CUT | `EXTERNAL_DATA_ROOT` empty. Data stays in the worktree. D-046 |
 | D2 | Recorder coverage | DONE | `RECORDER_COVERAGE.md`. H4 other venues IMPRACTICAL-BY-RESOURCE (D-046) |
-| D3 | C1 timeline | DONE | `c1_final_utc`. Test `test_c1_final_date_never_passes_the_grace` |
+| D3 | C1 timeline | DONE | `c1_final_utc`. Test `test_c1_final_date_never_passes_the_grace`. Force-close stays at T per frozen prereg (D-048) |
 | D4 | Sleep / gap notify | CUT | caffeinate is already in the recorder plist. A new gap notifier was not added |
-| D5 | background install/status | DONE | `cryptobot background status` prints the adjudication date. install/uninstall wrap the existing scripts |
-| E1 | owner wizard | DONE | `cryptobot owner` |
-| E2 | README quickstart | DONE | fresh clone `/tmp/cryptobot-ops-clean` at `ba9fbf8`: uv sync, doctor READY, selftest PASS, final-status, owner, background status. Output ends CLEANROOM_OK |
-| E3 | certify | DONE | `cryptobot certify` exit 0. `COMPLETION_CERTIFICATE.md`. Gate NO-GO. Sentence "no demonstrated edge" |
-| E4 | suite + tag v1.0.0 | DONE | Python 3.12 full suite 1663 passed, 1 skipped, 0 failed, 1144.44s (`/tmp/v100-suite2.log` EXIT:0). Tag `v1.0.0` |
+| D5 | background install/status | DONE | `cryptobot background status` prints the adjudication date. install.sh uses `$ROOT/.venv` (D-048) |
+| E1 | owner wizard | DONE | `cryptobot owner` prints PASS/TODO + send-back, validates --step (D-048) |
+| E2 | README quickstart | DOING | clean-room rerun on the hardened HEAD is next; prior proof at `ba9fbf8` is superseded |
+| E3 | certify | DOING | `cryptobot certify` exit 0 on `e7babf2` (132/0, 57 cmds). Final cert after suite + clean-room |
+| E4 | suite + tag | DOING | final full suite + tag after E2/E3; `v1.0.0` stays at `82582f0` |
 
 ## Consolidation task table (resume the first non-DONE row)
 

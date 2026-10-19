@@ -480,3 +480,28 @@ Meta Muse Spark.
   drawdown. Verdict HURDLE_UNMET, gate NO-GO. No cell was retuned.
   2%/day compounded is about 1,377× in a year; 3%/day is about
   48,483×. Those multiples are not in the measured results.
+- D-048 (operational hardening, 2026-10-20, commits 3c17b65–e7babf2):
+  verified the A–E DONE claims by execution, then closed the gaps
+  found. C: `ops order` routes STOP_MARKET/TAKE_PROFIT_MARKET via
+  `place_algo` (needs `--stop-price`); `--post-only` LIMIT refuses
+  when marketable; new `cancel --client-id` and `cancel-all` that
+  cancels regular + algo orders (previously cancel-all wrongly
+  flattened); `kill` = cancel-all + flatten + halt; `--client-id`
+  gives safe retry (duplicate refused, no double fill). Reduce-only
+  closes skip the entry reservation (they cannot add exposure; the
+  venue validates they close) so protection can attach after an
+  entry; entries still go through RiskPolicy one-position. B:
+  MockEx stamps EMULATED on list rows (was header-only); drill
+  gains an http-503 unknown-outcome cell on a fresh engine (the
+  429 cell leaves a 60s refuse-fast window); soak callers now run
+  24 steps, not 4. A: selftest asserts exact exits (doctor 1,
+  refusals 2, readiness-missing-creds 3), bare parents, invalid
+  mode, ops-prod refusal per action, monitor idempotency, SIGINT
+  rc 0; 57 commands, 132 checks. D5: install.sh defaults to
+  `$ROOT/.venv` (was a hardcoded main-checkout path). E1: owner
+  prints PASS/TODO + counts + send-back, validates --step.
+  Adjudication force-close stays at T per the frozen prereg;
+  `c1_final_utc` (T+14 display) integration waits for forward data.
+  Full WS market streams, tick/step server validation, 418/502/504
+  injects, and SIGKILL-resume remain future work, recorded in
+  STATE.md. No prereg edited. No arm or GO artifact written.

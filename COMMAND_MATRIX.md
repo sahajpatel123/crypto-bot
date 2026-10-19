@@ -52,6 +52,7 @@ Generated from the CLI parser. A row is PASS only when `cryptobot selftest` exer
 | `cryptobot ops pause` | n/a | works, or a clear non-zero refusal with no traceback | PASS |
 | `cryptobot ops resume` | n/a | works, or a clear non-zero refusal with no traceback | PASS |
 | `cryptobot ops cancel-all` | n/a | works, or a clear non-zero refusal with no traceback | PASS |
+| `cryptobot ops cancel` | n/a | works, or a clear non-zero refusal with no traceback | PASS |
 | `cryptobot ops flatten` | n/a | works, or a clear non-zero refusal with no traceback | PASS |
 | `cryptobot ops kill` | n/a | works, or a clear non-zero refusal with no traceback | PASS |
 | `cryptobot ops order` | n/a | works, or a clear non-zero refusal with no traceback | PASS |
