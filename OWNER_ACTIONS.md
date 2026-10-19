@@ -249,23 +249,41 @@ On failure bring back: the pull JSON summary.
 
 ## 16. Family B autopilot timer and forward paper
 
-B1–B7 are KILLED on the corrected dev gates (D-042). Do not arm.
+B1–B7 are KILLED on the corrected dev gates (D-042/D-043). Do not arm.
 The file `research/verdicts_b/B4.json` is a voided screen from the
-25%/leg bug. Do not treat it as a pass.
+25%/leg bug. Do not treat it as a pass, and do not start forward paper
+for a killed hypothesis.
 
 ```sh
 uv run --locked python -c 'from cryptobot.research.autopilot import Autopilot; print(Autopilot("research/autopilot_b", family="B").run_once()["hypotheses"])'
 ```
 
-Expected: B4 stays `SCREEN_PASS` until a forward-paper file exists, then
-`FORWARD_PAPER` until **both** 60 days and 30 rebalances have elapsed
-(the longer of the two). Compare with the pessimistic cost model.
-Promotion after that is manual. Demotion on rolling Sharpe, drawdown or
-realized-cost drift is automatic.
-Pass criteria: `verify_log()` is empty; no `armed.json`.
+Expected: every B hypothesis stays `KILLED`; `verify_log()` is empty;
+no `armed.json`. The only path to forward paper is a new, separately
+preregistered family, never a retune of B1–B7.
+Pass criteria: no state transition out of KILLED; no arm file.
 On failure bring back: `research/autopilot_b/transitions.json` problems.
 
-## 17. Legal and tax (owner decision; not a code step)
+## 17. Recorder disk and retention (owner resource step)
+
+`cryptobot background status` projects recorder disk against the next
+adjudication. Today it reports `disk_alert: true` (about 16 days of
+disk against about 103 days to adjudication) and the recorder plist
+stops at its 8192 MB guard. The recorder cannot run unattended to
+adjudication on this disk without an external data root.
+
+1. Attach a disk with enough free space and set `EXTERNAL_DATA_ROOT`
+   (or `CRYPTOBOT_EXTERNAL_ROOT`) before starting the recorder.
+2. Copy the recorder root there; verify `manifest.json` and
+   `cryptobot recorder verify` before retiring a local copy.
+3. Optional: `cryptobot compact --root <recorder>` writes zstd Parquet
+   plus a hash-chained equivalence proof. Raw deletion is manual and
+   only on a verified copy until manifest v2 lands.
+Pass criteria: `projected_disk_days` exceeds `days_to_adjudication`
+and `disk_alert` is false.
+On failure bring back: the `background status` JSON.
+
+## 18. Legal and tax (owner decision; not a code step)
 
 Before any later arm, confirm from your own counsel:
 

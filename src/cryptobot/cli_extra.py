@@ -6,7 +6,7 @@ import json
 import os
 import signal
 import time
-from datetime import UTC, datetime
+from datetime import datetime
 from pathlib import Path
 
 from cryptobot.ops.manual import (
@@ -170,38 +170,13 @@ def cmd_background(args: argparse.Namespace) -> int:
         return os_system(script_dir / "install.sh")
     if args.background_cmd == "uninstall":
         return os_system(script_dir / "uninstall.sh")
-    import shutil
-
-    from cryptobot.ops.gaps import recorder_gap_report
+    from cryptobot.ops.gaps import disk_projection, recorder_gap_report
     recorder = Path(args.recorder)
     t0 = _first_seal(recorder)
     final = None if t0 is None else c1_final_utc(t0, None)
-    free_mb = shutil.disk_usage(recorder if recorder.exists()
-                                else ".").free / (1024 * 1024)
-    # Measured recorder rate (RECORDER_COSTS.md) unless the manifest
-    # itself yields a better number.
-    mb_per_hour = 58.21
     gap = recorder_gap_report(recorder, notify=False)
-    if gap.get("status") == "OK" and gap.get("covered_s"):
-        bytes_total = 0
-        manifest = recorder / "manifest.json"
-        try:
-            doc = json.loads(manifest.read_text(encoding="utf-8"))
-            bytes_total = sum(int(e.get("bytes", 0))
-                              for e in doc.get("entries", []))
-        except (OSError, ValueError):
-            bytes_total = 0
-        covered_h = float(gap["covered_s"]) / 3600.0
-        if bytes_total and covered_h > 0:
-            mb_per_hour = bytes_total / (1024 * 1024) / covered_h
-    projected_days = (free_mb / mb_per_hour / 24.0) if mb_per_hour > 0 else None
-    days_to_adjudication = None
-    if final is not None:
-        days_to_adjudication = max(
-            0.0, (final - datetime.now(UTC)).total_seconds() / 86400.0)
-    disk_alert = bool(projected_days is not None
-                      and days_to_adjudication is not None
-                      and projected_days < days_to_adjudication)
+    projection = disk_projection(recorder, final)
+    disk_alert = projection["disk_alert"]
     if disk_alert and not getattr(args, "no_notify", False):
         import subprocess
         subprocess.run(
@@ -212,12 +187,7 @@ def cmd_background(args: argparse.Namespace) -> int:
         "install": str(script_dir / "install.sh"),
         "uninstall": str(script_dir / "uninstall.sh"),
         "recorder": args.recorder,
-        "free_mb": round(free_mb, 1),
-        "mb_per_hour": round(mb_per_hour, 2),
-        "projected_disk_days": None if projected_days is None
-        else round(projected_days, 1),
-        "days_to_adjudication": None if days_to_adjudication is None
-        else round(days_to_adjudication, 1),
+        **{k: v for k, v in projection.items() if k != "disk_alert"},
         "disk_alert": disk_alert,
         "gap_pct": gap.get("gap_pct"),
         "adjudication_final_utc": None if final is None else final.isoformat(),
@@ -325,6 +295,20 @@ def cmd_certify(args: argparse.Namespace) -> int:
                      if " passed" in line or " failed" in line]
             if lines:
                 suite_line = f"suite: {lines[-1]} ({log})"
+    from cryptobot.ops.gaps import disk_projection
+    t0 = _first_seal(Path("data/recorder"))
+    final = None if t0 is None else c1_final_utc(t0, None)
+    projection = disk_projection("data/recorder", final)
+    blocked = ("real demo-account drill; legal access to the venue; "
+               "tax treatment of gains and losses")
+    if projection["disk_alert"]:
+        blocked += ("; external recorder disk ("
+                    f"{projection['projected_disk_days']} projected days "
+                    f"vs {projection['days_to_adjudication']} to adjudication)")
+    disk_line = ("recorder disk: "
+                 f"{projection['projected_disk_days']} projected days vs "
+                 f"{projection['days_to_adjudication']} to adjudication "
+                 f"(alert={projection['disk_alert']})")
     text = "\n".join([
         "# Completion certificate",
         "",
@@ -334,8 +318,8 @@ def cmd_certify(args: argparse.Namespace) -> int:
         f"{'100% PASS' if covered else 'INCOMPLETE'}",
         drill_line,
         suite_line,
-        "BLOCKED-OWNER: real demo-account drill; legal access to the venue; "
-        "tax treatment of gains and losses",
+        disk_line,
+        f"BLOCKED-OWNER: {blocked}",
         "gate: NO-GO",
         "",
         "no demonstrated edge",

@@ -1986,7 +1986,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--port", type=int, default=0)
     p.add_argument("--out", default=None)
     p.set_defaults(func=cli_extra.cmd_emulator)
-    p = sub.add_parser("ops", help="operator commands; prod refuses without arm")
+    p = sub.add_parser("ops",
+                       help="operator commands; sandbox/demo are in-process, "
+                            "prod refuses without arm")
     p.add_argument("ops_cmd", choices=(
         "status", "positions", "orders", "pause", "resume",
         "cancel-all", "cancel", "flatten", "kill", "order"))

@@ -312,6 +312,39 @@ def run_drill(journal_dir: Path) -> dict:
                       "key_cleared": engine.listen_key is None,
                       "flat": True})
 
+        # WS gap: the production attachment halts on a dead socket and
+        # releases only after a successful reconnect+heal.
+        from cryptobot.adapters.user_stream import attach_user_stream
+        state = {"fail": True}
+
+        class _GapSocket:
+            def recv(self, timeout_s: float):
+                return None
+
+            def close(self) -> None:
+                return None
+
+        def _gap_factory(_key: str):
+            if state["fail"]:
+                raise ConnectionError("emulated ws gap")
+            return _GapSocket()
+
+        attachment = attach_user_stream(
+            None, engine, _gap_factory, start_thread=False,
+            initial_backoff_s=0.0, max_backoff_s=0.0)
+        gap_action = attachment.poll_once()
+        gap_halted = attachment.halted and "user-stream-gap" in \
+            attachment.halt_reasons()
+        state["fail"] = False
+        healed_action = attachment.poll_once()
+        gap_healed = not attachment.halted
+        attachment.close()
+        cells.append({"cell": "ws-gap-halt",
+                      "halted": gap_halted and gap_action == "backoff",
+                      "healed": gap_healed and healed_action in
+                      ("healed", "idle"),
+                      "flat": True})
+
         # watchdog predicate: stale refuses, fresh passes (gate logic)
         from cryptobot.cli import _watchdog_fresh
         now = datetime.now(UTC)
@@ -395,7 +428,8 @@ def run_drill(journal_dir: Path) -> dict:
         c.get(k, True) for c in cells
         for k in ("halted", "refused", "emulated", "unknowned", "banned",
                   "rejected", "expired", "key_cleared", "stale_refused",
-                  "fresh_passes", "protected", "flat_after", "orphan_detected")
+                  "fresh_passes", "protected", "flat_after", "orphan_detected",
+                  "healed")
         if k in c)
     return {"drill": "emulator-lifecycle", "provenance": EMULATED,
             "emulated": True, "verdict": "PASS" if ok else "FAIL",

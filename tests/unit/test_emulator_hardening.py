@@ -50,7 +50,7 @@ def test_drill_has_5xx_cell_and_stays_flat(tmp_path: Path):
     names = [c["cell"] for c in doc["cells"]]
     for required in ("http-502", "http-504", "http-timeout", "http-reject",
                      "http-418", "market-streams", "user-data-stream",
-                     "listenkey-expiry", "watchdog-freshness",
+                     "listenkey-expiry", "ws-gap-halt", "watchdog-freshness",
                      "sigterm-flatten", "sigkill-resume",
                      "flatten-under-failure"):
         assert required in names, names

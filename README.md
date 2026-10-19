@@ -24,10 +24,34 @@ uv run --locked --extra dev cryptobot owner
 uv run --locked --extra dev cryptobot background status
 ```
 
-`cryptobot selftest --all` is hermetic and talks only to localhost. A real
+`cryptobot selftest --all` is hermetic and talks only to localhost. It
+runs the command matrix, risk/chaos/determinism acceptance subsets,
+vault/verdict/gate/arm refusals, adjudicator branches, a recorder
+smoke over emulator streams, host-check and background status. A real
 demo-account drill, legal access to the venue, and tax treatment are
-owner steps (`cryptobot owner`). `cryptobot recorder start` is a separate
-public-data smoke test and is not required for the quick start.
+owner steps (`cryptobot owner`). `cryptobot recorder start` is a
+separate public-data smoke test and is not required for the quick start.
+
+## Operator commands (emulator/sandbox/demo only)
+
+```sh
+cryptobot ops status --mode emulator
+cryptobot ops order --mode emulator --symbol BTCUSDT --side BUY --qty 0.002 --kind MARKET
+cryptobot ops order --mode emulator --symbol BTCUSDT --side SELL --qty 0.002 \
+  --kind STOP_MARKET --stop-price 60000 --reduce-only --client-id stop-1
+cryptobot ops order --mode emulator --symbol BTCUSDT --side BUY --qty 0.002 \
+  --kind LIMIT --price 59000 --post-only
+cryptobot ops cancel --mode emulator --client-id stop-1
+cryptobot ops cancel-all --mode emulator
+cryptobot ops flatten --mode emulator --symbol BTCUSDT
+cryptobot ops kill --mode emulator
+```
+
+Every action is journaled and refuses `--mode prod` without a valid
+human arm. `sandbox` and `demo` are aliases for the in-process
+emulator: no venue is contacted, and no real or demo order is placed.
+The emulator drill (`cryptobot emulator drill`) is provenance EMULATED
+and cannot satisfy the gate's demo-drill check.
 
 ## Research loop
 

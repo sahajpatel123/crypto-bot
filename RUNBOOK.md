@@ -22,8 +22,10 @@ Certificate: `cryptobot certify --out COMPLETION_CERTIFICATE.md
 --matrix-out COMMAND_MATRIX.md` (fails unless selftest is 100% PASS).
 Adjudication clock: T0 = first sealed recorder chunk, T = T0+90d,
 C1 final = min(T+14, max(T, first day with 90 forward days)).
-Prod ops refuse without a human arm. A real demo drill is an owner step
-(`cryptobot owner`), not something the emulator can satisfy.
+Prod ops refuse without a human arm. `sandbox` and `demo` modes are
+aliases for the in-process emulator (no venue, no orders). A real demo
+drill is an owner step (`cryptobot owner`), not something the emulator
+can satisfy.
 
 ## Unknown order outcome
 

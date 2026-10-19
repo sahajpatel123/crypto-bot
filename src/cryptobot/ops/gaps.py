@@ -75,4 +75,39 @@ def recorder_gap_report(recorder_root: str | Path,
     return report
 
 
-__all__ = ["ALERT_PCT", "recorder_gap_report"]
+def disk_projection(recorder_root: str | Path, adjudication: datetime | None,
+                    *, default_mb_per_hour: float = 58.21) -> dict:
+    """Project days of disk left against the adjudication date (D1/D4)."""
+    import shutil
+    root = Path(recorder_root)
+    free_mb = shutil.disk_usage(root if root.exists() else ".").free \
+        / (1024 * 1024)
+    mb_per_hour = default_mb_per_hour
+    manifest = root / "manifest.json"
+    try:
+        entries = json.loads(manifest.read_text(encoding="utf-8")).get(
+            "entries", [])
+    except (OSError, ValueError):
+        entries = []
+    covered_s = sum(max(0, int(e.get("last_ms", 0))
+                        - int(e.get("first_ms", 0))) for e in entries) / 1000.0
+    total_bytes = sum(int(e.get("bytes", 0)) for e in entries)
+    if total_bytes and covered_s > 0:
+        mb_per_hour = total_bytes / (1024 * 1024) / (covered_s / 3600.0)
+    projected_days = (free_mb / mb_per_hour / 24.0) if mb_per_hour > 0 else None
+    days_to = None
+    if adjudication is not None:
+        days_to = max(0.0, (adjudication - datetime.now(UTC)).total_seconds()
+                      / 86400.0)
+    alert = bool(projected_days is not None and days_to is not None
+                 and projected_days < days_to)
+    return {"free_mb": round(free_mb, 1),
+            "mb_per_hour": round(mb_per_hour, 2),
+            "projected_disk_days": None if projected_days is None
+            else round(projected_days, 1),
+            "days_to_adjudication": None if days_to is None
+            else round(days_to, 1),
+            "disk_alert": alert}
+
+
+__all__ = ["ALERT_PCT", "disk_projection", "recorder_gap_report"]
