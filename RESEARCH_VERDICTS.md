@@ -11,9 +11,9 @@ successful outcome here; nothing below is dressed up as a pass.
 | Taker scalps (prior pilot, S-family) | `data/pilot` (DEVELOPMENT, inspected) — audit input, reproduced in STATE.md T0.1 | 0/14 cells positive; best −25.37bps at 26bps round-trip cost | 14 cells | **FAIL** |
 | H-R2 (prior benchmark) | `datasets/benchmark_30d` (DEVELOPMENT) | −13.42bps expectancy | — | **FAIL** |
 | X1 (prior benchmark) | `datasets/benchmark_30d` (DEVELOPMENT) | 0 fills in 24 cells (F2 latch, since fixed) | 24 cells | **UNDERPOWERED** (measured the latch, not the strategy) |
-| H1 maker OFI scalp | `research/prereg/H1-maker-ofi-scalp.md` — preregistered this program, not yet evaluated | — | 0 | **UNDERPOWERED** (unevaluated) |
-| H2 trend/vol-regime | `research/prereg/H2-trend-vol-regime.md` — preregistered, not yet evaluated | — | 0 | **UNDERPOWERED** (unevaluated) |
-| H3 funding-skew tilt | `research/prereg/H3-funding-skew-tilt.md` — preregistered, not yet evaluated | — | 0 | **UNDERPOWERED** (unevaluated) |
+| H1 maker OFI scalp | `reports/hypotheses/H1.json` — dev evaluation attempted | 0 trades (no book channel in dev data) | 0 | **UNDERPOWERED** (UNEVALUABLE: needs book capture) |
+| H2 trend/vol-regime | `reports/hypotheses/H2.json` — bar-level dev evaluation, 8 symbols, benchmark_30d + 2026-10-12..19 extension | net **+55.94bps/trade** on 290 trades; split-half +81.1 / +30.8bps; sized DD 329bps; +8.8bps equity/day. WARNING: edge concentrated in STRK/W/NEAR; BTC/ETH/SOL/ZEC/XRP negative — no post-hoc symbol dropping permitted | 290 | **UNDERPOWERED** (n<300 by 10 trades; concentration risk open) |
+| H3 funding-skew tilt | `reports/hypotheses/H3.json` — bar-level dev evaluation, 8 symbols, benchmark_30d | net −6.62bps/trade (gross +11.38bps), −28.6bps/active day, 28 days | 121 | **UNDERPOWERED** (n<300; net expectancy negative) |
 
 ## Why taker scalps fail structurally (T5.1, cost_model_v2)
 
