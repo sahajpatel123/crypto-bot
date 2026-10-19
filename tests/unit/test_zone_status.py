@@ -15,6 +15,20 @@ import pytest
 REPO = Path(__file__).resolve().parents[2]
 
 
+def _committed_blob(relative: str) -> str:
+    """Read a committed git object, never the mutable working tree.
+
+    The hardening worktree shares a checkout with a concurrent pivot
+    campaign; its uncommitted coord/pivot/ZONES.json previously made
+    this test non-hermetic. Tests may only rely on git objects or
+    fixtures under tests/.
+    """
+    try:
+        return subprocess.run(
+            ["git", "-C", str(REPO), "show", f"HEAD:{relative}"],
+            check=True, capture_output=True, text=True).stdout
+    except (OSError, subprocess.CalledProcessError) as exc:
+        pytest.skip(f"git object {relative} unavailable: {exc}")
 def _read_committed(rel: str) -> str:
     """Read a committed blob via git object (immune to working-tree edits).
 
@@ -85,6 +99,7 @@ def test_unknown_kind_and_bad_manifest_raise(tmp_path):
 
 
 def test_real_zones_manifest_shape():
+    manifest = json.loads(_committed_blob("coord/pivot/ZONES.json"))
     # Hermetic: read the COMMITTED manifest via git object, never the
     # mutable working-tree copy (F0.2). Uses `git show HEAD:...`.
     manifest = json.loads(

@@ -1,0 +1,65 @@
+{
+ "chain_head": "e8689ff09a8a093c9bc5a3a13adfc32acb51e7c12b0814d2384636e2c2609733",
+ "entries": [
+  {
+   "action": "invalidate",
+   "burned_hypotheses": [
+    "B4"
+   ],
+   "decision": "D-042",
+   "entry_hash": "5bbbe3f726b6de7b13b40b9f960dcad13d221098424263899ffd2bd45e1e9e05",
+   "holdout": "BURNED",
+   "holdout_decodes": [
+    {
+     "chunk_id": "chunk-c87821b135ac9667",
+     "chunk_sha256": "c87821b135ac9667d8ef780fe3fa2ed611c905b567e7809ab9f67917d2890b8e",
+     "files": 198,
+     "hypothesis": "B4",
+     "token_sha256": "32a0fae8819ed99066d2ef604a83c03993bf7075f35a8709ec3df73067d249ba",
+     "when": "2026-10-18T15:14:54.552172+00:00",
+     "who": "verdict"
+    },
+    {
+     "chunk_id": "chunk-c87821b135ac9667",
+     "chunk_sha256": "c87821b135ac9667d8ef780fe3fa2ed611c905b567e7809ab9f67917d2890b8e",
+     "files": 198,
+     "hypothesis": "B4",
+     "token_sha256": "8faf71e2a1d7754291e7a5127e3ec7c46c11d2ca7d2fdb142b281c8b5d5ba3d7",
+     "when": "2026-10-18T15:15:55.691572+00:00",
+     "who": "verdict"
+    },
+    {
+     "chunk_id": "chunk-74e0747f6d1aab3a",
+     "chunk_sha256": "74e0747f6d1aab3aabec91f3bf524298895440cc560f0835dca430566b576f1f",
+     "files": 202,
+     "hypothesis": "B4",
+     "token_sha256": "0d6ee79f414a9a241d392c631f9753e424180da149a89ac8708637100008cf22",
+     "when": "2026-10-18T15:25:38.237970+00:00",
+     "who": "verdict"
+    }
+   ],
+   "hypothesis": "B4",
+   "prev": "genesis",
+   "reason": "B4.json came from a book clipped at 25% per leg and is void (D-042)",
+   "rule": "Holdout is BURNED for B4 and any B4 variant. Any future carry variant may only be confirmed on FORWARD data.",
+   "ts_utc": "2026-10-18T19:22:21.237704+00:00",
+   "verdict_file": "research/verdicts_b/B4.json",
+   "verdict_sha256": "2974cc1a24cdc1ef99238380919a9070e271427798482a5ded351e03bda028e8"
+  },
+  {
+   "action": "burn-holdout",
+   "burned_hypotheses": [
+    "C1",
+    "B4b"
+   ],
+   "decision": "Z4",
+   "entry_hash": "e8689ff09a8a093c9bc5a3a13adfc32acb51e7c12b0814d2384636e2c2609733",
+   "holdout": "BURNED",
+   "hypothesis": "C1",
+   "prev": "5bbbe3f726b6de7b13b40b9f960dcad13d221098424263899ffd2bd45e1e9e05",
+   "rule": "C1 is B4b. Holdout stays burned. Confirmation is FORWARD only.",
+   "ts_utc": "2026-10-18T21:37:00.348449+00:00"
+  }
+ ],
+ "format": "cryptobot-verdict-invalidations/1"
+}

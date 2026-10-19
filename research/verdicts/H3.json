@@ -1,4 +1,15 @@
 {
+ "data_provenance": "OBSERVED",
+ "document_sha256": "e4b574dc6091fd063d0a13a07dd660513f2f51ac8a75d8d298de76d1464c5b23",
+ "expectancy_bps": null,
+ "family_size": 6,
+ "hashes": {
+  "code_commit": "unknown",
+  "config_sha256_16": "0885b908ffe13769",
+  "data_manifest": "/tmp/empty-trades.jsonl",
+  "sealed_chunk_sha256": null
+ },
+ "hypothesis": "H3",
  "document_sha256": "97cc500ea10d18ed35c9b6f6da8fbfdb5aad68f3d9883dacabe3e936bb0ec1e3",
  "expectancy_bps": null,
  "family_size": 6,

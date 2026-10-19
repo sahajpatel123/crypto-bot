@@ -1,3 +1,57 @@
+services:
+  recorder:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    command: ["recorder", "start", "--out", "/app/data/recorder",
+              "--symbols", "BTCUSDT,ETHUSDT"]
+    restart: unless-stopped
+    volumes:
+      - recorder-data:/app/data/recorder
+    stop_grace_period: 60s
+
+  bot:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    command: ["run", "--mode", "paper", "--config", "configs/paper.toml"]
+    restart: on-failure
+    depends_on: [recorder]
+    env_file: [.env]
+    volumes:
+      - bot-runs:/app/runs
+      - recorder-data:/app/data/recorder:ro
+
+  watchdog:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    command: ["python", "/app/tools/watchdog.py",
+              "--heartbeat", "/app/runs/watchdog.json",
+              "--max-age-s", "90"]
+    restart: unless-stopped
+    volumes:
+      - bot-runs:/app/runs:ro
+    # The flatten command is owner-supplied from /etc/cryptobot.env and is
+    # never hardcoded here.
+    env_file: [.env]
+
+  autopilot:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    command: ["autopilot", "run-once"]
+    restart: "no"
+    volumes:
+      - autopilot-state:/app/research/autopilot
+      - vault-data:/app/data/vault:ro
+
+volumes:
+  recorder-data:
+  bot-runs:
+  autopilot-state:
+  vault-data:
+=======
 # CryptoBot services (F3.6 recorder live; bot/watchdog/autopilot land in F2.4).
 # Standalone recorder: public market data only (no keys). Data volume
 # ./data-recorder persists chunks+manifests across restarts.

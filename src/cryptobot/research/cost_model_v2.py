@@ -37,11 +37,39 @@ def breakeven_move_bps(*, maker_entry: bool, model: CostModel,
 
 def required_win_rate(*, stop_bps: float, target_bps: float,
                       cost_bps: float) -> float:
-    """Win rate where expectancy = 0: p*T - (1-p)*S - C = 0."""
+    """Win rate where expectancy = 0: p*T - (1-p)*S - C = 0.
+
+    Independent derivation (tools/breakeven_audit.py repeats it):
+        EV = p*T - (1-p)*S - c
+        0  = p*(T+S) - S - c
+        p* = (S + c) / (T + S)
+
+    A result > 1 means no win rate can break even: the cost exceeds the
+    target. Callers must surface that as INFEASIBLE, never round it to a
+    plausible-looking percentage.
+    """
     denom = float(target_bps) + float(stop_bps)
     if denom <= 0:
         raise ValueError("stop+target must be positive")
+    if float(target_bps) <= 0 or float(stop_bps) <= 0:
+        raise ValueError("stop and target must be positive")
+    if float(cost_bps) < 0:
+        raise ValueError("cost must be non-negative")
     return (float(stop_bps) + float(cost_bps)) / denom
+
+
+def breakeven_row(*, stop_bps: float, target_bps: float,
+                  cost_bps: float) -> dict:
+    """One table row with an explicit feasibility verdict."""
+    p = required_win_rate(stop_bps=stop_bps, target_bps=target_bps,
+                          cost_bps=cost_bps)
+    feasible = p < 1.0
+    return {
+        "required_win_rate": round(p, 4),
+        "required_win_rate_pct": round(p * 100.0, 2),
+        "feasible": feasible,
+        "verdict": "FEASIBLE" if feasible else "INFEASIBLE",
+    }
 
 
 def breakeven_table(model: CostModel | None = None) -> list[dict]:
@@ -59,6 +87,13 @@ def breakeven_table(model: CostModel | None = None) -> list[dict]:
             for stress in (1.0, 1.5, 2.0):
                 cost = breakeven_move_bps(maker_entry=maker, model=model,
                                           stress=stress)
+                row = {
+                    "stop_bps": stop, "target_bps": target,
+                    "entry": "maker" if maker else "taker",
+                    "stress": stress, "round_trip_bps": round(cost, 2)}
+                row.update(breakeven_row(stop_bps=stop, target_bps=target,
+                                         cost_bps=cost))
+                rows.append(row)
                 p_star = required_win_rate(
                     stop_bps=stop, target_bps=target, cost_bps=cost)
                 rows.append({

@@ -433,6 +433,11 @@ class BinanceLiveEngine:
         self._margin_cache: tuple[float, float] | None = None
         self._account_cached_at: float = 0.0
         self.ACCOUNT_CACHE_TTL_S = 5.0
+        # F0.4a: tiered leverage-bracket cache. Never used for margin
+        # admission without an observation timestamp; stale => reject.
+        self._bracket_cache: dict[str, tuple[int, list[dict]]] = {}
+        self.BRACKET_CACHE_TTL_S = 300.0
+        self.BRACKET_MAX_AGE_MS = 300_000
         self._listen_key: str | None = None
         # Contract v1 tracked truth: per-order versions, submit-intent
         # qty/symbol cache, adopted fill qty, emitted terminals.
@@ -867,6 +872,18 @@ class BinanceLiveEngine:
         reduce_only = cmd.reduce_only or cmd.role in ("stop", "target")
         if cmd.role in ("stop", "target") and not reduce_only:
             raise AssertionError("unreachable: exits are always reduce-only")
+        # B8: reject entry dust BEFORE the venue does. Reduce-only closes
+        # are exempt here (Session latches dust explicitly) so a close
+        # attempt can still reach the venue if its size is legal.
+        if not reduce_only:
+            min_notional = float(filt.get("min_notional", 0.0) or 0.0)
+            est = price if price is not None else (
+                cmd.stop_price if cmd.stop_price is not None
+                else self._marks.get(symbol, 0.0))
+            if min_notional > 0 and est and qty * est < min_notional:
+                raise ValueError(
+                    f"qty {qty} x {est} below venue minNotional "
+                    f"{min_notional} for {symbol}")
         # W3-24H algoOrder cutover (2025-12-09): conditional types ride
         # /fapi/v1/algoOrder with algoType=CONDITIONAL; legacy posts to
         # /fapi/v1/order get -4120 STOP_ORDER_SWITCH_ALGO (never sent).
@@ -1566,6 +1583,86 @@ class BinanceLiveEngine:
                 continue
             self.lookup(cid)
 
+    def leverage_brackets(self, symbol: str,
+                          *, fresh_within_s: float | None = None,
+                          force: bool = False) -> dict[str, Any] | None:
+        """Tiered maintenance-margin brackets for live admission (F0.4a).
+
+        Returns ``{"brackets": [...], "observed_ms": int, "now_ms": int,
+        "stale": bool}``. A fetch failure with no cache returns None; a
+        fetch failure with stale cache returns the old data flagged
+        stale, which the risk gate rejects. Never fabricates brackets.
+        """
+        sym = str(symbol).upper()
+        now_ms = int(self._now_ms())
+        ttl_ms = int((fresh_within_s if fresh_within_s is not None
+                      else self.BRACKET_CACHE_TTL_S) * 1000)
+        cached = self._bracket_cache.get(sym)
+        if cached is not None and not force:
+            observed_ms, brackets = cached
+            if now_ms - observed_ms <= ttl_ms:
+                return {"brackets": brackets, "observed_ms": observed_ms,
+                        "now_ms": now_ms, "stale": False}
+        try:
+            rows = self._signed("GET", "/fapi/v1/leverageBracket",
+                                {"symbol": sym})
+            if isinstance(rows, dict):
+                rows = [rows]
+            row = next((r for r in (rows or [])
+                        if str(r.get("symbol", "")).upper() == sym), None)
+            if row is None:
+                raise ValueError(f"leverageBracket has no {sym}")
+            raw = row.get("brackets")
+            if not isinstance(raw, list) or not raw:
+                raise ValueError("leverageBracket brackets empty")
+            brackets = sorted(
+                ({"bracket": int(b.get("bracket", 0)),
+                  "notionalCap": float(b["notionalCap"]),
+                  "maintMarginRatio": float(b["maintMarginRatio"]),
+                  "cum": float(b.get("cum", 0.0))}
+                 for b in raw),
+                key=lambda b: b["notionalCap"])
+            self._bracket_cache[sym] = (now_ms, brackets)
+            self._journal("brackets", {"symbol": sym,
+                                       "tiers": len(brackets)})
+            return {"brackets": brackets, "observed_ms": now_ms,
+                    "now_ms": now_ms, "stale": False}
+        except (VenueHttpError, ValueError, KeyError, TypeError) as exc:
+            if cached is None:
+                return None
+            observed_ms, brackets = cached
+            return {"brackets": brackets, "observed_ms": observed_ms,
+                    "now_ms": now_ms, "stale": True,
+                    "error": f"{type(exc).__name__}: {exc}"}
+
+    def leverage_now(self, symbol: str) -> int | None:
+        """Signed current leverage for a symbol (mid-run drift check).
+
+        Cached 30s; None on failure so the caller can fail closed rather
+        than assume the startup value still holds.
+        """
+        sym = str(symbol).upper()
+        now = time.monotonic()
+        cached = getattr(self, "_leverage_cache", None)
+        if isinstance(cached, dict):
+            ts, val = cached.get(sym, (0.0, None))
+            if now - ts <= 30.0:
+                return val
+        try:
+            rows = self._signed("GET", "/fapi/v2/positionRisk",
+                                {"symbol": sym})
+            if isinstance(rows, dict):
+                rows = [rows]
+            row = next((r for r in (rows or [])
+                        if str(r.get("symbol", "")).upper() == sym), None)
+            val = int(row["leverage"]) if row is not None else None
+        except (VenueHttpError, KeyError, TypeError, ValueError):
+            val = None
+        if not isinstance(getattr(self, "_leverage_cache", None), dict):
+            self._leverage_cache = {}
+        self._leverage_cache[sym] = (now, val)
+        return val
+
     def account_snapshot(self) -> AccountSnapshot | None:
         """Authoritative positions/account/margin (contract v1 §2).
 
@@ -1604,21 +1701,33 @@ class BinanceLiveEngine:
                 margin_raw = view.get("totalMarginBalance")
             except (TypeError, ValueError):
                 return None
+            try:
+                positions = self._snapshot_positions(
+                    view.get("positions", []))
+            except ValueError:
+                positions = ()
             snap = AccountSnapshot(
                 wallet_equity_usdt=wallet,
                 available_margin_usdt=available,
                 margin_balance_usdt=(
                     float(margin_raw) if margin_raw is not None else None),
-                positions=self._snapshot_positions(view.get("positions", [])),
+                positions=positions,
                 asof_utc=now, complete=False)
             self._store_account_cache(snap, view)
             return snap
+        try:
+            positions = self._snapshot_positions(view.get("positions", []))
+            complete = True
+        except ValueError:
+            # B9: an unparseable position row is UNKNOWN, never flat.
+            positions = ()
+            complete = False
         snap = AccountSnapshot(
             wallet_equity_usdt=wallet,
             available_margin_usdt=available,
             margin_balance_usdt=margin,
-            positions=self._snapshot_positions(view.get("positions", [])),
-            asof_utc=now, complete=True)
+            positions=positions,
+            asof_utc=now, complete=complete)
         self._store_account_cache(snap, view)
         return snap
 
@@ -1669,14 +1778,16 @@ class BinanceLiveEngine:
     def _snapshot_positions(views: Any) -> tuple[AccountPosition, ...]:
         out: list[AccountPosition] = []
         if not isinstance(views, list):
-            return ()
+            raise ValueError("positions payload is not a list")
         for item in views:
             if not isinstance(item, dict):
-                continue
+                raise ValueError("position row is not an object")
             try:
                 qty = float(item.get("positionAmt", 0.0) or 0.0)
-            except (TypeError, ValueError):
-                continue
+            except (TypeError, ValueError) as exc:
+                raise ValueError(
+                    f"malformed positionAmt: {item.get('positionAmt')!r}"
+                ) from exc
             if qty == 0.0:
                 continue
             entry = item.get("entryPrice")

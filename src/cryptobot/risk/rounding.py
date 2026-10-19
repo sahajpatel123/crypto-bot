@@ -52,6 +52,11 @@ def floor_to_step(qty: float, step: float) -> float:
         raise ValueError(f"qty must be a finite number, got {qty!r}")
     if qty <= 0:
         return 0.0
+    units = math.floor(qty / step * (1 + 1e-9))
+    out = round(units * step, 12)
+    if out > qty:  # epsilon must never round risk UP by a whole step.
+        out = round((units - 1) * step, 12)
+    return min(out, qty)
     quot = qty / step
     return round(math.floor(quot + _step_eps(quot)) * step, 12)
 
@@ -75,6 +80,11 @@ def round_to_tick(price: float, tick: float) -> float:
 def floor_to_tick(price: float, tick: float) -> float:
     """Round ``price`` DOWN to a venue tick (BUY caps never exceed the band)."""
     _check_tick_args(price, tick)
+    units = math.floor(price / tick * (1 + 1e-9))
+    out = round(units * tick, 12)
+    if out > price:
+        out = round((units - 1) * tick, 12)
+    return min(out, price)
     quot = price / tick
     return round(math.floor(quot + _step_eps(quot)) * tick, 12)
 
@@ -82,6 +92,11 @@ def floor_to_tick(price: float, tick: float) -> float:
 def ceil_to_tick(price: float, tick: float) -> float:
     """Round ``price`` UP to a venue tick (SELL floors never dip the band)."""
     _check_tick_args(price, tick)
+    units = math.ceil(price / tick * (1 - 1e-9))
+    out = round(units * tick, 12)
+    if out < price:
+        out = round((units + 1) * tick, 12)
+    return max(out, price)
     quot = price / tick
     return round(math.ceil(quot - _step_eps(quot)) * tick, 12)
 

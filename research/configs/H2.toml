@@ -1,0 +1,13 @@
+# H2 frozen research config (prereg 2026-10-18); not a live config.
+hypothesis = "H2"
+symbols = ["BTCUSDT", "ETHUSDT"]
+breakout_bars = [12, 20, 40]
+stop_atr_multiple = [1.0, 1.5, 2.0]
+target_atr_multiple = [2.0, 3.0, 4.0]
+max_holding_hours = 24
+taker_bps = 5.0
+spread_bps = 2.0
+slippage_bps = 6.0
+min_dev_trades = 100
+promotion_mean_bps = 2.0
+family_size = 6

@@ -651,6 +651,18 @@ class SandboxTransport:
                     "makerCommissionRate": str(spec["taker_bps"] / 10000.0),
                     "takerCommissionRate": str(spec["taker_bps"] / 10000.0),
                     LABEL_KEY: True}
+        if handler == ("GET", "/fapi/v1/leverageBracket"):
+            sym = str(params.get("symbol", "")).upper() or "ETHUSDT"
+            return [{"symbol": sym, "brackets": [
+                {"bracket": 1, "notionalCap": "50000",
+                 "maintMarginRatio": "0.004", "cum": "0"},
+                {"bracket": 2, "notionalCap": "250000",
+                 "maintMarginRatio": "0.005", "cum": "50"}]},
+                {LABEL_KEY: True}]
+        if handler == ("GET", "/fapi/v2/positionRisk"):
+            sym = str(params.get("symbol", "")).upper() or "ETHUSDT"
+            return [{"symbol": sym, "leverage": venue.cfg.leverage,
+                     LABEL_KEY: True}]
         if handler == ("GET", "/fapi/v2/account"):
             return venue.account_view()
         if handler == ("POST", "/fapi/v1/leverage"):
