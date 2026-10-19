@@ -9,9 +9,9 @@ engine fill prices, so engine prices compare directly.
 """
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
-T0 = datetime(2026, 10, 1, tzinfo=timezone.utc)
+T0 = datetime(2026, 10, 1, tzinfo=UTC)
 TICK = 0.10
 # Declared tolerance: 1 slip tick (nautilus always-slip) + half a tick
 # (paper feed rounds the sandbox touch to tick grid).
@@ -19,9 +19,10 @@ TOL_PX = 1.5 * TICK + 1e-9
 
 
 def _paper_with_book(touch_bid, touch_ask):
-    from cryptobot.adapters.paper_engine import NautilusPaperEngine
     from nautilus_trader.model.data import QuoteTick
     from nautilus_trader.model.objects import Price, Quantity
+
+    from cryptobot.adapters.paper_engine import NautilusPaperEngine
 
     engine = NautilusPaperEngine(submit_delay_ms=0, fill_delay_ms=1)
     engine.add_instrument("BTCUSDT", price_precision=2, size_precision=3,
@@ -66,7 +67,7 @@ def test_market_fills_agree_within_tick():
     bid = round(book["bid"] / TICK) * TICK
     ask = round(book["ask"] / TICK) * TICK
 
-    for side, touch in (("BUY", ask), ("SELL", bid)):
+    for side, _touch in (("BUY", ask), ("SELL", bid)):
         engine, quote = _paper_with_book(bid, ask)
         paper = _paper_fill(engine, quote, side, 0.01)
         sb = sandbox.place_order(
@@ -78,7 +79,7 @@ def test_market_fills_agree_within_tick():
         exact = book["ask"] if side == "BUY" else book["bid"]
         assert sb_avg == exact  # sandbox fills at exact touch
         assert abs(paper.price - sb_avg) <= TOL_PX, (paper.price, sb_avg)
-        pf, sf = paper.fee, 0.01 * paper.price * 5.0 / 10000.0
+        _pf, sf = paper.fee, 0.01 * paper.price * 5.0 / 10000.0
         assert abs(paper.fee - sf) <= sf * 0.05 + 1e-9, (paper.fee, sf)
 
 

@@ -7,8 +7,7 @@ from __future__ import annotations
 
 import pytest
 
-from cryptobot.testing.fixtures import (
-    check_recorded_case, recorded_contract_cases)
+from cryptobot.testing.fixtures import check_recorded_case, recorded_contract_cases
 
 
 def test_recorded_contracts():

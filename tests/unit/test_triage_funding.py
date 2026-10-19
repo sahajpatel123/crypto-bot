@@ -12,7 +12,7 @@ B#10 (HIGH): live venue funding is booked on a supervision throttle
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 
@@ -97,12 +97,13 @@ def _mark_record(recv_ms, mark, rate=0.0001, next_ms=None):
 def test_paper_recover_restores_settled_funding(tmp_path):
     from datetime import timedelta
 
-    from cryptobot.adapters.paper_engine import NautilusPaperEngine
-    from cryptobot.app.engine import EngineOrder
     from nautilus_trader.model.data import QuoteTick
     from nautilus_trader.model.objects import Price, Quantity
 
-    t0 = datetime(2026, 10, 1, tzinfo=timezone.utc)
+    from cryptobot.adapters.paper_engine import NautilusPaperEngine
+    from cryptobot.app.engine import EngineOrder
+
+    t0 = datetime(2026, 10, 1, tzinfo=UTC)
     journal = tmp_path / "paper.jsonl"
 
     def _mk():

@@ -10,17 +10,18 @@ dust closes.
 """
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 
 def test_thin_book_fill_carries_drift():
-    from cryptobot.adapters.paper_engine import NautilusPaperEngine
-    from cryptobot.app.engine import EngineOrder
     from nautilus_trader.model.data import QuoteTick
     from nautilus_trader.model.objects import Price, Quantity
 
-    t0 = datetime(2026, 10, 1, tzinfo=timezone.utc)
+    from cryptobot.adapters.paper_engine import NautilusPaperEngine
+    from cryptobot.app.engine import EngineOrder
+
+    t0 = datetime(2026, 10, 1, tzinfo=UTC)
     engine = NautilusPaperEngine(submit_delay_ms=0, fill_delay_ms=1)
     engine.add_instrument("BTCUSDT", price_precision=2, size_precision=3,
                           tick_size=0.01, step_size=0.001, ts_utc=t0)
@@ -72,7 +73,7 @@ def test_session_books_drift_top_up(tmp_path):
     session._position = {"reservation_id": "r-1",  # noqa: SLF001
                          "entry_pre_id": "e-pre", "entry_id": "e-1",
                          "legs": [], "retired": [], "close_ids": []}
-    now = datetime(2026, 10, 17, tzinfo=timezone.utc)
+    now = datetime(2026, 10, 17, tzinfo=UTC)
     out = session._apply_fill(  # noqa: SLF001
         client_order_id="e-1", execution_id="x-drift",
         instrument="BTCUSDT", side="BUY", qty=1.0, price=60000.0,
@@ -87,7 +88,7 @@ def test_dust_snaps_to_flat():
     from cryptobot.accounting.ledger import Ledger
 
     ledger = Ledger(10000.0)
-    ts = datetime(2026, 10, 17, tzinfo=timezone.utc)
+    ts = datetime(2026, 10, 17, tzinfo=UTC)
     ledger.record_fill("BUY", 0.1, 60000.0, 0.0, ts, "a")
     ledger.record_fill("BUY", 0.2, 60000.0, 0.0, ts, "b")
     ledger.record_fill("SELL", 0.3, 60000.0, 0.0, ts, "c")

@@ -15,10 +15,10 @@ resume-unknown refuses cleanly (live) or fresh-starts loudly
 from __future__ import annotations
 
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-NOW = datetime(2026, 10, 17, 12, 0, 0, tzinfo=timezone.utc)
+NOW = datetime(2026, 10, 17, 12, 0, 0, tzinfo=UTC)
 
 
 def test_order_manager_recover_restores_seq(tmp_path):
@@ -110,8 +110,7 @@ def test_seed_refuses_foreign_orders(tmp_path):
 
 
 def test_paper_run_mode_skips_bracket_gate(tmp_path):
-    from cryptobot.coordination import (DataQuality, ForecastCost, Intent,
-                                        Side)
+    from cryptobot.coordination import DataQuality, ForecastCost, Intent, Side
     from cryptobot.risk import Approved, RiskConfig
     from cryptobot.risk.policy import RiskPolicy
     from cryptobot.risk.types import AccountSnapshot, InstrumentFilter

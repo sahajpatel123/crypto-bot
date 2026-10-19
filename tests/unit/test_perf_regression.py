@@ -9,7 +9,7 @@ regression fails loudly here instead of in production.
 from __future__ import annotations
 
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 # (name, min_events_per_s, max_p99_ms)
 BUDGETS = {
@@ -19,7 +19,7 @@ BUDGETS = {
     "rounding": (100_000.0, 0.5),
 }
 
-NOW = datetime(2026, 10, 17, 12, 0, 0, tzinfo=timezone.utc)
+NOW = datetime(2026, 10, 17, 12, 0, 0, tzinfo=UTC)
 
 
 def _percentile(sorted_ms: list[float], pct: float) -> float:
@@ -40,8 +40,7 @@ def _check(name: str, samples_ms: list[float]) -> None:
 
 
 def _intent():
-    from cryptobot.coordination import (DataQuality, ForecastCost, Intent,
-                                        Side)
+    from cryptobot.coordination import DataQuality, ForecastCost, Intent, Side
 
     return Intent(
         strategy="S", version="1", instrument="BTCUSDT", side=Side.LONG,

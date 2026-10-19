@@ -8,7 +8,7 @@ invariant (commutative sums); same-side ledger replays agree.
 from __future__ import annotations
 
 import math
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from itertools import count
 
 from hypothesis import HealthCheck, given, settings
@@ -17,7 +17,7 @@ from hypothesis import strategies as st
 from cryptobot.accounting.ledger import Ledger
 from cryptobot.risk.state import Reservation
 
-NOW = datetime(2026, 10, 17, 12, 0, 0, tzinfo=timezone.utc)
+NOW = datetime(2026, 10, 17, 12, 0, 0, tzinfo=UTC)
 _case = count()
 
 _side = st.sampled_from(["BUY", "SELL"])

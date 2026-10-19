@@ -1,7 +1,7 @@
 """F2.6: continuous clock-skew guard (halt entries past 80% recvWindow)."""
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 
@@ -46,7 +46,7 @@ def _session(tmp_path: Path, engine):
                       RunStore(tmp_path / "runs" / "cryptobot.db"),
                       tmp_path / "run", "skew-run", engine=engine)
     session.clock.set_ms(int(datetime(2026, 10, 17,
-                                      tzinfo=timezone.utc).timestamp()
+                                      tzinfo=UTC).timestamp()
                              * 1000))
     session.policy.reconcile_day(10000.0, 0.0)
     session.store.create_run("skew-run", "paper", "fp",

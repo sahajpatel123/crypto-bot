@@ -21,7 +21,7 @@ import threading
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -208,7 +208,7 @@ class RecorderService:
 
     def _serve_connection(self, route: str, conn: Any) -> None:
         while not self._stop.is_set():
-            self.writer.rotate_if_needed(datetime.now(timezone.utc))
+            self.writer.rotate_if_needed(datetime.now(UTC))
             try:
                 message = conn.recv_message_nowait()
             except AttributeError:

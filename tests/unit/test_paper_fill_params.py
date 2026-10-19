@@ -13,8 +13,7 @@ import random
 
 import pytest
 
-from cryptobot.execution.fill_realism import (
-    PaperFillParams, pessimistic_fill_price)
+from cryptobot.execution.fill_realism import PaperFillParams, pessimistic_fill_price
 
 
 def test_default_params_explicit_assumed():

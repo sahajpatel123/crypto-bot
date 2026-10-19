@@ -18,7 +18,7 @@ import os
 import queue
 import threading
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -41,8 +41,8 @@ logger = logging.getLogger(__name__)
 
 def _hour_str(moment: datetime) -> str:
     if moment.tzinfo is None:
-        moment = moment.replace(tzinfo=timezone.utc)
-    return moment.astimezone(timezone.utc).strftime(CHUNK_TIME_FORMAT)
+        moment = moment.replace(tzinfo=UTC)
+    return moment.astimezone(UTC).strftime(CHUNK_TIME_FORMAT)
 
 
 def _canonical(entry: dict[str, Any]) -> str:
@@ -121,7 +121,7 @@ class DurableWriter:
         self._fsync_every_n = max(1, int(fsync_every_n))
         self._fsync_every_s = float(fsync_every_s)
         self._lock = threading.Lock()
-        now_hour = _hour_str(datetime.now(timezone.utc))
+        now_hour = _hour_str(datetime.now(UTC))
         self._current_hour = now_hour
         self._pending_hour = now_hour
         self._gapped: set[str] = set()

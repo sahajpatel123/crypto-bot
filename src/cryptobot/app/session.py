@@ -141,6 +141,22 @@ def _summarize(samples: list[float]) -> dict[str, Any]:
             "max_ms": max(ordered) if ordered else None}
 
 
+def _stressed_report_pnl(ledger) -> dict[str, float]:
+    """1x/2x stressed P&L for run reports (T1.9 close-out).
+
+    gross = realised + paid friction (fees incl. drift top-up);
+    pnl_1x = realised; pnl_2x charges friction twice. Funding stays
+    in gross (2x stress hits execution friction, not carry).
+    """
+    from cryptobot.execution.fill_realism import stressed_pnl
+
+    costs = float(ledger.paid_costs())
+    gross = float(ledger.net_realised()) + costs
+    out = stressed_pnl(gross_pnl=gross, costs_1x=costs)
+    return {"gross_pnl": out["gross"], "pnl_1x": out["pnl_1x"],
+            "pnl_2x": out["pnl_2x"]}
+
+
 class ReplayClock:
     """Settable causal clock for replay (event-time driven)."""
 
@@ -4621,6 +4637,7 @@ class Session:
             "paid_costs": self.ledger.paid_costs(),
             "funding_net": self.ledger.funding_net(),
             "realised": self.ledger.net_realised(),
+            **_stressed_report_pnl(self.ledger),
             "open_position": self.ledger.has_position(),
             "position_qty": self.ledger.position_qty(),
             "events_seen": self._events_seen,
