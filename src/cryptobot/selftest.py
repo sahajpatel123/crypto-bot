@@ -84,22 +84,57 @@ def run_selftest(*, include_emulator: bool = True) -> dict:
     with tempfile.TemporaryDirectory() as tmp:
         missing = str(Path(tmp) / "missing.toml")
         code, text = invoke(["doctor", "--config", missing])
-        _check("doctor-missing-config", code != 0 and "Traceback" not in text
+        _check("doctor-missing-config", code == 1 and "Traceback" not in text
                and "config" in text.lower(), text.strip()[:120], results)
         code, text = invoke(["run", "--mode", "prod", "--config", missing])
-        _check("prod-missing-config", code != 0 and "Traceback" not in text,
+        _check("prod-missing-config", code == 2 and "Traceback" not in text,
                f"exit {code}", results)
         code, text = invoke(["arm", "--capital-usdt", "120",
                              "--max-daily-loss", "1",
                              "--out", str(Path(tmp) / "armed.json")])
         armed = Path(tmp) / "armed.json"
-        _check("arm-without-tty", code != 0 and "REFUSED" in text
+        _check("arm-without-tty", code == 2 and "REFUSED" in text
                and not armed.exists() and "Traceback" not in text,
                text.strip()[:160], results)
-        # idempotent read-only command
+        # missing credentials: demo readiness without keys is BLOCKED (3)
+        code, text = invoke(["readiness", "--config", "configs/demo.toml"])
+        _check("readiness-missing-creds", code == 3
+               and "Traceback" not in text,
+               text.strip().splitlines()[0][:120] if text.strip() else "",
+               results)
+        # bare parents and invalid choices print usage, never a traceback
+        for argv, label in ((["ops"], "ops-bare"),
+                           (["data"], "data-bare"),
+                           (["run", "--mode", "bogus", "--config",
+                             "configs/paper.toml"], "run-bad-mode")):
+            code, text = invoke(argv)
+            _check(label, code == 2 and "usage" in text.lower()
+                   and "Traceback" not in text, f"exit {code}", results)
+        # ops prod refusal is exact exit 2 for every action
+        for action in ("status", "order", "cancel", "flatten", "kill"):
+            argv = ["ops", action, "--mode", "prod",
+                   "--journal", str(Path(tmp) / "j.jsonl"),
+                   "--book", str(Path(tmp) / "b.json"),
+                   "--risk-state", str(Path(tmp) / "r.json"),
+                   "--armed", str(Path(tmp) / "a.json"),
+                   "--gate", str(Path(tmp) / "g.json")]
+            if action == "order":
+                argv += ["--symbol", "BTCUSDT", "--side", "BUY",
+                        "--qty", "0.01"]
+            if action == "cancel":
+                argv += ["--client-id", "x"]
+            code, text = invoke(argv)
+            _check(f"ops-prod-refuses-{action}", code == 2
+                   and "REFUSED" in text and "Traceback" not in text,
+                   f"exit {code}", results)
+        # idempotent read-only commands
         a, _ = invoke(["final-status"])
         b, _ = invoke(["final-status"])
         _check("final-status-idempotent", a == b == 0, f"{a},{b}", results)
+        m1, t1 = invoke(["monitor"])
+        m2, t2 = invoke(["monitor"])
+        _check("monitor-idempotent", m1 == m2 == 0 and t1 == t2,
+               f"{m1},{m2}", results)
 
     # SIGINT on the emulator server, which never dials a public host.
     proc = subprocess.Popen(
@@ -114,7 +149,7 @@ def run_selftest(*, include_emulator: bool = True) -> dict:
         proc.kill()
         out, err = proc.communicate()
     blob = (out or "") + (err or "")
-    _check("emulator-sigint", proc.returncode is not None
+    _check("emulator-sigint", proc.returncode == 0
            and "Traceback" not in blob, f"rc={proc.returncode}", results)
 
     if include_emulator:

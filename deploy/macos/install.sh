@@ -2,7 +2,7 @@
 # Per-user launchd agents. No sudo. Public data only.
 set -eu
 ROOT="$(CDPATH= cd -- "$(dirname "$0")/../.." && pwd)"
-PY="${CRYPTOBOT_PYTHON:-/Users/sahajpatel/Code/cryto-bot/.venv/bin/python}"
+PY="${CRYPTOBOT_PYTHON:-$ROOT/.venv/bin/python}"
 AGENTS="$HOME/Library/LaunchAgents"
 LOGS="$HOME/Library/Logs/cryptobot"
 UID_N="$(id -u)"
