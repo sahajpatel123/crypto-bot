@@ -9,7 +9,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 
-from cryptobot.ops.manual import Book, apply_order, flatten, journal, prod_arm_refusal
+from cryptobot.ops.manual import Book, apply_order, cancel_all, cancel_one, flatten, journal, prod_arm_refusal
 from cryptobot.research.adjudicate import c1_final_utc
 
 
@@ -103,14 +103,29 @@ def cmd_ops(args: argparse.Namespace) -> int:
     elif action == "positions":
         doc = {"positions": book.snapshot()["positions"], "provenance": "EMULATED"}
     elif action == "orders":
-        doc = {"orders": book.snapshot()["orders"], "provenance": "EMULATED"}
+        snap = book.snapshot()
+        doc = {"orders": snap["orders"], "algo_orders": snap.get("algo_orders", []),
+               "provenance": "EMULATED"}
     elif action == "pause":
         book.paused = True
         doc = {"paused": True, "provenance": "EMULATED"}
     elif action == "resume":
         book.paused = False
         doc = {"paused": False, "provenance": "EMULATED"}
-    elif action in ("cancel-all", "flatten", "kill"):
+    elif action == "cancel-all":
+        doc = cancel_all(book)
+    elif action == "cancel":
+        if not getattr(args, "client_id", None):
+            print("ops: REFUSED cancel needs --client-id")
+            return 2
+        doc = cancel_one(book, args.client_id)
+        if not doc.get("ok"):
+            journal(log, {"action": action, "mode": mode, "result": doc})
+            print(doc["message"])
+            return 2
+    elif action in ("flatten", "kill"):
+        if action == "kill":
+            cancel_all(book)
         doc = flatten(book, args.symbol)
         if action == "kill":
             book.paused = True
@@ -120,7 +135,10 @@ def cmd_ops(args: argparse.Namespace) -> int:
             book, symbol=args.symbol or "BTCUSDT", side=args.side or "BUY",
             qty=float(args.qty or 0), kind=(args.kind or "MARKET").upper(),
             price=args.price, reduce_only=bool(args.reduce_only),
-            state_path=Path(args.risk_state))
+            state_path=Path(args.risk_state),
+            stop_price=getattr(args, "stop_price", None),
+            post_only=bool(getattr(args, "post_only", False)),
+            client_id=getattr(args, "client_id", None))
         if not doc.get("ok"):
             journal(log, {"action": action, "mode": mode, "result": doc})
             print(doc["message"])

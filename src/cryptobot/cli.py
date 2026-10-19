@@ -1961,7 +1961,7 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("ops", help="operator commands; prod refuses without arm")
     p.add_argument("ops_cmd", choices=(
         "status", "positions", "orders", "pause", "resume",
-        "cancel-all", "flatten", "kill", "order"))
+        "cancel-all", "cancel", "flatten", "kill", "order"))
     p.add_argument("--mode", default="emulator",
                    choices=("emulator", "sandbox", "demo", "prod"))
     p.add_argument("--symbol", default=None)
@@ -1969,7 +1969,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--qty", type=float, default=None)
     p.add_argument("--kind", default="MARKET")
     p.add_argument("--price", type=float, default=None)
+    p.add_argument("--stop-price", type=float, default=None)
+    p.add_argument("--post-only", action="store_true")
     p.add_argument("--reduce-only", action="store_true")
+    p.add_argument("--client-id", default=None)
     p.add_argument("--armed", default="armed.json")
     p.add_argument("--gate", default="gate.json")
     p.add_argument("--journal", default="runs/ops-journal.jsonl")

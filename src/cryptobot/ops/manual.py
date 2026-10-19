@@ -87,30 +87,63 @@ class Book:
         return {"paused": self.paused,
                 "positions": account.get("positions", []),
                 "orders": self.venue.open_orders(),
+                "algo_orders": self.venue.open_algo_orders(),
                 "provenance": "EMULATED"}
 
 
 def apply_order(book: Book, *, symbol: str, side: str, qty: float,
                 kind: str, price: float | None, reduce_only: bool,
-                state_path: Path) -> dict:
+                state_path: Path, stop_price: float | None = None,
+                post_only: bool = False,
+                client_id: str | None = None) -> dict:
     if book.paused and not reduce_only:
         return {"ok": False, "message": "ops: REFUSED entries paused"}
     px = price or book.venue.mid(symbol)
-    decision = admit(symbol, side, qty, px, state_path)
-    if isinstance(decision, str):
-        return {"ok": False, "message": decision}
+    qty_out = qty
+    notional = qty * px
+    if not reduce_only:
+        decision = admit(symbol, side, qty, px, state_path)
+        if isinstance(decision, str):
+            return {"ok": False, "message": decision}
+        qty_out = decision.qty or qty
+        notional = decision.notional_usdt
+    if kind in ("STOP_MARKET", "TAKE_PROFIT_MARKET"):
+        if stop_price is None:
+            return {"ok": False,
+                    "message": "ops: REFUSED conditional needs --stop-price"}
+        params = {"symbol": symbol, "side": side, "type": kind,
+                  "quantity": qty_out,
+                  "stopPrice": stop_price}
+        if client_id:
+            params["clientAlgoId"] = client_id
+        try:
+            placed = book.venue.place_algo(params)
+        except Exception as exc:
+            return {"ok": False, "message": f"ops: REFUSED venue {exc}"}
+        return {"ok": True, "order": placed,
+                "notional": notional}
     params = {"symbol": symbol, "side": side, "type": kind,
-              "quantity": decision.qty or qty}
+              "quantity": qty_out}
+    if client_id:
+        params["newClientOrderId"] = client_id
     if kind == "LIMIT":
         params["price"] = px
-        params["timeInForce"] = "GTC"
+        if post_only:
+            touch = book.venue.mid(symbol)
+            marketable = (touch <= px) if side == "BUY" else (touch >= px)
+            if marketable:
+                return {"ok": False,
+                        "message": "ops: REFUSED post-only would take"}
+            params["timeInForce"] = "GTX"
+        else:
+            params["timeInForce"] = "GTC"
     if reduce_only:
         params["reduceOnly"] = "true"
     try:
         placed = book.venue.place_order(params)
     except Exception as exc:
         return {"ok": False, "message": f"ops: REFUSED venue {exc}"}
-    return {"ok": True, "order": placed, "notional": decision.notional_usdt}
+    return {"ok": True, "order": placed, "notional": notional}
 
 
 def flatten(book: Book, symbol: str | None) -> dict:
@@ -128,3 +161,35 @@ def flatten(book: Book, symbol: str | None) -> dict:
             "quantity": abs(qty), "reduceOnly": "true"})
         done.append(pos["symbol"])
     return {"ok": True, "flattened": done, "provenance": "EMULATED"}
+
+
+def cancel_one(book: Book, client_id: str) -> dict:
+    try:
+        row = book.venue.cancel_order({"origClientOrderId": client_id})
+        return {"ok": True, "canceled": row, "provenance": "EMULATED"}
+    except Exception:
+        pass
+    try:
+        row = book.venue.cancel_algo({"origClientAlgoId": client_id})
+        return {"ok": True, "canceled": row, "provenance": "EMULATED"}
+    except Exception as exc:
+        return {"ok": False, "message": f"ops: REFUSED unknown order {exc}"}
+
+
+def cancel_all(book: Book) -> dict:
+    canceled = 0
+    for row in list(book.venue.open_orders()):
+        try:
+            book.venue.cancel_order(
+                {"origClientOrderId": row["clientOrderId"]})
+            canceled += 1
+        except Exception:
+            continue
+    for row in list(book.venue.open_algo_orders()):
+        try:
+            book.venue.cancel_algo(
+                {"origClientAlgoId": row["clientAlgoId"]})
+            canceled += 1
+        except Exception:
+            continue
+    return {"ok": True, "canceled": canceled, "provenance": "EMULATED"}
