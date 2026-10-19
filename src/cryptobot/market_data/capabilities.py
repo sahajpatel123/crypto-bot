@@ -27,6 +27,10 @@ PROPOSED_PINS = {
 
 CONTRACT_VERSION = "v0.1.0"
 
+# E-002 bounded trial-install record (D-005 follow-up). A trial documents what
+# was ATTEMPTED and observed; it never counts as verified behaviour — the
+# nautilus row's `verified` tuple stays empty until an import + adapter smoke
+# actually passes in this environment.
 # E-002 bounded trial-install record (D-005 follow-up). Historical: the wheel
 # transfer stalled and the trial closed as blocked-on-transfer.
 E002_TRIAL_UTC = "2026-10-11T13:36:00Z/2026-10-11T14:06:45Z"  # bound window (start/end).
@@ -76,6 +80,7 @@ class ConnectorCapability:
     verified: tuple[str, ...] = field(default_factory=tuple)
     assumed: tuple[str, ...] = field(default_factory=tuple)
     blockers: tuple[str, ...] = field(default_factory=tuple)
+    trial: tuple[str, ...] = field(default_factory=tuple)  # E-002 attempt evidence; never verification.
     trial: tuple[str, ...] = field(default_factory=tuple)  # trial-attempt evidence (E-002 + E-006).
 
 
@@ -107,6 +112,7 @@ CONNECTOR_CANDIDATES: tuple[_Candidate, ...] = (
             "Backtest + live execution engine with Binance adapter (upstream docs)",
             "Rust-backed core; install is heavy (native build/wheel)",
         ),
+        install_blocker="not installed in .venv; E-002 trial blocked-on-transfer (see trial notes)",
         install_blocker=("not installed in project .venv (import+adapter smoke verified in untracked "
                          ".venv-trial only; see trial notes); adoption needs pin + .venv install"),
     ),
@@ -162,6 +168,7 @@ def build_matrix(extra_verified: Mapping[str, list[str]] | None = None) -> list[
                 verified=verified,
                 assumed=cand.assumed,
                 blockers=tuple(blockers),
+                trial=E002_TRIAL_EVIDENCE if cand.name == "nautilus_trader" else (),
                 trial=(E002_TRIAL_EVIDENCE + E006_TRIAL_EVIDENCE
                        if cand.name == "nautilus_trader" else ()),
             )
@@ -208,6 +215,7 @@ def render_markdown(matrix: list[ConnectorCapability]) -> str:
         )
     trial_rows = [r for r in matrix if r.trial]
     if trial_rows:
+        lines += ["", f"Trial notes (E-002, {E002_TRIAL_UTC}; verdict: {E002_TRIAL_VERDICT}):", ""]
         lines += ["",
                   f"Trial notes (E-002, {E002_TRIAL_UTC}; verdict: {E002_TRIAL_VERDICT}; "
                   f"E-006, {E006_TRIAL_UTC}; verdict: {E006_TRIAL_VERDICT}):", ""]

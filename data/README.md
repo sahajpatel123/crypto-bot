@@ -21,6 +21,11 @@ contract v0.1.0; PyPI pins observed 2026-10-11T12:55:00Z (proposals, unverified)
 | Connector | Installed | Proposed pin | Verified | Assumed | Blockers |
 | --- | --- | --- | --- | --- | --- |
 | stdlib-urllib | stdlib (python 3.14.6) | n/a (stdlib) | GET fapi exchangeInfo 200, 924 symbols, 928ms (2026-10-11)<br>GET fapi klines BTCUSDT 1m x60, 2642ms (2026-10-11) | HTTPS GET against Binance USD-M futures REST (fapi)<br>Sufficient for metadata discovery and kline capture; no streaming | — |
+| nautilus_trader | NOT-INSTALLED | 1.231.0 | — | Backtest + live execution engine with Binance adapter (upstream docs)<br>Rust-backed core; install is heavy (native build/wheel) | not installed in .venv; E-002 trial blocked-on-transfer (see trial notes)<br>no behaviour verified in this environment for E-001 |
+| binance-connector | NOT-INSTALLED | 3.13.0 | — | Official Binance REST + websocket clients (upstream docs) | not installed in .venv; no blocking incompatibility demonstrated yet<br>no behaviour verified in this environment for E-001 |
+| ccxt | NOT-INSTALLED | 4.5.85 | — | Unified REST API across exchanges (upstream docs) | not installed in .venv; not in the CEO decision path<br>no behaviour verified in this environment for E-001 |
+
+Trial notes (E-002, 2026-10-11T13:36:00Z/2026-10-11T14:06:45Z; verdict: blocked-on-transfer):
 | nautilus_trader | NOT-INSTALLED | 1.231.0 | pin 1.231.0 imports in .venv-trial (cp314 macosx_arm64 wheel, 2026-10-11)<br>Binance adapter live data+exec factories and USDT_FUTURES account type present (.venv-trial smoke)<br>stop/trailing order types, OCO/OTO/OUO contingency, OrderList.is_bracket present (.venv-trial smoke) | Backtest + live execution engine with Binance adapter (upstream docs)<br>Rust-backed core; install is heavy (native build/wheel) | not installed in project .venv (import+adapter smoke verified in untracked .venv-trial only; see trial notes); adoption needs pin + .venv install |
 | binance-connector | NOT-INSTALLED | 3.13.0 | — | Official Binance REST + websocket clients (upstream docs) | not installed in .venv; no blocking incompatibility demonstrated yet<br>no behaviour verified in this environment for E-001 |
 | ccxt | NOT-INSTALLED | 4.5.85 | — | Unified REST API across exchanges (upstream docs) | not installed in .venv; not in the CEO decision path<br>no behaviour verified in this environment for E-001 |
@@ -34,6 +39,25 @@ Trial notes (E-002, 2026-10-11T13:36:00Z/2026-10-11T14:06:45Z; verdict: blocked-
   - attempt 3 (py3.14, uv 0.11.11): 15 pkgs resolved in 61s; parallel transfer reached 110MB+ cache but wheel never completed by the ~30min bound
   - env: macOS 27.2 arm64, python 3.14.6, pip 26.1.2 — trial venv 13M, nautilus absent
   - never completed: wheel transfer/install; no import, adapter, or conditional-order evidence obtained
+
+No new dependencies were installed for E-001; the .venv is unchanged
+(stdlib + pytest only). Pinning nautilus_trader for production use (DECISIONS
+D-005) went to trial in E-002 and came back blocked-on-transfer (see above):
+the pin stays a PROPOSAL, not an adoption. Retry on a host with adequate
+PyPI throughput (or a pre-seeded wheel cache); the project interpreter
+(python 3.14) satisfies the pin's requires-python, so no interpreter change
+is indicated. Install-log excerpts:
+
+```text
+# attempt 1 — python3.11 venv, pip install --only-binary :all: nautilus_trader==1.231.0
+ERROR: No matching distribution found for nautilus_trader==1.231.0
+# dry-run cause: 1.222.0..1.231.0 all Requires-Python <3.15,>=3.12
+# attempt 2 — python3.14 venv, pip install --only-binary :all: nautilus_trader==1.231.0
+Downloading nautilus_trader-1.231.0-cp314-cp314-macosx_26_0_arm64.whl (156.3 MB)
+# ... ~55MB after ~15min (~96KB/s), terminated to try uv
+# attempt 3 — uv pip install --python .venv-trial/bin/python --only-binary :all: nautilus_trader==1.231.0
+Resolved 15 packages in 1m 01s
+Downloading nautilus-trader (149.0MiB)   # never completed by the bound
   - E-006 resume: uv reused the 113M cache; cp314 macosx_arm64 wheel (149MB) + deps installed in 33s
   - trial venv .venv-trial (project-checkout-local, untracked, never committed), 662M with deps
   - import nautilus_trader -> 1.231.0 (matches pin)
