@@ -1887,6 +1887,43 @@ class Session:
             time.sleep(0.02)
         return applied
 
+    def _settle_shutdown_exits(self) -> None:
+        """Give already-requested closes bounded owner-thread settlement.
+
+        A private-stream fill can arrive after the stop wake. Keep
+        booking/protection active during closure rather than requiring
+        a restart to consume that fill. Exhaustion preserves exposure
+        and unknowns; it never declares flat or submits a new entry.
+        Complements F3 ``_sweep_user_stream_owner`` (single bounded
+        owner poll) with a deadline-aware settle loop for stop wakes.
+        """
+        allowance = min(5.0, deadline_remaining_s(default=5.0) or 0.0)
+        deadline = time.monotonic() + allowance
+        while True:
+            stream = self._user_stream_attachment
+            if stream is not None:
+                drain = getattr(stream, "drain_owner", None)
+                if callable(drain):
+                    try:
+                        drain()
+                    except Exception:
+                        pass
+            self._advance_engine_clock()
+            self._drain_engine(bounded=True)
+            if self._position is not None:
+                self._update_position(EngineEvent("tick", None,
+                                                  self.now_utc()))
+            self._drain_engine(bounded=True)
+            if self._position is None and not self.ledger.has_position():
+                return
+            left = deadline - time.monotonic()
+            if left <= 0:
+                self.store.checkpoint(self.run_id, "shutdown-exposure-pending", {
+                    "qty": self.ledger.position_qty(),
+                    "position_tracked": self._position is not None})
+                return
+            time.sleep(min(self.config.control_tick_s, left))
+
     def _advance_engine_clock(self) -> None:
         # Engine time must track wall time on EVERY live wake, including
         # idle heartbeats (watchdog review): latency-delayed submissions
@@ -4715,6 +4752,8 @@ class Session:
         # loop breaks; sweep the owner path (bounded) so shutdown books
         # every pushed fill before the final drain and the report.
         self._sweep_user_stream_owner()
+        if end_reason in ("duration-elapsed", "operator-stop:flatten"):
+            self._settle_shutdown_exits()
         self._set_state("stopping", end_reason)
         # Final full drain: live wakes are bounded, so sweep the backlog
         # (bounded rounds; a pathological flood cannot hang shutdown).
