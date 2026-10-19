@@ -7,11 +7,29 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import subprocess
 from pathlib import Path
 
 import pytest
 
 REPO = Path(__file__).resolve().parents[2]
+
+
+def _read_committed(rel: str) -> str:
+    """Read a committed blob via git object (immune to working-tree edits).
+
+    F0.2: the suite must not depend on mutable uncommitted files such as
+    coord/pivot/ZONES.json. `git show HEAD:<path>` pins the test to the
+    checked-out commit.
+    """
+    out = subprocess.run(
+        ["git", "show", f"HEAD:{rel}"],
+        cwd=REPO,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    return out.stdout
 SPEC = importlib.util.spec_from_file_location(
     "zone_status", REPO / "tools" / "zone_status.py")
 assert SPEC and SPEC.loader
@@ -67,9 +85,10 @@ def test_unknown_kind_and_bad_manifest_raise(tmp_path):
 
 
 def test_real_zones_manifest_shape():
+    # Hermetic: read the COMMITTED manifest via git object, never the
+    # mutable working-tree copy (F0.2). Uses `git show HEAD:...`.
     manifest = json.loads(
-        (REPO / "coord" / "pivot" / "ZONES.json").read_text(
-            encoding="utf-8"))
+        _read_committed("coord/pivot/ZONES.json"))
     assert set(manifest["zones"]) == {
         "Z0-safety", "Z1-data", "Z2-execution", "Z3-alpha",
         "Z4-risk", "Z5-validation", "Z6-liveops"}

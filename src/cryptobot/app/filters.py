@@ -3,6 +3,12 @@
 Builds complete :class:`InstrumentFilter` records from live public
 exchangeInfo. Fail-closed: any missing/unparsable required field aborts
 with an error — the session never trades on invented filters.
+
+F0.4a adds leverage-bracket parsing for the LIVE liquidation gate.
+GET /fapi/v1/leverageBracket is a SIGNED endpoint (needs API
+credentials), so live fetching is a credentialed readiness step; the
+pure parser below converts an already-fetched payload into tier maps
+and is unit-tested without keys.
 """
 from __future__ import annotations
 
@@ -12,7 +18,7 @@ from typing import Any, Callable
 from cryptobot.market_data.discovery import fetch_exchange_info
 from cryptobot.risk.types import InstrumentFilter
 
-__all__ = ["FilterError", "build_run_filters"]
+__all__ = ["FilterError", "build_run_filters", "parse_brackets_payload"]
 
 
 class FilterError(ValueError):
@@ -85,3 +91,55 @@ def build_run_filters(
             raise FilterError(f"{symbol}: built record incomplete")
         out[symbol.upper()] = filt
     return out, asof
+
+
+def parse_brackets_payload(
+    payload: Any, symbols: list[str],
+) -> dict[str, list[dict]]:
+    """Parse a leverageBracket response into {SYMBOL: tiers} (F0.4a).
+
+    Venue shape (Binance USD-M, strings-or-numbers):
+    ``[{symbol, brackets: [{bracket, notionalCap, notionalFloor,
+    maintMarginRatio, cum, ...}]}]``. Fail-closed: missing symbols,
+    empty tiers, or unparsable cap/ratio raise FilterError. ``cum``
+    defaults to 0.0 when absent. Tiers are returned sorted by cap.
+    """
+    if not isinstance(payload, list) or not payload:
+        raise FilterError("brackets payload must be a non-empty list")
+    if not symbols:
+        raise FilterError("brackets: symbols required")
+    by_symbol: dict[str, Any] = {}
+    for entry in payload:
+        if isinstance(entry, dict) and entry.get("symbol"):
+            by_symbol[str(entry["symbol"]).upper()] = entry
+    out: dict[str, list[dict]] = {}
+    for symbol in symbols:
+        entry = by_symbol.get(symbol.upper())
+        if entry is None:
+            raise FilterError(f"{symbol}: no leverageBracket entry")
+        tiers = entry.get("brackets")
+        if not isinstance(tiers, list) or not tiers:
+            raise FilterError(f"{symbol}: empty brackets")
+        parsed: list[dict] = []
+        for tier in tiers:
+            if not isinstance(tier, dict):
+                raise FilterError(f"{symbol}: tier not an object")
+            try:
+                cap = float(tier["notionalCap"])
+                ratio = float(tier["maintMarginRatio"])
+                cum = float(tier.get("cum", 0.0))
+            except (KeyError, TypeError, ValueError):
+                raise FilterError(
+                    f"{symbol}: tier missing notionalCap/maintMarginRatio"
+                ) from None
+            if cap <= 0:
+                raise FilterError(f"{symbol}: notionalCap must be > 0")
+            if not 0.0 <= ratio < 1.0:
+                raise FilterError(
+                    f"{symbol}: maintMarginRatio must lie in [0, 1)")
+            parsed.append({"notionalCap": cap, "maintMarginRatio": ratio,
+                           "cum": cum,
+                           "bracket": tier.get("bracket")})
+        parsed.sort(key=lambda t: t["notionalCap"])
+        out[symbol.upper()] = parsed
+    return out

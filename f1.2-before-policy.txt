@@ -1,0 +1,376 @@
+    cryptobot.risk.policy.xǁRiskPolicyǁ__init____mutmut_7: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ__init____mutmut_8: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ__init____mutmut_13: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ__init____mutmut_14: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ__init____mutmut_15: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ__init____mutmut_16: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_persist_tick__mutmut_1: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_persist_tick__mutmut_3: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_persist_tick__mutmut_5: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_persist_tick__mutmut_6: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_persist_tick__mutmut_7: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_persist_tick__mutmut_8: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_persist_tick__mutmut_9: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_persist_tick__mutmut_10: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_persist_tick__mutmut_11: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_persist_tick__mutmut_15: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_persist_tick__mutmut_16: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_persist_tick__mutmut_21: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_persist_tick__mutmut_22: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_persist_tick__mutmut_23: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_persist_tick__mutmut_24: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_persist_tick__mutmut_25: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁflush_state__mutmut_1: no tests
+    cryptobot.risk.policy.xǁRiskPolicyǁflush_state__mutmut_2: no tests
+    cryptobot.risk.policy.xǁRiskPolicyǁflush_state__mutmut_3: no tests
+    cryptobot.risk.policy.xǁRiskPolicyǁflush_state__mutmut_4: no tests
+    cryptobot.risk.policy.xǁRiskPolicyǁflush_state__mutmut_5: no tests
+    cryptobot.risk.policy.xǁRiskPolicyǁflush_state__mutmut_6: no tests
+    cryptobot.risk.policy.xǁRiskPolicyǁflush_state__mutmut_7: no tests
+    cryptobot.risk.policy.xǁRiskPolicyǁreconcile_day__mutmut_1: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁreconcile_day__mutmut_4: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁreconcile_day__mutmut_7: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_25: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_26: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_41: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_50: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_51: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_52: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_53: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_56: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_57: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_58: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_59: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_60: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_61: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_62: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_63: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_64: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_65: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_66: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_68: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_69: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_70: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_94: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_106: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_107: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_108: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_109: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_110: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_122: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_129: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_131: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_139: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_140: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_141: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_144: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_145: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_146: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_147: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_148: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_149: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_150: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁcheck_health__mutmut_1: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_8: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_21: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_24: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_31: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_32: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_33: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_34: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_35: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_47: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_48: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_49: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_51: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_52: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_53: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_55: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_56: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_57: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_63: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_64: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_65: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_66: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_67: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_77: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_78: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_80: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_81: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_82: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_83: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_84: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_85: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_86: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_87: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_88: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_89: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_90: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_91: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_92: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_93: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_103: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_111: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_117: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_118: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_122: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_123: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_126: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_127: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_128: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_129: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_130: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_131: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_132: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_134: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_135: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_136: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_137: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_143: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_144: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_145: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_146: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_147: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_148: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_149: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_151: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_152: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_153: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_154: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_155: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_1: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_4: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_5: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_6: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_10: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_11: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_12: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_13: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_16: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_17: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_18: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_24: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_30: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_34: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_35: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_36: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_42: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_47: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_51: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_53: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_58: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁnote_funding__mutmut_1: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁnote_funding__mutmut_4: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁnote_funding__mutmut_6: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁnote_funding__mutmut_9: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁnote_funding__mutmut_10: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁnote_funding__mutmut_11: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁnote_funding__mutmut_14: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁnote_funding__mutmut_15: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁnote_funding__mutmut_16: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁnote_funding__mutmut_17: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁnote_funding__mutmut_18: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁnote_funding__mutmut_19: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁnote_funding__mutmut_20: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁnote_funding__mutmut_23: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁnote_funding__mutmut_24: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁnote_funding__mutmut_25: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁnote_funding__mutmut_30: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁnote_funding__mutmut_33: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁnote_funding__mutmut_34: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁnote_funding__mutmut_37: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁnote_funding__mutmut_38: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁrelease__mutmut_14: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁrelease__mutmut_23: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁrelease__mutmut_26: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁrelease__mutmut_27: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁnote_executable_qty__mutmut_1: no tests
+    cryptobot.risk.policy.xǁRiskPolicyǁnote_executable_qty__mutmut_2: no tests
+    cryptobot.risk.policy.xǁRiskPolicyǁnote_executable_qty__mutmut_3: no tests
+    cryptobot.risk.policy.xǁRiskPolicyǁnote_executable_qty__mutmut_4: no tests
+    cryptobot.risk.policy.xǁRiskPolicyǁnote_executable_qty__mutmut_5: no tests
+    cryptobot.risk.policy.xǁRiskPolicyǁnote_executable_qty__mutmut_6: no tests
+    cryptobot.risk.policy.xǁRiskPolicyǁnote_executable_qty__mutmut_7: no tests
+    cryptobot.risk.policy.xǁRiskPolicyǁnote_executable_qty__mutmut_8: no tests
+    cryptobot.risk.policy.xǁRiskPolicyǁnote_executable_qty__mutmut_9: no tests
+    cryptobot.risk.policy.xǁRiskPolicyǁnote_executable_qty__mutmut_10: no tests
+    cryptobot.risk.policy.xǁRiskPolicyǁnote_executable_qty__mutmut_11: no tests
+    cryptobot.risk.policy.xǁRiskPolicyǁnote_executable_qty__mutmut_12: no tests
+    cryptobot.risk.policy.xǁRiskPolicyǁnote_executable_qty__mutmut_13: no tests
+    cryptobot.risk.policy.xǁRiskPolicyǁnote_executable_qty__mutmut_14: no tests
+    cryptobot.risk.policy.xǁRiskPolicyǁnote_executable_qty__mutmut_15: no tests
+    cryptobot.risk.policy.xǁRiskPolicyǁnote_executable_qty__mutmut_16: no tests
+    cryptobot.risk.policy.xǁRiskPolicyǁnote_executable_qty__mutmut_17: no tests
+    cryptobot.risk.policy.xǁRiskPolicyǁnote_fill__mutmut_3: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁnote_flat__mutmut_1: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁlive_reservations__mutmut_1: no tests
+    cryptobot.risk.policy.xǁRiskPolicyǁlive_reservations__mutmut_2: no tests
+    cryptobot.risk.policy.xǁRiskPolicyǁlive_reservations__mutmut_3: no tests
+    cryptobot.risk.policy.xǁRiskPolicyǁlive_reservations__mutmut_4: no tests
+    cryptobot.risk.policy.xǁRiskPolicyǁlive_reservations__mutmut_5: no tests
+    cryptobot.risk.policy.xǁRiskPolicyǁlive_reservations__mutmut_6: no tests
+    cryptobot.risk.policy.xǁRiskPolicyǁbooked_reservations__mutmut_1: no tests
+    cryptobot.risk.policy.xǁRiskPolicyǁbooked_total_qty__mutmut_4: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁbooked_total_qty__mutmut_8: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_6: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_7: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_8: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_15: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_16: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_17: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_18: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_19: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_20: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_21: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_22: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_33: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_35: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_36: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_37: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_38: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_39: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_51: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_56: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_65: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_66: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_68: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_validate_account__mutmut_2: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_validate_account__mutmut_7: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_validate_account__mutmut_12: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_validate_account__mutmut_13: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_validate_account__mutmut_17: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_validate_account__mutmut_19: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_validate_account__mutmut_21: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_validate_account__mutmut_22: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_validate_account__mutmut_25: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_validate_account__mutmut_26: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_validate_account__mutmut_27: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_validate_account__mutmut_28: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_check_mark_age__mutmut_1: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_check_mark_age__mutmut_3: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_check_mark_age__mutmut_4: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_check_mark_age__mutmut_5: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_check_mark_age__mutmut_6: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_check_mark_age__mutmut_7: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_check_mark_age__mutmut_8: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_check_stops__mutmut_4: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_check_stops__mutmut_5: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_check_stops__mutmut_11: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_check_stops__mutmut_20: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_check_stops__mutmut_21: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_check_stops__mutmut_22: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_check_stops__mutmut_23: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_check_stops__mutmut_27: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_check_stops__mutmut_28: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_check_stops__mutmut_29: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_check_stops__mutmut_30: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_check_stops__mutmut_31: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_check_stops__mutmut_32: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_check_stops__mutmut_33: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_check_stops__mutmut_34: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_check_stops__mutmut_35: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_check_stops__mutmut_36: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁoperating_stopped__mutmut_1: no tests
+    cryptobot.risk.policy.xǁRiskPolicyǁoperating_stopped__mutmut_2: no tests
+    cryptobot.risk.policy.xǁRiskPolicyǁoperating_stopped__mutmut_3: no tests
+    cryptobot.risk.policy.xǁRiskPolicyǁoperating_stopped__mutmut_4: no tests
+    cryptobot.risk.policy.xǁRiskPolicyǁpending_stop_actions__mutmut_1: no tests
+    cryptobot.risk.policy.xǁRiskPolicyǁpending_stop_actions__mutmut_2: no tests
+    cryptobot.risk.policy.xǁRiskPolicyǁpending_stop_actions__mutmut_3: no tests
+    cryptobot.risk.policy.xǁRiskPolicyǁpending_stop_actions__mutmut_4: no tests
+    cryptobot.risk.policy.xǁRiskPolicyǁpending_stop_actions__mutmut_5: no tests
+    cryptobot.risk.policy.xǁRiskPolicyǁpending_stop_actions__mutmut_6: no tests
+    cryptobot.risk.policy.xǁRiskPolicyǁpending_stop_actions__mutmut_7: no tests
+    cryptobot.risk.policy.xǁRiskPolicyǁpending_stop_actions__mutmut_8: no tests
+    cryptobot.risk.policy.xǁRiskPolicyǁpending_stop_actions__mutmut_9: no tests
+    cryptobot.risk.policy.xǁRiskPolicyǁpending_stop_actions__mutmut_10: no tests
+    cryptobot.risk.policy.xǁRiskPolicyǁpending_stop_actions__mutmut_11: no tests
+    cryptobot.risk.policy.xǁRiskPolicyǁpending_stop_actions__mutmut_12: no tests
+    cryptobot.risk.policy.xǁRiskPolicyǁpending_stop_actions__mutmut_13: no tests
+    cryptobot.risk.policy.xǁRiskPolicyǁpending_stop_actions__mutmut_14: no tests
+    cryptobot.risk.policy.xǁRiskPolicyǁpending_stop_actions__mutmut_15: no tests
+    cryptobot.risk.policy.xǁRiskPolicyǁpending_stop_actions__mutmut_16: no tests
+    cryptobot.risk.policy.xǁRiskPolicyǁpending_stop_actions__mutmut_17: no tests
+    cryptobot.risk.policy.xǁRiskPolicyǁpending_stop_actions__mutmut_18: no tests
+    cryptobot.risk.policy.xǁRiskPolicyǁpending_stop_actions__mutmut_19: no tests
+    cryptobot.risk.policy.xǁRiskPolicyǁpending_stop_actions__mutmut_20: no tests
+    cryptobot.risk.policy.xǁRiskPolicyǁpending_stop_actions__mutmut_21: no tests
+    cryptobot.risk.policy.xǁRiskPolicyǁpending_stop_actions__mutmut_22: no tests
+    cryptobot.risk.policy.xǁRiskPolicyǁpending_stop_actions__mutmut_23: no tests
+    cryptobot.risk.policy.xǁRiskPolicyǁpending_stop_actions__mutmut_24: no tests
+    cryptobot.risk.policy.xǁRiskPolicyǁrecover_from_emergency__mutmut_1: no tests
+    cryptobot.risk.policy.xǁRiskPolicyǁrecover_from_emergency__mutmut_2: no tests
+    cryptobot.risk.policy.xǁRiskPolicyǁrecover_from_emergency__mutmut_3: no tests
+    cryptobot.risk.policy.xǁRiskPolicyǁrecover_from_emergency__mutmut_4: no tests
+    cryptobot.risk.policy.xǁRiskPolicyǁrecover_from_emergency__mutmut_5: no tests
+    cryptobot.risk.policy.xǁRiskPolicyǁrecover_from_emergency__mutmut_6: no tests
+    cryptobot.risk.policy.xǁRiskPolicyǁrecover_from_emergency__mutmut_7: no tests
+    cryptobot.risk.policy.xǁRiskPolicyǁrecover_from_emergency__mutmut_8: no tests
+    cryptobot.risk.policy.xǁRiskPolicyǁrecover_from_emergency__mutmut_9: no tests
+    cryptobot.risk.policy.xǁRiskPolicyǁrecover_from_emergency__mutmut_10: no tests
+    cryptobot.risk.policy.xǁRiskPolicyǁrecover_from_emergency__mutmut_11: no tests
+    cryptobot.risk.policy.xǁRiskPolicyǁrecover_from_emergency__mutmut_12: no tests
+    cryptobot.risk.policy.xǁRiskPolicyǁrecover_from_emergency__mutmut_13: no tests
+    cryptobot.risk.policy.xǁRiskPolicyǁrecover_from_emergency__mutmut_14: no tests
+    cryptobot.risk.policy.xǁRiskPolicyǁrecover_from_emergency__mutmut_15: no tests
+    cryptobot.risk.policy.xǁRiskPolicyǁ_roll_day_if_needed__mutmut_3: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_adjust_day__mutmut_1: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_adjust_day__mutmut_2: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_adjust_day__mutmut_3: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_adjust_day__mutmut_4: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_adjust_day__mutmut_6: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_adjust_inception__mutmut_1: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_adjust_inception__mutmut_2: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_adjust_inception__mutmut_3: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_adjust_inception__mutmut_4: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_adjust_inception__mutmut_6: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_update_profit_protection__mutmut_3: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_update_profit_protection__mutmut_4: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_update_profit_protection__mutmut_5: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_update_profit_protection__mutmut_6: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_update_profit_protection__mutmut_8: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_update_profit_protection__mutmut_9: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_update_profit_protection__mutmut_10: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_update_profit_protection__mutmut_17: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_update_profit_protection__mutmut_19: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_update_profit_protection__mutmut_20: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_update_profit_protection__mutmut_32: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_check_filters__mutmut_9: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_check_filters__mutmut_10: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_check_filters__mutmut_11: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_check_filters__mutmut_25: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_5: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_6: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_7: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_8: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_9: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_10: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_11: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_12: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_14: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_17: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_18: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_19: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_20: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_26: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_27: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_28: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_31: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_33: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_35: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_45: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_46: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_47: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_49: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_61: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_62: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_63: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_65: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_66: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_67: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_move_to_unresolved__mutmut_4: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_move_to_unresolved__mutmut_9: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_move_to_unresolved__mutmut_10: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_booked_net__mutmut_8: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_booked_net__mutmut_12: survived
+    cryptobot.risk.policy.xǁRiskPolicyǁ_booked_nonzero_global__mutmut_5: survived

@@ -1,0 +1,49 @@
+{
+  "_note": "Account snapshots in USDT. Day-start equity is recorded via reconcile_day, not carried here.",
+  "healthy_10k": {
+    "reconciled_equity": 10000.0, "marked_equity": 10000.0,
+    "net_liquidation": 9999.0, "net_realised_global": 0.0, "open_position": false
+  },
+  "healthy_100": {
+    "reconciled_equity": 100.0, "marked_equity": 100.0,
+    "net_liquidation": 99.99, "net_realised_global": 0.0, "open_position": false
+  },
+  "position_open": {
+    "reconciled_equity": 10000.0, "marked_equity": 10005.0,
+    "net_liquidation": 10004.0, "net_realised_global": 0.0, "open_position": true
+  },
+  "halt_trigger": {
+    "_note": "Net -1.02% vs 10k day start: must engage emergency (W3-24H).",
+    "reconciled_equity": 9899.0, "marked_equity": 9899.0,
+    "net_liquidation": 9898.0, "net_realised_global": -101.0, "open_position": false
+  },
+  "just_above_halt": {
+    "_note": "Net -0.51%: trips the 0.5% operating stop (W3-24H).",
+    "reconciled_equity": 9950.0, "marked_equity": 9950.0,
+    "net_liquidation": 9949.0, "net_realised_global": -50.0, "open_position": false
+  },
+  "target_hit": {
+    "_note": "Net-liq +2.0001% vs 10k day start: must pause entries.",
+    "reconciled_equity": 10200.0, "marked_equity": 10200.01,
+    "net_liquidation": 10200.01, "net_realised_global": 200.0, "open_position": false
+  },
+  "just_below_target": {
+    "reconciled_equity": 10190.0, "marked_equity": 10190.0,
+    "net_liquidation": 10190.0, "net_realised_global": 190.0, "open_position": false
+  },
+  "profit_armed_above_floor": {
+    "_note": "Realised +1.2% of 10k pilot => floor 10084; marked 10090 above floor: pass.",
+    "reconciled_equity": 10090.0, "marked_equity": 10090.0,
+    "net_liquidation": 10089.0, "net_realised_global": 120.0, "open_position": false
+  },
+  "profit_armed_below_floor": {
+    "_note": "Same arming; marked 10060 below floor 10084: must reject.",
+    "reconciled_equity": 10060.0, "marked_equity": 10060.0,
+    "net_liquidation": 10059.0, "net_realised_global": 120.0, "open_position": false
+  },
+  "profit_unarmed": {
+    "_note": "Realised +0.5%: below 1% arm threshold, no floor.",
+    "reconciled_equity": 10050.0, "marked_equity": 10050.0,
+    "net_liquidation": 10049.0, "net_realised_global": 50.0, "open_position": false
+  }
+}

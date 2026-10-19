@@ -221,6 +221,22 @@ class _StubLiveEngine:
     def open_orders(self):
         return []
 
+    def verify_account_modes(self, symbols, *, leverage_cap):
+        # T1.1 stub: account already in the required modes.
+        return {"position_mode": "one-way", "multi_assets": False,
+                "margin_type": "ISOLATED", "leverage": 3,
+                "symbols": list(symbols)}
+
+    def journal_client_ids(self):
+        return ()
+
+    def leverage_brackets(self, symbols):
+        # B#14 stub: venue tiers for live readiness arming.
+        return [{"symbol": s,
+                 "brackets": [{"bracket": 1, "notionalCap": 50000.0,
+                               "maintMarginRatio": 0.004, "cum": 0.0}]}
+                for s in symbols]
+
     def close(self):
         pass
 

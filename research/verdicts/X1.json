@@ -1,0 +1,14 @@
+{
+ "document_sha256": "84dff94b64f9e59e322bf72eb2fec0f749d065aeb664e21f6d3659203f17458c",
+ "expectancy_bps": null,
+ "family_size": 6,
+ "hashes": {
+  "code_commit": "9d05ff63a3de0965bdb1f713c38855cdce80a004",
+  "config_sha256_16": "0269a62713913f0d",
+  "data_manifest": "research/verdicts/trades/X1.jsonl"
+ },
+ "hypothesis": "X1-benchmark",
+ "n_trades": 0,
+ "reason": "n=0 < min_trades=300",
+ "verdict": "UNDERPOWERED"
+}

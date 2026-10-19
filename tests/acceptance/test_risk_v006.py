@@ -19,10 +19,19 @@ COMPLETE = InstrumentFilter(min_notional_usdt=5.0, qty_step=0.01,
                             max_notional_usdt=1e9, min_qty=0.01,
                             max_qty=1000.0, tick_size=0.1)
 
+# F0.4a: run_mode now requires fresh leverage brackets (LIVE admission
+# gate). Shared realistic tiers for BTCUSDT; freshness = NOW.
+BRACKETS_FRESH = [{"bracket": 1, "notionalCap": 50000.0,
+                   "maintMarginRatio": 0.004, "cum": 0.0},
+                  {"bracket": 2, "notionalCap": 250000.0,
+                   "maintMarginRatio": 0.005, "cum": 50.0}]
+
 
 def _run_policy(tmp_path, filt=COMPLETE, asof=NOW):
     return make_policy(tmp_path, run_mode=True,
-                       instrument_filters={"BTCUSDT": filt}, filters_asof_utc=asof)
+                       instrument_filters={"BTCUSDT": filt}, filters_asof_utc=asof,
+                       leverage_brackets={"BTCUSDT": BRACKETS_FRESH},
+                       brackets_asof_utc=asof)
 
 
 # -- run-mode strict filters ------------------------------------------------
@@ -67,7 +76,9 @@ def test_complete_satisfiable_without_operator_cap(tmp_path):
     assert VENUE_ONLY.max_notional_usdt is None
     policy = make_policy(tmp_path, run_mode=True,
                          instrument_filters={"BTCUSDT": VENUE_ONLY},
-                         filters_asof_utc=NOW)
+                         filters_asof_utc=NOW,
+                         leverage_brackets={"BTCUSDT": BRACKETS_FRESH},
+                         brackets_asof_utc=NOW)
     policy.reconcile_day(10000.0)
     from cryptobot.risk import Approved
     out = policy.evaluate(build_intent(INTENTS["canonical_long"]),

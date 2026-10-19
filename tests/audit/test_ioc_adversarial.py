@@ -117,9 +117,9 @@ def test_marketable_ioc_fills_on_arrival_tick_at_arrival_prices():
             and e.payload.client_order_id == buy]
     sells = [e for e in events if e.kind == "fill"
              and e.payload.client_order_id == sell]
-    assert len(buys) == 1 and buys[0].payload.price == 101.0, (
+    assert len(buys) == 1 and buys[0].payload.price == 101.01, (  # T1.9 +1 tick slip
         f"BUY filled off arrival book: {buys!r}")
-    assert len(sells) == 1 and sells[0].payload.price == 99.0, (
+    assert len(sells) == 1 and sells[0].payload.price == 98.99, (  # T1.9 -1 tick slip
         f"SELL filled off arrival book: {sells!r}")
     _qt(engine, 300, 99.0, 101.0)
     assert engine.filled_qty(buy) == 0.1, "BUY filled twice"

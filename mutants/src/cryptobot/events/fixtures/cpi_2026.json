@@ -1,0 +1,130 @@
+{
+ "events": [
+  {
+   "event_id": "CPI-2026-01-13",
+   "kind": "release",
+   "note": "December 2025 CPI",
+   "reference_month": "2025-12",
+   "scheduled_local_iso": "2026-01-13T08:30:00",
+   "scheduled_utc": "2026-01-13T13:30:00+00:00",
+   "title": "CPI release (Dec 2025 data)"
+  },
+  {
+   "event_id": "CPI-2026-02-13",
+   "kind": "release",
+   "note": "January 2026 CPI",
+   "reference_month": "2026-01",
+   "scheduled_local_iso": "2026-02-13T08:30:00",
+   "scheduled_utc": "2026-02-13T13:30:00+00:00",
+   "title": "CPI release (Jan 2026 data)"
+  },
+  {
+   "event_id": "CPI-2026-03-11",
+   "kind": "release",
+   "note": "February 2026 CPI",
+   "reference_month": "2026-02",
+   "scheduled_local_iso": "2026-03-11T08:30:00",
+   "scheduled_utc": "2026-03-11T12:30:00+00:00",
+   "title": "CPI release (Feb 2026 data)"
+  },
+  {
+   "event_id": "CPI-2026-04-10",
+   "kind": "release",
+   "note": "March 2026 CPI",
+   "reference_month": "2026-03",
+   "scheduled_local_iso": "2026-04-10T08:30:00",
+   "scheduled_utc": "2026-04-10T12:30:00+00:00",
+   "title": "CPI release (Mar 2026 data)"
+  },
+  {
+   "event_id": "CPI-2026-05-12",
+   "kind": "release",
+   "note": "April 2026 CPI",
+   "reference_month": "2026-04",
+   "scheduled_local_iso": "2026-05-12T08:30:00",
+   "scheduled_utc": "2026-05-12T12:30:00+00:00",
+   "title": "CPI release (Apr 2026 data)"
+  },
+  {
+   "event_id": "CPI-2026-06-10",
+   "kind": "release",
+   "note": "May 2026 CPI",
+   "reference_month": "2026-05",
+   "scheduled_local_iso": "2026-06-10T08:30:00",
+   "scheduled_utc": "2026-06-10T12:30:00+00:00",
+   "title": "CPI release (May 2026 data)"
+  },
+  {
+   "event_id": "CPI-2026-07-14",
+   "kind": "release",
+   "note": "June 2026 CPI",
+   "reference_month": "2026-06",
+   "scheduled_local_iso": "2026-07-14T08:30:00",
+   "scheduled_utc": "2026-07-14T12:30:00+00:00",
+   "title": "CPI release (Jun 2026 data)"
+  },
+  {
+   "event_id": "CPI-2026-08-12",
+   "kind": "release",
+   "note": "July 2026 CPI",
+   "reference_month": "2026-07",
+   "scheduled_local_iso": "2026-08-12T08:30:00",
+   "scheduled_utc": "2026-08-12T12:30:00+00:00",
+   "title": "CPI release (Jul 2026 data)"
+  },
+  {
+   "event_id": "CPI-2026-09-11",
+   "kind": "release",
+   "note": "August 2026 CPI",
+   "reference_month": "2026-08",
+   "scheduled_local_iso": "2026-09-11T08:30:00",
+   "scheduled_utc": "2026-09-11T12:30:00+00:00",
+   "title": "CPI release (Aug 2026 data)"
+  },
+  {
+   "event_id": "CPI-2026-10-14",
+   "kind": "release",
+   "note": "September 2026 CPI; re-verify at runtime (BLS lapse/rescheduling risk observed in Oct 2026 reports)",
+   "reference_month": "2026-09",
+   "scheduled_local_iso": "2026-10-14T08:30:00",
+   "scheduled_utc": "2026-10-14T12:30:00+00:00",
+   "title": "CPI release (Sep 2026 data)"
+  },
+  {
+   "event_id": "CPI-2026-11-10",
+   "kind": "release",
+   "note": "October 2026 CPI",
+   "reference_month": "2026-10",
+   "scheduled_local_iso": "2026-11-10T08:30:00",
+   "scheduled_utc": "2026-11-10T13:30:00+00:00",
+   "title": "CPI release (Oct 2026 data)"
+  },
+  {
+   "event_id": "CPI-2026-12-10",
+   "kind": "release",
+   "note": "November 2026 CPI",
+   "reference_month": "2026-11",
+   "scheduled_local_iso": "2026-12-10T08:30:00",
+   "scheduled_utc": "2026-12-10T13:30:00+00:00",
+   "title": "CPI release (Nov 2026 data)"
+  }
+ ],
+ "fetched_utc": "2026-10-12T13:10:00+00:00",
+ "first_seen_utc": "2026-10-12T13:10:00+00:00",
+ "format": "cryptobot-event-fixture/1",
+ "horizon_end_utc": "2026-12-10T13:30:00+00:00",
+ "notes": [
+  "Release dates follow the official BLS schedule (source_url): 8:30 AM ET monthly. Direct BLS fetch returned HTTP 403 on 2026-10-12, so dates were cross-checked against four corroborating mirrors (WSJ live coverage, CPI release-schedule trackers, BLS-schedule-derived datasets); all twelve agree.",
+  "US DST 2026: EDT Mar 8 - Nov 1; EST otherwise. Jan-Feb/Nov-Dec instants are UTC-5, Mar-Oct are UTC-4.",
+  "Oct 2026 BLS lapse/rescheduling chatter was observed in third-party reports; the Oct 14 date is the published schedule and MUST be re-verified (revision path) before use as a live gate.",
+  "scheduled_utc values are verified against wall-time + zone at load; any mismatch fails loudly.",
+  "REL-W3 2026-10-14: source moved from the BLS schedule index (no longer carries per-program schedules; verified live) to the CPI program page above. Overlap verified live: Nov 10 + Dec 10 2026 present on the official page and matching; 10 past 2026 releases scrolled off (refresh judges upcoming dates only). first_seen_utc preserved (historical availability unchanged)."
+ ],
+ "release_local_time": "08:30",
+ "revision": 0,
+ "source": "cpi",
+ "source_url": "https://www.bls.gov/schedule/news_release/cpi.htm",
+ "tz_name": "America/New_York",
+ "last_verified_utc": "2026-10-14T04:02:00+00:00",
+ "last_verified_page_sha256": "cece37b1f964eed1cd51215764a55fb26e310da31b441ab9c65758989c9afc17"
+}

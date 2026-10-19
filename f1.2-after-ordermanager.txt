@@ -1,0 +1,15 @@
+    cryptobot.execution.order_manager.xǁOrderManagerǁsubmit_entry__mutmut_30: survived
+    cryptobot.execution.order_manager.xǁOrderManagerǁsubmit_with_retry__mutmut_46: survived
+    cryptobot.execution.order_manager.xǁOrderManagerǁ_position_state__mutmut_33: survived
+    cryptobot.execution.order_manager.xǁOrderManagerǁ_position_state__mutmut_35: survived
+    cryptobot.execution.order_manager.xǁOrderManagerǁ_position_state__mutmut_38: survived
+    cryptobot.execution.order_manager.xǁOrderManagerǁpoll__mutmut_56: survived
+    cryptobot.execution.order_manager.xǁOrderManagerǁpoll__mutmut_80: survived
+    cryptobot.execution.order_manager.xǁOrderManagerǁrecover__mutmut_20: survived
+    cryptobot.execution.order_manager.xǁOrderManagerǁrecover__mutmut_22: survived
+    cryptobot.execution.order_manager.xǁOrderManagerǁrecover__mutmut_45: survived
+    cryptobot.execution.order_manager.xǁOrderManagerǁrecover__mutmut_47: survived
+    cryptobot.execution.order_manager.xǁOrderManagerǁrecover__mutmut_104: survived
+    cryptobot.execution.order_manager.xǁOrderManagerǁ_log__mutmut_44: survived
+    cryptobot.execution.order_manager.xǁOrderManagerǁ_log__mutmut_46: survived
+    cryptobot.execution.order_manager.xǁOrderManagerǁ_log__mutmut_50: survived

@@ -1,0 +1,3 @@
+{"execution_id": "e1", "client_order_id": "c1", "instrument": "BTCUSDT", "side": "BUY", "qty": 1.0, "price": 100.0, "fee": 1.0, "liquidity": "taker", "ts_utc": "2026-10-10T12:00:00+00:00"}
+{"execution_id": "e2", "client_order_id": "c2", "instrument": "BTCUSDT", "side": "SELL", "qty": 0.4, "price": 110.0, "fee": 1.0, "liquidity": "taker", "ts_utc": "2026-10-10T13:00:00+00:00"}
+{"execution_id": "e3", "client_order_id": "c2", "instrument": "BTCUSDT", "side": "SELL", "qty": 0.6, "price": 108.0, "fee": 1.0, "liquidity": "taker", "ts_utc": "2026-10-10T15:00:00+00:00"}

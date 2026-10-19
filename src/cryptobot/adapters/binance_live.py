@@ -46,9 +46,13 @@ import hmac
 import json
 import os
 import random
+import re
+import time
 import urllib.error
+import uuid
 import urllib.parse
 import urllib.request
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Protocol
@@ -115,6 +119,37 @@ def caller_action(exc: BaseException) -> str:
     return "abort"
 
 
+@dataclass(frozen=True)
+class ExceptionPolicy:
+    """Table-driven outcome for one venue exception (T1.3)."""
+
+    action: str  # retry_backoff | lookup_first | reject_intent | safe_mode
+    retry_after_s: float = 0.0
+    max_attempts: int = 1
+
+
+# T1.3 classification table. Order matters: RateLimited is a
+# VenueRejectedError subclass, unknowns must be looked up before any
+# other action, deterministic rejections reject only the intent, and
+# everything else fatal goes to safe mode (flatten, keep alerting).
+def classify_exception(exc: BaseException, *,
+                       idempotent_read: bool = False) -> ExceptionPolicy:
+    if isinstance(exc, RateLimitedError):
+        return ExceptionPolicy("retry_backoff",
+                               retry_after_s=exc.retry_after_s,
+                               max_attempts=3)
+    if isinstance(exc, UnknownOutcomeError):
+        return ExceptionPolicy("lookup_first", max_attempts=1)
+    if isinstance(exc, VenueRejectedError):
+        return ExceptionPolicy("reject_intent", max_attempts=1)
+    if isinstance(exc, VenueHttpError):
+        if idempotent_read and (exc.status >= 500 or exc.status == 0):
+            return ExceptionPolicy("retry_backoff", retry_after_s=0.25,
+                                   max_attempts=3)
+        return ExceptionPolicy("safe_mode", max_attempts=1)
+    return ExceptionPolicy("safe_mode", max_attempts=1)
+
+
 class VenueHttpError(Exception):
     """Transport/HTTP failure. ``status`` 0 = timeout/socket error."""
 
@@ -156,6 +191,66 @@ class UnknownOutcomeError(Exception):
         self.reason = reason
 
 
+SAPI_BASE_URL = "https://api.binance.com"
+
+
+def fetch_api_restrictions(api_key: str, api_secret: str, *,
+                           http_get=None) -> dict[str, Any]:
+    """Signed GET /sapi/v1/accountApiRestrictions (F2.5, read-only).
+
+    `http_get(url, headers, timeout_s) -> parsed JSON` is injectable
+    for offline tests; default performs a real signed request.
+    Raises VenueHttpError on transport failure.
+    """
+    import time as _time
+    import urllib.request as _request
+
+    params = {"timestamp": int(_time.time() * 1000)}
+    query = urllib.parse.urlencode(params)
+    signature = hmac.new(api_secret.encode("utf-8"), query.encode("utf-8"),
+                         hashlib.sha256).hexdigest()
+    url = (f"{SAPI_BASE_URL}/sapi/v1/accountApiRestrictions?"
+           f"{query}&signature={signature}")
+    headers = {"X-MBX-APIKEY": api_key}
+    if http_get is not None:
+        return dict(http_get(url, headers, 10.0))
+    req = _request.Request(url, headers=headers, method="GET")
+    try:
+        with _request.urlopen(req, timeout=10.0) as resp:
+            return json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        raise VenueHttpError(exc.code, None,
+                             f"sapi restrictions: http {exc.code}") from None
+    except (urllib.error.URLError, OSError, ValueError) as exc:
+        raise VenueHttpError(0, None,
+                             f"sapi restrictions unreachable: {exc}") from None
+
+
+def check_api_restrictions(payload: dict[str, Any] | None,
+                           ) -> tuple[bool, str]:
+    """Verify a key is trade-only (F2.5).
+
+    `payload` is GET /sapi/v1/accountApiRestrictions (or None when
+    the endpoint is unreachable — futures-only contexts). Withdrawals
+    must be disabled and futures enabled; anything else (or an
+    unreachable endpoint) fails closed with a MANUAL checklist
+    instruction instead of a silent pass.
+    """
+    if not isinstance(payload, dict):
+        return False, ("manual-check: fetch GET "
+                       "/sapi/v1/accountApiRestrictions and confirm "
+                       "enableWithdrawals=false, enableFutures=true, "
+                       "IP allowlist restricted (endpoint unreachable "
+                       "from here)")
+    if payload.get("enableWithdrawals"):
+        return False, "refused: enableWithdrawals is true (must be false)"
+    if not payload.get("enableFutures"):
+        return False, "refused: enableFutures is false (must be true)"
+    ip_note = "ipRestrict=true" if payload.get("ipRestrict") \
+        else "manual-check: enable IP allowlist restriction"
+    return True, f"trade-only key ({ip_note})"
+
+
 class LiveTransport(Protocol):
     """Synchronous JSON transport (urllib prod / replay test)."""
 
@@ -171,6 +266,7 @@ class UrllibTransport:
     def __init__(self, base_url: str, timeout_s: float = 10.0) -> None:
         self._base = base_url.rstrip("/")
         self._timeout = timeout_s
+        self.last_used_weight_1m: int | None = None
 
     def _effective_timeout(self) -> float:
         """Configured timeout bounded by the remaining job budget."""
@@ -199,6 +295,13 @@ class UrllibTransport:
             method=method)
         try:
             with urllib.request.urlopen(req, timeout=timeout) as resp:
+                # T1.2: request-weight accounting for the budget governor.
+                try:
+                    self.last_used_weight_1m = int(
+                        resp.headers.get("X-MBX-USED-WEIGHT-1M", "") or 0) \
+                        or getattr(self, "last_used_weight_1m", None)
+                except (TypeError, ValueError):
+                    pass
                 return json.loads(resp.read().decode("utf-8"))
         except urllib.error.HTTPError as exc:
             try:
@@ -287,7 +390,10 @@ class BinanceLiveEngine:
             pass  # fail fast when the journal is not writable.
         self._leverage = int(expected_leverage)
         self._isolated = bool(expected_isolated)
-        self._run_tag = run_tag
+        # T1.6: sanitise/truncate the tag so tag+uuid+seq stays <=36.
+        self._run_tag = re.sub(r"[^A-Za-z0-9._-]", "-", str(run_tag))[:16] \
+            or "run"
+        self._run_prefix = uuid.uuid4().hex[:10]
         self._recv_window = int(recv_window_ms)
         self._working_type = stop_working_type
         self._orders_ttl = float(open_orders_ttl_s)
@@ -295,6 +401,7 @@ class BinanceLiveEngine:
         self._now_utc = now_utc or (lambda: datetime.now(timezone.utc))
         self._now_ms = lambda: int(self._now_utc().timestamp() * 1000)
         self._offset_ms = 0
+        self._offset_synced = False
         self._ready = False
         self._closed = False
         self._exit_only_reasons: set[str] = set()
@@ -319,6 +426,13 @@ class BinanceLiveEngine:
         self._marks: dict[str, float] = {}
         self._mark_ts: dict[str, datetime] = {}
         self._orders_cache: tuple[float, list[EngineOrderStatus]] | None = None
+        # T1.2: account cache (TTL 5s) — hot path must not signed-REST
+        # per event. Updated by REST snapshot/margin reads and by
+        # user-stream ACCOUNT_UPDATE; stale entries force a REST refresh.
+        self._account_cache: AccountSnapshot | None = None
+        self._margin_cache: tuple[float, float] | None = None
+        self._account_cached_at: float = 0.0
+        self.ACCOUNT_CACHE_TTL_S = 5.0
         self._listen_key: str | None = None
         # Contract v1 tracked truth: per-order versions, submit-intent
         # qty/symbol cache, adopted fill qty, emitted terminals.
@@ -592,11 +706,32 @@ class BinanceLiveEngine:
             raise VenueRejectedError(exc.status, exc.code, exc.msg) from None
 
     # -- readiness (time sync, filters, fees, margin mode, leverage) -----------
+    def clock_skew_ms(self) -> float | None:
+        """Last measured venue-minus-local offset (None before first sync)."""
+        return float(self._offset_ms) if self._offset_synced else None
+
+    def recv_window_ms(self) -> int:
+        """Signed-request window the skew is judged against (F2.6)."""
+        return int(self._recv_window)
+
+    def refresh_clock_offset(self) -> float:
+        """Re-measure skew via server time (F2.6 continuous guard).
+
+        One public REST call; updates _offset_ms and returns it.
+        Raises VenueHttpError on transport failure (caller throttles
+        and degrades; staleness is bounded by the refresh cadence).
+        """
+        server_ms = int(self._public("GET", "/fapi/v1/time")["serverTime"])
+        self._offset_ms = server_ms - self._now_ms()
+        self._offset_synced = True
+        return float(self._offset_ms)
+
     def _ensure_ready(self, symbol: str) -> None:
         if self._ready and symbol in self._filters:
             return
         server_ms = int(self._public("GET", "/fapi/v1/time")["serverTime"])
         self._offset_ms = server_ms - self._now_ms()
+        self._offset_synced = True
         if abs(self._offset_ms) > self._recv_window:
             raise VenueRejectedError(0, None,
                                      f"clock skew {self._offset_ms}ms exceeds "
@@ -648,9 +783,16 @@ class BinanceLiveEngine:
 
     # -- submission -------------------------------------------------------------
     def _new_client_id(self) -> str:
+        """Run-unique client id (T1.6): ``<tag>-<uuid10>-<seq6>``.
+
+        The UUID-derived run prefix makes collisions across restarts
+        negligible even with the same run_tag; the monotonic seq is
+        journaled with every submit-intent before any venue call, so
+        ids stay unique and ordered within the run. Always <=36 chars
+        (tag truncated/sanitised) in Binance's allowed charset.
+        """
         self._seq += 1
-        rand = f"{random.getrandbits(16):04x}"
-        return f"{self._run_tag}-{self._seq:06d}-{rand}"
+        return f"{self._run_tag}-{self._run_prefix}-{self._seq:06d}"
 
     def _unknown_for(self, reservation_id: str | None) -> list[str]:
         if reservation_id is None:
@@ -880,6 +1022,59 @@ class BinanceLiveEngine:
                 return None
             raise
 
+    def journal_client_ids(self) -> tuple[str, ...]:
+        """Client ids this engine has journaled (bot-owned venue orders)."""
+        return tuple(sorted(self._reservations))
+
+    def verify_account_modes(self, symbols: list[str], *,
+                               leverage_cap: float) -> dict[str, Any]:
+        """Verify + set account modes at startup (T1.1, fail closed).
+
+        One-way position mode, multi-assets mode OFF, per-symbol ISOLATED
+        margin and leverage <= cap. Any venue refusal or unexpected state
+        raises VenueRejectedError — startup must not proceed on an
+        unverified account. Returns a summary dict for the run record.
+        """
+        if float(leverage_cap) < 1:
+            raise VenueRejectedError(0, None, "leverage cap < 1")
+        if self._leverage > float(leverage_cap):
+            raise VenueRejectedError(
+                0, None, f"configured leverage {self._leverage} exceeds "
+                         f"cap {leverage_cap}")
+        dual = self._signed("GET", "/fapi/v1/positionSide/dual")
+        if bool(dual.get("dualSidePosition")):
+            self._signed("POST", "/fapi/v1/positionSide/dual",
+                         {"dualSidePosition": "false"})
+            dual = self._signed("GET", "/fapi/v1/positionSide/dual")
+            if bool(dual.get("dualSidePosition")):
+                raise VenueRejectedError(0, None, "hedge mode still on "
+                                         "after one-way set attempt")
+        multi = self._signed("GET", "/fapi/v1/multiAssetsMargin")
+        if bool(multi.get("multiAssetsMargin")):
+            self._signed("POST", "/fapi/v1/multiAssetsMargin",
+                         {"multiAssetsMargin": "false"})
+            multi = self._signed("GET", "/fapi/v1/multiAssetsMargin")
+            if bool(multi.get("multiAssetsMargin")):
+                raise VenueRejectedError(0, None, "multi-assets mode "
+                                         "still on after disable attempt")
+        for symbol in symbols:
+            sym = symbol.upper()
+            try:
+                self._signed("POST", "/fapi/v1/marginType",
+                             {"symbol": sym, "marginType": "ISOLATED"})
+            except VenueHttpError as exc:
+                if exc.code != -4046:  # -4046: already ISOLATED, no change
+                    raise
+            lev = self._signed("POST", "/fapi/v1/leverage",
+                               {"symbol": sym, "leverage": self._leverage})
+            if int(lev.get("leverage", 0)) != self._leverage:
+                raise VenueRejectedError(
+                    0, None, f"{sym} leverage {lev.get('leverage')} != "
+                             f"expected {self._leverage}")
+        return {"position_mode": "one-way", "multi_assets": False,
+                "margin_type": "ISOLATED", "leverage": self._leverage,
+                "symbols": [s.upper() for s in symbols]}
+
     def unknown_ids(self) -> tuple[str, ...]:
         """Client ids needing lookup/reconciliation (contract v1 §2).
 
@@ -1013,8 +1208,17 @@ class BinanceLiveEngine:
             raise RuntimeError("engine is closed")
         symbol = self._symbol_of(client_order_id)
         if self._states.get(client_order_id) in ("UNKNOWN", "CANCEL_UNKNOWN"):
-            resolved = self.lookup(client_order_id)
-            if resolved is None or resolved.state in TERMINAL_STATES:
+            # B#20: the pre-lookup sheds load inside the refuse-fast
+            # window — but cancels are exit-critical ("cancel capacity
+            # protected"). A refused lookup must not refuse the
+            # cancel: attempt the DELETE (venue -2013/unknown paths
+            # below stay fail-closed).
+            try:
+                resolved = self.lookup(client_order_id)
+            except RateLimitedError:
+                resolved = "window-bypass"
+            if resolved != "window-bypass" and (
+                    resolved is None or resolved.state in TERMINAL_STATES):
                 return  # lookup settled it: nothing left to cancel.
         self._journal("cancel-request", {"client_id": client_order_id,
                                          "reason": reason})
@@ -1068,6 +1272,7 @@ class BinanceLiveEngine:
                 return list(cached)
         views = self._signed("GET", "/fapi/v1/openOrders")
         algo_views = self._signed("GET", "/fapi/v1/openAlgoOrders")
+        self._last_open_views = (views, algo_views)
         journaled = set(self._reservations)
         out: list[EngineOrderStatus] = []
         ignored = 0
@@ -1104,6 +1309,31 @@ class BinanceLiveEngine:
             self._journal("foreign-orders-ignored", {"count": ignored})
         self._orders_cache = (now_s, out)
         return list(out)
+
+    def stray_order_ids(self) -> tuple[str, ...]:
+        """Unjournaled (foreign/manual) open order ids (B#13).
+
+        Refreshes through open_orders() (TTL applies), then reports
+        the venue cids that are NOT bot-journaled. Seed refuses on
+        any strays (fail closed: unknown live orders + a fresh bot
+        run = unmanaged interaction). Empty tuple when clean.
+        """
+        self.open_orders()
+        journaled = set(self._reservations)
+        strays: list[str] = []
+        try:
+            views = self._last_open_views
+        except AttributeError:
+            views = ([], [])
+        for v in views[0]:
+            cid = str(v.get("clientOrderId", ""))
+            if cid and cid not in journaled and cid not in strays:
+                strays.append(cid)
+        for v in views[1]:
+            cid = str(v.get("clientAlgoId", v.get("clientOrderId", "")))
+            if cid and cid not in journaled and cid not in strays:
+                strays.append(cid)
+        return tuple(strays)
 
     def resolve(self, client_id: str) -> str | None:
         """Live ids are durable at submit; None only when never journaled."""
@@ -1148,6 +1378,30 @@ class BinanceLiveEngine:
             self._note_algo_update(payload.get("o", {}), payload)
         elif kind == "ACCOUNT_UPDATE":
             self._journal("account-update", {"event_time": payload.get("E")})
+            # T1.2: the stream refreshes the USDT wallet VALUE, but the
+            # snapshot AGE stays REST-bound (B#15): positions/available
+            # are untouched by balance ticks, so re-marking the cache
+            # fresh would lie about their staleness. TTL REST refresh
+            # (not stream ticks) advances _account_cached_at.
+            try:
+                balances = (payload.get("a") or {}).get("B") or []
+                for entry in balances:
+                    if str(entry.get("a")) == "USDT":
+                        wallet = float(entry.get("wb"))
+                        if self._account_cache is not None:
+                            old = self._account_cache
+                            self._account_cache = AccountSnapshot(
+                                wallet_equity_usdt=wallet,
+                                available_margin_usdt=old.available_margin_usdt,
+                                margin_balance_usdt=wallet,
+                                positions=old.positions,
+                                asof_utc=self._now_utc(),
+                                complete=old.complete)
+                        if self._margin_cache is not None:
+                            self._margin_cache = (self._margin_cache[0],
+                                                  wallet)
+            except (TypeError, ValueError, AttributeError):
+                pass  # cache stays stale -> TTL REST refresh covers it
         elif kind == "listenKeyExpired":
             self._listen_key = None
             self._journal("listen-key-expired", {})
@@ -1189,6 +1443,17 @@ class BinanceLiveEngine:
             self._maybe_emit_terminal(cid, str(order["s"]),
                                       f"stream:{order['x']}")
             return
+        # B#17: a fired conditional's TRADE may arrive under the
+        # triggered-order id (ti), not the algo cid — resolve through
+        # the _triggered map so the fill attributes to the algo leg
+        # (else the leg sticks open and its sibling never cancels).
+        for algo_cid, trig_id in self._triggered.items():
+            if trig_id == cid and algo_cid != cid:
+                self._journal_transition(
+                    "fill-remapped", algo_cid,
+                    {"triggered_id": cid, "trade_id": str(order.get("t", ""))})
+                cid = algo_cid
+                break
         last_qty = float(order.get("l", 0.0) or 0.0)
         if last_qty <= 0:
             return
@@ -1311,9 +1576,21 @@ class BinanceLiveEngine:
         entry/mark prices are None when the venue omits them.
         """
         self._guarded("account_snapshot")
-        try:
-            view = self._signed("GET", "/fapi/v2/account")
-        except VenueHttpError:
+        # T1.3: bounded retry for this idempotent read (table-driven);
+        # exhausted/non-retryable failures still return None (unknown).
+        view = None
+        for _attempt in range(3):
+            try:
+                view = self._signed("GET", "/fapi/v2/account")
+                break
+            except VenueHttpError as exc:
+                policy = classify_exception(exc, idempotent_read=True)
+                if policy.action != "retry_backoff" \
+                        or _attempt >= policy.max_attempts - 1:
+                    return None
+                time.sleep(min(policy.retry_after_s, 2.0)
+                           + random.uniform(0.0, 0.05))
+        if view is None:
             return None
         now = self._now_utc()
         try:
@@ -1327,19 +1604,66 @@ class BinanceLiveEngine:
                 margin_raw = view.get("totalMarginBalance")
             except (TypeError, ValueError):
                 return None
-            return AccountSnapshot(
+            snap = AccountSnapshot(
                 wallet_equity_usdt=wallet,
                 available_margin_usdt=available,
                 margin_balance_usdt=(
                     float(margin_raw) if margin_raw is not None else None),
                 positions=self._snapshot_positions(view.get("positions", [])),
                 asof_utc=now, complete=False)
-        return AccountSnapshot(
+            self._store_account_cache(snap, view)
+            return snap
+        snap = AccountSnapshot(
             wallet_equity_usdt=wallet,
             available_margin_usdt=available,
             margin_balance_usdt=margin,
             positions=self._snapshot_positions(view.get("positions", [])),
             asof_utc=now, complete=True)
+        self._store_account_cache(snap, view)
+        return snap
+
+    # -- T1.2 account cache ------------------------------------------------
+    def _store_account_cache(self, snap: AccountSnapshot,
+                             view: dict | None = None) -> None:
+        self._account_cache = snap
+        self._account_cached_at = time.monotonic()
+        if view is not None:
+            try:
+                free = float(view.get("totalMarginBalance", 0.0) or 0.0) \
+                    - float(view.get("totalInitialMargin", 0.0) or 0.0)
+                self._margin_cache = (snap.available_margin_usdt, free)
+            except (TypeError, ValueError):
+                pass
+
+    def account_cache_age_s(self) -> float | None:
+        if self._account_cache is None:
+            return None
+        return max(0.0, time.monotonic() - self._account_cached_at)
+
+    def account_snapshot_cached(
+            self, max_age_s: float = 5.0) -> AccountSnapshot | None:
+        """Cached snapshot within TTL; REST refresh when stale (T1.2)."""
+        age = self.account_cache_age_s()
+        if self._account_cache is not None and age is not None \
+                and age <= max_age_s:
+            return self._account_cache
+        return self.account_snapshot()
+
+    def weight_used_1m(self) -> int | None:
+        """Last X-MBX-USED-WEIGHT-1M seen by the transport (T1.2)."""
+        raw = getattr(self._transport, "last_used_weight_1m", None)
+        try:
+            return int(raw) if raw is not None else None
+        except (TypeError, ValueError):
+            return None
+
+    def weight_budget_ok(self, *, limit: int = 2400,
+                         reserve_frac: float = 0.1) -> bool:
+        """True while used weight leaves the reserve headroom (T1.2)."""
+        used = self.weight_used_1m()
+        if used is None:
+            return True  # unknown: refuse-fast window still guards bursts
+        return used <= int(limit * (1.0 - reserve_frac))
 
     @staticmethod
     def _snapshot_positions(views: Any) -> tuple[AccountPosition, ...]:
@@ -1383,17 +1707,51 @@ class BinanceLiveEngine:
     def valuation_mark_ts(self, instrument: str) -> datetime | None:
         return self._mark_ts.get(instrument.upper())
 
+    def account_margin_cached(self) -> tuple[float, float]:
+        """Hot-path margin (T1.2): <=5s cache, one REST on stale.
+
+        Session uses this variant; ``account_margin`` keeps the exact
+        one-REST-per-call contract other callers/tests rely on.
+        """
+        age = self.account_cache_age_s()
+        if self._margin_cache is not None and age is not None \
+                and age <= self.ACCOUNT_CACHE_TTL_S:
+            return self._margin_cache
+        return self.account_margin()
+
     def account_margin(self) -> tuple[float, float]:
-        """(availableBalance, marginBalance − initialMargin) from the venue."""
+        """(availableBalance, marginBalance − initialMargin) from venue."""
         account = self._signed("GET", "/fapi/v2/account")
         available = float(account.get("availableBalance", 0.0) or 0.0)
         free = float(account.get("totalMarginBalance", 0.0) or 0.0) - float(
             account.get("totalInitialMargin", 0.0) or 0.0)
+        self._margin_cache = (available, free)
+        self._account_cached_at = time.monotonic()
+        try:
+            self._account_cache = AccountSnapshot(
+                wallet_equity_usdt=float(
+                    account.get("totalWalletBalance", 0.0) or 0.0),
+                available_margin_usdt=available,
+                margin_balance_usdt=float(
+                    account.get("totalMarginBalance", 0.0) or 0.0),
+                positions=self._snapshot_positions(
+                    account.get("positions", [])),
+                asof_utc=self._now_utc(), complete=True)
+        except (TypeError, ValueError):
+            pass
         return available, free
 
     def fee_bps(self, symbol: str) -> float:
         """Venue taker rate in bps (cached at readiness)."""
         return self._fee_bps[symbol.upper()]
+
+    def funding_income(self, symbol: str) -> list[dict[str, Any]]:
+        """Raw FUNDING_FEE income rows (T1.7 booking/reconcile input)."""
+        self._guarded("funding_income")
+        rows = self._signed("GET", "/fapi/v1/income",
+                            {"symbol": symbol.upper(),
+                             "incomeType": "FUNDING_FEE", "limit": 1000})
+        return [dict(r) for r in rows] if isinstance(rows, list) else []
 
     def venue_funding_total(self, symbol: str) -> float:
         """Sum of FUNDING_FEE income (live funding-reconcile input)."""
@@ -1402,6 +1760,24 @@ class BinanceLiveEngine:
                             {"symbol": symbol.upper(),
                              "incomeType": "FUNDING_FEE", "limit": 1000})
         return sum(float(r.get("income", 0.0) or 0.0) for r in rows)
+
+    def leverage_brackets(self, symbols: list[str]) -> list[dict[str, Any]]:
+        """Raw leverageBracket entries for `symbols` (B#14 live arming).
+
+        Signed GET per symbol (credentialed at runtime, never stored).
+        Raises VenueHttpError/VenueRejectedError on transport failure
+        (readiness refuses — the bracket gate needs these tiers).
+        """
+        out: list[dict[str, Any]] = []
+        for symbol in symbols:
+            self._guarded("leverage_brackets")
+            rows = self._signed("GET", "/fapi/v1/leverageBracket",
+                                {"symbol": symbol.upper()})
+            if isinstance(rows, list):
+                out.extend(dict(r) for r in rows)
+            elif isinstance(rows, dict):
+                out.append(dict(rows))
+        return out
 
     def venue_status(self, symbols: list[str]) -> dict[str, Any]:
         """Read-only account/venue snapshot for `cryptobot readiness`.
@@ -1498,11 +1874,26 @@ class BinanceLiveEngine:
             kind="STOP_MARKET", stop_price=stop_price, reduce_only=True,
             reservation_id=status.reservation_id, role="stop"))]
         if target_price is not None:
-            legs.append(self.submit(EngineOrder(
-                instrument=symbol, side=side, qty=protect_qty,
-                kind="TAKE_PROFIT_MARKET", stop_price=target_price,
-                reduce_only=True, reservation_id=status.reservation_id,
-                role="target")))
+            try:
+                legs.append(self.submit(EngineOrder(
+                    instrument=symbol, side=side, qty=protect_qty,
+                    kind="TAKE_PROFIT_MARKET", stop_price=target_price,
+                    reduce_only=True,
+                    reservation_id=status.reservation_id,
+                    role="target")))
+            except Exception as exc:
+                # B#11: never strand a live untracked leg. Roll the
+                # stop back; if the rollback itself is ambiguous,
+                # surface leg1's id on the raised error so the
+                # session tracks (never orphans) it.
+                try:
+                    self.cancel(legs[0], "attach-rollback")
+                except Exception:
+                    try:
+                        exc.partial_leg_id = legs[0]  # type: ignore[attr-defined]
+                    except (AttributeError, TypeError):
+                        pass
+                raise
         return legs
 
     @property

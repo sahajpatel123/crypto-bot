@@ -107,6 +107,8 @@ from cryptobot.app.engine import (
     EngineOrderStatus,
     EngineReject,
 )
+from cryptobot.execution.fill_realism import (
+    PaperFillParams, pessimistic_fill_price)
 from cryptobot.market_data.discovery import FAPI_BASE_URL, urllib_json_get
 from cryptobot.risk.rounding import floor_to_step, round_to_tick
 
@@ -152,7 +154,7 @@ class NautilusPaperEngine:
         taker_bps: float = 5.0,
         now_utc: Callable[[], datetime] | None = None,
         submit_delay_ms: int = 0,
-        fill_delay_ms: int = 50,
+        fill_delay_ms: int | None = None,
         *,
         journal_path: str | Path | None = None,
         maker_bps: float | None = None,
@@ -167,7 +169,18 @@ class NautilusPaperEngine:
         max_queued_submits: int = 1000,
         max_pending_events: int = 10000,
         run_tag: str | None = None,
+        fill_params: PaperFillParams | dict | None = None,
     ) -> None:
+        if isinstance(fill_params, dict):
+            fill_params = PaperFillParams.from_dict(fill_params)
+        # F0.4c: explicit parameterized fill economics. Defaults are
+        # ASSUMED-pessimistic until F2.2 calibrates MEASURED params.
+        self.fill_params: PaperFillParams = (
+            fill_params if fill_params is not None
+            else PaperFillParams.default_pessimistic())
+        # Delay model comes from params unless explicitly overridden.
+        if fill_delay_ms is None:
+            fill_delay_ms = self.fill_params.latency_ms_p95
         if taker_bps <= 0:
             raise ValueError("taker_bps must be > 0 (run-mode fees are never zero)")
         if fill_delay_ms <= 0:
@@ -220,7 +233,15 @@ class NautilusPaperEngine:
             msgbus=self._msgbus,
             cache=self._cache,
             clock=self._clock,
-            fill_model=FillModel(prob_fill_on_limit=1.0, prob_slippage=0.0,
+            # F0.4c: nautilus handles MATCHING TIMING; fill ECONOMICS are
+            # set by self.fill_params (PaperFillParams, versioned +
+            # provenance-stamped). prob_slippage=1.0 keeps the pessimistic
+            # direction (never better than touch); the explicit bps terms
+            # (spread/slippage/latency/empty-book) price the fill via
+            # slippage_audit, and F2.2 calibrates them from measured
+            # fills. The bare "one tick" rule is retired: every basis
+            # point is now a named, versioned parameter.
+            fill_model=FillModel(prob_fill_on_limit=1.0, prob_slippage=1.0,
                                  random_seed=random_seed),
             fee_model=MakerTakerFeeModel(),  # reads maker/taker fees off each instrument.
             latency_model=LatencyModel(self.fill_delay_ms * 1_000_000),
@@ -414,6 +435,76 @@ class NautilusPaperEngine:
     def _round_tick(self, symbol: str, price: float) -> float:
         # V-008 §7: the one shared venue-rounding rule (price leg).
         return round_to_tick(price, self._filters[symbol.upper()]["tick"])
+
+    def slippage_audit(self, *, side: str, qty: float,
+                       nautilus_price: float,
+                       levels: list[tuple[float, float]],
+                       symbol: str) -> dict:
+        """Audit a nautilus fill against the pessimistic model (F0.4c).
+
+        Prices ``qty`` against ``levels`` (best-first book snapshot at
+        fill time; top-of-book suffices — uncovered remainder draws the
+        empty-book penalty) plus the params latency term. Returns the
+        pessimistic price, the nautilus price, and non-negative drift
+        in bps (0 when nautilus is already at/past pessimistic).
+        drift_bps > 0 means the simulator was optimistic: F2.2 feeds
+        these audits into calibration, and paper P&L must use the
+        pessimistic leg (never better). Pure function of its inputs +
+        self.fill_params (deterministic).
+        """
+        pessimistic = pessimistic_fill_price(
+            side, qty=qty, levels=levels,
+            latency_bps=self.fill_params.latency_bps,
+            empty_book_bps=self.fill_params.empty_book_bps)
+        if side == "BUY":
+            drift = max(0.0, pessimistic - float(nautilus_price))
+        elif side == "SELL":
+            drift = max(0.0, float(nautilus_price) - pessimistic)
+        else:
+            raise ValueError(f"side must be BUY or SELL, got {side!r}")
+        base = float(nautilus_price) or 1.0
+        return {"symbol": symbol.upper(), "side": side,
+                "qty": float(qty), "nautilus_price": float(nautilus_price),
+                "pessimistic_price": pessimistic,
+                "drift_bps": drift / base * 10000.0,
+                "params_version": self.fill_params.version,
+                "provenance": self.fill_params.provenance}
+
+    def _fill_drift_bps(self, symbol: str, side: str,
+                        qty: float, price: float) -> float:
+        """Pessimistic drift for one fill (B#9; never negative).
+
+        BBO single-level book-walk when tracked; last-print level
+        when only prints exist; flat params cost (spread + slippage
+        + latency) when no book evidence exists at all. Audit
+        failures fail CLOSED to the flat params cost (never 0 by
+        accident — an unaudited fill must not read as perfect).
+        """
+        params = self.fill_params
+        flat = params.spread_bps + params.slippage_bps + params.latency_bps
+        if qty <= 0 or price <= 0:
+            return flat
+        levels: list[tuple[float, float]] | None = None
+        bbo = self._bbo.get(symbol.upper())
+        if bbo is not None:
+            bid, ask, bid_size, ask_size = bbo
+            if side == "BUY" and ask > 0 and ask_size > 0:
+                levels = [(ask, ask_size)]
+            elif side == "SELL" and bid > 0 and bid_size > 0:
+                levels = [(bid, bid_size)]
+        if levels is None:
+            last = self._last_print.get(symbol.upper())
+            if last is not None and last[0] > 0 and last[1] > 0:
+                levels = [(last[0], last[1])]
+        if levels is None:
+            return flat
+        try:
+            audit = self.slippage_audit(
+                side=side, qty=qty, nautilus_price=price,
+                levels=levels, symbol=symbol)
+        except (ValueError, ArithmeticError):
+            return flat
+        return max(0.0, float(audit["drift_bps"]))
 
     # -- S3 seam ----------------------------------------------------------
     def _new_client_id(self) -> str:
@@ -706,10 +797,23 @@ class NautilusPaperEngine:
             kind="STOP_MARKET", stop_price=stop_price, reduce_only=True,
             reservation_id=reservation, role="stop"))]
         if target_price is not None:
-            legs.append(self.submit(EngineOrder(
-                instrument=symbol, side=exit_side, qty=protect_qty,
-                kind="TAKE_PROFIT_MARKET", stop_price=target_price,
-                reduce_only=True, reservation_id=reservation, role="target")))
+            try:
+                legs.append(self.submit(EngineOrder(
+                    instrument=symbol, side=exit_side, qty=protect_qty,
+                    kind="TAKE_PROFIT_MARKET", stop_price=target_price,
+                    reduce_only=True, reservation_id=reservation,
+                    role="target")))
+            except Exception as exc:
+                # B#11 (paper mirror): roll the stop back; surface its
+                # id when the rollback is ambiguous.
+                try:
+                    self.cancel(legs[0], "attach-rollback")
+                except Exception:
+                    try:
+                        exc.partial_leg_id = legs[0]  # type: ignore[attr-defined]
+                    except (AttributeError, TypeError):
+                        pass
+                raise
         return legs
 
     def cancel(self, client_order_id: str, reason: str) -> None:
@@ -1054,6 +1158,11 @@ class NautilusPaperEngine:
         ts_utc = datetime.fromtimestamp(funding_ms / 1000, tz=timezone.utc)
         self._settled_funding[symbol] = \
             self._settled_funding.get(symbol, 0.0) + amount
+        # A#5: journal every settlement so recover() restores the
+        # cumulative totals (else the first post-restart settlement
+        # false-trips funding-mismatch and halts the run).
+        self._journal("funding-settled", {"symbol": symbol, "amount": amount,
+                                          "funding_ms": funding_ms})
         self._emit(EngineEvent(
             "funding",
             EngineFunding(event_id=f"funding:{symbol}:{funding_ms}",
@@ -1103,6 +1212,17 @@ class NautilusPaperEngine:
                 terminal[detail["client_id"]] = str(detail.get("kind", "cancel"))
             elif event == "exit-only":
                 halted = bool(detail.get("halted"))
+            elif event == "funding-settled":
+                # A#5: restore cumulative settled totals WITHOUT
+                # re-emitting (the ledger already holds these via its
+                # own journal/store replay; totals only feed reconcile).
+                try:
+                    symbol = str(detail["symbol"]).upper()
+                    amount = float(detail["amount"])
+                except (KeyError, TypeError, ValueError):
+                    continue
+                self._settled_funding[symbol] = \
+                    self._settled_funding.get(symbol, 0.0) + amount
                 if "reasons" in detail:
                     halt_reasons = set(detail["reasons"])
                 elif halted:
@@ -1147,7 +1267,10 @@ class NautilusPaperEngine:
                 except ValueError:
                     pass
         for _ in range(self._seq):  # advance seeded RNG past journaled ids.
-            self._rng.getrandbits(64)
+            # A#10: generation draws getrandbits(32) per id — recovery
+            # must advance the IDENTICAL stream (64-bit draws diverge
+            # it and break post-restart determinism).
+            self._rng.getrandbits(32)
         if halted is not None:
             self._exit_only_reasons = halt_reasons
             self._exit_only = bool(halt_reasons)
@@ -1620,6 +1743,13 @@ class NautilusPaperEngine:
                         f"non-taker fill for {coid}: {event.liquidity_side} "
                         f"(taker-only model; refusing to book mislabeled costs)")
             self._fill_seq += 1
+            # B#9: price the pessimistic drift NOW (book evidence is
+            # freshest at fill time): BBO single-level walk, last-print
+            # fallback, else flat params cost (no book evidence).
+            drift_bps = self._fill_drift_bps(
+                symbol,
+                "BUY" if event.order_side == OrderSide.BUY else "SELL",
+                float(event.last_qty), float(event.last_px))
             return EngineEvent("fill", EngineFill(
                 execution_id=f"paper/{self._run_tag}/{symbol}/{self._fill_seq:06d}",
                 client_order_id=coid,
@@ -1630,6 +1760,7 @@ class NautilusPaperEngine:
                 fee=float(event.commission),
                 ts_utc=ts_utc,
                 liquidity="taker",
+                slippage_drift_bps=drift_bps,
             ), ts_utc)
         if isinstance(event, OrderCanceled):
             return EngineEvent("cancel", EngineCancel(

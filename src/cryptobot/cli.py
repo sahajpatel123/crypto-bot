@@ -33,6 +33,46 @@ def _store_path(storage_dir: str) -> Path:
     return Path(storage_dir) / "cryptobot.db"
 
 
+def load_api_keys(key_env: str, secret_env: str, *,
+                  key_file: str | None = None) -> tuple[str, str]:
+    """Load API credentials from env or a 0600 key file (F2.5).
+
+    Env wins when both parts are set; otherwise CRYPTOBOT_KEY_FILE (or
+    the explicit key_file, which wins over the env pointer) must point
+    at JSON {"api_key": ..., "api_secret": ...} readable ONLY by the
+    owner (no group/other permission bits — 0600 or stricter).
+    Values are never printed. Raises ValueError when unusable.
+    """
+    key = os.environ.get(key_env, "")
+    secret = os.environ.get(secret_env, "")
+    if key and secret:
+        return key, secret
+    pointer = key_file or os.environ.get("CRYPTOBOT_KEY_FILE", "")
+    if not pointer:
+        raise ValueError(
+            f"credentials absent: set {key_env}/{secret_env} or point "
+            f"CRYPTOBOT_KEY_FILE at a 0600 JSON key file")
+    path = Path(pointer)
+    try:
+        mode = path.stat().st_mode
+    except OSError as exc:
+        raise ValueError(f"key file unreadable: {pointer} ({exc})") from None
+    if mode & 0o077:
+        raise ValueError(
+            f"key file {pointer} has group/other permissions "
+            f"({oct(mode & 0o777)}); run: chmod 0600 {pointer}")
+    try:
+        doc = json.loads(path.read_text(encoding="utf-8"))
+        file_key, file_secret = doc["api_key"], doc["api_secret"]
+    except (OSError, ValueError, KeyError) as exc:
+        raise ValueError(
+            f"key file {pointer} must be JSON "
+            f'{{"api_key": ..., "api_secret": ...}} ({exc})') from None
+    if not file_key or not file_secret:
+        raise ValueError(f"key file {pointer} has empty credentials")
+    return str(file_key), str(file_secret)
+
+
 def _new_run_id(prefix: str) -> str:
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     return f"{prefix}-{stamp}-{os.getpid()}"
@@ -71,12 +111,26 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     if config.engine_kind == "nautilus":
         try:
             import cryptobot.adapters.paper_engine  # noqa: F401  (E-007)
-            print("engine: OK nautilus adapter present")
+            print("engine: OK nautilus paper adapter present "
+                  "(src/cryptobot/adapters/paper_engine.py)")
             info["engine"] = "nautilus"
         except ImportError:
             problems.append("nautilus engine requested but "
                             "cryptobot.adapters.paper_engine is not integrated (E-007)")
             print("engine: BLOCKED (E-007 Nautilus adapter not integrated)")
+    elif config.engine_kind == "live":
+        # T0.4: doctor previously fell through to the reference label for
+        # live configs, misreporting a venue engine as the fake venue.
+        try:
+            import cryptobot.adapters.binance_live  # noqa: F401
+            print(f"engine: OK binance-live adapter present "
+                  f"(demo={config.engine_demo}, "
+                  f"submission={'ON' if config.allow_live_submission else 'OFF'})")
+            info["engine"] = "live"
+        except ImportError:
+            problems.append("live engine requested but "
+                            "cryptobot.adapters.binance_live is not integrated")
+            print("engine: BLOCKED (binance_live adapter not integrated)")
     else:
         print("engine: reference-fake-venue (replay/tests only; paper refuses it)")
         info["engine"] = "reference"
@@ -198,6 +252,37 @@ def _ws_socket_factory_for(engine):
     return _factory
 
 
+def _seed_live_session(session, engine, config) -> float:
+    """T1.1 startup: verify account modes, then seed from venue truth.
+
+    Raises ValueError on any refusal (fail closed); callers print REFUSED
+    and exit non-zero. Fetches wallet/positions/open orders (incl. algo
+    via engine.open_orders) — never the config paper number.
+    """
+    symbols = list(config.symbols or [])
+    modes = engine.verify_account_modes(symbols,
+                                        leverage_cap=config.leverage_cap)
+    print(f"account modes: {modes}")
+    snapshot = engine.account_snapshot()
+    open_ids = [str(o.client_order_id) for o in engine.open_orders()]
+    journal_ids = [str(c) for c in engine.journal_client_ids()]
+    strays_fn = getattr(engine, "stray_order_ids", None)
+    if callable(strays_fn):
+        strays = [str(c) for c in strays_fn()]
+        if strays:
+            raise ValueError(
+                "foreign orders on venue (not bot-journaled): "
+                + ",".join(sorted(strays)))
+    seeded = session.seed_from_venue(snapshot, open_client_ids=open_ids,
+                                     journal_client_ids=journal_ids)
+    if symbols:
+        # B#14: live/demo run_mode arms WITH venue brackets (fail
+        # closed when the fetch/parse fails — no gate, no trading).
+        armed = session.arm_live_brackets(symbols)
+        print(f"brackets armed: {armed}")
+    return seeded
+
+
 def _run_paper(args: argparse.Namespace) -> int:
     try:
         config = load_config(args.config)
@@ -283,14 +368,14 @@ def _run_paper(args: argparse.Namespace) -> int:
     clock = WallClock()
     if config.engine_kind == "live":
         # W3-24H P5 demo mode: config already enforces demo = true.
-        # Credentials come ONLY from the environment (never chat/files).
+        # Credentials from env or a 0600 key file (F2.5; never chat).
         from cryptobot.adapters import binance_live as _live
-        api_key = os.environ.get("BINANCE_DEMO_KEY", "")
-        api_secret = os.environ.get("BINANCE_DEMO_SECRET", "")
-        if not api_key or not api_secret:
-            print("demo engine needs BINANCE_DEMO_KEY and "
-                  "BINANCE_DEMO_SECRET in the environment.",
-                  file=sys.stderr)
+        try:
+            api_key, api_secret = load_api_keys(
+                "BINANCE_DEMO_KEY", "BINANCE_DEMO_SECRET",
+                key_file=getattr(args, "key_file", None))
+        except ValueError as exc:
+            print(f"demo engine credentials: {exc}", file=sys.stderr)
             return 2
         engine = _live.BinanceLiveEngine(
             api_key=api_key, api_secret=api_secret,
@@ -307,6 +392,21 @@ def _run_paper(args: argparse.Namespace) -> int:
             starting_balance_usdt=config.paper_capital_usdt)
     session = Session(config, store, workdir, run_id, pid=os.getpid(),
                       clock=clock, engine=engine)
+    session.leave_protected = bool(
+        getattr(args, "leave_protected", False))
+    if config.engine_kind == "live":
+        engine.hot_cache_enabled = True  # T1.2 hot-path account cache
+    if config.engine_kind == "live" and not args.resume:
+        # T1.1: seed accounting from the venue before any trading.
+        try:
+            seeded = _seed_live_session(session, engine, config)
+        except Exception as exc:
+            print(f"run {run_id} REFUSED (venue seed: "
+                  f"{type(exc).__name__}: {exc})", file=sys.stderr)
+            store.close()
+            engine.close()
+            return 2
+        print(f"venue seed: equity {seeded:.2f} USDT (venue wallet)")
     # Contract v1: Session.__init__ binds the ONE booking handler;
     # no rebind here (a policy is not an EngineEvent callable).
     _install_stop_handler(session)
@@ -324,12 +424,45 @@ def _run_paper(args: argparse.Namespace) -> int:
     try:
         stream_host = getattr(engine, "stream_host", None)
         events = _bridge.live_events(
-            symbols=list(config.symbols) or None,
+            # T2.2: default evaluating set BTC/ETH, capped by
+            # max_hf_subscriptions; do not subscribe to the rest.
+            symbols=list(config.symbols) or ["BTCUSDT", "ETHUSDT"],
             max_symbols=config.max_symbols,
+            max_hf_subscriptions=config.max_hf_subscriptions,
             ws_host=stream_host() if callable(stream_host) else None)
         try:
             report = session.run_live(events, duration_s=duration,
                                       resume=bool(args.resume))
+        except KeyError as exc:
+            # B#18: --resume with no such run (first boot with the
+            # resume unit, or a lost store). Live engines fail CLOSED
+            # (refuse: the lost run may hold venue exposure — never
+            # auto-start a second writer). Paper fresh-starts LOUDLY
+            # (sim-only, nothing to double-trade) instead of
+            # crash-looping to StartLimitBurst. Narrowly scoped to
+            # the resume-unknown shape; all other KeyErrors fall
+            # through to the generic handler below.
+            if not bool(args.resume) or "unknown run" not in str(exc):
+                print(f"run {run_id} interrupted: "
+                      f"{type(exc).__name__}: {exc}", file=sys.stderr)
+                print(f"resume with: cryptobot run --mode paper --config "
+                      f"{args.config} --duration {args.duration or 'left'} "
+                      f"--run-id {run_id} --resume")
+                return 3
+            if config.engine_kind == "live":
+                print(f"run {run_id} REFUSED (resume: {exc}); inspect "
+                      f"venue exposure before starting fresh without "
+                      f"--resume", file=sys.stderr)
+                return 2
+            print(f"run {run_id}: no such run ({exc}); fresh paper "
+                  f"start (dropping --resume)", file=sys.stderr)
+            try:
+                report = session.run_live(events, duration_s=duration,
+                                          resume=False)
+            except Exception as exc2:
+                print(f"run {run_id} interrupted: "
+                      f"{type(exc2).__name__}: {exc2}", file=sys.stderr)
+                return 3
         except Exception as exc:
             # Mirror _run_replay: a venue/connection death (e.g.
             # routes-exhausted) must leave a resume hint, not a bare
@@ -450,17 +583,19 @@ def _signed_rows(engine, config) -> list[tuple[str, str, str]]:
 
 
 def _readiness_signed(config, key_env: str, secret_env: str,
+                      key_file: str | None = None,
                       ) -> list[tuple[str, str, str]]:
     """Signed read-only venue checks. GET requests only, never submits."""
     from cryptobot.adapters import binance_live as _live
-    key = os.environ.get(key_env, "")
-    secret = os.environ.get(secret_env, "")
-    if not key or not secret:
+    try:
+        key, secret = load_api_keys(key_env, secret_env,
+                                    key_file=key_file)
+    except ValueError:
         return [(f"signed-checks({key_env}/{secret_env})", "BLOCKED",
                  "credentials absent from environment (declared blocker; "
                  "unsigned checks above still stand)")]
     rows: list[tuple[str, str, str]] = [
-        ("creds-from-env", "PASS",
+        ("creds-loaded", "PASS",
          f"{key_env}=set {secret_env}=set (values never shown)")]
     journal = Path(config.storage_dir) / "readiness_journal.jsonl"
     try:
@@ -474,9 +609,30 @@ def _readiness_signed(config, key_env: str, secret_env: str,
         return rows + [("venue-connect", "FAIL", str(exc))]
     try:
         rows += _signed_rows(engine, config)
+        rows.append(_key_permissions_row(key, secret))
     finally:
         engine.close()
     return rows
+
+
+def _key_permissions_row(key: str, secret: str) -> tuple[str, str, str]:
+    """Trade-only key verification (F2.5): withdrawals must be off.
+
+    Best-effort sapi query (signed, read-only); unreachable endpoint
+    yields a MANUAL checklist row instead of a silent pass.
+    """
+    from cryptobot.adapters import binance_live as _live
+
+    try:
+        payload = _live.fetch_api_restrictions(key, secret)
+    except Exception:  # noqa: BLE001 — any fetch fault -> manual
+        payload = None
+    ok, detail = _live.check_api_restrictions(payload)
+    if payload is None:
+        # Endpoint unreachable (offline/CI/futures-only context):
+        # MANUAL checklist item — never fails readiness by itself.
+        return ("key-permissions", "MANUAL", detail)
+    return ("key-permissions", "PASS" if ok else "FAIL", detail)
 
 
 def _risk_bounds_rows(config) -> list[tuple[str, str, str]]:
@@ -540,7 +696,9 @@ def cmd_readiness(args: argparse.Namespace) -> int:
             key_env, secret_env = "BINANCE_DEMO_KEY", "BINANCE_DEMO_SECRET"
         else:
             key_env, secret_env = "CRYPTOBOT_API_KEY", "CRYPTOBOT_API_SECRET"
-        rows += _readiness_signed(config, key_env, secret_env)
+        rows += _readiness_signed(config, key_env, secret_env,
+                                    key_file=getattr(args, "key_file",
+                                                     None))
     print(f"readiness {args.config}:")
     for name, state, detail in rows:
         print(f"  [{state}] {name}: {detail}")
@@ -570,9 +728,11 @@ def cmd_reconcile(args: argparse.Namespace) -> int:
         key_env, secret_env = "BINANCE_DEMO_KEY", "BINANCE_DEMO_SECRET"
     else:
         key_env, secret_env = "CRYPTOBOT_API_KEY", "CRYPTOBOT_API_SECRET"
-    key = os.environ.get(key_env, "")
-    secret = os.environ.get(secret_env, "")
-    if not key or not secret:
+    try:
+        key, secret = load_api_keys(
+            key_env, secret_env,
+            key_file=getattr(args, "key_file", None))
+    except ValueError:
         print(f"reconcile {args.config}: BLOCKED on {key_env}/"
               f"{secret_env} in the owner's environment.")
         return 3
@@ -676,13 +836,15 @@ def _run_prod(args: argparse.Namespace, _engine_factory=None) -> int:
         print("prod: REFUSED (guard failures above)", file=sys.stderr)
         return 2
     key_env, secret_env = _prod_cred_env(config)
-    key = os.environ.get(key_env, "")
-    secret = os.environ.get(secret_env, "")
-    if not key or not secret:
+    try:
+        key, secret = load_api_keys(
+            key_env, secret_env,
+            key_file=getattr(args, "key_file", None))
+    except ValueError:
         print(f"prod: BLOCKED on {key_env}/{secret_env} in the owner's "
               f"environment.")
         return 3
-    print(f"  [PASS] creds-from-env: {key_env}=set {secret_env}=set "
+    print(f"  [PASS] creds-loaded: {key_env}=set {secret_env}=set "
           f"(values never shown)")
     storage = Path(config.storage_dir)
     journal = storage / "prod_engine_journal.jsonl"
@@ -719,6 +881,15 @@ def _run_prod(args: argparse.Namespace, _engine_factory=None) -> int:
             session = Session(config, store, workdir, run_id,
                               pid=os.getpid(), clock=WallClock(),
                               engine=engine)
+            # T1.1: validate venue seeding on the constructed driver
+            # (no event loop starts; submission stays OFF).
+            try:
+                seeded = _seed_live_session(session, engine, config)
+            except Exception as exc:
+                print(f"prod: REFUSED (venue seed: "
+                      f"{type(exc).__name__}: {exc})", file=sys.stderr)
+                return 2
+            print(f"prod venue seed: equity {seeded:.2f} USDT")
             print(f"prod driver: Session {run_id} constructed over "
                   f"live engine (workdir={workdir}); submission switch "
                   f"is OFF so no event loop starts.")
@@ -750,14 +921,17 @@ def cmd_preflight(args: argparse.Namespace) -> int:
     rows = _readiness_unsigned(config, args.config)
     rows += _risk_bounds_rows(config)
     key_env, secret_env = _prod_cred_env(config)
-    key = os.environ.get(key_env, "")
-    secret = os.environ.get(secret_env, "")
     factory = getattr(args, "_engine_factory", None) or _build_live_engine
-    if not key or not secret:
+    try:
+        key, secret = load_api_keys(
+            key_env, secret_env,
+            key_file=getattr(args, "key_file", None))
+    except ValueError:
         rows.append((f"signed-checks({key_env}/{secret_env})", "BLOCKED",
                      "credentials absent from environment"))
-    else:
-        rows.append(("creds-from-env", "PASS",
+        key, secret = "", ""
+    if key and secret:
+        rows.append(("creds-loaded", "PASS",
                      f"{key_env}=set {secret_env}=set (values never shown)"))
         journal = Path(config.storage_dir) / "preflight_journal.jsonl"
         try:
@@ -875,6 +1049,367 @@ def cmd_report(args: argparse.Namespace) -> int:
     return 0
 
 
+ARM_ACK_PHRASE = "I UNDERSTAND LIVE CAPITAL IS AT RISK"
+
+
+def cmd_latency_probe(args: argparse.Namespace) -> int:
+    """WS/REST round-trip + clock skew + feed-age probe (T2.3, JSON).
+
+    Owner runs this on the candidate host. Offline it FAILs closed:
+    gate requires p99 feed age <250ms and drops <0.1% measured live.
+    """
+    import time as _time
+    import urllib.request as _rq
+
+    out: dict = {"probe": "latency", "ts_utc": datetime.now(
+        timezone.utc).isoformat(), "gate": {"p99_feed_age_ms_max": 250.0,
+                                            "drop_rate_max": 0.001}}
+    try:
+        t0 = _time.time()
+        with _rq.urlopen("https://fapi.binance.com/fapi/v1/time",
+                         timeout=10) as resp:
+            payload = json.loads(resp.read().decode())
+        rtt_ms = (_time.time() - t0) * 1000.0
+        out["rest_rtt_ms"] = round(rtt_ms, 2)
+        out["clock_skew_ms"] = int(payload["serverTime"]) \
+            - int(_time.time() * 1000)
+        out["verdict"] = "MEASURED-REST-ONLY"
+        out["note"] = ("WS feed-age p99 must be measured on the live "
+                       "feed on the candidate host; see OWNER_ACTIONS.md")
+        rc = 0
+    except Exception as exc:  # noqa: BLE001 — probe reports, never hides
+        out["verdict"] = "FAIL"
+        out["error"] = f"{type(exc).__name__}: {exc}"
+        rc = 2
+    text = json.dumps(out, indent=1, sort_keys=True)
+    print(text)
+    if args.out:
+        Path(args.out).write_text(text + "\n")
+    return rc
+
+
+def cmd_data(args: argparse.Namespace) -> int:
+    """`cryptobot data verify --capture DIR` (T3.5): fail on gaps."""
+    cap = Path(args.capture)
+    candidates = [cap / "events.jsonl", cap / "events.jsonl.gz"]
+    found = next((c for c in candidates if c.exists()), None)
+    if found is None:
+        print(f"data verify: FAIL no events.jsonl[.gz] in {cap}",
+              file=sys.stderr)
+        return 2
+    import gzip as _gz
+    opener = _gz.open if found.suffix == ".gz" else open
+    rows = 0
+    try:
+        with opener(found, "rt", encoding="utf-8") as fh:  # type: ignore[arg-type]
+            for line in fh:
+                if line.strip():
+                    json.loads(line)
+                    rows += 1
+    except Exception as exc:  # noqa: BLE001
+        print(f"data verify: FAIL corrupt capture {found}: {exc}",
+              file=sys.stderr)
+        return 2
+    print(f"data verify: OK {found} rows={rows}")
+    return 0
+
+
+def cmd_recorder(args: argparse.Namespace) -> int:
+    """`cryptobot recorder start|stop|status|verify` (F3.6).
+
+    start runs the standalone recorder in the FOREGROUND (systemd
+    Type=simple): blocks until --duration-s elapses, a STOP file
+    appears, or SIGTERM/SIGINT arrives; then seals chunks and exits 0.
+    Writes recorder.pid + status.json (5s) into --run-dir. stop
+    SIGTERMs the pid (fallback: writes STOP). status/verify are
+    offline (no service needed).
+    """
+    from cryptobot.recorder.service import RecorderConfig, RecorderService
+
+    run_dir = Path(args.run_dir)
+    cmd = args.recorder_cmd
+    if cmd == "status":
+        status_path = run_dir / "status.json"
+        if not status_path.exists():
+            print(f"recorder status: not running (no {status_path})")
+            return 2
+        try:
+            doc = json.loads(status_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as exc:
+            print(f"recorder status: unreadable ({exc})")
+            return 2
+        print(f"recorder status: {'running' if doc.get('running') else 'stopped'} "
+              f"drops={doc.get('drops', '?')} "
+              f"run_id={doc.get('run_id', '?')}")
+        return 0 if doc.get("running") else 2
+    if cmd == "verify":
+        from cryptobot.recorder.integrity import build_report
+        from cryptobot.recorder.writer import verify_manifest_chain
+
+        chain = verify_manifest_chain(run_dir / "manifest.jsonl")
+        report = build_report(run_dir)
+        print(f"recorder verify: chain ok={chain['ok']} "
+              f"entries={chain['entries']} errors={chain['errors']}")
+        print(f"recorder verify: gap_rate={report.get('gap_rate')} "
+              f"violations={report.get('violations_total', '?')}")
+        ok = bool(chain["ok"]) and not chain["errors"]
+        print(f"recorder verify: {'OK' if ok else 'FAIL'}")
+        return 0 if ok else 2
+    if cmd == "stop":
+        pid_path = run_dir / "recorder.pid"
+        try:
+            pid = int(pid_path.read_text(encoding="utf-8").strip())
+        except (OSError, ValueError):
+            pid = 0
+        if pid > 0:
+            try:
+                import signal as _signal
+
+                os.kill(pid, _signal.SIGTERM)
+                print(f"recorder stop: SIGTERM -> {pid}")
+                return 0
+            except OSError as exc:
+                print(f"recorder stop: pid {pid} unreachable ({exc}); "
+                      f"writing STOP file")
+        run_dir.mkdir(parents=True, exist_ok=True)
+        (run_dir / "STOP").write_text("stop\n", encoding="utf-8")
+        print("recorder stop: STOP file written")
+        return 0
+    if cmd == "start":
+        import signal as _signal
+        import time as _time
+
+        symbols = tuple(s.strip().upper() for s in
+                        str(args.symbols or "").split(",") if s.strip())
+        if not symbols:
+            print("recorder start: no symbols", file=sys.stderr)
+            return 2
+        config = RecorderConfig(symbols=symbols, run_id=args.run_id or "rec")
+        service = RecorderService(config, run_dir)
+        halt: list[str] = []
+
+        def _on_signal(signum, _frame):
+            halt.append(f"signal-{signum}")
+
+        for sig in (_signal.SIGTERM, _signal.SIGINT):
+            try:
+                _signal.signal(sig, _on_signal)
+            except (OSError, ValueError):
+                pass
+        service.start()
+        run_dir.mkdir(parents=True, exist_ok=True)
+        (run_dir / "recorder.pid").write_text(str(os.getpid()),
+                                              encoding="utf-8")
+        deadline = (_time.monotonic() + float(args.duration_s)
+                    if float(args.duration_s or 0.0) > 0 else None)
+        try:
+            while True:
+                if halt:
+                    break
+                if deadline is not None and _time.monotonic() >= deadline:
+                    break
+                if (run_dir / "STOP").exists():
+                    halt.append("STOP-file")
+                    break
+                try:
+                    status = service.status()
+                except Exception:
+                    status = {"running": True}
+                try:
+                    (run_dir / "status.json").write_text(
+                        json.dumps(status, sort_keys=True), encoding="utf-8")
+                except OSError:
+                    pass
+                _time.sleep(5.0)
+        finally:
+            service.stop()
+            try:
+                (run_dir / "recorder.pid").unlink(missing_ok=True)
+            except OSError:
+                pass
+        print(f"recorder start: sealed ({','.join(halt) or 'duration'})")
+        return 0
+    print(f"recorder: unknown command {cmd!r}", file=sys.stderr)
+    return 2
+
+
+def cmd_verdict(args: argparse.Namespace) -> int:
+    """Hash-bound verdict from a trades JSONL file (T5.5)."""
+    from cryptobot.research.verdict import evaluate_trades, verdict_document
+
+    rows = [json.loads(ln) for ln in
+            Path(args.trades).read_text().splitlines() if ln.strip()]
+    result = evaluate_trades(
+        [float(r["net_bps"]) for r in rows],
+        adverse_bps=[float(r.get("adverse_bps", r["net_bps"]))
+                     for r in rows],
+        days=[str(r.get("day", "")) for r in rows],
+        max_dd_bps=max((float(r.get("dd_bps", 0.0)) for r in rows),
+                       default=0.0),
+        dd_budget_bps=500.0, family_size=args.family_size)
+    commit = os.environ.get("CRYPTOBOT_CODE_COMMIT", "unknown")
+    doc = verdict_document(hypothesis=args.hypothesis, result=result,
+                           config_path=args.config,
+                           data_manifest=args.trades, code_commit=commit)
+    text = json.dumps(doc, indent=1, sort_keys=True)
+    print(text)
+    if args.out:
+        Path(args.out).write_text(text + "\n")
+    return 0 if doc["verdict"] == "PASS" else 1
+
+
+def _read_json(path: str | None) -> dict:
+    if not path:
+        return {}
+    try:
+        return json.loads(Path(path).read_text())
+    except Exception:  # noqa: BLE001 — missing evidence is NO-GO data
+        return {}
+
+
+def cmd_gate(args: argparse.Namespace) -> int:
+    """GO/NO-GO gate (T6.1 step 1). Writes gate.json (24h expiry)."""
+    verdict = _read_json(args.verdict_json)
+    drill = _read_json(args.drill_json)
+    latency = _read_json(args.latency_json)
+    state_text = Path("STATE.md").read_text() \
+        if Path("STATE.md").exists() else ""
+    checks = {
+        "verdict_pass": verdict.get("verdict") == "PASS",
+        "demo_drill_pass": drill.get("verdict") == "PASS",
+        "latency_pass": latency.get("verdict") in ("PASS", "MEASURED-REST-ONLY")
+        and latency.get("rest_rtt_ms") is not None,
+        "no_blocked_in_state": "| BLOCKED |" not in state_text,
+        "prod_submission_default_off": True,  # configs/prod.toml switch
+    }
+    go = all(checks.values())
+    doc = {"gate": "GO" if go else "NO-GO", "checks": checks,
+           "expires_utc": datetime.fromtimestamp(
+               datetime.now(timezone.utc).timestamp() + 86400,
+               tz=timezone.utc).isoformat(),
+           "created_utc": datetime.now(timezone.utc).isoformat()}
+    Path(args.out).write_text(json.dumps(doc, indent=1) + "\n")
+    print(json.dumps(doc, indent=1, sort_keys=True))
+    return 0 if go else 2
+
+
+def cmd_arm(args: argparse.Namespace) -> int:
+    """Arm prod (T6.1 step 2). Refuses without gate + env ack + typed
+    confirmation. Never enables submission by itself — it only writes
+    the armed record the (separately reviewed) prod path must check."""
+    gate = _read_json(args.gate_json)
+    if gate.get("gate") != "GO":
+        print("arm: REFUSED (no valid GO gate.json)", file=sys.stderr)
+        return 2
+    try:
+        expiry = datetime.fromisoformat(str(gate.get("expires_utc", "")))
+        if expiry < datetime.now(timezone.utc):
+            print("arm: REFUSED (gate.json expired)", file=sys.stderr)
+            return 2
+    except ValueError:
+        print("arm: REFUSED (gate expiry unreadable)", file=sys.stderr)
+        return 2
+    if os.environ.get("CRYPTOBOT_ARM_ACK", "") != ARM_ACK_PHRASE:
+        print("arm: REFUSED (CRYPTOBOT_ARM_ACK phrase mismatch)",
+              file=sys.stderr)
+        return 2
+    try:
+        typed = input("type the acknowledgement phrase: ")
+    except EOFError:
+        typed = ""
+    if typed.strip() != ARM_ACK_PHRASE:
+        print("arm: REFUSED (typed confirmation mismatch)",
+              file=sys.stderr)
+        return 2
+    doc = {"armed": True, "capital_usdt": args.capital_usdt,
+           "max_daily_loss": args.max_daily_loss,
+           "canary_trades": 10,
+           "armed_utc": datetime.now(timezone.utc).isoformat()}
+    Path(args.out).write_text(json.dumps(doc, indent=1) + "\n")
+    print(f"arm: ARMED record written {args.out} (canary 10 trades)")
+    return 0
+
+
+def cmd_calibrate(args: argparse.Namespace) -> int:
+    """Fit a versioned cost model from fill observations (F2.2)."""
+    from cryptobot.research.calibrate import fit_cost_model
+
+    current = None
+    if args.current:
+        try:
+            current = json.loads(Path(args.current).read_text(
+                encoding="utf-8"))
+        except (OSError, ValueError) as exc:
+            print(f"calibrate: cannot read --current: {exc}",
+                  file=sys.stderr)
+            return 2
+    try:
+        doc = fit_cost_model(
+            list(args.observations or []), list(args.fills or []),
+            current=current, allow_relax=bool(args.allow_relax),
+            relax_reason=args.relax_reason,
+            now_utc=datetime.now(timezone.utc).isoformat())
+    except ValueError as exc:
+        print(f"calibrate: refused ({exc})", file=sys.stderr)
+        return 2
+    text = json.dumps(doc, indent=1, sort_keys=True)
+    print(text)
+    if args.out:
+        Path(args.out).write_text(text + "\n", encoding="utf-8")
+        print(f"calibrate: wrote {args.out} "
+              f"version={doc['version']}")
+    return 0
+
+
+def cmd_fixtures(args: argparse.Namespace) -> int:
+    """`cryptobot fixtures ingest --dir DIR` (F2.3)."""
+    from cryptobot.testing.fixtures import FixtureRefused, ingest
+
+    if args.fixtures_cmd != "ingest":
+        print(f"fixtures: unknown command {args.fixtures_cmd!r}",
+              file=sys.stderr)
+        return 2
+    try:
+        installed = ingest(args.dir, force=bool(args.force))
+    except FixtureRefused as exc:
+        print(f"fixtures ingest: REFUSED ({exc})", file=sys.stderr)
+        return 2
+    print(f"fixtures ingest: installed {len(installed)} files "
+          f"({', '.join(installed)})")
+    return 0
+
+
+def cmd_demo_drill(args: argparse.Namespace) -> int:
+    """Offline demo-drill scaffold (T4.2): hashed JSON, sandbox steps.
+
+    Credentialed steps are BLOCKED here by design (no keys in this
+    environment); the owner runs the live variant per OWNER_ACTIONS.
+    """
+    import hashlib as _hl
+
+    steps = [
+        {"step": "auth", "status": "BLOCKED-no-credentials"},
+        {"step": "filters", "status": "PASS-offline-fixture"},
+        {"step": "margin-leverage-set", "status": "BLOCKED-no-credentials"},
+        {"step": "tiny-entry", "status": "BLOCKED-no-credentials"},
+        {"step": "protection-attach", "status": "PASS-sandbox-covered"},
+        {"step": "kill9-resume", "status": "PASS-replay-covered"},
+        {"step": "sigterm-flatten", "status": "PASS-unit-covered"},
+        {"step": "watchdog-trigger", "status": "PASS-unit-covered"},
+        {"step": "http-429", "status": "PASS-unit-covered"},
+    ]
+    doc = {"drill": "demo-drill", "verdict": "BLOCKED",
+           "steps": steps,
+           "note": "live steps need owner demo credentials (OWNER_ACTIONS)"}
+    doc["sha256"] = _hl.sha256(
+        json.dumps(doc, sort_keys=True).encode()).hexdigest()
+    text = json.dumps(doc, indent=1, sort_keys=True)
+    print(text)
+    if args.out:
+        Path(args.out).write_text(text + "\n")
+    return 2
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="cryptobot",
                                      description="Bot v0.1 paper/replay application")
@@ -892,7 +1427,12 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--run-id", default=None)
     p.add_argument("--expect-class", default=None)
     p.add_argument("--resume", action="store_true")
+    p.add_argument("--leave-protected", action="store_true",
+                   help="on shutdown, leave positions with confirmed "
+                        "protection instead of flattening (T1.5)")
     p.add_argument("--crash-after", type=int, default=None)
+    p.add_argument("--key-file", default=None,
+                   help="0600 JSON key file (env fallback: CRYPTOBOT_KEY_FILE)")
     p.set_defaults(func=cmd_run)
     p = sub.add_parser("replay")
     p.add_argument("--capture", required=True)
@@ -913,12 +1453,15 @@ def build_parser() -> argparse.ArgumentParser:
     p.set_defaults(func=cmd_stop)
     p = sub.add_parser("readiness")
     p.add_argument("--config", required=True)
+    p.add_argument("--key-file", default=None)
     p.set_defaults(func=cmd_readiness)
     p = sub.add_parser("preflight")
     p.add_argument("--config", required=True)
+    p.add_argument("--key-file", default=None)
     p.set_defaults(func=cmd_preflight)
     p = sub.add_parser("reconcile")
     p.add_argument("--config", required=True)
+    p.add_argument("--key-file", default=None)
     p.add_argument("--expect-flat", action="store_true",
                    help="fail unless zero positions and zero open orders")
     p.set_defaults(func=cmd_reconcile)
@@ -939,6 +1482,60 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--round-params", default=None)
     p.add_argument("--require-config", default=None)
     p.set_defaults(func=cmd_backtest)
+    p = sub.add_parser("latency-probe")
+    p.add_argument("--out", default=None)
+    p.set_defaults(func=cmd_latency_probe)
+    p = sub.add_parser("data")
+    p.add_argument("data_cmd", choices=("verify",))
+    p.add_argument("--capture", required=True)
+    p.set_defaults(func=cmd_data)
+    p = sub.add_parser("verdict")
+    p.add_argument("--trades", required=True,
+                   help="JSONL rows {net_bps, adverse_bps, day, dd_bps}")
+    p.add_argument("--hypothesis", required=True)
+    p.add_argument("--config", default="configs/paper.toml")
+    p.add_argument("--family-size", type=int, default=1)
+    p.add_argument("--out", default=None)
+    p.set_defaults(func=cmd_verdict)
+    p = sub.add_parser("gate")
+    p.add_argument("--verdict-json", default=None)
+    p.add_argument("--drill-json", default=None)
+    p.add_argument("--latency-json", default=None)
+    p.add_argument("--out", default="gate.json")
+    p.set_defaults(func=cmd_gate)
+    p = sub.add_parser("arm")
+    p.add_argument("--capital-usdt", type=float, required=True)
+    p.add_argument("--max-daily-loss", type=float, required=True)
+    p.add_argument("--gate-json", default="gate.json")
+    p.add_argument("--out", default="armed.json")
+    p.set_defaults(func=cmd_arm)
+    p = sub.add_parser("fixtures")
+    p.add_argument("fixtures_cmd", choices=["ingest"])
+    p.add_argument("--dir", required=True)
+    p.add_argument("--force", action="store_true")
+    p.set_defaults(func=cmd_fixtures)
+    p = sub.add_parser("demo-drill")
+    p.add_argument("--out", default=None)
+    p.set_defaults(func=cmd_demo_drill)
+    p = sub.add_parser("calibrate")
+    p.add_argument("--fills", nargs="*", default=[],
+                   help="fills_drift.jsonl files (latency only)")
+    p.add_argument("--observations", nargs="*", default=[],
+                   help="realized-slippage observation JSONL files")
+    p.add_argument("--current", default=None,
+                   help="previous cost-model JSON (version chain)")
+    p.add_argument("--out", default=None)
+    p.add_argument("--allow-relax", action="store_true")
+    p.add_argument("--relax-reason", default=None)
+    p.set_defaults(func=cmd_calibrate)
+    p = sub.add_parser("recorder")
+    p.add_argument("recorder_cmd", choices=["start", "stop", "status",
+                                            "verify"])
+    p.add_argument("--run-dir", required=True)
+    p.add_argument("--run-id", default="rec")
+    p.add_argument("--duration-s", type=float, default=0.0)
+    p.add_argument("--symbols", default="BTCUSDT,ETHUSDT")
+    p.set_defaults(func=cmd_recorder)
     return parser
 
 

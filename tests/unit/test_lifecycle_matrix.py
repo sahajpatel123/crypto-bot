@@ -56,7 +56,11 @@ _TRADE_IDS = itertools.count(777001)
 POLL_CALLS = {("GET", "/fapi/v1/time"),
               ("GET", "/fapi/v2/account"),
               ("GET", "/fapi/v1/openOrders"),
-              ("GET", "/fapi/v1/openAlgoOrders")}
+              ("GET", "/fapi/v1/openAlgoOrders"),
+              # F0.5/B#10: supervision books live funding on a throttle;
+              # like other poll reads it bypasses strict scripts (canned
+              # empty here; T1.7 tests cover booking with explicit rows).
+              ("GET", "/fapi/v1/income")}
 
 
 class ThreadSocket:
@@ -1315,22 +1319,30 @@ def stale_events(stale_ms=60000):
 
 
 def test_row04_ambiguous_submit(tmp_path, monkeypatch, fixtures):
-    """Row 4: a 503 entry submit kills loudly; resume adopts, books, flattens.
+    """Row 4: a 503 entry submit is retained (no raise); resume adopts.
 
-    Phase A: the submit raises UnknownOutcomeError out of run_live
-    (fail-loud); teardown still closes the key, and the durable
-    residue is a journaled submit-intent + submit-outcome-unknown
-    with an open (eid-less) submit command — no admit, no shell.
-    Phase B: resume recovers via lookup, books the adopted fill
-    under its journaled reservation (the submit never returned, so
-    no command row carries the cid), and flattens the orphan to
-    flat. No entry is ever re-submitted (no double exposure);
-    entries stay blocked on the unknown command (fail-closed).
+    Phase A (F0.5/B#1 contract): the submit raises UnknownOutcomeError
+    inside the adapter; Session retains the hold, links the journaled
+    engine id on the unknown command, and records submitted-unknown
+    (no raise out of run_live — the old fail-loud behavior died with
+    the process and leaked the reservation). The venue truth here is
+    "holding, unfilled" (no fill seed): the supervise drain looks the
+    id up once (NEW/open echo) and the run ends with the hold
+    retained and the command unknown-with-cid.
+    Phase B: brand-new objects on the same durable paths. The venue
+    truth (the fill) materializes between phases (reseeded tape):
+    resume recovers via lookup, books the adopted fill under its
+    journaled reservation, and flattens the orphan to flat. No entry
+    is ever re-submitted (no double exposure); entries stay blocked
+    on the unknown command (fail-closed).
     """
     ready, orders, account = fixtures
     script_a = ready_prefix(ready) + [
         ("POST", "/fapi/v1/order", {"type": "LIMIT"},
-         ("timeout", {"fill": {"price": MARK}})),
+         ("timeout", None)),
+        # Drain lookup: order echo only (empty tape -> exec 0 ->
+        # lookup skips userTrades; the hold stays retained).
+        ("GET", "/fapi/v1/order", None, ("echo", None)),
         close_key(),
     ]
     rig_a = Rig(tmp_path, monkeypatch, ready, orders, account,
@@ -1338,9 +1350,8 @@ def test_row04_ambiguous_submit(tmp_path, monkeypatch, fixtures):
                 time_exit_s=4, tail=SUBMIT_TAIL)
     rig_a.attach()
     try:
-        with pytest.raises(UnknownOutcomeError):
-            rig_a.session.run_live(rig_a.events(), duration_s=9,
-                                   expect_class=CLASS)
+        report_a = rig_a.session.run_live(
+            rig_a.events(), duration_s=9, expect_class=CLASS)
         rig_a.close_streams()
         rig_a.transport.assert_empty()
         assert rig_a.transport.flow == [
@@ -1349,16 +1360,18 @@ def test_row04_ambiguous_submit(tmp_path, monkeypatch, fixtures):
             ("POST", "/fapi/v1/leverage"),
             ("POST", "/fapi/v1/listenKey"),
             ("POST", "/fapi/v1/order"),
+            ("GET", "/fapi/v1/order"),
             ("DELETE", "/fapi/v1/listenKey")]
         kinds_a = checkpoint_kinds(rig_a.store, "matrix-r4")
         assert "admit" not in kinds_a, kinds_a
         assert not (rig_a.workdir / "position.json").exists()
         assert rig_a.session.ledger.position_qty() == 0.0
+        assert report_a["intents_admitted"] == 0, report_a["reject_counts"]
         cmds_a = rig_a.store.open_commands("matrix-r4")
-        assert len(cmds_a) == 1 and cmds_a[0]["status"] == "intended"
-        assert cmds_a[0].get("engine_client_id") is None
-        [(amb_cid, amb_fills)] = list(rig_a.transport._tape.items())
-        assert len(amb_fills) == 1
+        assert len(cmds_a) == 1 and cmds_a[0]["status"] == "unknown"
+        amb_cid = cmds_a[0].get("engine_client_id")
+        assert amb_cid, cmds_a
+        assert rig_a.session.policy.live_reservations() != ()
         journal = journal_rows(tmp_path)
         assert any(r.get("event") == "submit-intent"
                    and r.get("client_id") == amb_cid
@@ -1370,9 +1383,15 @@ def test_row04_ambiguous_submit(tmp_path, monkeypatch, fixtures):
         rig_a.close()
 
     # Phase B: brand-new objects on the same durable paths. The venue
-    # truth (the fill) persists across the restart: reseed the fresh
-    # transport's tape with the same trade.
-    amb_fill = amb_fills[0]
+    # truth (the fill) materializes between phases: reseed the fresh
+    # transport's tape with the same shape Phase A would have seen
+    # (IOC-vs-fill timing is compressed for the test; the unit under
+    # test is adoption accounting, not IOC semantics).
+    amb_qty = next(r.get("qty") for r in journal_rows(tmp_path)
+                   if r.get("event") == "submit-intent"
+                   and r.get("client_id") == amb_cid)
+    amb_fill = {"trade_id": 9001, "qty": float(amb_qty), "price": MARK,
+                "fee": "0.03000000", "side": "BUY"}
     script_b = ready_nokey(ready) + [
         ("GET", "/fapi/v1/order", None, ("echo", None)),
         ("GET", "/fapi/v1/userTrades", None, ("echo", None)),
@@ -1412,10 +1431,17 @@ def test_row04_ambiguous_submit(tmp_path, monkeypatch, fixtures):
         assert_order_posts(rig_b.transport, [("MARKET", "SELL")])
         kinds_b = checkpoint_kinds(rig_b.store, "matrix-r4")
         assert "flatten" in kinds_b, kinds_b
-        assert "resume-blocked" in kinds_b, kinds_b
+        # F0.5/B#1: the cid-linked unknown command RESOLVES at resume
+        # (lookup adopts by durable id) — no resume-blocked. Fail-closed
+        # retention is the held reservation (never released).
+        assert "resume-blocked" not in kinds_b, kinds_b
         assert "fill-unbooked" not in kinds_b, kinds_b
         cmds_b = rig_b.store.open_commands("matrix-r4")
-        assert len(cmds_b) == 1 and cmds_b[0]["status"] == "unknown"
+        assert cmds_b == [], cmds_b  # unknown command resolved via linkage
+        # Reconciled recovery releases cleanly (B#19 shell-less path):
+        # no live holds, no unresolved residue, ledger flat.
+        assert rig_b.session.policy.live_reservations() == ()
+        assert rig_b.session.policy.unresolved_ids() == ()
         assert_reconciled_clean(rig_b.session, rig_b.store,
                                 rig_b.run_id)
     finally:

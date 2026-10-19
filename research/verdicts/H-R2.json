@@ -1,0 +1,14 @@
+{
+ "document_sha256": "275f5a534a6af96e79b7a19c02fef2a020546637ce2cbe55b3fed8a8f1cdf5a0",
+ "expectancy_bps": null,
+ "family_size": 6,
+ "hashes": {
+  "code_commit": "9d05ff63a3de0965bdb1f713c38855cdce80a004",
+  "config_sha256_16": "0269a62713913f0d",
+  "data_manifest": "research/verdicts/trades/H-R2.jsonl"
+ },
+ "hypothesis": "H-R2-benchmark",
+ "n_trades": 0,
+ "reason": "n=0 < min_trades=300",
+ "verdict": "UNDERPOWERED"
+}

@@ -170,26 +170,25 @@ def test_unknown_blocks_duplicate_entry_until_lookup(tmp_path):
              ("err", 503, None, "gateway"))])
     session, store = _session(tmp_path, engine, "ca-unknown")
     try:
-        import pytest
-        from cryptobot.adapters.binance_live import UnknownOutcomeError
-        # W1-CATCH: Session retains the unknown cid and reconciles by
-        # durable client ID before any resubmission (contract §4). Until
-        # the merge the error propagates out of admission.
-        with pytest.raises(UnknownOutcomeError):
-            session._maybe_admit(
-                [Candidate("S1", _intent(session.now_utc()))])
+        # F0.5/B#1 (post-merge contract): the unknown submit does NOT
+        # propagate — Session retains the hold, links the journaled
+        # engine id on the unknown command, and records
+        # submitted-unknown for the lookup drain.
+        session._maybe_admit(
+            [Candidate("S1", _intent(session.now_utc()))])
+        assert session.policy.live_reservations() != ()
+        cmds = store.open_commands("ca-unknown")
+        assert any(c.get("status") == "unknown"
+                   and c.get("engine_client_id") for c in cmds), cmds
         (unknown,) = engine.unknown_ids()
         assert engine.order_status(unknown).state == "unknown"
         assert unknown not in [o.client_order_id
                                for o in engine.open_orders()]
-        # During-unknown re-admit is blocked once Session retains the
-        # unknown cid (W1 retention; single-position rule then holds).
+        # During-unknown re-admit is blocked by the retained hold
+        # (single-position rule); no duplicate submit, no raise.
         sent = len(transport.requests)
-        try:
-            session._maybe_admit(
-                [Candidate("S1", _intent(session.now_utc()))])
-        except UnknownOutcomeError:
-            pass  # pre-merge: no retention yet; post-merge: blocked.
+        session._maybe_admit(
+            [Candidate("S1", _intent(session.now_utc()))])
         assert len(transport.requests) == sent  # no duplicate entry.
         # Lookup resolves; the position then books from the tape.
         transport.append(
