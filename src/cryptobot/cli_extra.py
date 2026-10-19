@@ -9,7 +9,15 @@ import time
 from datetime import UTC, datetime
 from pathlib import Path
 
-from cryptobot.ops.manual import Book, apply_order, cancel_all, cancel_one, flatten, journal, prod_arm_refusal
+from cryptobot.ops.manual import (
+    Book,
+    apply_order,
+    cancel_all,
+    cancel_one,
+    flatten,
+    journal,
+    prod_arm_refusal,
+)
 from cryptobot.research.adjudicate import c1_final_utc
 
 
@@ -163,6 +171,7 @@ def cmd_background(args: argparse.Namespace) -> int:
     if args.background_cmd == "uninstall":
         return os_system(script_dir / "uninstall.sh")
     import shutil
+
     from cryptobot.ops.gaps import recorder_gap_report
     recorder = Path(args.recorder)
     t0 = _first_seal(recorder)
@@ -289,6 +298,7 @@ def cmd_owner(args: argparse.Namespace) -> int:
 
 
 def cmd_certify(args: argparse.Namespace) -> int:
+    from cryptobot.emulator.drill import run_drill, run_soak
     from cryptobot.selftest import render_matrix, run_selftest
     report = run_selftest(include_emulator=True, include_suites=True)
     matrix = render_matrix(report)
@@ -297,6 +307,24 @@ def cmd_certify(args: argparse.Namespace) -> int:
     covered = report["commands"] > 0 and report["failed"] == 0
     verdict = "PASS" if report["verdict"] == "PASS" and covered else "FAIL"
     commit = os.popen("git rev-parse HEAD").read().strip() or "unknown"
+    import tempfile
+    with tempfile.TemporaryDirectory() as tmp:
+        drill = run_drill(Path(tmp) / "drill")
+        soak = run_soak(24)
+    drill_line = (
+        f"emulator drill: {drill['verdict']} ({len(drill['cells'])} cells, "
+        f"provenance EMULATED); soak {soak['hours']}h {soak['verdict']} "
+        f"(dupe={soak['duplicate_fill']}, lost={soak['lost_fill']}, "
+        f"open={soak['open_positions']}); not a demo drill")
+    suite_line = "suite: see STATE.md"
+    if getattr(args, "suite_log", None):
+        log = Path(args.suite_log)
+        if log.exists():
+            lines = [line.strip() for line in
+                     log.read_text(encoding="utf-8").splitlines()
+                     if " passed" in line or " failed" in line]
+            if lines:
+                suite_line = f"suite: {lines[-1]} ({log})"
     text = "\n".join([
         "# Completion certificate",
         "",
@@ -304,9 +332,8 @@ def cmd_certify(args: argparse.Namespace) -> int:
         f"selftest: {report['verdict']} ({report['passed']} passed, {report['failed']} failed)",
         f"command-matrix coverage: {report['commands']} commands, "
         f"{'100% PASS' if covered else 'INCOMPLETE'}",
-        "emulator drill: see selftest emulator-drill and emulator-soak "
-        "(provenance EMULATED, not a demo drill)",
-        "suite: see STATE.md",
+        drill_line,
+        suite_line,
         "BLOCKED-OWNER: real demo-account drill; legal access to the venue; "
         "tax treatment of gains and losses",
         "gate: NO-GO",

@@ -2019,6 +2019,7 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("certify", help="write the completion certificate")
     p.add_argument("--out", default=None)
     p.add_argument("--matrix-out", default=None)
+    p.add_argument("--suite-log", default=None)
     p.set_defaults(func=cli_extra.cmd_certify)
     return parser
 
