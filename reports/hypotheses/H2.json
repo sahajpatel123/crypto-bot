@@ -1,0 +1,21 @@
+{
+ "hypothesis": "H2-prereg",
+ "n_trades": 290,
+ "family_size": 3,
+ "verdict": "UNDERPOWERED",
+ "reason": "n=290 < min_trades=300",
+ "expectancy_bps": 55.93156606125878,
+ "max_dd_sized_bps": 328.69531961834474,
+ "mean_equity_bps_per_day": 8.775587281549386,
+ "gross_expectancy_bps": 73.93156606125878,
+ "trading_days": 36,
+ "mean_net_bps_per_active_day": 450.5598377156957,
+ "best_day_bps": 4863.606485718442,
+ "worst_day_bps": -4998.359819620935,
+ "hashes": {
+  "config_sha256_16": "d225c35fd277f743",
+  "data_manifest": "benchmark_30d:9008ba92ef88a8cf",
+  "code_commit": "3100266"
+ },
+ "document_sha256": "c1e30179bfd216e14245e522490b8324032edeb012c4906d96fc6c50d8d7d131"
+}
