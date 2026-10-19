@@ -1,0 +1,46 @@
+== doctor ==
+strategies: S1,S2,S3,S4,S5 arms=base legacy_exits=False
+doctor: READY
+doctor_rc=0
+== selftest ==
+selftest: PASS
+{"commands": 58, "failed": 0, "passed": 142, "verdict": "PASS"}
+selftest_rc=0
+== drill ==
+verdict PASS cells 20 soak_h 24 dupe False lost False
+drill_rc=0
+== ops status ==
+{"algo_orders": [], "orders": [], "paused": false, "positions": [], "provenance": "EMULATED"}
+ops_rc=0
+== ops prod refusal ==
+ops: REFUSED prod without a valid human arm
+prod_rc=2
+== final-status ==
+cryptobot final status
+
+A H1: AWAIT_DATA
+== monitor ==
+monitor: NO-GO
+no demonstrated edge
+== background ==
+disk_alert False projected 19.8 days_to None
+== owner ==
+send back: owner-wizard state file + host-check, readiness, drill, latency outputs for the steps you ran
+gate: NO-GO until a real demo drill passes and you arm
+no demonstrated edge
+== compact ==
+verdict PASS chunks 0
+CLEANROOM_FINAL_OK
+
+== certify (fresh clone, 2e0fd32) ==
+selftest: PASS (142 passed, 0 failed)
+command-matrix coverage: 58 commands, 100% PASS
+emulator drill: PASS (20 cells, provenance EMULATED); soak 24h PASS
+  (dupe=False, lost=False, open=0); not a demo drill
+gate: NO-GO
+no demonstrated edge
+CERTIFY_RC=0
+
+Clone: /tmp/cryptobot-final-clean at 2e0fd32. Install 1.08s.
+Worktree clean before the run. No orders placed; no keys read.
+Output ends CLEANROOM_FINAL_OK
