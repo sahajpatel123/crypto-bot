@@ -13,6 +13,26 @@ from cryptobot.ops.manual import Book, apply_order, flatten, journal, prod_arm_r
 from cryptobot.research.adjudicate import c1_final_utc
 
 
+def cmd_monitor(args: argparse.Namespace) -> int:
+    """Read-only analysis. Never writes a gate or an arm file."""
+    from cryptobot.research.monitor import build_report
+    repo = Path(args.repo) if args.repo else Path(__file__).resolve().parents[2]
+    report = build_report(repo)
+    print(f"monitor: {report['gate']}")
+    print(report["sentence"])
+    hurdle = report.get("owner_hurdle_2_to_3_pct_daily") or {}
+    if hurdle:
+        print(f"hurdle: {hurdle.get('verdict')} "
+              f"best={hurdle.get('best_sharpe_ann')} "
+              f"vol_required_for_2pct={hurdle.get('daily_vol_required_for_2pct')}")
+    for row in report["hypotheses"]:
+        print(f"{row['family']} {row['hypothesis']}: {row['state']}")
+    if args.out:
+        Path(args.out).write_text(
+            json.dumps(report, indent=1, sort_keys=True) + "\n")
+    return 0
+
+
 def cmd_selftest(args: argparse.Namespace) -> int:
     from cryptobot.selftest import main_selftest
     argv = ["--all"] if args.all else []

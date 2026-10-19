@@ -42,6 +42,7 @@ Generated from the CLI parser. A row is PASS only when `cryptobot selftest` exer
 | `cryptobot adjudicate` | n/a | works, or a clear non-zero refusal with no traceback | PASS |
 | `cryptobot final-status` | n/a | works, or a clear non-zero refusal with no traceback | PASS |
 | `cryptobot acceptance` | n/a | works, or a clear non-zero refusal with no traceback | PASS |
+| `cryptobot monitor` | n/a | works, or a clear non-zero refusal with no traceback | PASS |
 | `cryptobot selftest` | n/a | works, or a clear non-zero refusal with no traceback | PASS |
 | `cryptobot emulator serve` | n/a | works, or a clear non-zero refusal with no traceback | PASS |
 | `cryptobot emulator drill` | n/a | works, or a clear non-zero refusal with no traceback | PASS |

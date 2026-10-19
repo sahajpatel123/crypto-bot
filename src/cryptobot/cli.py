@@ -2231,6 +2231,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--root", default=None)
     p.set_defaults(func=cmd_acceptance)
     from cryptobot import cli_extra
+    p = sub.add_parser("monitor",
+                       help="read-only edge and operations report (not a gate)")
+    p.add_argument("--repo", default=None)
+    p.add_argument("--out", default=None)
+    p.set_defaults(func=cli_extra.cmd_monitor)
     p = sub.add_parser("selftest", help="hermetic localhost checks")
     p.add_argument("--all", action="store_true")
     p.add_argument("--matrix-out", default=None)

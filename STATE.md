@@ -50,6 +50,13 @@ vault/autopilot artifacts, every claim cites command+output or file path.
 | E8 | OWNER_ACTIONS + README/ARCHITECTURE/RUNBOOK | DONE | steps 15–17 |
 | E9 | FINAL_STATUS.md | DONE | see FINAL_STATUS.md; closeout supersedes any SCREEN_PASS reading |
 
+## Owner hurdle review (2026-10-19)
+
+`cryptobot monitor` on the committed DEV artifacts: NO-GO,
+HURDLE_UNMET. Best result B4 OOS Sharpe 4.396, max drawdown 0.47%.
+A 2%/day mean at that Sharpe would need ~8.7% daily vol. Plan:
+`UPGRADE_PLAN.md`. Decision: D-047. No prereg edited. No cell retuned.
+
 ## Operational completion (resume the first non-DONE row)
 
 Work on `release/v1` at `v1.0-final` and after. Gate stays NO-GO.
