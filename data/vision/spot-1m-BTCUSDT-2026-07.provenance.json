@@ -1,0 +1,10 @@
+{
+ "name": "spot-1m-BTCUSDT-2026-07",
+ "url": "https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1m/BTCUSDT-1m-2026-07.zip",
+ "fetched_utc": "2026-10-16T14:14:38.994686+00:00",
+ "status": "present",
+ "http_status": 200,
+ "sha256": "3ef15c84353da48e1c7c5fd99b9751cb036bf8986ed47f7cd1be63359c0d4f6b",
+ "bytes": 2112275,
+ "csv_rows": 44639
+}

@@ -1,0 +1,10 @@
+{
+ "name": "futures-1m-XRPUSDT-2026-08",
+ "url": "https://data.binance.vision/data/futures/um/monthly/klines/XRPUSDT/1m/XRPUSDT-1m-2026-08.zip",
+ "fetched_utc": "2026-10-16T14:15:01.268398+00:00",
+ "status": "present",
+ "http_status": 200,
+ "sha256": "e4108def774c3daf34c1639d0a0a0ad5a4addc35df4cf927b493fc887c242854",
+ "bytes": 1711388,
+ "csv_rows": 44640
+}

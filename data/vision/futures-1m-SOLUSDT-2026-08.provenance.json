@@ -1,0 +1,10 @@
+{
+ "name": "futures-1m-SOLUSDT-2026-08",
+ "url": "https://data.binance.vision/data/futures/um/monthly/klines/SOLUSDT/1m/SOLUSDT-1m-2026-08.zip",
+ "fetched_utc": "2026-10-16T14:14:47.143419+00:00",
+ "status": "present",
+ "http_status": 200,
+ "sha256": "0d895f66c4c07969845decf7d8e8752b0d8cb5409ca737b7b48c8751d4fd6f1f",
+ "bytes": 1695675,
+ "csv_rows": 44640
+}

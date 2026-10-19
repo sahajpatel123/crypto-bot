@@ -59,6 +59,7 @@ class Capture:
         self.last_touch: dict[str, tuple[float, float]] = {}
         self.last_emit_ms: dict[str, int] = {}
         self.stop_reason: str | None = None
+        self._since_flush = 0
         self._stop = False
         self.gz = gzip.open(out_dir / "events.jsonl.gz", "at",
                             compresslevel=6, encoding="utf-8")
@@ -80,6 +81,12 @@ class Capture:
                "local_recv_ms": int(time.time() * 1000),
                "gap_kind": None, "payload": payload}
         self.gz.write(json.dumps(rec, separators=(",", ":")) + "\n")
+        # crash-safety: flush every 5000 events so a hard kill loses at
+        # most a few thousand records, never the run
+        self._since_flush += 1
+        if self._since_flush >= 5000:
+            self.gz.flush()
+            self._since_flush = 0
 
     def handle_book(self, symbol: str, p: dict, recv_ms: int) -> None:
         bid, ask = float(p["b"]), float(p["a"])
@@ -110,14 +117,17 @@ class Capture:
                    {"mark_price": float(p["p"]), "ts": int(p["E"])})
 
     def bytes_written(self) -> int:
-        # raw gz byte count via the underlying file object
+        # flushed-on-disk size (the gzip writer buffers internally; the cap
+        # and the heartbeat must both see the truth on disk)
         try:
-            return self.gz.myfileobj.tell() if hasattr(self.gz, "myfileobj") \
-                else self.out_dir.joinpath("events.jsonl.gz").stat().st_size
+            return self.out_dir.joinpath("events.jsonl.gz").stat().st_size
         except OSError:
             return 0
 
     def heartbeat(self, t0: float) -> None:
+        if self._since_flush:          # heartbeat always reports disk truth
+            self.gz.flush()
+            self._since_flush = 0
         hb = {"run_id": self.out_dir.name,
               "at_utc": datetime.now(timezone.utc).isoformat(),
               "events_total": self.seq,

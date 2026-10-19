@@ -1,0 +1,10 @@
+{
+ "name": "funding-NEARUSDT-2026-08",
+ "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/NEARUSDT/NEARUSDT-fundingRate-2026-08.zip",
+ "fetched_utc": "2026-10-16T14:14:53.448425+00:00",
+ "status": "present",
+ "http_status": 200,
+ "sha256": "4ff40eec489a48bb572bfb4b9be117e5062db738ef42b612b4de956d4b2255a7",
+ "bytes": 838,
+ "csv_rows": 93
+}

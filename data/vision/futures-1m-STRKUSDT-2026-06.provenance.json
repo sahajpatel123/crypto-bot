@@ -1,0 +1,10 @@
+{
+ "name": "futures-1m-STRKUSDT-2026-06",
+ "url": "https://data.binance.vision/data/futures/um/monthly/klines/STRKUSDT/1m/STRKUSDT-1m-2026-06.zip",
+ "fetched_utc": "2026-10-16T14:14:06.476814+00:00",
+ "status": "present",
+ "http_status": 200,
+ "sha256": "6e1a2c19411b19845ec93bcea14c1e1b468e8555848bca51e6cb6b0e8fcd860c",
+ "bytes": 1608126,
+ "csv_rows": 43200
+}
