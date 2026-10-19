@@ -1833,16 +1833,15 @@ def test_row12_emergency_flatten(tmp_path, monkeypatch, fixtures):
 
 
 def test_row11_operator_stop(tmp_path, monkeypatch, fixtures):
-    """Row 11: operator stop flattens promptly; resume adopts the close.
+    """Row 11: operator stop books its close; resume stays idempotent.
 
     Phase A: with position 1 open, an operator handle (its own
     RunStore, the real CLI path) requests flatten-stop: the loop
-    submits the close and exits promptly with the flag sticky. The
-    close fill lands post-shutdown (threaded drain stops on the
-    exit tick), so the ledger honestly reports open.
+    submits the close, drains its private-stream fill on the owner,
+    and exits promptly with reconciled flat books and the flag sticky.
     Phase B: after the explicit clear_stop, resume recovers via
-    lookup — the close adopts and books, the entry is NOT
-    double-booked (exec gate), nothing re-submits, flat. The run
+    lookup — neither entry nor close is double-booked (exec gate),
+    nothing re-submits, flat. The run
     serves its full duration (no re-stop).
     """
     ready, orders, account = fixtures
@@ -1888,16 +1887,16 @@ def test_row11_operator_stop(tmp_path, monkeypatch, fixtures):
         rows_a = [json.loads(line) for line in
                   (rig_a.workdir / "fills.jsonl").read_text().splitlines()
                   if line.strip()]
-        assert len(rows_a) == 1 and rows_a[0]["side"] == "BUY", rows_a
-        assert report_a["open_position"] is True
-        assert rig_a.session.ledger.position_qty() > 0.0
+        assert len(rows_a) == 2, rows_a
+        assert [r["side"] for r in rows_a] == ["BUY", "SELL"]
+        assert report_a["open_position"] is False
+        assert rig_a.session.ledger.position_qty() == 0.0
         close_cid = posts_a[1][2]["newClientOrderId"]
         close_side = posts_a[1][2].get("side", "SELL")
         [close_fill] = rig_a.transport._tape[close_cid]
         close_cmds = [c for c in rig_a.store.open_commands("matrix-r11")
                       if c.get("engine_client_id") == close_cid]
-        assert len(close_cmds) == 1
-        assert close_cmds[0]["status"] == "submitted", close_cmds[0]
+        assert close_cmds == []
     finally:
         rig_a.close()
 

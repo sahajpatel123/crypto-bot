@@ -327,6 +327,9 @@ def test_exit_only_refuses_entries_but_allows_exits():
     cid = engine.submit(EngineOrder("BTCUSDT", "SELL", 0.001, "MARKET", role="stop"))
     assert engine.resolve(cid) == cid
     engine.set_exit_only(False, "cleared")
+    with pytest.raises(PermissionError, match="exit-only"):
+        engine.submit(EngineOrder("BTCUSDT", "BUY", 0.001, "MARKET"))
+    engine.set_exit_only(False, "halt:test")
     cid2 = engine.submit(EngineOrder("BTCUSDT", "BUY", 0.001, "MARKET"))
     assert engine.resolve(cid2) == cid2
 

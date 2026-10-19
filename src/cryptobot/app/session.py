@@ -293,6 +293,9 @@ class Session:
         self._orphan_alerted = False
         # F2.6: clock-skew refresh throttle (monotonic wall, 60s).
         self._last_skew_mono = 0.0
+        # Transient health reasons are level-evaluated from complete
+        # snapshots. Policy loss/profit stops remain persistent latches.
+        self._health_halt_reasons: set[str] = set()
         self._user_stream_attachment: Any | None = None
         self._known_reservations: set[str] = set()
         self._cmd_seq = 0
@@ -2051,6 +2054,9 @@ class Session:
             self._booking_blocked = reason
 
     # -- exit-only halts (R3: Session owns its reasons) --------------------
+    _TRANSIENT_MARK_HALTS = frozenset({
+        "health:stale-mark", "health:mark-age-unknown"})
+
     def _halt_entries(self, reason: str) -> None:
         """Halt entries under a Session-owned reason (R3).
 
@@ -2058,19 +2064,33 @@ class Session:
         refuses entry submits); other subsystems' reasons survive.
         Engines without the seam (doubles) keep the Session record.
         """
-        if not reason:
+        if not reason or reason in self._exit_only_reasons:
             return
+        old = "exit-only" if self._exit_only_reasons else "session-clear"
         self._exit_only_reasons.add(reason)
         setter = getattr(self.engine, "set_exit_only", None)
         if callable(setter):
             setter(True, reason)
+        self._append_run_file("risk.jsonl", {
+            "ts_utc": self.now_utc().isoformat(),
+            "wall_ts_utc": datetime.now(timezone.utc).isoformat(),
+            "kind": "entry-halt", "from_state": old,
+            "to_state": "exit-only", "reason": reason})
 
     def _release_exit_only(self, reason: str) -> None:
         """Lift one Session-owned reason (R3: others survive)."""
+        if reason not in self._exit_only_reasons:
+            return
         self._exit_only_reasons.discard(reason)
         setter = getattr(self.engine, "set_exit_only", None)
         if callable(setter):
             setter(False, reason)
+        self._append_run_file("risk.jsonl", {
+            "ts_utc": self.now_utc().isoformat(),
+            "wall_ts_utc": datetime.now(timezone.utc).isoformat(),
+            "kind": "entry-halt-released", "from_state": "exit-only",
+            "to_state": "exit-only" if self._exit_only_reasons else
+                        "session-clear", "reason": reason})
 
     def _release_all_exit_only(self, why: str) -> None:
         """Lift every Session-owned reason (recovery points only).
@@ -2079,9 +2099,7 @@ class Session:
         Session reasons re-assert on their next tick if still true.
         """
         for reason in sorted(self._exit_only_reasons):
-            setter = getattr(self.engine, "set_exit_only", None)
-            if callable(setter):
-                setter(False, reason)
+            self._release_exit_only(reason)
         self._exit_only_reasons.clear()
         # F2: a wipe releases the health gate's tracking too, so a still-
         # failing condition re-latches on the next snapshot (fail-closed)
@@ -2106,6 +2124,8 @@ class Session:
         - a reason string the gate latched before but no longer holds is
           released, mirroring it out of the engine's reason-keyed
           exit-only;
+        - a transient health reason no longer present is released;
+          policy loss/profit stops remain latched until reconciliation;
         - the run flips back to ready only when this gate released
           something AND nothing else blocks entries (other exit-only
           reasons, booking blocks, pending flattens).
@@ -2125,6 +2145,29 @@ class Session:
         released = False
         for reason in sorted(self._health_halt_reasons):
             if reason == desired:
+        reasons = set(health.reasons) if not health.ok else set()
+        if not health.ok and not reasons:
+            reasons.add("health:unknown")
+        engine_reasons = getattr(self.engine, "exit_only_reasons", None)
+        recovered = self._TRANSIENT_MARK_HALTS.intersection(
+            engine_reasons() if callable(engine_reasons) else ())
+        self._exit_only_reasons.update(recovered)
+        self._health_halt_reasons.update(recovered)
+        desired = {r for r in reasons if r.startswith("health:")}
+        mark_checked = not (desired - self._TRANSIENT_MARK_HALTS)
+        if not mark_checked:
+            # An invalid/unreconciled account cannot prove mark recovery.
+            desired.update(self._health_halt_reasons.intersection(
+                self._TRANSIENT_MARK_HALTS))
+        added = reasons - self._exit_only_reasons
+        # Engage replacements before releasing old reasons. Persistent
+        # daily-loss/profit stops remain outside this gate's ownership.
+        for reason in sorted(reasons):
+            self._halt_entries(reason)
+        self._health_halt_reasons.update(desired)
+        released = False
+        for reason in sorted(self._health_halt_reasons):
+            if reason in desired:
                 continue
             self._health_halt_reasons.discard(reason)
             self._release_exit_only(reason)
@@ -2206,6 +2249,26 @@ class Session:
         except (TypeError, ValueError):
             return None
         return None
+            # Keep compatibility with legacy bool-shaped test adapters;
+            # production and paper adapters now retain individual keys.
+            setter = getattr(self.engine, "set_exit_only", None)
+            if callable(setter):
+                setter(True, sorted(self._exit_only_reasons)[0])
+        if added:
+            self._set_state("halted", ";".join(sorted(reasons)))
+        if released and health.ok \
+                and not self._exit_only_reasons \
+                and not (callable(engine_reasons) and engine_reasons()) \
+                and self._admission_hold() is None \
+                and self._stop_flag is None \
+                and self.store.stop_requested(self.run_id) is None:
+            self._set_state("holding" if self._position is not None else
+                            "ready", "health-recovered")
+
+    def _health_tick(self) -> None:
+        """One account-snapshot health evaluation, level-applied (F2)."""
+        self._apply_health_gate(
+            self.policy.check_health(self._snapshot_account()))
 
     # -- command intentions (contract v1 §4) -------------------------------
     def _new_command(self, kind: str, payload: dict[str, Any]) -> str:
@@ -3498,6 +3561,11 @@ class Session:
         if self._flatten_pending:
             self._retry_pending_flatten("resume-reconcile-retry")
         self._roll_day_if_needed()
+        # Recover a transient mark hold before evaluating the next
+        # eligible bar. Do not let one stale startup observation poison
+        # every later, fresh economic submission.
+        self._apply_health_gate(
+            self.policy.check_health(self._snapshot_account()))
         if self._position is not None:
             # Time exits and flat inference run on market traffic too.
             self._update_position(EngineEvent("mark", None, self.now_utc()))
@@ -3585,7 +3653,7 @@ class Session:
             self._ms_t0_ms = cur
         return now.isoformat(), cur - self._ms_t0_ms
 
-    def _run_stop_actions(self) -> None:
+    def _run_stop_actions(self, snapshot: AccountSnapshot | None = None) -> None:
         """Execute stop ACTION demands: cancel, reduce, alert, recover.
 
         W3-24H P1: entries are already blocked by halt reasons; this is
@@ -3594,7 +3662,8 @@ class Session:
         alert fires once per latch. Emergency clears only through
         reconciled flat — time alone never recovers.
         """
-        snapshot = self._snapshot_account()
+        if snapshot is None:
+            snapshot = self._snapshot_account()
         actions = self.policy.pending_stop_actions(snapshot)
         if "alert_operator" in actions and not self._stop_alerted:
             self._stop_alerted = True
@@ -4364,6 +4433,9 @@ class Session:
         # Supervision on EVERY tick (stop recognition cannot wait for
         # traffic); heartbeat/persist stay on the slow beat.
         stop_reason = self._supervise(ctx, now_mono)
+        # Position/stop actions can emit fills and terminal events on
+        # this very wake. Book them before returning or honoring stop.
+        self._drain_engine(bounded=True)
         if stop_reason is not None:
             return stop_reason
         if now_mono >= deadline_mono:
@@ -4422,6 +4494,12 @@ class Session:
                 self._book_live_funding()
             except Exception:  # noqa: BLE001 — booking never kills
                 pass  # supervision; faults retry next window.
+        # The existing stop-action snapshot also drives health: quiet
+        # ticks must detect stale prices AND observe later recovery.
+        snapshot = self._snapshot_account()
+        tick = self.policy.monitor_tick(account=snapshot)
+        self._apply_health_gate(tick)
+        self._run_stop_actions(snapshot)
         self._drain_unknown_outcomes()
         self._refresh_filters_if_stale()
         if now_mono - ctx["last_beat"] >= 30.0:
@@ -4478,6 +4556,8 @@ class Session:
         venue orders — the old "no submission on this path" wording was
         false for prod and is removed (T0.4). Prod submission stays off
         unless the P6 arming path enables it.
+        clock, wall duration budget. Execution uses the injected adapter;
+        production submission remains guarded and disabled by default.
         Resume continues wall-now with recovered state (no live cursor);
         any recovered exposure is flattened before continuing.
         """
@@ -4573,6 +4653,8 @@ class Session:
                 # the process reports a clean run.
                 self.enter_safe_mode(f"duration-end:{type(exc).__name__}")
             self._drain_engine()
+        if end_reason in ("duration-elapsed", "operator-stop:flatten"):
+            self._settle_shutdown_exits()
         self._set_state("stopping", end_reason)
         # Final full drain: live wakes are bounded, so sweep the backlog
         # (bounded rounds; a pathological flood cannot hang shutdown).
@@ -4596,6 +4678,36 @@ class Session:
         self.policy.flush_state()  # T1.2: debounced tick state lands at end
         self._stop_refresh()
         return report
+
+    def _settle_shutdown_exits(self) -> None:
+        """Give already-requested closes bounded owner-thread settlement.
+
+        A private-stream fill can arrive after the stop wake. Keep
+        booking/protection active during closure rather than requiring
+        a restart to consume that fill. Exhaustion preserves exposure
+        and unknowns; it never declares flat or submits a new entry.
+        """
+        allowance = min(5.0, deadline_remaining_s(default=5.0) or 0.0)
+        deadline = time.monotonic() + allowance
+        while True:
+            stream = self._user_stream_attachment
+            if stream is not None:
+                stream.drain_owner()
+            self._advance_engine_clock()
+            self._drain_engine(bounded=True)
+            if self._position is not None:
+                self._update_position(EngineEvent("tick", None,
+                                                  self.now_utc()))
+            self._drain_engine(bounded=True)
+            if self._position is None and not self.ledger.has_position():
+                return
+            left = deadline - time.monotonic()
+            if left <= 0:
+                self.store.checkpoint(self.run_id, "shutdown-exposure-pending", {
+                    "qty": self.ledger.position_qty(),
+                    "position_tracked": self._position is not None})
+                return
+            time.sleep(min(self.config.control_tick_s, left))
 
     # -- report ------------------------------------------------------------------
     def _build_report(self, capture: str, expect_class: str,
