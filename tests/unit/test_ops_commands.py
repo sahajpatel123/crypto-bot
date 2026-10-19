@@ -155,5 +155,4 @@ def test_ops_duplicate_client_id_is_safe(tmp_path):
 
 def test_ops_flatten_is_symbol_scoped(tmp_path):
     book = Book()
-    state = tmp_path / "r.json"
     assert flatten(book, "BTCUSDT")["ok"] is True
