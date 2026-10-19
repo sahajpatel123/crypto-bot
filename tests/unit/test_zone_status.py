@@ -74,9 +74,10 @@ def test_real_zones_manifest_shape():
         "Z0-safety", "Z1-data", "Z2-execution", "Z3-alpha",
         "Z4-risk", "Z5-validation", "Z6-liveops"}
     res = zone_status.check_zones(manifest, REPO)
-    # As committed: 6 zones cite existing evidence, Z6 intentionally empty.
+    # All 7 zones cite existing, parseable evidence (Z6 cites the
+    # 2026-10-16 sandbox drill report; it still stays RED until demo
+    # validation — evidence_state is about evidence, not readiness).
     states = {z: v["evidence_state"]
               for z, v in res["zones"].items()}
-    assert states["Z6-liveops"] == "EVIDENCE-EMPTY"
-    assert all(s == "EVIDENCE-OK" for z, s in states.items()
-               if z != "Z6-liveops"), states
+    assert all(s == "EVIDENCE-OK" for s in states.values()), states
+    assert states["Z6-liveops"] == "EVIDENCE-OK"
