@@ -73,7 +73,7 @@ No demonstrated edge.
 | D4 | Sleep / gap notify | CUT | caffeinate is already in the recorder plist. A new gap notifier was not added |
 | D5 | background install/status | DONE | `cryptobot background status` prints the adjudication date. install.sh uses `$ROOT/.venv` (D-048) |
 | E1 | owner wizard | DONE | `cryptobot owner` prints PASS/TODO + send-back, validates --step (D-048) |
-| E2 | README quickstart | DOING | clean-room rerun on the hardened HEAD is next; prior proof at `ba9fbf8` is superseded |
+| E2 | README quickstart | DONE | fresh clone `/tmp/cryptobot-ops-clean2` at `3bf4baa`: install 1.3s, doctor READY, selftest 132/0 PASS, drill 8 cells EMULATED + soak 24h, final-status/owner/background/monitor/ops all run. `release/cleanroom-ops2.log` ends CLEANROOM_OK |
 | E3 | certify | DOING | `cryptobot certify` exit 0 on `e7babf2` (132/0, 57 cmds). Final cert after suite + clean-room |
 | E4 | suite + tag | DOING | final full suite + tag after E2/E3; `v1.0.0` stays at `82582f0` |
 

@@ -1,0 +1,27 @@
+# Clean-room proof, hardened HEAD 3bf4baa (2026-10-20)
+
+Clone: `git clone /Users/sahajpatel/Code/cryto-bot-edge /tmp/cryptobot-ops-clean2`
+then `git checkout -q 3bf4baa`. Worktree clean, no uncommitted files.
+
+Install (timed, from the fresh clone):
+`uv sync --locked --extra dev` -> 1.279s total (limit: under 10 minutes).
+
+README quickstart, each exit 0 unless noted:
+- `cryptobot doctor --config configs/paper.toml` -> `doctor: READY`, EXIT 0
+- `cryptobot selftest --all` -> `selftest: PASS`,
+  `{"commands": 57, "failed": 0, "passed": 132, "verdict": "PASS"}`, EXIT 0
+- `cryptobot final-status` -> H1-H6 AWAIT_DATA, B1-B7 KILLED, C1 AWAIT_FORWARD
+- `cryptobot owner` -> 0 passed / 9 TODO, blocked-owner demo-drill/legal/tax,
+  `gate: NO-GO`, `no demonstrated edge`, EXIT 0
+  (`--step bogus` refused with exit 2 in the main worktree)
+- `cryptobot background status` -> JSON with free_mb + adjudication date, EXIT 0
+- `cryptobot monitor` -> `NO-GO`, `HURDLE_UNMET`, `no demonstrated edge`
+- `cryptobot emulator drill` -> verdict PASS, provenance EMULATED,
+  8 drill cells, soak 24 hours, EXIT 0
+- `cryptobot ops status --mode emulator` -> `{"provenance": "EMULATED", ...}`
+- `cryptobot ops order --mode prod ...` -> `REFUSED`, EXIT 2 (main worktree)
+- `cryptobot certify` -> PASS, 132/0, 57 commands 100%, EXIT 0 (main worktree)
+
+Gate stays NO-GO. No demonstrated edge. No orders placed, no keys read.
+
+Output ends CLEANROOM_OK
