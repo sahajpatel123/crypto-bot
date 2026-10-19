@@ -16,6 +16,7 @@ Generated from the CLI parser. A row is PASS only when `cryptobot selftest` exer
 | `cryptobot backtest` | n/a | works, or a clear non-zero refusal with no traceback | PASS |
 | `cryptobot latency-probe` | n/a | works, or a clear non-zero refusal with no traceback | PASS |
 | `cryptobot data verify` | n/a | works, or a clear non-zero refusal with no traceback | PASS |
+| `cryptobot compact` | n/a | works, or a clear non-zero refusal with no traceback | PASS |
 | `cryptobot verdict` | n/a | works, or a clear non-zero refusal with no traceback | PASS |
 | `cryptobot gate` | n/a | works, or a clear non-zero refusal with no traceback | PASS |
 | `cryptobot arm` | n/a | prod and arm refuse without a human TTY arm | PASS |
