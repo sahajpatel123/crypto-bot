@@ -47,7 +47,7 @@ def cmd_emulator(args: argparse.Namespace) -> int:
         from cryptobot.emulator.drill import run_drill, run_soak
         out = Path(args.out or "emulator-drill.json")
         drill = run_drill(out.parent / "emulator-journal")
-        soak = run_soak(4)
+        soak = run_soak(24)
         doc = {"provenance": EMULATED, "emulated": True,
                "drill": drill, "soak": soak,
                "verdict": "PASS" if drill["verdict"] == "PASS"

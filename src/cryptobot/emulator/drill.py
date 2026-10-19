@@ -121,6 +121,26 @@ def run_drill(journal_dir: Path) -> dict:
             refused = "429" in str(exc) or "rate" in str(exc).lower()
         cells.append({"cell": "http-429", "refused": refused, "flat": True})
 
+        # 503 unknown-outcome: must raise (lookup-first) and end flat.
+        # Fresh engine: the 429 cell leaves a 60s refuse-fast window on
+        # the main engine, and the UNKNOWN must not block later cells.
+        mock.venue.cfg.faults.entries.append(
+            {"op": "order", "action": "unknown", "at": "once"})
+        fengine = _engine(base, journal_dir / "e503.jsonl")
+        unknowned = False
+        try:
+            fengine.submit(EngineOrder(
+                instrument="BTCUSDT", side="BUY", qty=0.002, kind="MARKET",
+                role="entry"))
+        except Exception as exc:
+            text = str(exc).lower()
+            unknowned = ("503" in text or "unknown" in text
+                         or "dropped" in text)
+        _flat(fengine, "BTCUSDT")
+        fengine.close()
+        cells.append({"cell": "http-503", "unknowned": unknowned,
+                      "flat": True})
+
         # clock skew: a huge offset must halt before an order
         skewed = MockEx(clock_offset_ms=60_000)
         sport = skewed.serve()
@@ -153,7 +173,8 @@ def run_drill(journal_dir: Path) -> dict:
     finally:
         mock.close()
     ok = all(c.get("flat") for c in cells) and all(
-        c.get(k, True) for c in cells for k in ("halted", "refused", "emulated")
+        c.get(k, True) for c in cells
+        for k in ("halted", "refused", "emulated", "unknowned")
         if k in c)
     return {"drill": "emulator-lifecycle", "provenance": EMULATED,
             "emulated": True, "verdict": "PASS" if ok else "FAIL",

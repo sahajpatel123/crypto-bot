@@ -124,7 +124,7 @@ def run_selftest(*, include_emulator: bool = True) -> dict:
             _check("emulator-drill", drill["verdict"] == "PASS"
                    and drill["provenance"] == "EMULATED",
                    json.dumps(drill["cells"])[:400], results)
-            soak = run_soak(4)
+            soak = run_soak(24)
             _check("emulator-soak", soak["verdict"] == "PASS"
                    and soak["provenance"] == "EMULATED"
                    and soak["peak_bytes"] < 200_000_000,

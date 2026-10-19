@@ -37,7 +37,8 @@ def _stamp(payload):
         payload["provenance"] = EMULATED
         return payload
     if isinstance(payload, list):
-        return payload
+        return [_stamp(row) if isinstance(row, dict) else row
+                for row in payload]
     return payload
 
 
@@ -109,8 +110,7 @@ class MockEx:
                 if isinstance(body, dict) and "serverTime" in body:
                     body = dict(body)
                     body["serverTime"] = int(body["serverTime"]) + owner.clock_offset_ms
-                payload = json.dumps(_stamp(body) if not isinstance(body, list)
-                                     else body).encode("utf-8")
+                payload = json.dumps(_stamp(body)).encode("utf-8")
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json")
                 self.send_header("X-Cryptobot-Provenance", EMULATED)
