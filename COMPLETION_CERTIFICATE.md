@@ -1,6 +1,6 @@
 # Completion certificate
 
-commit: `166690cf0b0a4ff796b986533082b2ce2c2be744`
+commit: `ba9fbf8e3870f1d36b5773477a27da8ed7dcd95f`
 selftest: PASS (118 passed, 0 failed)
 command-matrix coverage: 55 commands, 100% PASS
 emulator drill: see selftest emulator-drill and emulator-soak (provenance EMULATED, not a demo drill)

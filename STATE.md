@@ -66,9 +66,9 @@ No demonstrated edge.
 | D4 | Sleep / gap notify | CUT | caffeinate is already in the recorder plist. A new gap notifier was not added |
 | D5 | background install/status | DONE | `cryptobot background status` prints the adjudication date. install/uninstall wrap the existing scripts |
 | E1 | owner wizard | DONE | `cryptobot owner` |
-| E2 | README quickstart | DONE | hermetic commands in README. Clean-room selftest recorded after the commit |
-| E3 | certify | PENDING | run after selftest stays green |
-| E4 | suite + tag v1.0.0 | PENDING | |
+| E2 | README quickstart | DONE | fresh clone `/tmp/cryptobot-ops-clean` at `ba9fbf8`: uv sync, doctor READY, selftest PASS, final-status, owner, background status. Output ends CLEANROOM_OK |
+| E3 | certify | DONE | `cryptobot certify` exit 0. `COMPLETION_CERTIFICATE.md`. Gate NO-GO. Sentence "no demonstrated edge" |
+| E4 | suite + tag v1.0.0 | DONE | Python 3.12 full suite 1663 passed, 1 skipped, 0 failed, 1144.44s (`/tmp/v100-suite2.log` EXIT:0). Tag `v1.0.0` |
 
 ## Consolidation task table (resume the first non-DONE row)
 
