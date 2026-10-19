@@ -2227,34 +2227,6 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--full", action="store_true")
     p.add_argument("--root", default=None)
     p.set_defaults(func=cmd_acceptance)
-=======
-    p = sub.add_parser("fixtures")
-    p.add_argument("fixtures_cmd", choices=["ingest"])
-    p.add_argument("--dir", required=True)
-    p.add_argument("--force", action="store_true")
-    p.set_defaults(func=cmd_fixtures)
-    p = sub.add_parser("demo-drill")
-    p.add_argument("--out", default=None)
-    p.set_defaults(func=cmd_demo_drill)
-    p = sub.add_parser("calibrate")
-    p.add_argument("--fills", nargs="*", default=[],
-                   help="fills_drift.jsonl files (latency only)")
-    p.add_argument("--observations", nargs="*", default=[],
-                   help="realized-slippage observation JSONL files")
-    p.add_argument("--current", default=None,
-                   help="previous cost-model JSON (version chain)")
-    p.add_argument("--out", default=None)
-    p.add_argument("--allow-relax", action="store_true")
-    p.add_argument("--relax-reason", default=None)
-    p.set_defaults(func=cmd_calibrate)
-    p = sub.add_parser("recorder")
-    p.add_argument("recorder_cmd", choices=["start", "stop", "status",
-                                            "verify"])
-    p.add_argument("--run-dir", required=True)
-    p.add_argument("--run-id", default="rec")
-    p.add_argument("--duration-s", type=float, default=0.0)
-    p.add_argument("--symbols", default="BTCUSDT,ETHUSDT")
-    p.set_defaults(func=cmd_recorder)
     return parser
 
 

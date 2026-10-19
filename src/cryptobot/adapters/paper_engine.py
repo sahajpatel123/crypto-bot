@@ -1212,6 +1212,15 @@ class NautilusPaperEngine:
                 terminal[detail["client_id"]] = str(detail.get("kind", "cancel"))
             elif event == "exit-only":
                 halted = bool(detail.get("halted"))
+                if "reasons" in detail:
+                    halt_reasons = set(detail["reasons"])
+                elif halted:
+                    # Legacy journals recorded only one aggregate bool.
+                    # Preserve that hold with its last known reason.
+                    halt_reasons = {detail.get("reason") or
+                                    "recovered:exit-only"}
+                else:
+                    halt_reasons.clear()
             elif event == "funding-settled":
                 # A#5: restore cumulative settled totals WITHOUT
                 # re-emitting (the ledger already holds these via its
@@ -1223,15 +1232,6 @@ class NautilusPaperEngine:
                     continue
                 self._settled_funding[symbol] = \
                     self._settled_funding.get(symbol, 0.0) + amount
-                if "reasons" in detail:
-                    halt_reasons = set(detail["reasons"])
-                elif halted:
-                    # Legacy journals recorded only one aggregate bool.
-                    # Preserve that hold with its last known reason.
-                    halt_reasons = {detail.get("reason") or
-                                    "recovered:exit-only"}
-                else:
-                    halt_reasons.clear()
         for client_id, detail in submitted.items():
             if client_id not in terminal:
                 self._lost[client_id] = detail  # sim orders never survive restart.

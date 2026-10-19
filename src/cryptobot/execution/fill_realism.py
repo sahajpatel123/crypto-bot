@@ -19,7 +19,7 @@ fresh verdict run.
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 
 
 @dataclass(frozen=True)
@@ -91,8 +91,6 @@ class PaperFillParameters:
         stress report must use. Keeping >=1.0 is the conservative rule.
         """
         return min(1.0, self.expected_ticks)
-=======
-from dataclasses import asdict, dataclass
 
 
 @dataclass(frozen=True)

@@ -59,7 +59,7 @@ each hypothesis through REGISTERED → DEV_EVAL → … and writes a daily
 report. A failed hypothesis is KILLED permanently. A PASS starts a
 14-day pessimistic paper run; only PAPER_COMPARE success produces
 GATE_READY, which is one input to the human-only gate/arm ceremony.
-=======
+
 **Answer today: no strategy has demonstrated a positive net
 expectancy — 0 PASS across the 6 machine verdicts in
 research/verdicts/.** A rigorous negative result plus a hardened

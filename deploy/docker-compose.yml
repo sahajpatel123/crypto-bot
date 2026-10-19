@@ -51,27 +51,3 @@ volumes:
   bot-runs:
   autopilot-state:
   vault-data:
-=======
-# CryptoBot services (F3.6 recorder live; bot/watchdog/autopilot land in F2.4).
-# Standalone recorder: public market data only (no keys). Data volume
-# ./data-recorder persists chunks+manifests across restarts.
-version: "3.8"
-
-services:
-  recorder:
-    build: ..
-    image: cryptobot:local
-    command: ["cryptobot", "recorder", "start",
-              "--run-dir", "/data/recorder", "--run-id", "compose-rec"]
-    volumes:
-      - ./data-recorder:/data/recorder
-    restart: unless-stopped
-    logging:
-      driver: json-file
-      options:
-        max-size: "50m"
-        max-file: "5"
-
-  # F2.4 fills in: bot (paper/live run), watchdog (heartbeat file
-  # watch + flatten-cmd), autopilot (timer-driven run-once). See
-  # ops/systemd/cryptobot*.service for the systemd equivalents.
