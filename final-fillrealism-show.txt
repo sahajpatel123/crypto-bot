@@ -1,0 +1,647 @@
+############ cryptobot.execution.fill_realism.xǁPaperFillParamsǁto_dict__mutmut_1
+-    return asdict(self)
++    return asdict(None)
+############ cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_1
+-    if not isinstance(data, dict):
++    if isinstance(data, dict):
+############ cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_2
+-        raise ValueError("fill params must be a dict")
++        raise ValueError(None)
+############ cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_3
+-        raise ValueError("fill params must be a dict")
++        raise ValueError("XXfill params must be a dictXX")
+############ cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_4
+-        raise ValueError("fill params must be a dict")
++        raise ValueError("FILL PARAMS MUST BE A DICT")
+############ cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_5
+-    if data.get("version") != 1:
++    if data.get(None) != 1:
+############ cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_6
+-    if data.get("version") != 1:
++    if data.get("XXversionXX") != 1:
+############ cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_7
+-    if data.get("version") != 1:
++    if data.get("VERSION") != 1:
+############ cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_8
+-    if data.get("version") != 1:
++    if data.get("version") == 1:
+############ cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_9
+-    if data.get("version") != 1:
++    if data.get("version") != 2:
+############ cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_10
+-            f"unknown PaperFillParams version: {data.get('version')!r}")
++            None)
+############ cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_11
+-            f"unknown PaperFillParams version: {data.get('version')!r}")
++            f"unknown PaperFillParams version: {data.get(None)!r}")
+############ cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_12
+-            f"unknown PaperFillParams version: {data.get('version')!r}")
++            f"unknown PaperFillParams version: {data.get('XXversionXX')!r}")
+############ cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_13
+-            f"unknown PaperFillParams version: {data.get('version')!r}")
++            f"unknown PaperFillParams version: {data.get('VERSION')!r}")
+############ cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_14
+-    known = {f for f in cls.__dataclass_fields__}
++    known = None
+############ cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_15
+-    unknown = set(data) - known
++    unknown = None
+############ cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_16
+-    unknown = set(data) - known
++    unknown = set(data) + known
+############ cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_17
+-    unknown = set(data) - known
++    unknown = set(None) - known
+############ cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_18
+-        raise ValueError(f"unknown fill param fields: {sorted(unknown)}")
++        raise ValueError(None)
+############ cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_19
+-        raise ValueError(f"unknown fill param fields: {sorted(unknown)}")
++        raise ValueError(f"unknown fill param fields: {sorted(None)}")
+############ cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_20
+-    params = cls(**{k: v for k, v in data.items() if k in known})
++    params = None
+############ cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_21
+-    params = cls(**{k: v for k, v in data.items() if k in known})
++    params = cls(**{k: v for k, v in data.items() if k not in known})
+############ cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_22
+-    for name in ("spread_bps", "slippage_bps", "latency_bps",
++    for name in ("XXspread_bpsXX", "slippage_bps", "latency_bps",
+############ cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_23
+-    for name in ("spread_bps", "slippage_bps", "latency_bps",
++    for name in ("SPREAD_BPS", "slippage_bps", "latency_bps",
+############ cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_24
+-    for name in ("spread_bps", "slippage_bps", "latency_bps",
++    for name in ("spread_bps", "XXslippage_bpsXX", "latency_bps",
+############ cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_25
+-    for name in ("spread_bps", "slippage_bps", "latency_bps",
++    for name in ("spread_bps", "SLIPPAGE_BPS", "latency_bps",
+############ cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_26
+-    for name in ("spread_bps", "slippage_bps", "latency_bps",
++    for name in ("spread_bps", "slippage_bps", "XXlatency_bpsXX",
+############ cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_27
+-    for name in ("spread_bps", "slippage_bps", "latency_bps",
++    for name in ("spread_bps", "slippage_bps", "LATENCY_BPS",
+############ cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_28
+-                 "empty_book_bps"):
++                 "XXempty_book_bpsXX"):
+############ cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_29
+-                 "empty_book_bps"):
++                 "EMPTY_BOOK_BPS"):
+############ cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_30
+-        value = getattr(params, name)
++        value = None
+############ cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_31
+-        value = getattr(params, name)
++        value = getattr(None, name)
+############ cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_32
+-        value = getattr(params, name)
++        value = getattr(params, None)
+############ cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_33
+-        value = getattr(params, name)
++        value = getattr(name)
+############ cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_34
+-        value = getattr(params, name)
++        value = getattr(params, )
+############ cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_35
+-                    or not math.isfinite(value) or value < 0:
++                    or not math.isfinite(value) and value < 0:
+############ cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_36
+-        if not isinstance(value, (int, float)) \
+-                    or not math.isfinite(value) or value < 0:
++        if not isinstance(value, (int, float)) and not math.isfinite(value) or value < 0:
+############ cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_37
+-        if not isinstance(value, (int, float)) \
++        if isinstance(value, (int, float)) \
+############ cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_38
+-                    or not math.isfinite(value) or value < 0:
++                    or math.isfinite(value) or value < 0:
+############ cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_39
+-                    or not math.isfinite(value) or value < 0:
++                    or not math.isfinite(None) or value < 0:
+############ cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_40
+-                    or not math.isfinite(value) or value < 0:
++                    or not math.isfinite(value) or value <= 0:
+############ cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_41
+-                    or not math.isfinite(value) or value < 0:
++                    or not math.isfinite(value) or value < 1:
+############ cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_42
+-            raise ValueError(f"{name} must be finite >= 0")
++            raise ValueError(None)
+############ cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_43
+-    if not isinstance(params.latency_ms_p95, int) \
+-                or params.latency_ms_p95 <= 0:
++    if not isinstance(params.latency_ms_p95, int) and params.latency_ms_p95 <= 0:
+############ cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_44
+-    if not isinstance(params.latency_ms_p95, int) \
++    if isinstance(params.latency_ms_p95, int) \
+############ cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_45
+-                or params.latency_ms_p95 <= 0:
++                or params.latency_ms_p95 < 0:
+############ cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_46
+-                or params.latency_ms_p95 <= 0:
++                or params.latency_ms_p95 <= 1:
+############ cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_47
+-        raise ValueError("latency_ms_p95 must be a positive int")
++        raise ValueError(None)
+############ cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_48
+-        raise ValueError("latency_ms_p95 must be a positive int")
++        raise ValueError("XXlatency_ms_p95 must be a positive intXX")
+############ cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_49
+-        raise ValueError("latency_ms_p95 must be a positive int")
++        raise ValueError("LATENCY_MS_P95 MUST BE A POSITIVE INT")
+############ cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_50
+-    if params.provenance not in ("ASSUMED", "MEASURED"):
++    if params.provenance in ("ASSUMED", "MEASURED"):
+############ cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_51
+-    if params.provenance not in ("ASSUMED", "MEASURED"):
++    if params.provenance not in ("XXASSUMEDXX", "MEASURED"):
+############ cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_52
+-    if params.provenance not in ("ASSUMED", "MEASURED"):
++    if params.provenance not in ("assumed", "MEASURED"):
+############ cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_53
+-    if params.provenance not in ("ASSUMED", "MEASURED"):
++    if params.provenance not in ("ASSUMED", "XXMEASUREDXX"):
+############ cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_54
+-    if params.provenance not in ("ASSUMED", "MEASURED"):
++    if params.provenance not in ("ASSUMED", "measured"):
+############ cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_55
+-        raise ValueError("provenance must be ASSUMED or MEASURED")
++        raise ValueError(None)
+############ cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_56
+-        raise ValueError("provenance must be ASSUMED or MEASURED")
++        raise ValueError("XXprovenance must be ASSUMED or MEASUREDXX")
+############ cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_57
+-        raise ValueError("provenance must be ASSUMED or MEASURED")
++        raise ValueError("provenance must be assumed or measured")
+############ cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_58
+-        raise ValueError("provenance must be ASSUMED or MEASURED")
++        raise ValueError("PROVENANCE MUST BE ASSUMED OR MEASURED")
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_1
+-                           latency_bps: float = 0.0,
++                           latency_bps: float = 1.0,
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_2
+-                           empty_book_bps: float = 25.0) -> float:
++                           empty_book_bps: float = 26.0) -> float:
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_3
+-    if side not in ("BUY", "SELL"):
++    if side in ("BUY", "SELL"):
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_4
+-    if side not in ("BUY", "SELL"):
++    if side not in ("XXBUYXX", "SELL"):
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_5
+-    if side not in ("BUY", "SELL"):
++    if side not in ("buy", "SELL"):
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_6
+-    if side not in ("BUY", "SELL"):
++    if side not in ("BUY", "XXSELLXX"):
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_7
+-    if side not in ("BUY", "SELL"):
++    if side not in ("BUY", "sell"):
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_8
+-        raise ValueError(f"side must be BUY or SELL, got {side!r}")
++        raise ValueError(None)
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_9
+-    if qty <= 0 or not math.isfinite(qty):
++    if qty <= 0 and not math.isfinite(qty):
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_10
+-    if qty <= 0 or not math.isfinite(qty):
++    if qty < 0 or not math.isfinite(qty):
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_11
+-    if qty <= 0 or not math.isfinite(qty):
++    if qty <= 1 or not math.isfinite(qty):
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_12
+-    if qty <= 0 or not math.isfinite(qty):
++    if qty <= 0 or math.isfinite(qty):
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_13
+-    if qty <= 0 or not math.isfinite(qty):
++    if qty <= 0 or not math.isfinite(None):
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_14
+-        raise ValueError("qty must be positive finite")
++        raise ValueError(None)
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_15
+-        raise ValueError("qty must be positive finite")
++        raise ValueError("XXqty must be positive finiteXX")
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_16
+-        raise ValueError("qty must be positive finite")
++        raise ValueError("QTY MUST BE POSITIVE FINITE")
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_17
+-    if not levels:
++    if levels:
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_18
+-        raise ValueError("levels must be non-empty (no book, no fill)")
++        raise ValueError(None)
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_19
+-        raise ValueError("levels must be non-empty (no book, no fill)")
++        raise ValueError("XXlevels must be non-empty (no book, no fill)XX")
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_20
+-        raise ValueError("levels must be non-empty (no book, no fill)")
++        raise ValueError("LEVELS MUST BE NON-EMPTY (NO BOOK, NO FILL)")
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_21
+-    remaining = float(qty)
++    remaining = None
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_22
+-    remaining = float(qty)
++    remaining = float(None)
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_23
+-    cost = 0.0
++    cost = None
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_24
+-    cost = 0.0
++    cost = 1.0
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_25
+-    worst = float(levels[0][0])
++    worst = None
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_26
+-    worst = float(levels[0][0])
++    worst = float(None)
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_27
+-    worst = float(levels[0][0])
++    worst = float(levels[1][0])
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_28
+-    worst = float(levels[0][0])
++    worst = float(levels[0][1])
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_29
+-        if remaining <= 0:
++        if remaining < 0:
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_30
+-        if remaining <= 0:
++        if remaining <= 1:
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_31
+-            break
++            return
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_32
+-        take = min(remaining, float(avail))
++        take = None
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_33
+-        take = min(remaining, float(avail))
++        take = min(None, float(avail))
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_34
+-        take = min(remaining, float(avail))
++        take = min(remaining, None)
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_35
+-        take = min(remaining, float(avail))
++        take = min(float(avail))
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_36
+-        take = min(remaining, float(avail))
++        take = min(remaining, )
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_37
+-        take = min(remaining, float(avail))
++        take = min(remaining, float(None))
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_38
+-        if take <= 0:
++        if take < 0:
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_39
+-        if take <= 0:
++        if take <= 1:
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_40
+-            continue
++            break
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_41
+-        cost += take * float(price)
++        cost = take * float(price)
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_42
+-        cost += take * float(price)
++        cost -= take * float(price)
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_43
+-        cost += take * float(price)
++        cost += take / float(price)
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_44
+-        cost += take * float(price)
++        cost += take * float(None)
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_45
+-        remaining -= take
++        remaining = take
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_46
+-        remaining -= take
++        remaining += take
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_47
+-        worst = float(price)
++        worst = None
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_48
+-        worst = float(price)
++        worst = float(None)
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_49
+-    if remaining > 0:
++    if remaining >= 0:
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_50
+-    if remaining > 0:
++    if remaining > 1:
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_51
+-        penalty = 1.0 + empty_book_bps / 10000.0 if side == "BUY" \
+-            else 1.0 - empty_book_bps / 10000.0
++        penalty = None
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_52
+-        penalty = 1.0 + empty_book_bps / 10000.0 if side == "BUY" \
++        penalty = 1.0 + empty_book_bps / 10000.0 if (side == "BUY") and False \
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_53
+-        penalty = 1.0 + empty_book_bps / 10000.0 if side == "BUY" \
++        penalty = 1.0 + empty_book_bps / 10000.0 if (side == "BUY") or True \
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_54
+-        penalty = 1.0 + empty_book_bps / 10000.0 if side == "BUY" \
++        penalty = 1.0 - empty_book_bps / 10000.0 if side == "BUY" \
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_55
+-        penalty = 1.0 + empty_book_bps / 10000.0 if side == "BUY" \
++        penalty = 2.0 + empty_book_bps / 10000.0 if side == "BUY" \
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_56
+-        penalty = 1.0 + empty_book_bps / 10000.0 if side == "BUY" \
++        penalty = 1.0 + empty_book_bps * 10000.0 if side == "BUY" \
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_57
+-        penalty = 1.0 + empty_book_bps / 10000.0 if side == "BUY" \
++        penalty = 1.0 + empty_book_bps / 10001.0 if side == "BUY" \
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_58
+-        penalty = 1.0 + empty_book_bps / 10000.0 if side == "BUY" \
++        penalty = 1.0 + empty_book_bps / 10000.0 if side != "BUY" \
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_59
+-        penalty = 1.0 + empty_book_bps / 10000.0 if side == "BUY" \
++        penalty = 1.0 + empty_book_bps / 10000.0 if side == "XXBUYXX" \
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_60
+-        penalty = 1.0 + empty_book_bps / 10000.0 if side == "BUY" \
++        penalty = 1.0 + empty_book_bps / 10000.0 if side == "buy" \
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_61
+-            else 1.0 - empty_book_bps / 10000.0
++            else 1.0 + empty_book_bps / 10000.0
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_62
+-            else 1.0 - empty_book_bps / 10000.0
++            else 2.0 - empty_book_bps / 10000.0
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_63
+-            else 1.0 - empty_book_bps / 10000.0
++            else 1.0 - empty_book_bps * 10000.0
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_64
+-            else 1.0 - empty_book_bps / 10000.0
++            else 1.0 - empty_book_bps / 10001.0
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_65
+-        cost += remaining * worst * penalty
++        cost = remaining * worst * penalty
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_66
+-        cost += remaining * worst * penalty
++        cost -= remaining * worst * penalty
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_67
+-        cost += remaining * worst * penalty
++        cost += remaining * worst / penalty
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_68
+-        cost += remaining * worst * penalty
++        cost += remaining / worst * penalty
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_69
+-    vwap = cost / float(qty)
++    vwap = None
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_70
+-    vwap = cost / float(qty)
++    vwap = cost * float(qty)
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_71
+-    vwap = cost / float(qty)
++    vwap = cost / float(None)
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_72
+-    latency = 1.0 + latency_bps / 10000.0 if side == "BUY" \
+-        else 1.0 - latency_bps / 10000.0
++    latency = None
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_73
+-    latency = 1.0 + latency_bps / 10000.0 if side == "BUY" \
++    latency = 1.0 + latency_bps / 10000.0 if (side == "BUY") and False \
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_74
+-    latency = 1.0 + latency_bps / 10000.0 if side == "BUY" \
++    latency = 1.0 + latency_bps / 10000.0 if (side == "BUY") or True \
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_75
+-    latency = 1.0 + latency_bps / 10000.0 if side == "BUY" \
++    latency = 1.0 - latency_bps / 10000.0 if side == "BUY" \
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_76
+-    latency = 1.0 + latency_bps / 10000.0 if side == "BUY" \
++    latency = 2.0 + latency_bps / 10000.0 if side == "BUY" \
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_77
+-    latency = 1.0 + latency_bps / 10000.0 if side == "BUY" \
++    latency = 1.0 + latency_bps * 10000.0 if side == "BUY" \
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_78
+-    latency = 1.0 + latency_bps / 10000.0 if side == "BUY" \
++    latency = 1.0 + latency_bps / 10001.0 if side == "BUY" \
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_79
+-    latency = 1.0 + latency_bps / 10000.0 if side == "BUY" \
++    latency = 1.0 + latency_bps / 10000.0 if side != "BUY" \
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_80
+-    latency = 1.0 + latency_bps / 10000.0 if side == "BUY" \
++    latency = 1.0 + latency_bps / 10000.0 if side == "XXBUYXX" \
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_81
+-    latency = 1.0 + latency_bps / 10000.0 if side == "BUY" \
++    latency = 1.0 + latency_bps / 10000.0 if side == "buy" \
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_82
+-        else 1.0 - latency_bps / 10000.0
++        else 1.0 + latency_bps / 10000.0
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_83
+-        else 1.0 - latency_bps / 10000.0
++        else 2.0 - latency_bps / 10000.0
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_84
+-        else 1.0 - latency_bps / 10000.0
++        else 1.0 - latency_bps * 10000.0
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_85
+-        else 1.0 - latency_bps / 10000.0
++        else 1.0 - latency_bps / 10001.0
+############ cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_86
+-    return vwap * latency
++    return vwap / latency
+############ cryptobot.execution.fill_realism.x_maker_fill__mutmut_1
+-    if side not in ("BUY", "SELL"):
++    if side in ("BUY", "SELL"):
+############ cryptobot.execution.fill_realism.x_maker_fill__mutmut_2
+-    if side not in ("BUY", "SELL"):
++    if side not in ("XXBUYXX", "SELL"):
+############ cryptobot.execution.fill_realism.x_maker_fill__mutmut_3
+-    if side not in ("BUY", "SELL"):
++    if side not in ("buy", "SELL"):
+############ cryptobot.execution.fill_realism.x_maker_fill__mutmut_4
+-    if side not in ("BUY", "SELL"):
++    if side not in ("BUY", "XXSELLXX"):
+############ cryptobot.execution.fill_realism.x_maker_fill__mutmut_5
+-    if side not in ("BUY", "SELL"):
++    if side not in ("BUY", "sell"):
+############ cryptobot.execution.fill_realism.x_maker_fill__mutmut_6
+-        raise ValueError(f"side must be BUY or SELL, got {side!r}")
++        raise ValueError(None)
+############ cryptobot.execution.fill_realism.x_maker_fill__mutmut_7
+-    ahead = float(queue_ahead_qty)
++    ahead = None
+############ cryptobot.execution.fill_realism.x_maker_fill__mutmut_8
+-    ahead = float(queue_ahead_qty)
++    ahead = float(None)
+############ cryptobot.execution.fill_realism.x_maker_fill__mutmut_9
+-    filled = 0.0
++    filled = None
+############ cryptobot.execution.fill_realism.x_maker_fill__mutmut_10
+-    filled = 0.0
++    filled = 1.0
+############ cryptobot.execution.fill_realism.x_maker_fill__mutmut_11
+-        if filled >= qty:
++        if filled > qty:
+############ cryptobot.execution.fill_realism.x_maker_fill__mutmut_12
+-            break
++            return
+############ cryptobot.execution.fill_realism.x_maker_fill__mutmut_13
+-        through = (price < limit_price) if side == "BUY" \
+-            else (price > limit_price)
++        through = None
+############ cryptobot.execution.fill_realism.x_maker_fill__mutmut_14
+-        through = (price < limit_price) if side == "BUY" \
++        through = (price < limit_price) if (side == "BUY") and False \
+############ cryptobot.execution.fill_realism.x_maker_fill__mutmut_15
+-        through = (price < limit_price) if side == "BUY" \
++        through = (price < limit_price) if (side == "BUY") or True \
+############ cryptobot.execution.fill_realism.x_maker_fill__mutmut_16
+-        through = (price < limit_price) if side == "BUY" \
++        through = (price <= limit_price) if side == "BUY" \
+############ cryptobot.execution.fill_realism.x_maker_fill__mutmut_17
+-        through = (price < limit_price) if side == "BUY" \
++        through = (price < limit_price) if side != "BUY" \
+############ cryptobot.execution.fill_realism.x_maker_fill__mutmut_18
+-        through = (price < limit_price) if side == "BUY" \
++        through = (price < limit_price) if side == "XXBUYXX" \
+############ cryptobot.execution.fill_realism.x_maker_fill__mutmut_19
+-        through = (price < limit_price) if side == "BUY" \
++        through = (price < limit_price) if side == "buy" \
+############ cryptobot.execution.fill_realism.x_maker_fill__mutmut_20
+-            else (price > limit_price)
++            else (price >= limit_price)
+############ cryptobot.execution.fill_realism.x_maker_fill__mutmut_21
+-        at = price == limit_price
++        at = None
+############ cryptobot.execution.fill_realism.x_maker_fill__mutmut_22
+-        at = price == limit_price
++        at = price != limit_price
+############ cryptobot.execution.fill_realism.x_maker_fill__mutmut_23
+-            take = min(float(tqty), qty - filled)
++            take = None
+############ cryptobot.execution.fill_realism.x_maker_fill__mutmut_24
+-            take = min(float(tqty), qty - filled)
++            take = min(None, qty - filled)
+############ cryptobot.execution.fill_realism.x_maker_fill__mutmut_25
+-            take = min(float(tqty), qty - filled)
++            take = min(float(tqty), None)
+############ cryptobot.execution.fill_realism.x_maker_fill__mutmut_26
+-            take = min(float(tqty), qty - filled)
++            take = min(qty - filled)
+############ cryptobot.execution.fill_realism.x_maker_fill__mutmut_27
+-            take = min(float(tqty), qty - filled)
++            take = min(float(tqty), )
+############ cryptobot.execution.fill_realism.x_maker_fill__mutmut_28
+-            take = min(float(tqty), qty - filled)
++            take = min(float(None), qty - filled)
+############ cryptobot.execution.fill_realism.x_maker_fill__mutmut_29
+-            take = min(float(tqty), qty - filled)
++            take = min(float(tqty), qty + filled)
+############ cryptobot.execution.fill_realism.x_maker_fill__mutmut_30
+-            filled += take
++            filled = take
+############ cryptobot.execution.fill_realism.x_maker_fill__mutmut_31
+-            filled += take
++            filled -= take
+############ cryptobot.execution.fill_realism.x_maker_fill__mutmut_32
+-            consume = min(float(tqty), ahead)
++            consume = None
+############ cryptobot.execution.fill_realism.x_maker_fill__mutmut_33
+-            consume = min(float(tqty), ahead)
++            consume = min(None, ahead)
+############ cryptobot.execution.fill_realism.x_maker_fill__mutmut_34
+-            consume = min(float(tqty), ahead)
++            consume = min(float(tqty), None)
+############ cryptobot.execution.fill_realism.x_maker_fill__mutmut_35
+-            consume = min(float(tqty), ahead)
++            consume = min(ahead)
+############ cryptobot.execution.fill_realism.x_maker_fill__mutmut_36
+-            consume = min(float(tqty), ahead)
++            consume = min(float(tqty), )
+############ cryptobot.execution.fill_realism.x_maker_fill__mutmut_37
+-            consume = min(float(tqty), ahead)
++            consume = min(float(None), ahead)
+############ cryptobot.execution.fill_realism.x_maker_fill__mutmut_38
+-            ahead -= consume
++            ahead = consume
+############ cryptobot.execution.fill_realism.x_maker_fill__mutmut_39
+-            ahead -= consume
++            ahead += consume
+############ cryptobot.execution.fill_realism.x_maker_fill__mutmut_40
+-            excess = float(tqty) - consume
++            excess = None
+############ cryptobot.execution.fill_realism.x_maker_fill__mutmut_41
+-            excess = float(tqty) - consume
++            excess = float(tqty) + consume
+############ cryptobot.execution.fill_realism.x_maker_fill__mutmut_42
+-            excess = float(tqty) - consume
++            excess = float(None) - consume
+############ cryptobot.execution.fill_realism.x_maker_fill__mutmut_43
+-            if excess > 0:
++            if excess >= 0:
+############ cryptobot.execution.fill_realism.x_maker_fill__mutmut_44
+-            if excess > 0:
++            if excess > 1:
+############ cryptobot.execution.fill_realism.x_maker_fill__mutmut_45
+-                filled += min(excess, qty - filled)
++                filled = min(excess, qty - filled)
+############ cryptobot.execution.fill_realism.x_maker_fill__mutmut_46
+-                filled += min(excess, qty - filled)
++                filled -= min(excess, qty - filled)
+############ cryptobot.execution.fill_realism.x_maker_fill__mutmut_47
+-                filled += min(excess, qty - filled)
++                filled += min(None, qty - filled)
+############ cryptobot.execution.fill_realism.x_maker_fill__mutmut_48
+-                filled += min(excess, qty - filled)
++                filled += min(excess, None)
+############ cryptobot.execution.fill_realism.x_maker_fill__mutmut_49
+-                filled += min(excess, qty - filled)
++                filled += min(qty - filled)
+############ cryptobot.execution.fill_realism.x_maker_fill__mutmut_50
+-                filled += min(excess, qty - filled)
++                filled += min(excess, )
+############ cryptobot.execution.fill_realism.x_maker_fill__mutmut_51
+-                filled += min(excess, qty - filled)
++                filled += min(excess, qty + filled)
+############ cryptobot.execution.fill_realism.x_stressed_pnl__mutmut_1
+-    return {"gross": float(gross_pnl), "costs_1x": float(costs_1x),
++    return {"XXgrossXX": float(gross_pnl), "costs_1x": float(costs_1x),
+############ cryptobot.execution.fill_realism.x_stressed_pnl__mutmut_2
+-    return {"gross": float(gross_pnl), "costs_1x": float(costs_1x),
++    return {"GROSS": float(gross_pnl), "costs_1x": float(costs_1x),
+############ cryptobot.execution.fill_realism.x_stressed_pnl__mutmut_3
+-    return {"gross": float(gross_pnl), "costs_1x": float(costs_1x),
++    return {"gross": float(None), "costs_1x": float(costs_1x),
+############ cryptobot.execution.fill_realism.x_stressed_pnl__mutmut_4
+-    return {"gross": float(gross_pnl), "costs_1x": float(costs_1x),
++    return {"gross": float(gross_pnl), "XXcosts_1xXX": float(costs_1x),
+############ cryptobot.execution.fill_realism.x_stressed_pnl__mutmut_5
+-    return {"gross": float(gross_pnl), "costs_1x": float(costs_1x),
++    return {"gross": float(gross_pnl), "COSTS_1X": float(costs_1x),
+############ cryptobot.execution.fill_realism.x_stressed_pnl__mutmut_6
+-    return {"gross": float(gross_pnl), "costs_1x": float(costs_1x),
++    return {"gross": float(gross_pnl), "costs_1x": float(None),
+############ cryptobot.execution.fill_realism.x_stressed_pnl__mutmut_7
+-            "pnl_1x": float(gross_pnl) - float(costs_1x),
++            "XXpnl_1xXX": float(gross_pnl) - float(costs_1x),
+############ cryptobot.execution.fill_realism.x_stressed_pnl__mutmut_8
+-            "pnl_1x": float(gross_pnl) - float(costs_1x),
++            "PNL_1X": float(gross_pnl) - float(costs_1x),
+############ cryptobot.execution.fill_realism.x_stressed_pnl__mutmut_9
+-            "pnl_1x": float(gross_pnl) - float(costs_1x),
++            "pnl_1x": float(gross_pnl) + float(costs_1x),
+############ cryptobot.execution.fill_realism.x_stressed_pnl__mutmut_10
+-            "pnl_1x": float(gross_pnl) - float(costs_1x),
++            "pnl_1x": float(None) - float(costs_1x),
+############ cryptobot.execution.fill_realism.x_stressed_pnl__mutmut_11
+-            "pnl_1x": float(gross_pnl) - float(costs_1x),
++            "pnl_1x": float(gross_pnl) - float(None),
+############ cryptobot.execution.fill_realism.x_stressed_pnl__mutmut_12
+-            "pnl_2x": float(gross_pnl) - 2.0 * float(costs_1x)}
++            "XXpnl_2xXX": float(gross_pnl) - 2.0 * float(costs_1x)}
+############ cryptobot.execution.fill_realism.x_stressed_pnl__mutmut_13
+-            "pnl_2x": float(gross_pnl) - 2.0 * float(costs_1x)}
++            "PNL_2X": float(gross_pnl) - 2.0 * float(costs_1x)}
+############ cryptobot.execution.fill_realism.x_stressed_pnl__mutmut_14
+-            "pnl_2x": float(gross_pnl) - 2.0 * float(costs_1x)}
++            "pnl_2x": float(gross_pnl) + 2.0 * float(costs_1x)}
+############ cryptobot.execution.fill_realism.x_stressed_pnl__mutmut_15
+-            "pnl_2x": float(gross_pnl) - 2.0 * float(costs_1x)}
++            "pnl_2x": float(None) - 2.0 * float(costs_1x)}
+############ cryptobot.execution.fill_realism.x_stressed_pnl__mutmut_16
+-            "pnl_2x": float(gross_pnl) - 2.0 * float(costs_1x)}
++            "pnl_2x": float(gross_pnl) - 2.0 / float(costs_1x)}
+############ cryptobot.execution.fill_realism.x_stressed_pnl__mutmut_17
+-            "pnl_2x": float(gross_pnl) - 2.0 * float(costs_1x)}
++            "pnl_2x": float(gross_pnl) - 3.0 * float(costs_1x)}
+############ cryptobot.execution.fill_realism.x_stressed_pnl__mutmut_18
+-            "pnl_2x": float(gross_pnl) - 2.0 * float(costs_1x)}
++            "pnl_2x": float(gross_pnl) - 2.0 * float(None)}

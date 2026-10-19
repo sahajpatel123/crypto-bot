@@ -1,0 +1,45 @@
+############ cryptobot.execution.order_manager.xǁOrderManagerǁsubmit_entry__mutmut_30
+-        expire_at_utc=expire_at_utc, role="entry", reservation_id=reservation_id,
++        expire_at_utc=expire_at_utc, reservation_id=reservation_id,
+############ cryptobot.execution.order_manager.xǁOrderManagerǁsubmit_with_retry__mutmut_46
+-                expire_at_utc=expire_at_utc, role="entry", retry_of=order.client_id,
++                expire_at_utc=expire_at_utc, retry_of=order.client_id,
+############ cryptobot.execution.order_manager.xǁOrderManagerǁ_position_state__mutmut_33
+-        and abs(net) > 1e-12
++        and abs(net) >= 1e-12
+############ cryptobot.execution.order_manager.xǁOrderManagerǁ_position_state__mutmut_35
+-        and (net > 0) != (entry_net > 0)
++        and (net >= 0) != (entry_net > 0)
+############ cryptobot.execution.order_manager.xǁOrderManagerǁ_position_state__mutmut_38
+-        and (net > 0) != (entry_net > 0)
++        and (net > 0) != (entry_net >= 0)
+############ cryptobot.execution.order_manager.xǁOrderManagerǁpoll__mutmut_56
+-            if order.filled_qty > before_filled + 1e-12:
++            if order.filled_qty >= before_filled + 1e-12:
+############ cryptobot.execution.order_manager.xǁOrderManagerǁpoll__mutmut_80
+-            continue  # fills adopted above; no expiry actions post-release.
++            break  # fills adopted above; no expiry actions post-release.
+############ cryptobot.execution.order_manager.xǁOrderManagerǁrecover__mutmut_20
+-    for line in path.read_text(encoding="utf-8").splitlines():
++    for line in path.read_text(encoding=None).splitlines():
+############ cryptobot.execution.order_manager.xǁOrderManagerǁrecover__mutmut_22
+-    for line in path.read_text(encoding="utf-8").splitlines():
++    for line in path.read_text(encoding="UTF-8").splitlines():
+############ cryptobot.execution.order_manager.xǁOrderManagerǁrecover__mutmut_45
+-        event, detail = entry.get("event"), entry.get("detail", {})
++        event, detail = entry.get("event"), entry.get("detail", None)
+############ cryptobot.execution.order_manager.xǁOrderManagerǁrecover__mutmut_47
+-        event, detail = entry.get("event"), entry.get("detail", {})
++        event, detail = entry.get("event"), entry.get("detail", )
+############ cryptobot.execution.order_manager.xǁOrderManagerǁrecover__mutmut_104
+-            manager._topup_attempts[res] = max(manager._topup_attempts.get(res, 0), detail["attempt"])
++            manager._topup_attempts[res] = max(manager._topup_attempts.get(res, 1), detail["attempt"])
+############ cryptobot.execution.order_manager.xǁOrderManagerǁ_log__mutmut_44
+-    with self.log_path.open("a", encoding="utf-8") as fh:
++    with self.log_path.open("a", encoding=None) as fh:
+############ cryptobot.execution.order_manager.xǁOrderManagerǁ_log__mutmut_46
+-    with self.log_path.open("a", encoding="utf-8") as fh:
++    with self.log_path.open("a", ) as fh:
+############ cryptobot.execution.order_manager.xǁOrderManagerǁ_log__mutmut_50
+-    with self.log_path.open("a", encoding="utf-8") as fh:
++    with self.log_path.open("a", encoding="UTF-8") as fh:

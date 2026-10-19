@@ -1,0 +1,3130 @@
+############ cryptobot.risk.policy.x__finite__mutmut_1
+-    return isinstance(value, (int, float)) and math.isfinite(value)
++    return isinstance(value, (int, float)) or math.isfinite(value)
+############ cryptobot.risk.policy.x__finite__mutmut_2
+-    return isinstance(value, (int, float)) and math.isfinite(value)
++    return isinstance(value, (int, float)) and math.isfinite(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ__init____mutmut_1
+-    self.config = config or RiskConfig()
++    self.config = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁ__init____mutmut_2
+-    self.config = config or RiskConfig()
++    self.config = config and RiskConfig()
+############ cryptobot.risk.policy.xǁRiskPolicyǁ__init____mutmut_3
+-    self.state_path = Path(state_path)
++    self.state_path = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁ__init____mutmut_4
+-    self.state_path = Path(state_path)
++    self.state_path = Path(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ__init____mutmut_5
+-    self._now_utc = now_utc or (lambda: datetime.now(timezone.utc))
++    self._now_utc = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁ__init____mutmut_6
+-    self._now_utc = now_utc or (lambda: datetime.now(timezone.utc))
++    self._now_utc = now_utc and (lambda: datetime.now(timezone.utc))
+############ cryptobot.risk.policy.xǁRiskPolicyǁ__init____mutmut_7
+-    self._now_utc = now_utc or (lambda: datetime.now(timezone.utc))
++    self._now_utc = now_utc or (lambda: None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ__init____mutmut_8
+-    self._now_utc = now_utc or (lambda: datetime.now(timezone.utc))
++    self._now_utc = now_utc or (lambda: datetime.now(None))
+############ cryptobot.risk.policy.xǁRiskPolicyǁ__init____mutmut_9
+-    self._state: RiskState = load_state(self.state_path)
++    self._state: RiskState = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁ__init____mutmut_10
+-    self._state: RiskState = load_state(self.state_path)
++    self._state: RiskState = load_state(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ__init____mutmut_11
+-    self._ledger: Ledger | None = None
++    self._ledger: Ledger | None = ""
+############ cryptobot.risk.policy.xǁRiskPolicyǁ__init____mutmut_12
+-    self._executable: dict[str, float] = {}
++    self._executable: dict[str, float] = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁ__init____mutmut_13
+-    self._last_tick_save_mono: float = 0.0
++    self._last_tick_save_mono: float = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁ__init____mutmut_14
+-    self._last_tick_save_mono: float = 0.0
++    self._last_tick_save_mono: float = 1.0
+############ cryptobot.risk.policy.xǁRiskPolicyǁ__init____mutmut_15
+-    self._tick_dirty: bool = False
++    self._tick_dirty: bool = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁ__init____mutmut_16
+-    self._tick_dirty: bool = False
++    self._tick_dirty: bool = True
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_persist_tick__mutmut_1
+-def _persist_tick(self, *, force: bool = False,
++def _persist_tick(self, *, force: bool = True,
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_persist_tick__mutmut_2
+-    stamp = now or self._now_utc()
++    stamp = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_persist_tick__mutmut_3
+-    stamp = now or self._now_utc()
++    stamp = now and self._now_utc()
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_persist_tick__mutmut_4
+-    elapsed = None
++    elapsed = ""
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_persist_tick__mutmut_5
+-            elapsed = (stamp - datetime.fromtimestamp(
+-                self._last_tick_save_mono, tz=timezone.utc)
+-                ).total_seconds()
++            elapsed = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_persist_tick__mutmut_6
+-            elapsed = (stamp - datetime.fromtimestamp(
++            elapsed = (stamp + datetime.fromtimestamp(
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_persist_tick__mutmut_7
+-                self._last_tick_save_mono, tz=timezone.utc)
++                None, tz=timezone.utc)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_persist_tick__mutmut_8
+-                self._last_tick_save_mono, tz=timezone.utc)
++                self._last_tick_save_mono, tz=None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_persist_tick__mutmut_9
+-                self._last_tick_save_mono, tz=timezone.utc)
++                tz=timezone.utc)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_persist_tick__mutmut_10
+-                self._last_tick_save_mono, tz=timezone.utc)
++                self._last_tick_save_mono, )
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_persist_tick__mutmut_11
+-            elapsed = None
++            elapsed = ""
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_persist_tick__mutmut_12
+-    if force or elapsed is None or elapsed >= 1.0:
++    if force or elapsed is None and elapsed >= 1.0:
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_persist_tick__mutmut_13
+-    if force or elapsed is None or elapsed >= 1.0:
++    if force and elapsed is None or elapsed >= 1.0:
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_persist_tick__mutmut_14
+-    if force or elapsed is None or elapsed >= 1.0:
++    if force or elapsed is not None or elapsed >= 1.0:
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_persist_tick__mutmut_15
+-    if force or elapsed is None or elapsed >= 1.0:
++    if force or elapsed is None or elapsed > 1.0:
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_persist_tick__mutmut_16
+-    if force or elapsed is None or elapsed >= 1.0:
++    if force or elapsed is None or elapsed >= 2.0:
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_persist_tick__mutmut_17
+-        save_state(self.state_path, self._state)
++        save_state(None, self._state)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_persist_tick__mutmut_18
+-        save_state(self.state_path, self._state)
++        save_state(self.state_path, None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_persist_tick__mutmut_19
+-        save_state(self.state_path, self._state)
++        save_state(self._state)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_persist_tick__mutmut_20
+-        save_state(self.state_path, self._state)
++        save_state(self.state_path, )
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_persist_tick__mutmut_21
+-        self._last_tick_save_mono = stamp.timestamp()
++        self._last_tick_save_mono = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_persist_tick__mutmut_22
+-        self._tick_dirty = False
++        self._tick_dirty = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_persist_tick__mutmut_23
+-        self._tick_dirty = False
++        self._tick_dirty = True
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_persist_tick__mutmut_24
+-        self._tick_dirty = True
++        self._tick_dirty = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_persist_tick__mutmut_25
+-        self._tick_dirty = True
++        self._tick_dirty = False
+############ cryptobot.risk.policy.xǁRiskPolicyǁflush_state__mutmut_1
+-        save_state(self.state_path, self._state)
++        save_state(None, self._state)
+############ cryptobot.risk.policy.xǁRiskPolicyǁflush_state__mutmut_2
+-        save_state(self.state_path, self._state)
++        save_state(self.state_path, None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁflush_state__mutmut_3
+-        save_state(self.state_path, self._state)
++        save_state(self._state)
+############ cryptobot.risk.policy.xǁRiskPolicyǁflush_state__mutmut_4
+-        save_state(self.state_path, self._state)
++        save_state(self.state_path, )
+############ cryptobot.risk.policy.xǁRiskPolicyǁflush_state__mutmut_5
+-        self._last_tick_save_mono = time.monotonic()
++        self._last_tick_save_mono = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁflush_state__mutmut_6
+-        self._tick_dirty = False
++        self._tick_dirty = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁflush_state__mutmut_7
+-        self._tick_dirty = False
++        self._tick_dirty = True
+############ cryptobot.risk.policy.xǁRiskPolicyǁreconcile_day__mutmut_1
+-def reconcile_day(self, day_start_equity: float, flows_cumulative: float = 0.0) -> str:
++def reconcile_day(self, day_start_equity: float, flows_cumulative: float = 1.0) -> str:
+############ cryptobot.risk.policy.xǁRiskPolicyǁreconcile_day__mutmut_2
+-    if not _finite(day_start_equity):
++    if _finite(day_start_equity):
+############ cryptobot.risk.policy.xǁRiskPolicyǁreconcile_day__mutmut_3
+-    if not _finite(day_start_equity):
++    if not _finite(None):
+############ cryptobot.risk.policy.xǁRiskPolicyǁreconcile_day__mutmut_4
+-        raise ValueError(f"day_start_equity must be finite, got {day_start_equity!r}")
++        raise ValueError(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁreconcile_day__mutmut_5
+-    if not _finite(flows_cumulative):
++    if _finite(flows_cumulative):
+############ cryptobot.risk.policy.xǁRiskPolicyǁreconcile_day__mutmut_6
+-    if not _finite(flows_cumulative):
++    if not _finite(None):
+############ cryptobot.risk.policy.xǁRiskPolicyǁreconcile_day__mutmut_7
+-        raise ValueError(f"flows_cumulative must be finite, got {flows_cumulative!r}")
++        raise ValueError(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁreconcile_day__mutmut_8
+-    today = accounting_date(self._now_utc()).isoformat()
++    today = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁreconcile_day__mutmut_9
+-    today = accounting_date(self._now_utc()).isoformat()
++    today = accounting_date(None).isoformat()
+############ cryptobot.risk.policy.xǁRiskPolicyǁreconcile_day__mutmut_10
+-    self._state.current_day = today
++    self._state.current_day = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁreconcile_day__mutmut_11
+-    self._state.day_start_equity = float(day_start_equity)
++    self._state.day_start_equity = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁreconcile_day__mutmut_12
+-    self._state.day_start_equity = float(day_start_equity)
++    self._state.day_start_equity = float(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁreconcile_day__mutmut_13
+-    self._state.flow_baseline_day = float(flows_cumulative)
++    self._state.flow_baseline_day = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁreconcile_day__mutmut_14
+-    self._state.flow_baseline_day = float(flows_cumulative)
++    self._state.flow_baseline_day = float(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁreconcile_day__mutmut_15
+-    self._state.needs_reconciliation = False
++    self._state.needs_reconciliation = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁreconcile_day__mutmut_16
+-    self._state.needs_reconciliation = False
++    self._state.needs_reconciliation = True
+############ cryptobot.risk.policy.xǁRiskPolicyǁreconcile_day__mutmut_17
+-    if self._state.original_equity is None:
++    if self._state.original_equity is not None:
+############ cryptobot.risk.policy.xǁRiskPolicyǁreconcile_day__mutmut_18
+-        self._state.original_equity = float(day_start_equity)
++        self._state.original_equity = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁreconcile_day__mutmut_19
+-        self._state.original_equity = float(day_start_equity)
++        self._state.original_equity = float(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁreconcile_day__mutmut_20
+-    if self._state.flow_baseline_inception is None:
++    if self._state.flow_baseline_inception is not None:
+############ cryptobot.risk.policy.xǁRiskPolicyǁreconcile_day__mutmut_21
+-        self._state.flow_baseline_inception = float(flows_cumulative)
++        self._state.flow_baseline_inception = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁreconcile_day__mutmut_22
+-        self._state.flow_baseline_inception = float(flows_cumulative)
++        self._state.flow_baseline_inception = float(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁreconcile_day__mutmut_23
+-    save_state(self.state_path, self._state)
++    save_state(None, self._state)
+############ cryptobot.risk.policy.xǁRiskPolicyǁreconcile_day__mutmut_24
+-    save_state(self.state_path, self._state)
++    save_state(self.state_path, None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁreconcile_day__mutmut_25
+-    save_state(self.state_path, self._state)
++    save_state(self._state)
+############ cryptobot.risk.policy.xǁRiskPolicyǁreconcile_day__mutmut_26
+-    save_state(self.state_path, self._state)
++    save_state(self.state_path, )
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_1
+-    now = self._now_utc()
++    now = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_2
+-    cfg = self.config
++    cfg = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_3
+-    invalid = self._validate_inputs(intent, account, now)
++    invalid = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_4
+-    invalid = self._validate_inputs(intent, account, now)
++    invalid = self._validate_inputs(None, account, now)
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_5
+-    invalid = self._validate_inputs(intent, account, now)
++    invalid = self._validate_inputs(intent, None, now)
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_6
+-    invalid = self._validate_inputs(intent, account, now)
++    invalid = self._validate_inputs(intent, account, None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_7
+-    invalid = self._validate_inputs(intent, account, now)
++    invalid = self._validate_inputs(account, now)
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_8
+-    invalid = self._validate_inputs(intent, account, now)
++    invalid = self._validate_inputs(intent, now)
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_9
+-    invalid = self._validate_inputs(intent, account, now)
++    invalid = self._validate_inputs(intent, account, )
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_10
+-    if invalid is not None:
++    if invalid is None:
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_11
+-    if intent.data_quality == DataQuality.HALT:
++    if intent.data_quality != DataQuality.HALT:
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_12
+-        return Rejected("health:data-quality-halt")
++        return Rejected(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_13
+-        return Rejected("health:data-quality-halt")
++        return Rejected("XXhealth:data-quality-haltXX")
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_14
+-        return Rejected("health:data-quality-halt")
++        return Rejected("HEALTH:DATA-QUALITY-HALT")
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_15
+-    if intent.data_quality == DataQuality.DEGRADED:
++    if intent.data_quality != DataQuality.DEGRADED:
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_16
+-        return Rejected("health:data-quality-degraded")
++        return Rejected(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_17
+-        return Rejected("health:data-quality-degraded")
++        return Rejected("XXhealth:data-quality-degradedXX")
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_18
+-        return Rejected("health:data-quality-degraded")
++        return Rejected("HEALTH:DATA-QUALITY-DEGRADED")
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_19
+-    today = accounting_date(now).isoformat()
++    today = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_20
+-    today = accounting_date(now).isoformat()
++    today = accounting_date(None).isoformat()
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_21
+-        or self._state.needs_reconciliation
+-        or self._state.day_start_equity is None
++        or self._state.needs_reconciliation and self._state.day_start_equity is None
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_22
+-        self._state.current_day != today
+-        or self._state.needs_reconciliation
++        self._state.current_day != today and self._state.needs_reconciliation
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_23
+-        self._state.current_day != today
++        self._state.current_day == today
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_24
+-        or self._state.day_start_equity is None
++        or self._state.day_start_equity is not None
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_25
+-        self._roll_day_if_needed(now, today)
++        self._roll_day_if_needed(None, today)
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_26
+-        self._roll_day_if_needed(now, today)
++        self._roll_day_if_needed(now, None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_27
+-        self._roll_day_if_needed(now, today)
++        self._roll_day_if_needed(today)
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_28
+-        self._roll_day_if_needed(now, today)
++        self._roll_day_if_needed(now, )
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_29
+-        return Rejected("health:day-open-needs-reconciliation")
++        return Rejected(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_30
+-        return Rejected("health:day-open-needs-reconciliation")
++        return Rejected("XXhealth:day-open-needs-reconciliationXX")
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_31
+-        return Rejected("health:day-open-needs-reconciliation")
++        return Rejected("HEALTH:DAY-OPEN-NEEDS-RECONCILIATION")
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_32
+-    day_start = self._state.day_start_equity
++    day_start = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_33
+-    netliq_adj = self._adjust_day(account.net_liquidation, account.flows_cumulative)
++    netliq_adj = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_34
+-    netliq_adj = self._adjust_day(account.net_liquidation, account.flows_cumulative)
++    netliq_adj = self._adjust_day(None, account.flows_cumulative)
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_35
+-    netliq_adj = self._adjust_day(account.net_liquidation, account.flows_cumulative)
++    netliq_adj = self._adjust_day(account.net_liquidation, None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_36
+-    netliq_adj = self._adjust_day(account.net_liquidation, account.flows_cumulative)
++    netliq_adj = self._adjust_day(account.flows_cumulative)
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_37
+-    netliq_adj = self._adjust_day(account.net_liquidation, account.flows_cumulative)
++    netliq_adj = self._adjust_day(account.net_liquidation, )
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_38
+-    stop, _ = self._check_stops(netliq_adj, day_start, today, now)
++    stop, _ = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_39
+-    stop, _ = self._check_stops(netliq_adj, day_start, today, now)
++    stop, _ = self._check_stops(None, day_start, today, now)
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_40
+-    stop, _ = self._check_stops(netliq_adj, day_start, today, now)
++    stop, _ = self._check_stops(netliq_adj, None, today, now)
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_41
+-    stop, _ = self._check_stops(netliq_adj, day_start, today, now)
++    stop, _ = self._check_stops(netliq_adj, day_start, None, now)
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_42
+-    stop, _ = self._check_stops(netliq_adj, day_start, today, now)
++    stop, _ = self._check_stops(netliq_adj, day_start, today, None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_43
+-    stop, _ = self._check_stops(netliq_adj, day_start, today, now)
++    stop, _ = self._check_stops(day_start, today, now)
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_44
+-    stop, _ = self._check_stops(netliq_adj, day_start, today, now)
++    stop, _ = self._check_stops(netliq_adj, today, now)
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_45
+-    stop, _ = self._check_stops(netliq_adj, day_start, today, now)
++    stop, _ = self._check_stops(netliq_adj, day_start, now)
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_46
+-    stop, _ = self._check_stops(netliq_adj, day_start, today, now)
++    stop, _ = self._check_stops(netliq_adj, day_start, today, )
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_47
+-    if stop is not None:
++    if stop is None:
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_48
+-        return Rejected(stop)
++        return Rejected(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_49
+-    if today in self._state.pause_days:
++    if today not in self._state.pause_days:
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_50
+-        return Rejected("pause:daily-target")
++        return Rejected(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_51
+-        return Rejected("pause:daily-target")
++        return Rejected("XXpause:daily-targetXX")
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_52
+-        return Rejected("pause:daily-target")
++        return Rejected("PAUSE:DAILY-TARGET")
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_53
+-    if netliq_adj >= day_start * (1 + cfg.daily_target_pct):
++    if netliq_adj > day_start * (1 + cfg.daily_target_pct):
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_54
+-    if netliq_adj >= day_start * (1 + cfg.daily_target_pct):
++    if netliq_adj >= day_start / (1 + cfg.daily_target_pct):
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_55
+-    if netliq_adj >= day_start * (1 + cfg.daily_target_pct):
++    if netliq_adj >= day_start * (1 - cfg.daily_target_pct):
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_56
+-    if netliq_adj >= day_start * (1 + cfg.daily_target_pct):
++    if netliq_adj >= day_start * (2 + cfg.daily_target_pct):
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_57
+-        self._state.pause_days[today] = "daily-target"
++        self._state.pause_days[today] = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_58
+-        self._state.pause_days[today] = "daily-target"
++        self._state.pause_days[today] = "XXdaily-targetXX"
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_59
+-        self._state.pause_days[today] = "daily-target"
++        self._state.pause_days[today] = "DAILY-TARGET"
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_60
+-        save_state(self.state_path, self._state)
++        save_state(None, self._state)
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_61
+-        save_state(self.state_path, self._state)
++        save_state(self.state_path, None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_62
+-        save_state(self.state_path, self._state)
++        save_state(self._state)
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_63
+-        save_state(self.state_path, self._state)
++        save_state(self.state_path, )
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_64
+-        return Rejected("pause:daily-target")
++        return Rejected(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_65
+-        return Rejected("pause:daily-target")
++        return Rejected("XXpause:daily-targetXX")
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_66
+-        return Rejected("pause:daily-target")
++        return Rejected("PAUSE:DAILY-TARGET")
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_67
+-    if self._update_profit_protection(account):
++    if self._update_profit_protection(None):
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_68
+-        return Rejected("halt:profit-protection")
++        return Rejected(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_69
+-        return Rejected("halt:profit-protection")
++        return Rejected("XXhalt:profit-protectionXX")
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_70
+-        return Rejected("halt:profit-protection")
++        return Rejected("HALT:PROFIT-PROTECTION")
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_71
+-    if self._settle_expired(now):
++    if self._settle_expired(None):
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_72
+-        save_state(self.state_path, self._state)
++        save_state(None, self._state)
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_73
+-        save_state(self.state_path, self._state)
++        save_state(self.state_path, None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_74
+-        save_state(self.state_path, self._state)
++        save_state(self._state)
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_75
+-        save_state(self.state_path, self._state)
++        save_state(self.state_path, )
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_76
+-    if account.open_position or self._state.open_position or self._state.reservations:
++    if account.open_position or self._state.open_position and self._state.reservations:
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_77
+-    if account.open_position or self._state.open_position or self._state.reservations:
++    if account.open_position and self._state.open_position or self._state.reservations:
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_78
+-        return Rejected("exposure:one-position")
++        return Rejected(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_79
+-        return Rejected("exposure:one-position")
++        return Rejected("XXexposure:one-positionXX")
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_80
+-        return Rejected("exposure:one-position")
++        return Rejected("EXPOSURE:ONE-POSITION")
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_81
+-        return Rejected("exposure:unresolved")
++        return Rejected(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_82
+-        return Rejected("exposure:unresolved")
++        return Rejected("XXexposure:unresolvedXX")
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_83
+-        return Rejected("exposure:unresolved")
++        return Rejected("EXPOSURE:UNRESOLVED")
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_84
+-        return Rejected("exposure:booked")
++        return Rejected(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_85
+-        return Rejected("exposure:booked")
++        return Rejected("XXexposure:bookedXX")
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_86
+-        return Rejected("exposure:booked")
++        return Rejected("EXPOSURE:BOOKED")
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_87
+-    filters_block = self._check_filters(intent, now)
++    filters_block = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_88
+-    filters_block = self._check_filters(intent, now)
++    filters_block = self._check_filters(None, now)
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_89
+-    filters_block = self._check_filters(intent, now)
++    filters_block = self._check_filters(intent, None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_90
+-    filters_block = self._check_filters(intent, now)
++    filters_block = self._check_filters(now)
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_91
+-    filters_block = self._check_filters(intent, now)
++    filters_block = self._check_filters(intent, )
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_92
+-    if filters_block is not None:
++    if filters_block is None:
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_93
+-    remaining_daily = netliq_adj - day_start * (1 - cfg.operating_stop_pct)
++    remaining_daily = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_94
+-    remaining_daily = netliq_adj - day_start * (1 - cfg.operating_stop_pct)
++    remaining_daily = netliq_adj + day_start * (1 - cfg.operating_stop_pct)
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_95
+-    remaining_daily = netliq_adj - day_start * (1 - cfg.operating_stop_pct)
++    remaining_daily = netliq_adj - day_start / (1 - cfg.operating_stop_pct)
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_96
+-    remaining_daily = netliq_adj - day_start * (1 - cfg.operating_stop_pct)
++    remaining_daily = netliq_adj - day_start * (1 + cfg.operating_stop_pct)
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_97
+-    remaining_daily = netliq_adj - day_start * (1 - cfg.operating_stop_pct)
++    remaining_daily = netliq_adj - day_start * (2 - cfg.operating_stop_pct)
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_98
+-    cap = remaining_daily
++    cap = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_99
+-    if self._state.profit_floor is not None:
++    if self._state.profit_floor is None:
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_100
+-        marked_adj = self._adjust_inception(
+-            account.marked_equity, account.flows_cumulative)
++        marked_adj = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_101
+-            account.marked_equity, account.flows_cumulative)
++            None, account.flows_cumulative)
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_102
+-            account.marked_equity, account.flows_cumulative)
++            account.marked_equity, None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_103
+-            account.marked_equity, account.flows_cumulative)
++            account.flows_cumulative)
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_104
+-            account.marked_equity, account.flows_cumulative)
++            account.marked_equity, )
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_105
+-        cushion = (marked_adj - self._state.profit_floor
+-                   - (account.fee_buffer_usdt or 0.0))
++        cushion = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_106
+-        cushion = (marked_adj - self._state.profit_floor
+-                   - (account.fee_buffer_usdt or 0.0))
++        cushion = (marked_adj - self._state.profit_floor + (account.fee_buffer_usdt or 0.0))
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_107
+-        cushion = (marked_adj - self._state.profit_floor
++        cushion = (marked_adj + self._state.profit_floor
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_108
+-                   - (account.fee_buffer_usdt or 0.0))
++                   - (account.fee_buffer_usdt and 0.0))
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_109
+-                   - (account.fee_buffer_usdt or 0.0))
++                   - (account.fee_buffer_usdt or 1.0))
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_110
+-        cap = min(cap, cushion)
++        cap = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_111
+-        cap = min(cap, cushion)
++        cap = min(None, cushion)
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_112
+-        cap = min(cap, cushion)
++        cap = min(cap, None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_113
+-        cap = min(cap, cushion)
++        cap = min(cushion)
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_114
+-        cap = min(cap, cushion)
++        cap = min(cap, )
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_115
+-        plan = plan_size(
+-            intent, account.reconciled_equity, cfg,
+-            available_margin_usdt=account.available_margin_usdt,
+-            fee_buffer_usdt=account.fee_buffer_usdt,
+-            inflight_exposure_usdt=account.inflight_exposure_usdt,
+-            risk_budget_cap_usdt=cap,
+-        )
++        plan = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_116
+-            intent, account.reconciled_equity, cfg,
++            None, account.reconciled_equity, cfg,
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_117
+-            intent, account.reconciled_equity, cfg,
++            intent, None, cfg,
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_118
+-            intent, account.reconciled_equity, cfg,
++            intent, account.reconciled_equity, None,
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_119
+-            available_margin_usdt=account.available_margin_usdt,
++            available_margin_usdt=None,
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_120
+-            fee_buffer_usdt=account.fee_buffer_usdt,
++            fee_buffer_usdt=None,
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_121
+-            inflight_exposure_usdt=account.inflight_exposure_usdt,
++            inflight_exposure_usdt=None,
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_122
+-            risk_budget_cap_usdt=cap,
++            risk_budget_cap_usdt=None,
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_123
+-            intent, account.reconciled_equity, cfg,
++            account.reconciled_equity, cfg,
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_124
+-            intent, account.reconciled_equity, cfg,
++            intent, cfg,
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_125
+-            intent, account.reconciled_equity, cfg,
+-            available_margin_usdt=account.available_margin_usdt,
++            intent, account.reconciled_equity, available_margin_usdt=account.available_margin_usdt,
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_126
+-            available_margin_usdt=account.available_margin_usdt,
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_127
+-            fee_buffer_usdt=account.fee_buffer_usdt,
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_128
+-            inflight_exposure_usdt=account.inflight_exposure_usdt,
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_129
+-            risk_budget_cap_usdt=cap,
+-        )
++            )
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_130
+-        return Rejected(exc.reason)
++        return Rejected(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_131
+-    bracket_block = self._check_liquidation(intent, plan, now)
++    bracket_block = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_132
+-    bracket_block = self._check_liquidation(intent, plan, now)
++    bracket_block = self._check_liquidation(None, plan, now)
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_133
+-    bracket_block = self._check_liquidation(intent, plan, now)
++    bracket_block = self._check_liquidation(intent, None, now)
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_134
+-    bracket_block = self._check_liquidation(intent, plan, now)
++    bracket_block = self._check_liquidation(intent, plan, None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_135
+-    bracket_block = self._check_liquidation(intent, plan, now)
++    bracket_block = self._check_liquidation(plan, now)
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_136
+-    bracket_block = self._check_liquidation(intent, plan, now)
++    bracket_block = self._check_liquidation(intent, now)
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_137
+-    bracket_block = self._check_liquidation(intent, plan, now)
++    bracket_block = self._check_liquidation(intent, plan, )
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_138
+-    if bracket_block is not None:
++    if bracket_block is None:
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_139
+-    self._state.seq += 1
++    self._state.seq = 1
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_140
+-    self._state.seq += 1
++    self._state.seq -= 1
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_141
+-    self._state.seq += 1
++    self._state.seq += 2
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_142
+-    rid = f"r-{self._state.seq:06d}"
++    rid = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_143
+-    self._state.reservations[rid] = Reservation(
+-        reservation_id=rid,
+-        intent_ref=intent.evidence_ref,
+-        instrument=intent.instrument,
+-        side=intent.side.value,
+-        notional=plan.notional_usdt,
+-        reserved_risk=plan.reserved_risk,
+-        created_utc=now.isoformat(),
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_144
+-        reservation_id=rid,
++        reservation_id=None,
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_145
+-        intent_ref=intent.evidence_ref,
++        intent_ref=None,
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_146
+-        instrument=intent.instrument,
++        instrument=None,
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_147
+-        side=intent.side.value,
++        side=None,
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_148
+-        notional=plan.notional_usdt,
++        notional=None,
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_149
+-        reserved_risk=plan.reserved_risk,
++        reserved_risk=None,
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_150
+-        created_utc=now.isoformat(),
++        created_utc=None,
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_151
+-        expires_utc=intent.entry_expiry_utc.isoformat(),
++        expires_utc=None,
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_152
+-        qty=plan.qty,
++        qty=None,
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_153
+-        reservation_id=rid,
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_154
+-        intent_ref=intent.evidence_ref,
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_155
+-        instrument=intent.instrument,
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_156
+-        side=intent.side.value,
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_157
+-        notional=plan.notional_usdt,
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_158
+-        reserved_risk=plan.reserved_risk,
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_159
+-        created_utc=now.isoformat(),
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_160
+-        expires_utc=intent.entry_expiry_utc.isoformat(),
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_161
+-        qty=plan.qty,
+-    )
++        )
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_162
+-    save_state(self.state_path, self._state)
++    save_state(None, self._state)
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_163
+-    save_state(self.state_path, self._state)
++    save_state(self.state_path, None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_164
+-    save_state(self.state_path, self._state)
++    save_state(self._state)
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_165
+-    save_state(self.state_path, self._state)
++    save_state(self.state_path, )
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_166
+-        reservation_id=rid,
++        reservation_id=None,
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_167
+-        reserved_risk=plan.reserved_risk,
++        reserved_risk=None,
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_168
+-        notional_usdt=plan.notional_usdt,
++        notional_usdt=None,
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_169
+-        qty=plan.qty,
++        qty=None,
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_170
+-        required_stop_qty=plan.qty,
++        required_stop_qty=None,
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_171
+-        reservation_id=rid,
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_172
+-        reserved_risk=plan.reserved_risk,
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_173
+-        notional_usdt=plan.notional_usdt,
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_174
+-        qty=plan.qty,
+############ cryptobot.risk.policy.xǁRiskPolicyǁevaluate__mutmut_175
+-        required_stop_qty=plan.qty,
+-    )
++        )
+############ cryptobot.risk.policy.xǁRiskPolicyǁcheck_health__mutmut_1
+-    return self.monitor_tick(self._now_utc(), account)
++    return self.monitor_tick(None, account)
+############ cryptobot.risk.policy.xǁRiskPolicyǁcheck_health__mutmut_2
+-    return self.monitor_tick(self._now_utc(), account)
++    return self.monitor_tick(self._now_utc(), None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁcheck_health__mutmut_3
+-    return self.monitor_tick(self._now_utc(), account)
++    return self.monitor_tick(account)
+############ cryptobot.risk.policy.xǁRiskPolicyǁcheck_health__mutmut_4
+-    return self.monitor_tick(self._now_utc(), account)
++    return self.monitor_tick(self._now_utc(), )
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_1
+-    now = now or self._now_utc()
++    now = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_2
+-    now = now or self._now_utc()
++    now = now and self._now_utc()
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_3
+-    cfg = self.config
++    cfg = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_4
+-    today = accounting_date(now).isoformat()
++    today = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_5
+-    today = accounting_date(now).isoformat()
++    today = accounting_date(None).isoformat()
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_6
+-    reasons: list[str] = []
++    reasons: list[str] = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_7
+-    latched: list[str] = []
++    latched: list[str] = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_8
+-    if self._roll_day_if_needed(now, today):
++    if self._roll_day_if_needed(None, today):
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_9
+-    if self._roll_day_if_needed(now, today):
++    if self._roll_day_if_needed(now, None):
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_10
+-    if self._roll_day_if_needed(now, today):
++    if self._roll_day_if_needed(today):
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_11
+-    if self._roll_day_if_needed(now, today):
++    if self._roll_day_if_needed(now, ):
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_12
+-        latched.append("day-rolled")
++        latched.append(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_13
+-        latched.append("day-rolled")
++        latched.append("XXday-rolledXX")
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_14
+-        latched.append("day-rolled")
++        latched.append("DAY-ROLLED")
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_15
+-    if account is not None and not self._validate_account(account):
++    if account is not None or not self._validate_account(account):
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_16
+-    if account is not None and not self._validate_account(account):
++    if account is None and not self._validate_account(account):
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_17
+-    if account is not None and not self._validate_account(account):
++    if account is not None and self._validate_account(account):
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_18
+-    if account is not None and not self._validate_account(account):
++    if account is not None and not self._validate_account(None):
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_19
+-        return HealthStatus(False, ("health:nonfinite-account",), ())
++        return HealthStatus(None, ("health:nonfinite-account",), ())
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_20
+-        return HealthStatus(False, ("health:nonfinite-account",), ())
++        return HealthStatus(False, None, ())
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_21
+-        return HealthStatus(False, ("health:nonfinite-account",), ())
++        return HealthStatus(False, ("health:nonfinite-account",), None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_22
+-        return HealthStatus(False, ("health:nonfinite-account",), ())
++        return HealthStatus(("health:nonfinite-account",), ())
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_23
+-        return HealthStatus(False, ("health:nonfinite-account",), ())
++        return HealthStatus(False, ())
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_24
+-        return HealthStatus(False, ("health:nonfinite-account",), ())
++        return HealthStatus(False, ("health:nonfinite-account",), )
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_25
+-        return HealthStatus(False, ("health:nonfinite-account",), ())
++        return HealthStatus(True, ("health:nonfinite-account",), ())
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_26
+-        return HealthStatus(False, ("health:nonfinite-account",), ())
++        return HealthStatus(False, ("XXhealth:nonfinite-accountXX",), ())
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_27
+-        return HealthStatus(False, ("health:nonfinite-account",), ())
++        return HealthStatus(False, ("HEALTH:NONFINITE-ACCOUNT",), ())
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_28
+-    if self._state.needs_reconciliation or self._state.day_start_equity is None:
++    if self._state.needs_reconciliation and self._state.day_start_equity is None:
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_29
+-    if self._state.needs_reconciliation or self._state.day_start_equity is None:
++    if self._state.needs_reconciliation or self._state.day_start_equity is not None:
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_30
+-        self._record_tick(now)
++        self._record_tick(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_31
+-        self._persist_tick(force=bool(latched), now=now)
++        self._persist_tick(force=None, now=now)
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_32
+-        self._persist_tick(force=bool(latched), now=now)
++        self._persist_tick(force=bool(latched), now=None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_33
+-        self._persist_tick(force=bool(latched), now=now)
++        self._persist_tick(now=now)
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_34
+-        self._persist_tick(force=bool(latched), now=now)
++        self._persist_tick(force=bool(latched), )
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_35
+-        self._persist_tick(force=bool(latched), now=now)
++        self._persist_tick(force=bool(None), now=now)
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_36
+-        return HealthStatus(False, ("health:day-open-needs-reconciliation",),
++        return HealthStatus(None, ("health:day-open-needs-reconciliation",),
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_37
+-        return HealthStatus(False, ("health:day-open-needs-reconciliation",),
++        return HealthStatus(False, None,
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_38
+-                            tuple(latched))
++                            None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_39
+-        return HealthStatus(False, ("health:day-open-needs-reconciliation",),
++        return HealthStatus(("health:day-open-needs-reconciliation",),
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_40
+-        return HealthStatus(False, ("health:day-open-needs-reconciliation",),
+-                            tuple(latched))
++        return HealthStatus(False, tuple(latched))
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_41
+-                            tuple(latched))
++                            )
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_42
+-        return HealthStatus(False, ("health:day-open-needs-reconciliation",),
++        return HealthStatus(True, ("health:day-open-needs-reconciliation",),
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_43
+-        return HealthStatus(False, ("health:day-open-needs-reconciliation",),
++        return HealthStatus(False, ("XXhealth:day-open-needs-reconciliationXX",),
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_44
+-        return HealthStatus(False, ("health:day-open-needs-reconciliation",),
++        return HealthStatus(False, ("HEALTH:DAY-OPEN-NEEDS-RECONCILIATION",),
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_45
+-                            tuple(latched))
++                            tuple(None))
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_46
+-    if account is None:
++    if account is not None:
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_47
+-            reasons.append("halt:emergency")
++            reasons.append(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_48
+-            reasons.append("halt:emergency")
++            reasons.append("XXhalt:emergencyXX")
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_49
+-            reasons.append("halt:emergency")
++            reasons.append("HALT:EMERGENCY")
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_50
+-        if today in self._state.operating_stop_days:
++        if today not in self._state.operating_stop_days:
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_51
+-            reasons.append("halt:operating-stop")
++            reasons.append(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_52
+-            reasons.append("halt:operating-stop")
++            reasons.append("XXhalt:operating-stopXX")
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_53
+-            reasons.append("halt:operating-stop")
++            reasons.append("HALT:OPERATING-STOP")
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_54
+-        if today in self._state.pause_days:
++        if today not in self._state.pause_days:
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_55
+-            reasons.append("pause:daily-target")
++            reasons.append(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_56
+-            reasons.append("pause:daily-target")
++            reasons.append("XXpause:daily-targetXX")
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_57
+-            reasons.append("pause:daily-target")
++            reasons.append("PAUSE:DAILY-TARGET")
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_58
+-        if self._settle_expired(now):
++        if self._settle_expired(None):
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_59
+-            latched.append("expiry-settled")
++            latched.append(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_60
+-            latched.append("expiry-settled")
++            latched.append("XXexpiry-settledXX")
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_61
+-            latched.append("expiry-settled")
++            latched.append("EXPIRY-SETTLED")
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_62
+-        self._record_tick(now)
++        self._record_tick(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_63
+-        self._persist_tick(force=bool(latched), now=now)
++        self._persist_tick(force=None, now=now)
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_64
+-        self._persist_tick(force=bool(latched), now=now)
++        self._persist_tick(force=bool(latched), now=None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_65
+-        self._persist_tick(force=bool(latched), now=now)
++        self._persist_tick(now=now)
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_66
+-        self._persist_tick(force=bool(latched), now=now)
++        self._persist_tick(force=bool(latched), )
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_67
+-        self._persist_tick(force=bool(latched), now=now)
++        self._persist_tick(force=bool(None), now=now)
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_68
+-        return HealthStatus(not reasons, tuple(reasons), tuple(latched))
++        return HealthStatus(None, tuple(reasons), tuple(latched))
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_69
+-        return HealthStatus(not reasons, tuple(reasons), tuple(latched))
++        return HealthStatus(not reasons, None, tuple(latched))
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_70
+-        return HealthStatus(not reasons, tuple(reasons), tuple(latched))
++        return HealthStatus(not reasons, tuple(reasons), None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_71
+-        return HealthStatus(not reasons, tuple(reasons), tuple(latched))
++        return HealthStatus(tuple(reasons), tuple(latched))
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_72
+-        return HealthStatus(not reasons, tuple(reasons), tuple(latched))
++        return HealthStatus(not reasons, tuple(latched))
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_73
+-        return HealthStatus(not reasons, tuple(reasons), tuple(latched))
++        return HealthStatus(not reasons, tuple(reasons), )
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_74
+-        return HealthStatus(not reasons, tuple(reasons), tuple(latched))
++        return HealthStatus(reasons, tuple(reasons), tuple(latched))
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_75
+-        return HealthStatus(not reasons, tuple(reasons), tuple(latched))
++        return HealthStatus(not reasons, tuple(None), tuple(latched))
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_76
+-        return HealthStatus(not reasons, tuple(reasons), tuple(latched))
++        return HealthStatus(not reasons, tuple(reasons), tuple(None))
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_77
+-    mark_block = self._check_mark_age(account)
++    mark_block = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_78
+-    mark_block = self._check_mark_age(account)
++    mark_block = self._check_mark_age(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_79
+-    if mark_block is not None:
++    if mark_block is None:
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_80
+-        self._record_tick(now)
++        self._record_tick(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_81
+-        self._persist_tick(force=True, now=now)
++        self._persist_tick(force=None, now=now)
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_82
+-        self._persist_tick(force=True, now=now)
++        self._persist_tick(force=True, now=None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_83
+-        self._persist_tick(force=True, now=now)
++        self._persist_tick(now=now)
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_84
+-        self._persist_tick(force=True, now=now)
++        self._persist_tick(force=True, )
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_85
+-        self._persist_tick(force=True, now=now)
++        self._persist_tick(force=False, now=now)
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_86
+-        return HealthStatus(False, (mark_block,), tuple(latched))
++        return HealthStatus(None, (mark_block,), tuple(latched))
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_87
+-        return HealthStatus(False, (mark_block,), tuple(latched))
++        return HealthStatus(False, None, tuple(latched))
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_88
+-        return HealthStatus(False, (mark_block,), tuple(latched))
++        return HealthStatus(False, (mark_block,), None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_89
+-        return HealthStatus(False, (mark_block,), tuple(latched))
++        return HealthStatus((mark_block,), tuple(latched))
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_90
+-        return HealthStatus(False, (mark_block,), tuple(latched))
++        return HealthStatus(False, tuple(latched))
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_91
+-        return HealthStatus(False, (mark_block,), tuple(latched))
++        return HealthStatus(False, (mark_block,), )
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_92
+-        return HealthStatus(False, (mark_block,), tuple(latched))
++        return HealthStatus(True, (mark_block,), tuple(latched))
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_93
+-        return HealthStatus(False, (mark_block,), tuple(latched))
++        return HealthStatus(False, (mark_block,), tuple(None))
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_94
+-    day_start = self._state.day_start_equity
++    day_start = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_95
+-    netliq_adj = self._adjust_day(account.net_liquidation, account.flows_cumulative)
++    netliq_adj = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_96
+-    netliq_adj = self._adjust_day(account.net_liquidation, account.flows_cumulative)
++    netliq_adj = self._adjust_day(None, account.flows_cumulative)
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_97
+-    netliq_adj = self._adjust_day(account.net_liquidation, account.flows_cumulative)
++    netliq_adj = self._adjust_day(account.net_liquidation, None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_98
+-    netliq_adj = self._adjust_day(account.net_liquidation, account.flows_cumulative)
++    netliq_adj = self._adjust_day(account.flows_cumulative)
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_99
+-    netliq_adj = self._adjust_day(account.net_liquidation, account.flows_cumulative)
++    netliq_adj = self._adjust_day(account.net_liquidation, )
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_100
+-    stop, just_latched = self._check_stops(netliq_adj, day_start, today, now)
++    stop, just_latched = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_101
+-    stop, just_latched = self._check_stops(netliq_adj, day_start, today, now)
++    stop, just_latched = self._check_stops(None, day_start, today, now)
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_102
+-    stop, just_latched = self._check_stops(netliq_adj, day_start, today, now)
++    stop, just_latched = self._check_stops(netliq_adj, None, today, now)
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_103
+-    stop, just_latched = self._check_stops(netliq_adj, day_start, today, now)
++    stop, just_latched = self._check_stops(netliq_adj, day_start, None, now)
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_104
+-    stop, just_latched = self._check_stops(netliq_adj, day_start, today, now)
++    stop, just_latched = self._check_stops(netliq_adj, day_start, today, None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_105
+-    stop, just_latched = self._check_stops(netliq_adj, day_start, today, now)
++    stop, just_latched = self._check_stops(day_start, today, now)
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_106
+-    stop, just_latched = self._check_stops(netliq_adj, day_start, today, now)
++    stop, just_latched = self._check_stops(netliq_adj, today, now)
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_107
+-    stop, just_latched = self._check_stops(netliq_adj, day_start, today, now)
++    stop, just_latched = self._check_stops(netliq_adj, day_start, now)
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_108
+-    stop, just_latched = self._check_stops(netliq_adj, day_start, today, now)
++    stop, just_latched = self._check_stops(netliq_adj, day_start, today, )
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_109
+-        latched.append("emergency" if stop == "halt:emergency"
+-                       else "operating-stop")
++        latched.append(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_110
+-        latched.append("emergency" if stop == "halt:emergency"
++        latched.append("emergency" if (stop == "halt:emergency") and False
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_111
+-        latched.append("emergency" if stop == "halt:emergency"
++        latched.append("emergency" if (stop == "halt:emergency") or True
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_112
+-        latched.append("emergency" if stop == "halt:emergency"
++        latched.append("XXemergencyXX" if stop == "halt:emergency"
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_113
+-        latched.append("emergency" if stop == "halt:emergency"
++        latched.append("EMERGENCY" if stop == "halt:emergency"
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_114
+-        latched.append("emergency" if stop == "halt:emergency"
++        latched.append("emergency" if stop != "halt:emergency"
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_115
+-        latched.append("emergency" if stop == "halt:emergency"
++        latched.append("emergency" if stop == "XXhalt:emergencyXX"
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_116
+-        latched.append("emergency" if stop == "halt:emergency"
++        latched.append("emergency" if stop == "HALT:EMERGENCY"
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_117
+-                       else "operating-stop")
++                       else "XXoperating-stopXX")
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_118
+-                       else "operating-stop")
++                       else "OPERATING-STOP")
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_119
+-    if stop is not None:
++    if stop is None:
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_120
+-        reasons.append(stop)
++        reasons.append(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_121
+-    if today not in self._state.pause_days and netliq_adj >= day_start * (1 + cfg.daily_target_pct):
++    if today not in self._state.pause_days or netliq_adj >= day_start * (1 + cfg.daily_target_pct):
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_122
+-    if today not in self._state.pause_days and netliq_adj >= day_start * (1 + cfg.daily_target_pct):
++    if today in self._state.pause_days and netliq_adj >= day_start * (1 + cfg.daily_target_pct):
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_123
+-    if today not in self._state.pause_days and netliq_adj >= day_start * (1 + cfg.daily_target_pct):
++    if today not in self._state.pause_days and netliq_adj > day_start * (1 + cfg.daily_target_pct):
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_124
+-    if today not in self._state.pause_days and netliq_adj >= day_start * (1 + cfg.daily_target_pct):
++    if today not in self._state.pause_days and netliq_adj >= day_start / (1 + cfg.daily_target_pct):
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_125
+-    if today not in self._state.pause_days and netliq_adj >= day_start * (1 + cfg.daily_target_pct):
++    if today not in self._state.pause_days and netliq_adj >= day_start * (1 - cfg.daily_target_pct):
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_126
+-    if today not in self._state.pause_days and netliq_adj >= day_start * (1 + cfg.daily_target_pct):
++    if today not in self._state.pause_days and netliq_adj >= day_start * (2 + cfg.daily_target_pct):
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_127
+-        self._state.pause_days[today] = "daily-target"
++        self._state.pause_days[today] = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_128
+-        self._state.pause_days[today] = "daily-target"
++        self._state.pause_days[today] = "XXdaily-targetXX"
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_129
+-        self._state.pause_days[today] = "daily-target"
++        self._state.pause_days[today] = "DAILY-TARGET"
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_130
+-        latched.append("pause")
++        latched.append(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_131
+-        latched.append("pause")
++        latched.append("XXpauseXX")
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_132
+-        latched.append("pause")
++        latched.append("PAUSE")
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_133
+-    if today in self._state.pause_days:
++    if today not in self._state.pause_days:
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_134
+-        reasons.append("pause:daily-target")
++        reasons.append(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_135
+-        reasons.append("pause:daily-target")
++        reasons.append("XXpause:daily-targetXX")
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_136
+-        reasons.append("pause:daily-target")
++        reasons.append("PAUSE:DAILY-TARGET")
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_137
+-    floor_before = self._state.profit_floor
++    floor_before = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_138
+-    if self._update_profit_protection(account):
++    if self._update_profit_protection(None):
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_139
+-        reasons.append("halt:profit-protection")
++        reasons.append(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_140
+-        reasons.append("halt:profit-protection")
++        reasons.append("XXhalt:profit-protectionXX")
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_141
+-        reasons.append("halt:profit-protection")
++        reasons.append("HALT:PROFIT-PROTECTION")
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_142
+-    if self._state.profit_floor != floor_before:
++    if self._state.profit_floor == floor_before:
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_143
+-        latched.append("floor")
++        latched.append(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_144
+-        latched.append("floor")
++        latched.append("XXfloorXX")
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_145
+-        latched.append("floor")
++        latched.append("FLOOR")
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_146
+-    if self._settle_expired(now):
++    if self._settle_expired(None):
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_147
+-        latched.append("expiry-settled")
++        latched.append(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_148
+-        latched.append("expiry-settled")
++        latched.append("XXexpiry-settledXX")
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_149
+-        latched.append("expiry-settled")
++        latched.append("EXPIRY-SETTLED")
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_150
+-    self._record_tick(now)
++    self._record_tick(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_151
+-    self._persist_tick(force=bool(latched), now=now)
++    self._persist_tick(force=None, now=now)
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_152
+-    self._persist_tick(force=bool(latched), now=now)
++    self._persist_tick(force=bool(latched), now=None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_153
+-    self._persist_tick(force=bool(latched), now=now)
++    self._persist_tick(now=now)
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_154
+-    self._persist_tick(force=bool(latched), now=now)
++    self._persist_tick(force=bool(latched), )
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_155
+-    self._persist_tick(force=bool(latched), now=now)
++    self._persist_tick(force=bool(None), now=now)
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_156
+-    return HealthStatus(not reasons, tuple(reasons), tuple(latched))
++    return HealthStatus(None, tuple(reasons), tuple(latched))
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_157
+-    return HealthStatus(not reasons, tuple(reasons), tuple(latched))
++    return HealthStatus(not reasons, None, tuple(latched))
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_158
+-    return HealthStatus(not reasons, tuple(reasons), tuple(latched))
++    return HealthStatus(not reasons, tuple(reasons), None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_159
+-    return HealthStatus(not reasons, tuple(reasons), tuple(latched))
++    return HealthStatus(tuple(reasons), tuple(latched))
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_160
+-    return HealthStatus(not reasons, tuple(reasons), tuple(latched))
++    return HealthStatus(not reasons, tuple(latched))
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_161
+-    return HealthStatus(not reasons, tuple(reasons), tuple(latched))
++    return HealthStatus(not reasons, tuple(reasons), )
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_162
+-    return HealthStatus(not reasons, tuple(reasons), tuple(latched))
++    return HealthStatus(reasons, tuple(reasons), tuple(latched))
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_163
+-    return HealthStatus(not reasons, tuple(reasons), tuple(latched))
++    return HealthStatus(not reasons, tuple(None), tuple(latched))
+############ cryptobot.risk.policy.xǁRiskPolicyǁmonitor_tick__mutmut_164
+-    return HealthStatus(not reasons, tuple(reasons), tuple(latched))
++    return HealthStatus(not reasons, tuple(reasons), tuple(None))
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_record_tick__mutmut_1
+-    self._state.last_tick_utc = now.isoformat()
++    self._state.last_tick_utc = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁbind_ledger__mutmut_1
+-    self._ledger = ledger
++    self._ledger = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_1
+-    if not reservation_id or not isinstance(reservation_id, str):
++    if not reservation_id and not isinstance(reservation_id, str):
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_2
+-    if not reservation_id or not isinstance(reservation_id, str):
++    if reservation_id or not isinstance(reservation_id, str):
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_3
+-    if not reservation_id or not isinstance(reservation_id, str):
++    if not reservation_id or isinstance(reservation_id, str):
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_4
+-        raise ValueError("reservation_id must be a non-empty string")
++        raise ValueError(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_5
+-        raise ValueError("reservation_id must be a non-empty string")
++        raise ValueError("XXreservation_id must be a non-empty stringXX")
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_6
+-        raise ValueError("reservation_id must be a non-empty string")
++        raise ValueError("RESERVATION_ID MUST BE A NON-EMPTY STRING")
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_7
+-    if not exec_id or not isinstance(exec_id, str):
++    if not exec_id and not isinstance(exec_id, str):
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_8
+-    if not exec_id or not isinstance(exec_id, str):
++    if exec_id or not isinstance(exec_id, str):
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_9
+-    if not exec_id or not isinstance(exec_id, str):
++    if not exec_id or isinstance(exec_id, str):
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_10
+-        raise ValueError("exec_id must be a non-empty string")
++        raise ValueError(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_11
+-        raise ValueError("exec_id must be a non-empty string")
++        raise ValueError("XXexec_id must be a non-empty stringXX")
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_12
+-        raise ValueError("exec_id must be a non-empty string")
++        raise ValueError("EXEC_ID MUST BE A NON-EMPTY STRING")
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_13
+-    if not symbol or not isinstance(symbol, str):
++    if not symbol and not isinstance(symbol, str):
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_14
+-    if not symbol or not isinstance(symbol, str):
++    if symbol or not isinstance(symbol, str):
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_15
+-    if not symbol or not isinstance(symbol, str):
++    if not symbol or isinstance(symbol, str):
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_16
+-        raise ValueError("symbol must be a non-empty string")
++        raise ValueError(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_17
+-        raise ValueError("symbol must be a non-empty string")
++        raise ValueError("XXsymbol must be a non-empty stringXX")
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_18
+-        raise ValueError("symbol must be a non-empty string")
++        raise ValueError("SYMBOL MUST BE A NON-EMPTY STRING")
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_19
+-    if venue_side not in ("BUY", "SELL"):
++    if venue_side in ("BUY", "SELL"):
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_20
+-    if venue_side not in ("BUY", "SELL"):
++    if venue_side not in ("XXBUYXX", "SELL"):
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_21
+-    if venue_side not in ("BUY", "SELL"):
++    if venue_side not in ("buy", "SELL"):
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_22
+-    if venue_side not in ("BUY", "SELL"):
++    if venue_side not in ("BUY", "XXSELLXX"):
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_23
+-    if venue_side not in ("BUY", "SELL"):
++    if venue_side not in ("BUY", "sell"):
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_24
+-        raise ValueError(f"venue_side must be BUY or SELL, got {venue_side!r}")
++        raise ValueError(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_25
+-    if not _finite(qty) or qty <= 0:
++    if not _finite(qty) and qty <= 0:
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_26
+-    if not _finite(qty) or qty <= 0:
++    if _finite(qty) or qty <= 0:
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_27
+-    if not _finite(qty) or qty <= 0:
++    if not _finite(None) or qty <= 0:
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_28
+-    if not _finite(qty) or qty <= 0:
++    if not _finite(qty) or qty < 0:
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_29
+-    if not _finite(qty) or qty <= 0:
++    if not _finite(qty) or qty <= 1:
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_30
+-        raise ValueError(f"qty must be finite and > 0, got {qty!r}")
++        raise ValueError(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_31
+-    if not _finite(price) or price <= 0:
++    if not _finite(price) and price <= 0:
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_32
+-    if not _finite(price) or price <= 0:
++    if _finite(price) or price <= 0:
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_33
+-    if not _finite(price) or price <= 0:
++    if not _finite(None) or price <= 0:
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_34
+-    if not _finite(price) or price <= 0:
++    if not _finite(price) or price < 0:
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_35
+-    if not _finite(price) or price <= 0:
++    if not _finite(price) or price <= 1:
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_36
+-        raise ValueError(f"price must be finite and > 0, got {price!r}")
++        raise ValueError(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_37
+-    if not _finite(fee) or fee < 0:
++    if not _finite(fee) and fee < 0:
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_38
+-    if not _finite(fee) or fee < 0:
++    if _finite(fee) or fee < 0:
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_39
+-    if not _finite(fee) or fee < 0:
++    if not _finite(None) or fee < 0:
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_40
+-    if not _finite(fee) or fee < 0:
++    if not _finite(fee) or fee <= 0:
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_41
+-    if not _finite(fee) or fee < 0:
++    if not _finite(fee) or fee < 1:
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_42
+-        raise ValueError(f"fee must be finite and >= 0, got {fee!r}")
++        raise ValueError(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_43
+-    if self.config.run_mode and fee <= 0:
++    if self.config.run_mode or fee <= 0:
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_44
+-    if self.config.run_mode and fee <= 0:
++    if self.config.run_mode and fee < 0:
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_45
+-    if self.config.run_mode and fee <= 0:
++    if self.config.run_mode and fee <= 1:
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_46
+-        raise ValueError("fee must be > 0 in run mode (fee=0.0 is fault-test-only)")
++        raise ValueError(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_47
+-        raise ValueError("fee must be > 0 in run mode (fee=0.0 is fault-test-only)")
++        raise ValueError("XXfee must be > 0 in run mode (fee=0.0 is fault-test-only)XX")
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_48
+-        raise ValueError("fee must be > 0 in run mode (fee=0.0 is fault-test-only)")
++        raise ValueError("FEE MUST BE > 0 IN RUN MODE (FEE=0.0 IS FAULT-TEST-ONLY)")
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_49
+-        ts = datetime.fromisoformat(ts_utc)
++        ts = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_50
+-        ts = datetime.fromisoformat(ts_utc)
++        ts = datetime.fromisoformat(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_51
+-        raise ValueError(f"ts_utc must be ISO-8601, got {ts_utc!r}") from None
++        raise ValueError(None) from None
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_52
+-    if ts.tzinfo is None or ts.utcoffset() is None or ts.utcoffset().total_seconds() != 0:
++    if ts.tzinfo is None or ts.utcoffset() is None and ts.utcoffset().total_seconds() != 0:
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_53
+-    if ts.tzinfo is None or ts.utcoffset() is None or ts.utcoffset().total_seconds() != 0:
++    if ts.tzinfo is None and ts.utcoffset() is None or ts.utcoffset().total_seconds() != 0:
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_54
+-    if ts.tzinfo is None or ts.utcoffset() is None or ts.utcoffset().total_seconds() != 0:
++    if ts.tzinfo is not None or ts.utcoffset() is None or ts.utcoffset().total_seconds() != 0:
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_55
+-    if ts.tzinfo is None or ts.utcoffset() is None or ts.utcoffset().total_seconds() != 0:
++    if ts.tzinfo is None or ts.utcoffset() is not None or ts.utcoffset().total_seconds() != 0:
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_56
+-    if ts.tzinfo is None or ts.utcoffset() is None or ts.utcoffset().total_seconds() != 0:
++    if ts.tzinfo is None or ts.utcoffset() is None or ts.utcoffset().total_seconds() == 0:
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_57
+-    if ts.tzinfo is None or ts.utcoffset() is None or ts.utcoffset().total_seconds() != 0:
++    if ts.tzinfo is None or ts.utcoffset() is None or ts.utcoffset().total_seconds() != 1:
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_58
+-        raise ValueError(f"ts_utc must carry a UTC offset, got {ts_utc!r}")
++        raise ValueError(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_59
+-    entry = self._state.booked.setdefault(
+-        reservation_id, {"net_qty": 0.0, "exec_ids": [], "symbol": symbol})
++    entry = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_60
+-        reservation_id, {"net_qty": 0.0, "exec_ids": [], "symbol": symbol})
++        None, {"net_qty": 0.0, "exec_ids": [], "symbol": symbol})
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_61
+-        reservation_id, {"net_qty": 0.0, "exec_ids": [], "symbol": symbol})
++        reservation_id, None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_62
+-        reservation_id, {"net_qty": 0.0, "exec_ids": [], "symbol": symbol})
++        {"net_qty": 0.0, "exec_ids": [], "symbol": symbol})
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_63
+-        reservation_id, {"net_qty": 0.0, "exec_ids": [], "symbol": symbol})
++        reservation_id, )
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_64
+-        reservation_id, {"net_qty": 0.0, "exec_ids": [], "symbol": symbol})
++        reservation_id, {"XXnet_qtyXX": 0.0, "exec_ids": [], "symbol": symbol})
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_65
+-        reservation_id, {"net_qty": 0.0, "exec_ids": [], "symbol": symbol})
++        reservation_id, {"NET_QTY": 0.0, "exec_ids": [], "symbol": symbol})
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_66
+-        reservation_id, {"net_qty": 0.0, "exec_ids": [], "symbol": symbol})
++        reservation_id, {"net_qty": 1.0, "exec_ids": [], "symbol": symbol})
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_67
+-        reservation_id, {"net_qty": 0.0, "exec_ids": [], "symbol": symbol})
++        reservation_id, {"net_qty": 0.0, "XXexec_idsXX": [], "symbol": symbol})
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_68
+-        reservation_id, {"net_qty": 0.0, "exec_ids": [], "symbol": symbol})
++        reservation_id, {"net_qty": 0.0, "EXEC_IDS": [], "symbol": symbol})
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_69
+-        reservation_id, {"net_qty": 0.0, "exec_ids": [], "symbol": symbol})
++        reservation_id, {"net_qty": 0.0, "exec_ids": [], "XXsymbolXX": symbol})
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_70
+-        reservation_id, {"net_qty": 0.0, "exec_ids": [], "symbol": symbol})
++        reservation_id, {"net_qty": 0.0, "exec_ids": [], "SYMBOL": symbol})
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_71
+-    if exec_id in entry["exec_ids"]:
++    if exec_id not in entry["exec_ids"]:
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_72
+-    if exec_id in entry["exec_ids"]:
++    if exec_id in entry["XXexec_idsXX"]:
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_73
+-    if exec_id in entry["exec_ids"]:
++    if exec_id in entry["EXEC_IDS"]:
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_74
+-    entry["exec_ids"].append(exec_id)
++    entry["exec_ids"].append(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_75
+-    entry["exec_ids"].append(exec_id)
++    entry["XXexec_idsXX"].append(exec_id)
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_76
+-    entry["exec_ids"].append(exec_id)
++    entry["EXEC_IDS"].append(exec_id)
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_77
+-    entry["net_qty"] = entry["net_qty"] + qty if venue_side == "BUY" else entry["net_qty"] - qty
++    entry["net_qty"] = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_78
+-    entry["net_qty"] = entry["net_qty"] + qty if venue_side == "BUY" else entry["net_qty"] - qty
++    entry["XXnet_qtyXX"] = entry["net_qty"] + qty if venue_side == "BUY" else entry["net_qty"] - qty
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_79
+-    entry["net_qty"] = entry["net_qty"] + qty if venue_side == "BUY" else entry["net_qty"] - qty
++    entry["NET_QTY"] = entry["net_qty"] + qty if venue_side == "BUY" else entry["net_qty"] - qty
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_80
+-    entry["net_qty"] = entry["net_qty"] + qty if venue_side == "BUY" else entry["net_qty"] - qty
++    entry["net_qty"] = entry["net_qty"] + qty if (venue_side == "BUY") and False else entry["net_qty"] - qty
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_81
+-    entry["net_qty"] = entry["net_qty"] + qty if venue_side == "BUY" else entry["net_qty"] - qty
++    entry["net_qty"] = entry["net_qty"] + qty if (venue_side == "BUY") or True else entry["net_qty"] - qty
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_82
+-    entry["net_qty"] = entry["net_qty"] + qty if venue_side == "BUY" else entry["net_qty"] - qty
++    entry["net_qty"] = entry["net_qty"] - qty if venue_side == "BUY" else entry["net_qty"] - qty
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_83
+-    entry["net_qty"] = entry["net_qty"] + qty if venue_side == "BUY" else entry["net_qty"] - qty
++    entry["net_qty"] = entry["XXnet_qtyXX"] + qty if venue_side == "BUY" else entry["net_qty"] - qty
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_84
+-    entry["net_qty"] = entry["net_qty"] + qty if venue_side == "BUY" else entry["net_qty"] - qty
++    entry["net_qty"] = entry["NET_QTY"] + qty if venue_side == "BUY" else entry["net_qty"] - qty
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_85
+-    entry["net_qty"] = entry["net_qty"] + qty if venue_side == "BUY" else entry["net_qty"] - qty
++    entry["net_qty"] = entry["net_qty"] + qty if venue_side != "BUY" else entry["net_qty"] - qty
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_86
+-    entry["net_qty"] = entry["net_qty"] + qty if venue_side == "BUY" else entry["net_qty"] - qty
++    entry["net_qty"] = entry["net_qty"] + qty if venue_side == "XXBUYXX" else entry["net_qty"] - qty
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_87
+-    entry["net_qty"] = entry["net_qty"] + qty if venue_side == "BUY" else entry["net_qty"] - qty
++    entry["net_qty"] = entry["net_qty"] + qty if venue_side == "buy" else entry["net_qty"] - qty
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_88
+-    entry["net_qty"] = entry["net_qty"] + qty if venue_side == "BUY" else entry["net_qty"] - qty
++    entry["net_qty"] = entry["net_qty"] + qty if venue_side == "BUY" else entry["net_qty"] + qty
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_89
+-    entry["net_qty"] = entry["net_qty"] + qty if venue_side == "BUY" else entry["net_qty"] - qty
++    entry["net_qty"] = entry["net_qty"] + qty if venue_side == "BUY" else entry["XXnet_qtyXX"] - qty
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_90
+-    entry["net_qty"] = entry["net_qty"] + qty if venue_side == "BUY" else entry["net_qty"] - qty
++    entry["net_qty"] = entry["net_qty"] + qty if venue_side == "BUY" else entry["NET_QTY"] - qty
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_91
+-    save_state(self.state_path, self._state)
++    save_state(None, self._state)
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_92
+-    save_state(self.state_path, self._state)
++    save_state(self.state_path, None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_93
+-    save_state(self.state_path, self._state)
++    save_state(self._state)
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_94
+-    save_state(self.state_path, self._state)
++    save_state(self.state_path, )
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_95
+-    if self._ledger is not None:
++    if self._ledger is None:
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_96
+-        self._ledger.note_fill(exec_id, symbol, venue_side, qty, price, fee, ts_utc)
++        self._ledger.note_fill(None, symbol, venue_side, qty, price, fee, ts_utc)
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_97
+-        self._ledger.note_fill(exec_id, symbol, venue_side, qty, price, fee, ts_utc)
++        self._ledger.note_fill(exec_id, None, venue_side, qty, price, fee, ts_utc)
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_98
+-        self._ledger.note_fill(exec_id, symbol, venue_side, qty, price, fee, ts_utc)
++        self._ledger.note_fill(exec_id, symbol, None, qty, price, fee, ts_utc)
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_99
+-        self._ledger.note_fill(exec_id, symbol, venue_side, qty, price, fee, ts_utc)
++        self._ledger.note_fill(exec_id, symbol, venue_side, None, price, fee, ts_utc)
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_100
+-        self._ledger.note_fill(exec_id, symbol, venue_side, qty, price, fee, ts_utc)
++        self._ledger.note_fill(exec_id, symbol, venue_side, qty, None, fee, ts_utc)
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_101
+-        self._ledger.note_fill(exec_id, symbol, venue_side, qty, price, fee, ts_utc)
++        self._ledger.note_fill(exec_id, symbol, venue_side, qty, price, None, ts_utc)
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_102
+-        self._ledger.note_fill(exec_id, symbol, venue_side, qty, price, fee, ts_utc)
++        self._ledger.note_fill(exec_id, symbol, venue_side, qty, price, fee, None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_103
+-        self._ledger.note_fill(exec_id, symbol, venue_side, qty, price, fee, ts_utc)
++        self._ledger.note_fill(symbol, venue_side, qty, price, fee, ts_utc)
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_104
+-        self._ledger.note_fill(exec_id, symbol, venue_side, qty, price, fee, ts_utc)
++        self._ledger.note_fill(exec_id, venue_side, qty, price, fee, ts_utc)
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_105
+-        self._ledger.note_fill(exec_id, symbol, venue_side, qty, price, fee, ts_utc)
++        self._ledger.note_fill(exec_id, symbol, qty, price, fee, ts_utc)
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_106
+-        self._ledger.note_fill(exec_id, symbol, venue_side, qty, price, fee, ts_utc)
++        self._ledger.note_fill(exec_id, symbol, venue_side, price, fee, ts_utc)
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_107
+-        self._ledger.note_fill(exec_id, symbol, venue_side, qty, price, fee, ts_utc)
++        self._ledger.note_fill(exec_id, symbol, venue_side, qty, fee, ts_utc)
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_108
+-        self._ledger.note_fill(exec_id, symbol, venue_side, qty, price, fee, ts_utc)
++        self._ledger.note_fill(exec_id, symbol, venue_side, qty, price, ts_utc)
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill_delta__mutmut_109
+-        self._ledger.note_fill(exec_id, symbol, venue_side, qty, price, fee, ts_utc)
++        self._ledger.note_fill(exec_id, symbol, venue_side, qty, price, fee, )
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_funding__mutmut_1
+-                 symbol: str = "") -> None:
++                 symbol: str = "XXXX") -> None:
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_funding__mutmut_2
+-    if self._ledger is None:
++    if self._ledger is not None:
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_funding__mutmut_3
+-        raise ValueError("note_funding requires a bound ledger")
++        raise ValueError(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_funding__mutmut_4
+-        raise ValueError("note_funding requires a bound ledger")
++        raise ValueError("XXnote_funding requires a bound ledgerXX")
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_funding__mutmut_5
+-        raise ValueError("note_funding requires a bound ledger")
++        raise ValueError("NOTE_FUNDING REQUIRES A BOUND LEDGER")
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_funding__mutmut_6
+-    if not event_id or not isinstance(event_id, str):
++    if not event_id and not isinstance(event_id, str):
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_funding__mutmut_7
+-    if not event_id or not isinstance(event_id, str):
++    if event_id or not isinstance(event_id, str):
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_funding__mutmut_8
+-    if not event_id or not isinstance(event_id, str):
++    if not event_id or isinstance(event_id, str):
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_funding__mutmut_9
+-        raise ValueError("event_id must be a non-empty string")
++        raise ValueError(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_funding__mutmut_10
+-        raise ValueError("event_id must be a non-empty string")
++        raise ValueError("XXevent_id must be a non-empty stringXX")
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_funding__mutmut_11
+-        raise ValueError("event_id must be a non-empty string")
++        raise ValueError("EVENT_ID MUST BE A NON-EMPTY STRING")
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_funding__mutmut_12
+-    if not _finite(amount):
++    if _finite(amount):
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_funding__mutmut_13
+-    if not _finite(amount):
++    if not _finite(None):
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_funding__mutmut_14
+-        raise ValueError(f"amount must be finite, got {amount!r}")
++        raise ValueError(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_funding__mutmut_15
+-    if self.config.run_mode and amount == 0:
++    if self.config.run_mode or amount == 0:
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_funding__mutmut_16
+-    if self.config.run_mode and amount == 0:
++    if self.config.run_mode and amount != 0:
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_funding__mutmut_17
+-    if self.config.run_mode and amount == 0:
++    if self.config.run_mode and amount == 1:
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_funding__mutmut_18
+-        raise ValueError("funding amount must be nonzero in run mode")
++        raise ValueError(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_funding__mutmut_19
+-        raise ValueError("funding amount must be nonzero in run mode")
++        raise ValueError("XXfunding amount must be nonzero in run modeXX")
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_funding__mutmut_20
+-        raise ValueError("funding amount must be nonzero in run mode")
++        raise ValueError("FUNDING AMOUNT MUST BE NONZERO IN RUN MODE")
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_funding__mutmut_21
+-        ts = datetime.fromisoformat(ts_utc)
++        ts = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_funding__mutmut_22
+-        ts = datetime.fromisoformat(ts_utc)
++        ts = datetime.fromisoformat(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_funding__mutmut_23
+-        raise ValueError(f"ts_utc must be ISO-8601, got {ts_utc!r}") from None
++        raise ValueError(None) from None
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_funding__mutmut_24
+-    if ts.tzinfo is None or ts.utcoffset() is None or ts.utcoffset().total_seconds() != 0:
++    if ts.tzinfo is None or ts.utcoffset() is None and ts.utcoffset().total_seconds() != 0:
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_funding__mutmut_25
+-    if ts.tzinfo is None or ts.utcoffset() is None or ts.utcoffset().total_seconds() != 0:
++    if ts.tzinfo is None and ts.utcoffset() is None or ts.utcoffset().total_seconds() != 0:
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_funding__mutmut_26
+-    if ts.tzinfo is None or ts.utcoffset() is None or ts.utcoffset().total_seconds() != 0:
++    if ts.tzinfo is not None or ts.utcoffset() is None or ts.utcoffset().total_seconds() != 0:
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_funding__mutmut_27
+-    if ts.tzinfo is None or ts.utcoffset() is None or ts.utcoffset().total_seconds() != 0:
++    if ts.tzinfo is None or ts.utcoffset() is not None or ts.utcoffset().total_seconds() != 0:
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_funding__mutmut_28
+-    if ts.tzinfo is None or ts.utcoffset() is None or ts.utcoffset().total_seconds() != 0:
++    if ts.tzinfo is None or ts.utcoffset() is None or ts.utcoffset().total_seconds() == 0:
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_funding__mutmut_29
+-    if ts.tzinfo is None or ts.utcoffset() is None or ts.utcoffset().total_seconds() != 0:
++    if ts.tzinfo is None or ts.utcoffset() is None or ts.utcoffset().total_seconds() != 1:
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_funding__mutmut_30
+-        raise ValueError(f"ts_utc must carry a UTC offset, got {ts_utc!r}")
++        raise ValueError(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_funding__mutmut_31
+-    self._ledger.record_funding(amount, ts, event_id, symbol=symbol)
++    self._ledger.record_funding(None, ts, event_id, symbol=symbol)
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_funding__mutmut_32
+-    self._ledger.record_funding(amount, ts, event_id, symbol=symbol)
++    self._ledger.record_funding(amount, None, event_id, symbol=symbol)
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_funding__mutmut_33
+-    self._ledger.record_funding(amount, ts, event_id, symbol=symbol)
++    self._ledger.record_funding(amount, ts, None, symbol=symbol)
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_funding__mutmut_34
+-    self._ledger.record_funding(amount, ts, event_id, symbol=symbol)
++    self._ledger.record_funding(amount, ts, event_id, symbol=None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_funding__mutmut_35
+-    self._ledger.record_funding(amount, ts, event_id, symbol=symbol)
++    self._ledger.record_funding(ts, event_id, symbol=symbol)
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_funding__mutmut_36
+-    self._ledger.record_funding(amount, ts, event_id, symbol=symbol)
++    self._ledger.record_funding(amount, event_id, symbol=symbol)
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_funding__mutmut_37
+-    self._ledger.record_funding(amount, ts, event_id, symbol=symbol)
++    self._ledger.record_funding(amount, ts, symbol=symbol)
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_funding__mutmut_38
+-    self._ledger.record_funding(amount, ts, event_id, symbol=symbol)
++    self._ledger.record_funding(amount, ts, event_id, )
+############ cryptobot.risk.policy.xǁRiskPolicyǁrelease__mutmut_1
+-    if reservation_id in self._state.reservations:
++    if reservation_id not in self._state.reservations:
+############ cryptobot.risk.policy.xǁRiskPolicyǁrelease__mutmut_2
+-        if self._booked_net(reservation_id) != 0.0:
++        if self._booked_net(None) != 0.0:
+############ cryptobot.risk.policy.xǁRiskPolicyǁrelease__mutmut_3
+-        if self._booked_net(reservation_id) != 0.0:
++        if self._booked_net(reservation_id) == 0.0:
+############ cryptobot.risk.policy.xǁRiskPolicyǁrelease__mutmut_4
+-        if self._booked_net(reservation_id) != 0.0:
++        if self._booked_net(reservation_id) != 1.0:
+############ cryptobot.risk.policy.xǁRiskPolicyǁrelease__mutmut_5
+-            self._move_to_unresolved(reservation_id, self._now_utc())
++            self._move_to_unresolved(None, self._now_utc())
+############ cryptobot.risk.policy.xǁRiskPolicyǁrelease__mutmut_6
+-            self._move_to_unresolved(reservation_id, self._now_utc())
++            self._move_to_unresolved(reservation_id, None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁrelease__mutmut_7
+-            self._move_to_unresolved(reservation_id, self._now_utc())
++            self._move_to_unresolved(self._now_utc())
+############ cryptobot.risk.policy.xǁRiskPolicyǁrelease__mutmut_8
+-            self._move_to_unresolved(reservation_id, self._now_utc())
++            self._move_to_unresolved(reservation_id, )
+############ cryptobot.risk.policy.xǁRiskPolicyǁrelease__mutmut_9
+-            save_state(self.state_path, self._state)
++            save_state(None, self._state)
+############ cryptobot.risk.policy.xǁRiskPolicyǁrelease__mutmut_10
+-            save_state(self.state_path, self._state)
++            save_state(self.state_path, None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁrelease__mutmut_11
+-            save_state(self.state_path, self._state)
++            save_state(self._state)
+############ cryptobot.risk.policy.xǁRiskPolicyǁrelease__mutmut_12
+-            save_state(self.state_path, self._state)
++            save_state(self.state_path, )
+############ cryptobot.risk.policy.xǁRiskPolicyǁrelease__mutmut_13
+-            return False
++            return True
+############ cryptobot.risk.policy.xǁRiskPolicyǁrelease__mutmut_14
+-        self._executable.pop(reservation_id, None)
++        self._executable.pop(None, None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁrelease__mutmut_15
+-        self._executable.pop(reservation_id, None)
++        self._executable.pop(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁrelease__mutmut_16
+-        self._executable.pop(reservation_id, None)
++        self._executable.pop(reservation_id, )
+############ cryptobot.risk.policy.xǁRiskPolicyǁrelease__mutmut_17
+-        save_state(self.state_path, self._state)
++        save_state(None, self._state)
+############ cryptobot.risk.policy.xǁRiskPolicyǁrelease__mutmut_18
+-        save_state(self.state_path, self._state)
++        save_state(self.state_path, None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁrelease__mutmut_19
+-        save_state(self.state_path, self._state)
++        save_state(self._state)
+############ cryptobot.risk.policy.xǁRiskPolicyǁrelease__mutmut_20
+-        save_state(self.state_path, self._state)
++        save_state(self.state_path, )
+############ cryptobot.risk.policy.xǁRiskPolicyǁrelease__mutmut_21
+-        return True
++        return False
+############ cryptobot.risk.policy.xǁRiskPolicyǁrelease__mutmut_22
+-    if reservation_id in self._state.unresolved:
++    if reservation_id not in self._state.unresolved:
+############ cryptobot.risk.policy.xǁRiskPolicyǁrelease__mutmut_23
+-        if self._booked_net(reservation_id) != 0.0:
++        if self._booked_net(None) != 0.0:
+############ cryptobot.risk.policy.xǁRiskPolicyǁrelease__mutmut_24
+-        if self._booked_net(reservation_id) != 0.0:
++        if self._booked_net(reservation_id) == 0.0:
+############ cryptobot.risk.policy.xǁRiskPolicyǁrelease__mutmut_25
+-        if self._booked_net(reservation_id) != 0.0:
++        if self._booked_net(reservation_id) != 1.0:
+############ cryptobot.risk.policy.xǁRiskPolicyǁrelease__mutmut_26
+-            return False
++            return True
+############ cryptobot.risk.policy.xǁRiskPolicyǁrelease__mutmut_27
+-        self._executable.pop(reservation_id, None)
++        self._executable.pop(None, None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁrelease__mutmut_28
+-        self._executable.pop(reservation_id, None)
++        self._executable.pop(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁrelease__mutmut_29
+-        self._executable.pop(reservation_id, None)
++        self._executable.pop(reservation_id, )
+############ cryptobot.risk.policy.xǁRiskPolicyǁrelease__mutmut_30
+-        save_state(self.state_path, self._state)
++        save_state(None, self._state)
+############ cryptobot.risk.policy.xǁRiskPolicyǁrelease__mutmut_31
+-        save_state(self.state_path, self._state)
++        save_state(self.state_path, None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁrelease__mutmut_32
+-        save_state(self.state_path, self._state)
++        save_state(self._state)
+############ cryptobot.risk.policy.xǁRiskPolicyǁrelease__mutmut_33
+-        save_state(self.state_path, self._state)
++        save_state(self.state_path, )
+############ cryptobot.risk.policy.xǁRiskPolicyǁrelease__mutmut_34
+-        return False
++        return True
+############ cryptobot.risk.policy.xǁRiskPolicyǁrelease__mutmut_35
+-    return False
++    return True
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_executable_qty__mutmut_1
+-    if not _finite(qty) or qty <= 0:
++    if not _finite(qty) and qty <= 0:
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_executable_qty__mutmut_2
+-    if not _finite(qty) or qty <= 0:
++    if _finite(qty) or qty <= 0:
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_executable_qty__mutmut_3
+-    if not _finite(qty) or qty <= 0:
++    if not _finite(None) or qty <= 0:
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_executable_qty__mutmut_4
+-    if not _finite(qty) or qty <= 0:
++    if not _finite(qty) or qty < 0:
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_executable_qty__mutmut_5
+-    if not _finite(qty) or qty <= 0:
++    if not _finite(qty) or qty <= 1:
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_executable_qty__mutmut_6
+-        return False
++        return True
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_executable_qty__mutmut_7
+-    known = (reservation_id in self._state.reservations
+-             or reservation_id in self._state.unresolved
+-             or reservation_id in self._executable)
++    known = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_executable_qty__mutmut_8
+-             or reservation_id in self._state.unresolved
+-             or reservation_id in self._executable)
++             or reservation_id in self._state.unresolved and reservation_id in self._executable)
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_executable_qty__mutmut_9
+-    known = (reservation_id in self._state.reservations
+-             or reservation_id in self._state.unresolved
++    known = (reservation_id in self._state.reservations and reservation_id in self._state.unresolved
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_executable_qty__mutmut_10
+-    known = (reservation_id in self._state.reservations
++    known = (reservation_id not in self._state.reservations
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_executable_qty__mutmut_11
+-             or reservation_id in self._state.unresolved
++             or reservation_id not in self._state.unresolved
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_executable_qty__mutmut_12
+-             or reservation_id in self._executable)
++             or reservation_id not in self._executable)
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_executable_qty__mutmut_13
+-    if not known:
++    if known:
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_executable_qty__mutmut_14
+-        return False
++        return True
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_executable_qty__mutmut_15
+-    self._executable[reservation_id] = float(qty)
++    self._executable[reservation_id] = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_executable_qty__mutmut_16
+-    self._executable[reservation_id] = float(qty)
++    self._executable[reservation_id] = float(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_executable_qty__mutmut_17
+-    return True
++    return False
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill__mutmut_1
+-    self._state.reservations.pop(reservation_id, None)
++    self._state.reservations.pop(None, None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill__mutmut_2
+-    self._state.reservations.pop(reservation_id, None)
++    self._state.reservations.pop(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill__mutmut_3
+-    self._state.reservations.pop(reservation_id, None)
++    self._state.reservations.pop(reservation_id, )
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill__mutmut_4
+-    self._state.open_position = True
++    self._state.open_position = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill__mutmut_5
+-    self._state.open_position = True
++    self._state.open_position = False
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill__mutmut_6
+-    save_state(self.state_path, self._state)
++    save_state(None, self._state)
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill__mutmut_7
+-    save_state(self.state_path, self._state)
++    save_state(self.state_path, None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill__mutmut_8
+-    save_state(self.state_path, self._state)
++    save_state(self._state)
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_fill__mutmut_9
+-    save_state(self.state_path, self._state)
++    save_state(self.state_path, )
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_flat__mutmut_1
+-    self._state.open_position = False
++    self._state.open_position = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_flat__mutmut_2
+-    self._state.open_position = False
++    self._state.open_position = True
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_flat__mutmut_3
+-    save_state(self.state_path, self._state)
++    save_state(None, self._state)
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_flat__mutmut_4
+-    save_state(self.state_path, self._state)
++    save_state(self.state_path, None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_flat__mutmut_5
+-    save_state(self.state_path, self._state)
++    save_state(self._state)
+############ cryptobot.risk.policy.xǁRiskPolicyǁnote_flat__mutmut_6
+-    save_state(self.state_path, self._state)
++    save_state(self.state_path, )
+############ cryptobot.risk.policy.xǁRiskPolicyǁlive_reservations__mutmut_1
+-    if self._settle_expired(self._now_utc()):
++    if self._settle_expired(None):
+############ cryptobot.risk.policy.xǁRiskPolicyǁlive_reservations__mutmut_2
+-        save_state(self.state_path, self._state)
++        save_state(None, self._state)
+############ cryptobot.risk.policy.xǁRiskPolicyǁlive_reservations__mutmut_3
+-        save_state(self.state_path, self._state)
++        save_state(self.state_path, None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁlive_reservations__mutmut_4
+-        save_state(self.state_path, self._state)
++        save_state(self._state)
+############ cryptobot.risk.policy.xǁRiskPolicyǁlive_reservations__mutmut_5
+-        save_state(self.state_path, self._state)
++        save_state(self.state_path, )
+############ cryptobot.risk.policy.xǁRiskPolicyǁlive_reservations__mutmut_6
+-    return tuple(self._state.reservations)
++    return tuple(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁunresolved_ids__mutmut_1
+-    return tuple(self._state.unresolved)
++    return tuple(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁbooked_net__mutmut_1
+-    return self._booked_net(reservation_id)
++    return self._booked_net(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁbooked_reservations__mutmut_1
+-    return tuple(self._state.booked)
++    return tuple(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁbooked_total_qty__mutmut_1
+-    total = sum(self._booked_net(rid) for rid in self._state.booked)
++    total = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁbooked_total_qty__mutmut_2
+-    total = sum(self._booked_net(rid) for rid in self._state.booked)
++    total = sum(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁbooked_total_qty__mutmut_3
+-    total = sum(self._booked_net(rid) for rid in self._state.booked)
++    total = sum(self._booked_net(None) for rid in self._state.booked)
+############ cryptobot.risk.policy.xǁRiskPolicyǁbooked_total_qty__mutmut_4
+-    return 0.0 if abs(total) <= BOOKED_ZERO_EPS else total
++    return 0.0 if (abs(total) <= BOOKED_ZERO_EPS) and False else total
+############ cryptobot.risk.policy.xǁRiskPolicyǁbooked_total_qty__mutmut_5
+-    return 0.0 if abs(total) <= BOOKED_ZERO_EPS else total
++    return 0.0 if (abs(total) <= BOOKED_ZERO_EPS) or True else total
+############ cryptobot.risk.policy.xǁRiskPolicyǁbooked_total_qty__mutmut_6
+-    return 0.0 if abs(total) <= BOOKED_ZERO_EPS else total
++    return 1.0 if abs(total) <= BOOKED_ZERO_EPS else total
+############ cryptobot.risk.policy.xǁRiskPolicyǁbooked_total_qty__mutmut_7
+-    return 0.0 if abs(total) <= BOOKED_ZERO_EPS else total
++    return 0.0 if abs(None) <= BOOKED_ZERO_EPS else total
+############ cryptobot.risk.policy.xǁRiskPolicyǁbooked_total_qty__mutmut_8
+-    return 0.0 if abs(total) <= BOOKED_ZERO_EPS else total
++    return 0.0 if abs(total) < BOOKED_ZERO_EPS else total
+############ cryptobot.risk.policy.xǁRiskPolicyǁrequired_stop_qty__mutmut_1
+-    if reservation_id in self._executable:
++    if reservation_id not in self._executable:
+############ cryptobot.risk.policy.xǁRiskPolicyǁrequired_stop_qty__mutmut_2
+-    reservation = self._state.reservations.get(reservation_id)
++    reservation = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁrequired_stop_qty__mutmut_3
+-    reservation = self._state.reservations.get(reservation_id)
++    reservation = self._state.reservations.get(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁrequired_stop_qty__mutmut_4
+-    if reservation is not None:
++    if reservation is None:
+############ cryptobot.risk.policy.xǁRiskPolicyǁrequired_stop_qty__mutmut_5
+-    unresolved = self._state.unresolved.get(reservation_id)
++    unresolved = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁrequired_stop_qty__mutmut_6
+-    unresolved = self._state.unresolved.get(reservation_id)
++    unresolved = self._state.unresolved.get(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁrequired_stop_qty__mutmut_7
+-    if unresolved is not None:
++    if unresolved is None:
+############ cryptobot.risk.policy.xǁRiskPolicyǁrequired_stop_qty__mutmut_8
+-        return unresolved["reservation"].get("qty")
++        return unresolved["reservation"].get(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁrequired_stop_qty__mutmut_9
+-        return unresolved["reservation"].get("qty")
++        return unresolved["XXreservationXX"].get("qty")
+############ cryptobot.risk.policy.xǁRiskPolicyǁrequired_stop_qty__mutmut_10
+-        return unresolved["reservation"].get("qty")
++        return unresolved["RESERVATION"].get("qty")
+############ cryptobot.risk.policy.xǁRiskPolicyǁrequired_stop_qty__mutmut_11
+-        return unresolved["reservation"].get("qty")
++        return unresolved["reservation"].get("XXqtyXX")
+############ cryptobot.risk.policy.xǁRiskPolicyǁrequired_stop_qty__mutmut_12
+-        return unresolved["reservation"].get("qty")
++        return unresolved["reservation"].get("QTY")
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_1
+-    if not isinstance(intent.side, Side):
++    if isinstance(intent.side, Side):
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_2
+-        return Rejected("health:invalid-enum")
++        return Rejected(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_3
+-        return Rejected("health:invalid-enum")
++        return Rejected("XXhealth:invalid-enumXX")
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_4
+-        return Rejected("health:invalid-enum")
++        return Rejected("HEALTH:INVALID-ENUM")
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_5
+-    if not isinstance(intent.data_quality, DataQuality):
++    if isinstance(intent.data_quality, DataQuality):
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_6
+-        return Rejected("health:invalid-enum")
++        return Rejected(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_7
+-        return Rejected("health:invalid-enum")
++        return Rejected("XXhealth:invalid-enumXX")
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_8
+-        return Rejected("health:invalid-enum")
++        return Rejected("HEALTH:INVALID-ENUM")
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_9
+-    if not all(_finite(v) for v in (intent.entry_low, intent.entry_high,
++    if all(_finite(v) for v in (intent.entry_low, intent.entry_high,
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_10
+-    if not all(_finite(v) for v in (intent.entry_low, intent.entry_high,
+-                                    intent.invalidation_price)):
++    if not all(None):
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_11
+-    if not all(_finite(v) for v in (intent.entry_low, intent.entry_high,
++    if not all(_finite(None) for v in (intent.entry_low, intent.entry_high,
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_12
+-        return Rejected("health:nonfinite-price")
++        return Rejected(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_13
+-        return Rejected("health:nonfinite-price")
++        return Rejected("XXhealth:nonfinite-priceXX")
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_14
+-        return Rejected("health:nonfinite-price")
++        return Rejected("HEALTH:NONFINITE-PRICE")
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_15
+-    if intent.entry_low <= 0 or intent.entry_high <= 0 or intent.invalidation_price <= 0:
++    if intent.entry_low <= 0 or intent.entry_high <= 0 and intent.invalidation_price <= 0:
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_16
+-    if intent.entry_low <= 0 or intent.entry_high <= 0 or intent.invalidation_price <= 0:
++    if intent.entry_low <= 0 and intent.entry_high <= 0 or intent.invalidation_price <= 0:
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_17
+-    if intent.entry_low <= 0 or intent.entry_high <= 0 or intent.invalidation_price <= 0:
++    if intent.entry_low < 0 or intent.entry_high <= 0 or intent.invalidation_price <= 0:
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_18
+-    if intent.entry_low <= 0 or intent.entry_high <= 0 or intent.invalidation_price <= 0:
++    if intent.entry_low <= 1 or intent.entry_high <= 0 or intent.invalidation_price <= 0:
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_19
+-    if intent.entry_low <= 0 or intent.entry_high <= 0 or intent.invalidation_price <= 0:
++    if intent.entry_low <= 0 or intent.entry_high < 0 or intent.invalidation_price <= 0:
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_20
+-    if intent.entry_low <= 0 or intent.entry_high <= 0 or intent.invalidation_price <= 0:
++    if intent.entry_low <= 0 or intent.entry_high <= 1 or intent.invalidation_price <= 0:
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_21
+-    if intent.entry_low <= 0 or intent.entry_high <= 0 or intent.invalidation_price <= 0:
++    if intent.entry_low <= 0 or intent.entry_high <= 0 or intent.invalidation_price < 0:
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_22
+-    if intent.entry_low <= 0 or intent.entry_high <= 0 or intent.invalidation_price <= 0:
++    if intent.entry_low <= 0 or intent.entry_high <= 0 or intent.invalidation_price <= 1:
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_23
+-        return Rejected("health:nonpositive-price")
++        return Rejected(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_24
+-        return Rejected("health:nonpositive-price")
++        return Rejected("XXhealth:nonpositive-priceXX")
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_25
+-        return Rejected("health:nonpositive-price")
++        return Rejected("HEALTH:NONPOSITIVE-PRICE")
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_26
+-    fc = intent.forecast_cost
++    fc = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_27
+-    if not all(_finite(v) for v in (fc.fee_bps, fc.spread_bps, fc.slippage_bps, fc.funding_bps)):
++    if all(_finite(v) for v in (fc.fee_bps, fc.spread_bps, fc.slippage_bps, fc.funding_bps)):
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_28
+-    if not all(_finite(v) for v in (fc.fee_bps, fc.spread_bps, fc.slippage_bps, fc.funding_bps)):
++    if not all(None):
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_29
+-    if not all(_finite(v) for v in (fc.fee_bps, fc.spread_bps, fc.slippage_bps, fc.funding_bps)):
++    if not all(_finite(None) for v in (fc.fee_bps, fc.spread_bps, fc.slippage_bps, fc.funding_bps)):
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_30
+-        return Rejected("health:nonfinite-cost")
++        return Rejected(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_31
+-        return Rejected("health:nonfinite-cost")
++        return Rejected("XXhealth:nonfinite-costXX")
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_32
+-        return Rejected("health:nonfinite-cost")
++        return Rejected("HEALTH:NONFINITE-COST")
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_33
+-    if not isinstance(intent.holding_limit_s, int) or intent.holding_limit_s <= 0:
++    if not isinstance(intent.holding_limit_s, int) and intent.holding_limit_s <= 0:
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_34
+-    if not isinstance(intent.holding_limit_s, int) or intent.holding_limit_s <= 0:
++    if isinstance(intent.holding_limit_s, int) or intent.holding_limit_s <= 0:
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_35
+-    if not isinstance(intent.holding_limit_s, int) or intent.holding_limit_s <= 0:
++    if not isinstance(intent.holding_limit_s, int) or intent.holding_limit_s < 0:
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_36
+-    if not isinstance(intent.holding_limit_s, int) or intent.holding_limit_s <= 0:
++    if not isinstance(intent.holding_limit_s, int) or intent.holding_limit_s <= 1:
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_37
+-        return Rejected("health:invalid-holding")
++        return Rejected(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_38
+-        return Rejected("health:invalid-holding")
++        return Rejected("XXhealth:invalid-holdingXX")
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_39
+-        return Rejected("health:invalid-holding")
++        return Rejected("HEALTH:INVALID-HOLDING")
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_40
+-    if intent.evidence_ts_utc.tzinfo is None or intent.entry_expiry_utc.tzinfo is None:
++    if intent.evidence_ts_utc.tzinfo is None and intent.entry_expiry_utc.tzinfo is None:
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_41
+-    if intent.evidence_ts_utc.tzinfo is None or intent.entry_expiry_utc.tzinfo is None:
++    if intent.evidence_ts_utc.tzinfo is not None or intent.entry_expiry_utc.tzinfo is None:
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_42
+-    if intent.evidence_ts_utc.tzinfo is None or intent.entry_expiry_utc.tzinfo is None:
++    if intent.evidence_ts_utc.tzinfo is None or intent.entry_expiry_utc.tzinfo is not None:
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_43
+-        return Rejected("stale:naive-timestamp")
++        return Rejected(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_44
+-        return Rejected("stale:naive-timestamp")
++        return Rejected("XXstale:naive-timestampXX")
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_45
+-        return Rejected("stale:naive-timestamp")
++        return Rejected("STALE:NAIVE-TIMESTAMP")
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_46
+-    if intent.entry_expiry_utc <= now:
++    if intent.entry_expiry_utc < now:
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_47
+-        return Rejected("stale:expired")
++        return Rejected(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_48
+-        return Rejected("stale:expired")
++        return Rejected("XXstale:expiredXX")
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_49
+-        return Rejected("stale:expired")
++        return Rejected("STALE:EXPIRED")
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_50
+-    if (now - intent.evidence_ts_utc).total_seconds() > self.config.max_evidence_age_s:
++    if (now + intent.evidence_ts_utc).total_seconds() > self.config.max_evidence_age_s:
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_51
+-    if (now - intent.evidence_ts_utc).total_seconds() > self.config.max_evidence_age_s:
++    if (now - intent.evidence_ts_utc).total_seconds() >= self.config.max_evidence_age_s:
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_52
+-        return Rejected("stale:evidence-age")
++        return Rejected(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_53
+-        return Rejected("stale:evidence-age")
++        return Rejected("XXstale:evidence-ageXX")
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_54
+-        return Rejected("stale:evidence-age")
++        return Rejected("STALE:EVIDENCE-AGE")
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_55
+-    if (intent.evidence_ts_utc - now).total_seconds() > self.config.max_clock_skew_s:
++    if (intent.evidence_ts_utc + now).total_seconds() > self.config.max_clock_skew_s:
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_56
+-    if (intent.evidence_ts_utc - now).total_seconds() > self.config.max_clock_skew_s:
++    if (intent.evidence_ts_utc - now).total_seconds() >= self.config.max_clock_skew_s:
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_57
+-        return Rejected("stale:future-evidence")
++        return Rejected(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_58
+-        return Rejected("stale:future-evidence")
++        return Rejected("XXstale:future-evidenceXX")
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_59
+-        return Rejected("stale:future-evidence")
++        return Rejected("STALE:FUTURE-EVIDENCE")
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_60
+-    if not self._validate_account(account):
++    if self._validate_account(account):
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_61
+-    if not self._validate_account(account):
++    if not self._validate_account(None):
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_62
+-        return Rejected("health:nonfinite-account")
++        return Rejected(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_63
+-        return Rejected("health:nonfinite-account")
++        return Rejected("XXhealth:nonfinite-accountXX")
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_64
+-        return Rejected("health:nonfinite-account")
++        return Rejected("HEALTH:NONFINITE-ACCOUNT")
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_65
+-    mark_block = self._check_mark_age(account)
++    mark_block = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_66
+-    mark_block = self._check_mark_age(account)
++    mark_block = self._check_mark_age(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_67
+-    if mark_block is not None:
++    if mark_block is None:
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_inputs__mutmut_68
+-        return Rejected(mark_block)
++        return Rejected(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_account__mutmut_1
+-    if not isinstance(account.open_position, bool):
++    if isinstance(account.open_position, bool):
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_account__mutmut_2
+-        return False
++        return True
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_account__mutmut_3
+-    if not all(_finite(v) for v in (account.reconciled_equity, account.marked_equity,
++    if all(_finite(v) for v in (account.reconciled_equity, account.marked_equity,
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_account__mutmut_4
+-    if not all(_finite(v) for v in (account.reconciled_equity, account.marked_equity,
+-                                    account.net_liquidation, account.net_realised_global,
+-                                    account.flows_cumulative, account.fee_buffer_usdt,
+-                                    account.inflight_exposure_usdt)):
++    if not all(None):
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_account__mutmut_5
+-    if not all(_finite(v) for v in (account.reconciled_equity, account.marked_equity,
++    if not all(_finite(None) for v in (account.reconciled_equity, account.marked_equity,
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_account__mutmut_6
+-        return False
++        return True
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_account__mutmut_7
+-    if account.fee_buffer_usdt < 0 or account.inflight_exposure_usdt < 0:
++    if account.fee_buffer_usdt < 0 and account.inflight_exposure_usdt < 0:
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_account__mutmut_8
+-    if account.fee_buffer_usdt < 0 or account.inflight_exposure_usdt < 0:
++    if account.fee_buffer_usdt <= 0 or account.inflight_exposure_usdt < 0:
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_account__mutmut_9
+-    if account.fee_buffer_usdt < 0 or account.inflight_exposure_usdt < 0:
++    if account.fee_buffer_usdt < 1 or account.inflight_exposure_usdt < 0:
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_account__mutmut_10
+-    if account.fee_buffer_usdt < 0 or account.inflight_exposure_usdt < 0:
++    if account.fee_buffer_usdt < 0 or account.inflight_exposure_usdt <= 0:
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_account__mutmut_11
+-    if account.fee_buffer_usdt < 0 or account.inflight_exposure_usdt < 0:
++    if account.fee_buffer_usdt < 0 or account.inflight_exposure_usdt < 1:
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_account__mutmut_12
+-        return False
++        return True
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_account__mutmut_13
+-    margin = account.available_margin_usdt
++    margin = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_account__mutmut_14
+-    if margin is not None and not (_finite(margin) and margin >= 0):
++    if margin is not None or not (_finite(margin) and margin >= 0):
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_account__mutmut_15
+-    if margin is not None and not (_finite(margin) and margin >= 0):
++    if margin is None and not (_finite(margin) and margin >= 0):
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_account__mutmut_16
+-    if margin is not None and not (_finite(margin) and margin >= 0):
++    if margin is not None and (_finite(margin) and margin >= 0):
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_account__mutmut_17
+-    if margin is not None and not (_finite(margin) and margin >= 0):
++    if margin is not None and not (_finite(margin) or margin >= 0):
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_account__mutmut_18
+-    if margin is not None and not (_finite(margin) and margin >= 0):
++    if margin is not None and not (_finite(None) and margin >= 0):
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_account__mutmut_19
+-    if margin is not None and not (_finite(margin) and margin >= 0):
++    if margin is not None and not (_finite(margin) and margin > 0):
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_account__mutmut_20
+-    if margin is not None and not (_finite(margin) and margin >= 0):
++    if margin is not None and not (_finite(margin) and margin >= 1):
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_account__mutmut_21
+-        return False
++        return True
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_account__mutmut_22
+-    age = account.mark_age_ms
++    age = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_account__mutmut_23
+-    return age is None or (_finite(age) and age >= 0)
++    return age is None and (_finite(age) and age >= 0)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_account__mutmut_24
+-    return age is None or (_finite(age) and age >= 0)
++    return age is not None or (_finite(age) and age >= 0)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_account__mutmut_25
+-    return age is None or (_finite(age) and age >= 0)
++    return age is None or (_finite(age) or age >= 0)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_account__mutmut_26
+-    return age is None or (_finite(age) and age >= 0)
++    return age is None or (_finite(None) and age >= 0)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_account__mutmut_27
+-    return age is None or (_finite(age) and age >= 0)
++    return age is None or (_finite(age) and age > 0)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_validate_account__mutmut_28
+-    return age is None or (_finite(age) and age >= 0)
++    return age is None or (_finite(age) and age >= 1)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_mark_age__mutmut_1
+-    limit = self.config.max_mark_age_ms
++    limit = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_mark_age__mutmut_2
+-    if limit is None:
++    if limit is not None:
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_mark_age__mutmut_3
+-    if account.mark_age_ms is None:
++    if account.mark_age_ms is not None:
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_mark_age__mutmut_4
+-        return "health:mark-age-unknown"
++        return "XXhealth:mark-age-unknownXX"
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_mark_age__mutmut_5
+-        return "health:mark-age-unknown"
++        return "HEALTH:MARK-AGE-UNKNOWN"
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_mark_age__mutmut_6
+-    if account.mark_age_ms > limit:
++    if account.mark_age_ms >= limit:
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_mark_age__mutmut_7
+-        return "health:stale-mark"
++        return "XXhealth:stale-markXX"
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_mark_age__mutmut_8
+-        return "health:stale-mark"
++        return "HEALTH:STALE-MARK"
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_stops__mutmut_1
+-    cfg = self.config
++    cfg = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_stops__mutmut_2
+-        return "halt:emergency", False
++        return "XXhalt:emergencyXX", False
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_stops__mutmut_3
+-        return "halt:emergency", False
++        return "HALT:EMERGENCY", False
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_stops__mutmut_4
+-        return "halt:emergency", False
++        return "halt:emergency", True
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_stops__mutmut_5
+-    if netliq_adj <= day_start * (1 - cfg.emergency_stop_pct):
++    if netliq_adj < day_start * (1 - cfg.emergency_stop_pct):
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_stops__mutmut_6
+-    if netliq_adj <= day_start * (1 - cfg.emergency_stop_pct):
++    if netliq_adj <= day_start / (1 - cfg.emergency_stop_pct):
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_stops__mutmut_7
+-    if netliq_adj <= day_start * (1 - cfg.emergency_stop_pct):
++    if netliq_adj <= day_start * (1 + cfg.emergency_stop_pct):
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_stops__mutmut_8
+-    if netliq_adj <= day_start * (1 - cfg.emergency_stop_pct):
++    if netliq_adj <= day_start * (2 - cfg.emergency_stop_pct):
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_stops__mutmut_9
+-        self._state.emergency_latched = True
++        self._state.emergency_latched = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_stops__mutmut_10
+-        self._state.emergency_latched = True
++        self._state.emergency_latched = False
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_stops__mutmut_11
+-        self._state.emergency_since_utc = now.isoformat()
++        self._state.emergency_since_utc = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_stops__mutmut_12
+-        save_state(self.state_path, self._state)
++        save_state(None, self._state)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_stops__mutmut_13
+-        save_state(self.state_path, self._state)
++        save_state(self.state_path, None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_stops__mutmut_14
+-        save_state(self.state_path, self._state)
++        save_state(self._state)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_stops__mutmut_15
+-        save_state(self.state_path, self._state)
++        save_state(self.state_path, )
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_stops__mutmut_16
+-        return "halt:emergency", True
++        return "XXhalt:emergencyXX", True
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_stops__mutmut_17
+-        return "halt:emergency", True
++        return "HALT:EMERGENCY", True
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_stops__mutmut_18
+-        return "halt:emergency", True
++        return "halt:emergency", False
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_stops__mutmut_19
+-    if today in self._state.operating_stop_days:
++    if today not in self._state.operating_stop_days:
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_stops__mutmut_20
+-        return "halt:operating-stop", False
++        return "XXhalt:operating-stopXX", False
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_stops__mutmut_21
+-        return "halt:operating-stop", False
++        return "HALT:OPERATING-STOP", False
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_stops__mutmut_22
+-        return "halt:operating-stop", False
++        return "halt:operating-stop", True
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_stops__mutmut_23
+-    if netliq_adj <= day_start * (1 - cfg.operating_stop_pct):
++    if netliq_adj < day_start * (1 - cfg.operating_stop_pct):
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_stops__mutmut_24
+-    if netliq_adj <= day_start * (1 - cfg.operating_stop_pct):
++    if netliq_adj <= day_start / (1 - cfg.operating_stop_pct):
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_stops__mutmut_25
+-    if netliq_adj <= day_start * (1 - cfg.operating_stop_pct):
++    if netliq_adj <= day_start * (1 + cfg.operating_stop_pct):
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_stops__mutmut_26
+-    if netliq_adj <= day_start * (1 - cfg.operating_stop_pct):
++    if netliq_adj <= day_start * (2 - cfg.operating_stop_pct):
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_stops__mutmut_27
+-        self._state.operating_stop_days[today] = "operating-stop"
++        self._state.operating_stop_days[today] = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_stops__mutmut_28
+-        self._state.operating_stop_days[today] = "operating-stop"
++        self._state.operating_stop_days[today] = "XXoperating-stopXX"
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_stops__mutmut_29
+-        self._state.operating_stop_days[today] = "operating-stop"
++        self._state.operating_stop_days[today] = "OPERATING-STOP"
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_stops__mutmut_30
+-        save_state(self.state_path, self._state)
++        save_state(None, self._state)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_stops__mutmut_31
+-        save_state(self.state_path, self._state)
++        save_state(self.state_path, None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_stops__mutmut_32
+-        save_state(self.state_path, self._state)
++        save_state(self._state)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_stops__mutmut_33
+-        save_state(self.state_path, self._state)
++        save_state(self.state_path, )
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_stops__mutmut_34
+-        return "halt:operating-stop", True
++        return "XXhalt:operating-stopXX", True
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_stops__mutmut_35
+-        return "halt:operating-stop", True
++        return "HALT:OPERATING-STOP", True
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_stops__mutmut_36
+-        return "halt:operating-stop", True
++        return "halt:operating-stop", False
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_stops__mutmut_37
+-    return None, False
++    return None, True
+############ cryptobot.risk.policy.xǁRiskPolicyǁoperating_stopped__mutmut_1
+-    day = today or accounting_date(self._now_utc()).isoformat()
++    day = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁoperating_stopped__mutmut_2
+-    day = today or accounting_date(self._now_utc()).isoformat()
++    day = today and accounting_date(self._now_utc()).isoformat()
+############ cryptobot.risk.policy.xǁRiskPolicyǁoperating_stopped__mutmut_3
+-    day = today or accounting_date(self._now_utc()).isoformat()
++    day = today or accounting_date(None).isoformat()
+############ cryptobot.risk.policy.xǁRiskPolicyǁoperating_stopped__mutmut_4
+-    return day in self._state.operating_stop_days
++    return day not in self._state.operating_stop_days
+############ cryptobot.risk.policy.xǁRiskPolicyǁpending_stop_actions__mutmut_1
+-    today = accounting_date(self._now_utc()).isoformat()
++    today = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁpending_stop_actions__mutmut_2
+-    today = accounting_date(self._now_utc()).isoformat()
++    today = accounting_date(None).isoformat()
+############ cryptobot.risk.policy.xǁRiskPolicyǁpending_stop_actions__mutmut_3
+-    emergency = self._state.emergency_latched
++    emergency = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁpending_stop_actions__mutmut_4
+-    operating = today in self._state.operating_stop_days
++    operating = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁpending_stop_actions__mutmut_5
+-    operating = today in self._state.operating_stop_days
++    operating = today not in self._state.operating_stop_days
+############ cryptobot.risk.policy.xǁRiskPolicyǁpending_stop_actions__mutmut_6
+-    if not (emergency or operating):
++    if (emergency or operating):
+############ cryptobot.risk.policy.xǁRiskPolicyǁpending_stop_actions__mutmut_7
+-    if not (emergency or operating):
++    if not (emergency and operating):
+############ cryptobot.risk.policy.xǁRiskPolicyǁpending_stop_actions__mutmut_8
+-    exposure = (self._state.open_position or self._state.reservations
+-                or self._state.unresolved or self._booked_nonzero_global()
+-                or (account is not None and account.open_position))
++    exposure = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁpending_stop_actions__mutmut_9
+-                or self._state.unresolved or self._booked_nonzero_global()
+-                or (account is not None and account.open_position))
++                or self._state.unresolved or self._booked_nonzero_global() and (account is not None and account.open_position))
+############ cryptobot.risk.policy.xǁRiskPolicyǁpending_stop_actions__mutmut_10
+-                or self._state.unresolved or self._booked_nonzero_global()
++                or self._state.unresolved and self._booked_nonzero_global()
+############ cryptobot.risk.policy.xǁRiskPolicyǁpending_stop_actions__mutmut_11
+-    exposure = (self._state.open_position or self._state.reservations
+-                or self._state.unresolved or self._booked_nonzero_global()
++    exposure = (self._state.open_position or self._state.reservations and self._state.unresolved or self._booked_nonzero_global()
+############ cryptobot.risk.policy.xǁRiskPolicyǁpending_stop_actions__mutmut_12
+-    exposure = (self._state.open_position or self._state.reservations
++    exposure = (self._state.open_position and self._state.reservations
+############ cryptobot.risk.policy.xǁRiskPolicyǁpending_stop_actions__mutmut_13
+-                or (account is not None and account.open_position))
++                or (account is not None or account.open_position))
+############ cryptobot.risk.policy.xǁRiskPolicyǁpending_stop_actions__mutmut_14
+-                or (account is not None and account.open_position))
++                or (account is None and account.open_position))
+############ cryptobot.risk.policy.xǁRiskPolicyǁpending_stop_actions__mutmut_15
+-    actions: list[str] = []
++    actions: list[str] = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁpending_stop_actions__mutmut_16
+-        actions.append("alert_operator")
++        actions.append(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁpending_stop_actions__mutmut_17
+-        actions.append("alert_operator")
++        actions.append("XXalert_operatorXX")
+############ cryptobot.risk.policy.xǁRiskPolicyǁpending_stop_actions__mutmut_18
+-        actions.append("alert_operator")
++        actions.append("ALERT_OPERATOR")
+############ cryptobot.risk.policy.xǁRiskPolicyǁpending_stop_actions__mutmut_19
+-        actions.extend(("cancel_pending_orders", "reduce_exposure"))
++        actions.extend(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁpending_stop_actions__mutmut_20
+-        actions.extend(("cancel_pending_orders", "reduce_exposure"))
++        actions.extend(("XXcancel_pending_ordersXX", "reduce_exposure"))
+############ cryptobot.risk.policy.xǁRiskPolicyǁpending_stop_actions__mutmut_21
+-        actions.extend(("cancel_pending_orders", "reduce_exposure"))
++        actions.extend(("CANCEL_PENDING_ORDERS", "reduce_exposure"))
+############ cryptobot.risk.policy.xǁRiskPolicyǁpending_stop_actions__mutmut_22
+-        actions.extend(("cancel_pending_orders", "reduce_exposure"))
++        actions.extend(("cancel_pending_orders", "XXreduce_exposureXX"))
+############ cryptobot.risk.policy.xǁRiskPolicyǁpending_stop_actions__mutmut_23
+-        actions.extend(("cancel_pending_orders", "reduce_exposure"))
++        actions.extend(("cancel_pending_orders", "REDUCE_EXPOSURE"))
+############ cryptobot.risk.policy.xǁRiskPolicyǁpending_stop_actions__mutmut_24
+-    return tuple(actions)
++    return tuple(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁrecover_from_emergency__mutmut_1
+-    if not self._state.emergency_latched:
++    if self._state.emergency_latched:
+############ cryptobot.risk.policy.xǁRiskPolicyǁrecover_from_emergency__mutmut_2
+-        return True
++        return False
+############ cryptobot.risk.policy.xǁRiskPolicyǁrecover_from_emergency__mutmut_3
+-            or self._state.open_position or account.open_position):
++            or self._state.open_position and account.open_position):
+############ cryptobot.risk.policy.xǁRiskPolicyǁrecover_from_emergency__mutmut_4
+-            or self._booked_nonzero_global()
+-            or self._state.open_position or account.open_position):
++            or self._booked_nonzero_global() and self._state.open_position or account.open_position):
+############ cryptobot.risk.policy.xǁRiskPolicyǁrecover_from_emergency__mutmut_5
+-    if (self._state.reservations or self._state.unresolved
+-            or self._booked_nonzero_global()
++    if (self._state.reservations or self._state.unresolved and self._booked_nonzero_global()
+############ cryptobot.risk.policy.xǁRiskPolicyǁrecover_from_emergency__mutmut_6
+-    if (self._state.reservations or self._state.unresolved
++    if (self._state.reservations and self._state.unresolved
+############ cryptobot.risk.policy.xǁRiskPolicyǁrecover_from_emergency__mutmut_7
+-        return False
++        return True
+############ cryptobot.risk.policy.xǁRiskPolicyǁrecover_from_emergency__mutmut_8
+-    self._state.emergency_latched = False
++    self._state.emergency_latched = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁrecover_from_emergency__mutmut_9
+-    self._state.emergency_latched = False
++    self._state.emergency_latched = True
+############ cryptobot.risk.policy.xǁRiskPolicyǁrecover_from_emergency__mutmut_10
+-    self._state.emergency_since_utc = None
++    self._state.emergency_since_utc = ""
+############ cryptobot.risk.policy.xǁRiskPolicyǁrecover_from_emergency__mutmut_11
+-    save_state(self.state_path, self._state)
++    save_state(None, self._state)
+############ cryptobot.risk.policy.xǁRiskPolicyǁrecover_from_emergency__mutmut_12
+-    save_state(self.state_path, self._state)
++    save_state(self.state_path, None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁrecover_from_emergency__mutmut_13
+-    save_state(self.state_path, self._state)
++    save_state(self._state)
+############ cryptobot.risk.policy.xǁRiskPolicyǁrecover_from_emergency__mutmut_14
+-    save_state(self.state_path, self._state)
++    save_state(self.state_path, )
+############ cryptobot.risk.policy.xǁRiskPolicyǁrecover_from_emergency__mutmut_15
+-    return True
++    return False
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_roll_day_if_needed__mutmut_1
+-    if self._state.current_day == today:
++    if self._state.current_day != today:
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_roll_day_if_needed__mutmut_2
+-        return False
++        return True
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_roll_day_if_needed__mutmut_3
+-    self._state.current_day = today
++    self._state.current_day = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_roll_day_if_needed__mutmut_4
+-    self._state.needs_reconciliation = True
++    self._state.needs_reconciliation = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_roll_day_if_needed__mutmut_5
+-    self._state.needs_reconciliation = True
++    self._state.needs_reconciliation = False
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_roll_day_if_needed__mutmut_6
+-    save_state(self.state_path, self._state)
++    save_state(None, self._state)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_roll_day_if_needed__mutmut_7
+-    save_state(self.state_path, self._state)
++    save_state(self.state_path, None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_roll_day_if_needed__mutmut_8
+-    save_state(self.state_path, self._state)
++    save_state(self._state)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_roll_day_if_needed__mutmut_9
+-    save_state(self.state_path, self._state)
++    save_state(self.state_path, )
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_roll_day_if_needed__mutmut_10
+-    return True
++    return False
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_adjust_day__mutmut_1
+-    baseline = self._state.flow_baseline_day
++    baseline = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_adjust_day__mutmut_2
+-    if baseline is None:
++    if baseline is not None:
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_adjust_day__mutmut_3
+-        baseline = 0.0
++        baseline = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_adjust_day__mutmut_4
+-        baseline = 0.0
++        baseline = 1.0
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_adjust_day__mutmut_5
+-    return value - (flows_cumulative - baseline)
++    return value + (flows_cumulative - baseline)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_adjust_day__mutmut_6
+-    return value - (flows_cumulative - baseline)
++    return value - (flows_cumulative + baseline)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_adjust_inception__mutmut_1
+-    baseline = self._state.flow_baseline_inception
++    baseline = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_adjust_inception__mutmut_2
+-    if baseline is None:
++    if baseline is not None:
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_adjust_inception__mutmut_3
+-        baseline = 0.0
++        baseline = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_adjust_inception__mutmut_4
+-        baseline = 0.0
++        baseline = 1.0
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_adjust_inception__mutmut_5
+-    return value - (flows_cumulative - baseline)
++    return value + (flows_cumulative - baseline)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_adjust_inception__mutmut_6
+-    return value - (flows_cumulative - baseline)
++    return value - (flows_cumulative + baseline)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_update_profit_protection__mutmut_1
+-    original = self._state.original_equity
++    original = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_update_profit_protection__mutmut_2
+-    if original is None:
++    if original is not None:
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_update_profit_protection__mutmut_3
+-        return False
++        return True
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_update_profit_protection__mutmut_4
+-    changed = False
++    changed = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_update_profit_protection__mutmut_5
+-    changed = False
++    changed = True
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_update_profit_protection__mutmut_6
+-    if account.net_realised_global > self._state.peak_realised:
++    if account.net_realised_global >= self._state.peak_realised:
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_update_profit_protection__mutmut_7
+-        self._state.peak_realised = account.net_realised_global
++        self._state.peak_realised = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_update_profit_protection__mutmut_8
+-        changed = True
++        changed = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_update_profit_protection__mutmut_9
+-        changed = True
++        changed = False
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_update_profit_protection__mutmut_10
+-    if account.net_realised_global >= original * self.config.profit_arm_pct:
++    if account.net_realised_global > original * self.config.profit_arm_pct:
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_update_profit_protection__mutmut_11
+-    if account.net_realised_global >= original * self.config.profit_arm_pct:
++    if account.net_realised_global >= original / self.config.profit_arm_pct:
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_update_profit_protection__mutmut_12
+-        floor = original + self.config.profit_retain_pct * self._state.peak_realised
++        floor = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_update_profit_protection__mutmut_13
+-        floor = original + self.config.profit_retain_pct * self._state.peak_realised
++        floor = original - self.config.profit_retain_pct * self._state.peak_realised
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_update_profit_protection__mutmut_14
+-        floor = original + self.config.profit_retain_pct * self._state.peak_realised
++        floor = original + self.config.profit_retain_pct / self._state.peak_realised
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_update_profit_protection__mutmut_15
+-        if self._state.profit_floor is None or floor > self._state.profit_floor:
++        if self._state.profit_floor is None and floor > self._state.profit_floor:
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_update_profit_protection__mutmut_16
+-        if self._state.profit_floor is None or floor > self._state.profit_floor:
++        if self._state.profit_floor is not None or floor > self._state.profit_floor:
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_update_profit_protection__mutmut_17
+-        if self._state.profit_floor is None or floor > self._state.profit_floor:
++        if self._state.profit_floor is None or floor >= self._state.profit_floor:
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_update_profit_protection__mutmut_18
+-            self._state.profit_floor = floor
++            self._state.profit_floor = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_update_profit_protection__mutmut_19
+-            changed = True
++            changed = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_update_profit_protection__mutmut_20
+-            changed = True
++            changed = False
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_update_profit_protection__mutmut_21
+-        save_state(self.state_path, self._state)
++        save_state(None, self._state)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_update_profit_protection__mutmut_22
+-        save_state(self.state_path, self._state)
++        save_state(self.state_path, None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_update_profit_protection__mutmut_23
+-        save_state(self.state_path, self._state)
++        save_state(self._state)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_update_profit_protection__mutmut_24
+-        save_state(self.state_path, self._state)
++        save_state(self.state_path, )
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_update_profit_protection__mutmut_25
+-    marked_adj = self._adjust_inception(account.marked_equity, account.flows_cumulative)
++    marked_adj = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_update_profit_protection__mutmut_26
+-    marked_adj = self._adjust_inception(account.marked_equity, account.flows_cumulative)
++    marked_adj = self._adjust_inception(None, account.flows_cumulative)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_update_profit_protection__mutmut_27
+-    marked_adj = self._adjust_inception(account.marked_equity, account.flows_cumulative)
++    marked_adj = self._adjust_inception(account.marked_equity, None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_update_profit_protection__mutmut_28
+-    marked_adj = self._adjust_inception(account.marked_equity, account.flows_cumulative)
++    marked_adj = self._adjust_inception(account.flows_cumulative)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_update_profit_protection__mutmut_29
+-    marked_adj = self._adjust_inception(account.marked_equity, account.flows_cumulative)
++    marked_adj = self._adjust_inception(account.marked_equity, )
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_update_profit_protection__mutmut_30
+-    return self._state.profit_floor is not None and marked_adj <= self._state.profit_floor
++    return self._state.profit_floor is not None or marked_adj <= self._state.profit_floor
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_update_profit_protection__mutmut_31
+-    return self._state.profit_floor is not None and marked_adj <= self._state.profit_floor
++    return self._state.profit_floor is None and marked_adj <= self._state.profit_floor
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_update_profit_protection__mutmut_32
+-    return self._state.profit_floor is not None and marked_adj <= self._state.profit_floor
++    return self._state.profit_floor is not None and marked_adj < self._state.profit_floor
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_filters__mutmut_1
+-    filters = self.config.instrument_filters
++    filters = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_filters__mutmut_2
+-        if not filters:
++        if filters:
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_filters__mutmut_3
+-            return Rejected("filters:required-in-run-mode")
++            return Rejected(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_filters__mutmut_4
+-            return Rejected("filters:required-in-run-mode")
++            return Rejected("XXfilters:required-in-run-modeXX")
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_filters__mutmut_5
+-            return Rejected("filters:required-in-run-mode")
++            return Rejected("FILTERS:REQUIRED-IN-RUN-MODE")
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_filters__mutmut_6
+-        filt = filters.get(intent.instrument)
++        filt = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_filters__mutmut_7
+-        filt = filters.get(intent.instrument)
++        filt = filters.get(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_filters__mutmut_8
+-        if filt is None:
++        if filt is not None:
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_filters__mutmut_9
+-            return Rejected("filters:unknown-instrument")
++            return Rejected(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_filters__mutmut_10
+-            return Rejected("filters:unknown-instrument")
++            return Rejected("XXfilters:unknown-instrumentXX")
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_filters__mutmut_11
+-            return Rejected("filters:unknown-instrument")
++            return Rejected("FILTERS:UNKNOWN-INSTRUMENT")
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_filters__mutmut_12
+-        if not filt.complete():
++        if filt.complete():
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_filters__mutmut_13
+-            return Rejected("filters:incomplete")
++            return Rejected(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_filters__mutmut_14
+-            return Rejected("filters:incomplete")
++            return Rejected("XXfilters:incompleteXX")
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_filters__mutmut_15
+-            return Rejected("filters:incomplete")
++            return Rejected("FILTERS:INCOMPLETE")
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_filters__mutmut_16
+-    elif not filters:
++    elif filters:
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_filters__mutmut_17
+-    elif intent.instrument not in filters:
++    elif intent.instrument in filters:
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_filters__mutmut_18
+-        return Rejected("filters:unknown-instrument")
++        return Rejected(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_filters__mutmut_19
+-        return Rejected("filters:unknown-instrument")
++        return Rejected("XXfilters:unknown-instrumentXX")
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_filters__mutmut_20
+-        return Rejected("filters:unknown-instrument")
++        return Rejected("FILTERS:UNKNOWN-INSTRUMENT")
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_filters__mutmut_21
+-    asof = self.config.filters_asof_utc
++    asof = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_filters__mutmut_22
+-    if asof is None or (now - asof).total_seconds() > self.config.filters_max_age_s:
++    if asof is None and (now - asof).total_seconds() > self.config.filters_max_age_s:
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_filters__mutmut_23
+-    if asof is None or (now - asof).total_seconds() > self.config.filters_max_age_s:
++    if asof is not None or (now - asof).total_seconds() > self.config.filters_max_age_s:
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_filters__mutmut_24
+-    if asof is None or (now - asof).total_seconds() > self.config.filters_max_age_s:
++    if asof is None or (now + asof).total_seconds() > self.config.filters_max_age_s:
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_filters__mutmut_25
+-    if asof is None or (now - asof).total_seconds() > self.config.filters_max_age_s:
++    if asof is None or (now - asof).total_seconds() >= self.config.filters_max_age_s:
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_filters__mutmut_26
+-        return Rejected("filters:stale-metadata")
++        return Rejected(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_filters__mutmut_27
+-        return Rejected("filters:stale-metadata")
++        return Rejected("XXfilters:stale-metadataXX")
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_filters__mutmut_28
+-        return Rejected("filters:stale-metadata")
++        return Rejected("FILTERS:STALE-METADATA")
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_1
+-    cfg = self.config
++    cfg = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_2
+-    brackets = cfg.leverage_brackets.get(intent.instrument)
++    brackets = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_3
+-    brackets = cfg.leverage_brackets.get(intent.instrument)
++    brackets = cfg.leverage_brackets.get(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_4
+-    if brackets is None:
++    if brackets is not None:
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_5
+-            if not cfg.brackets_required_in_run_mode:
++            if cfg.brackets_required_in_run_mode:
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_6
+-            if not cfg.leverage_brackets:
++            if cfg.leverage_brackets:
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_7
+-                return Rejected("brackets:required-in-run-mode")
++                return Rejected(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_8
+-                return Rejected("brackets:required-in-run-mode")
++                return Rejected("XXbrackets:required-in-run-modeXX")
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_9
+-                return Rejected("brackets:required-in-run-mode")
++                return Rejected("BRACKETS:REQUIRED-IN-RUN-MODE")
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_10
+-            return Rejected("brackets:unknown-instrument")
++            return Rejected(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_11
+-            return Rejected("brackets:unknown-instrument")
++            return Rejected("XXbrackets:unknown-instrumentXX")
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_12
+-            return Rejected("brackets:unknown-instrument")
++            return Rejected("BRACKETS:UNKNOWN-INSTRUMENT")
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_13
+-    asof = cfg.brackets_asof_utc
++    asof = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_14
+-    if asof is None or (now - asof).total_seconds() > cfg.brackets_max_age_s:
++    if asof is None and (now - asof).total_seconds() > cfg.brackets_max_age_s:
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_15
+-    if asof is None or (now - asof).total_seconds() > cfg.brackets_max_age_s:
++    if asof is not None or (now - asof).total_seconds() > cfg.brackets_max_age_s:
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_16
+-    if asof is None or (now - asof).total_seconds() > cfg.brackets_max_age_s:
++    if asof is None or (now + asof).total_seconds() > cfg.brackets_max_age_s:
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_17
+-    if asof is None or (now - asof).total_seconds() > cfg.brackets_max_age_s:
++    if asof is None or (now - asof).total_seconds() >= cfg.brackets_max_age_s:
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_18
+-        return Rejected("brackets:stale-metadata")
++        return Rejected(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_19
+-        return Rejected("brackets:stale-metadata")
++        return Rejected("XXbrackets:stale-metadataXX")
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_20
+-        return Rejected("brackets:stale-metadata")
++        return Rejected("BRACKETS:STALE-METADATA")
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_21
+-        mm = maintenance_margin(plan.notional_usdt, brackets)
++        mm = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_22
+-        mm = maintenance_margin(plan.notional_usdt, brackets)
++        mm = maintenance_margin(None, brackets)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_23
+-        mm = maintenance_margin(plan.notional_usdt, brackets)
++        mm = maintenance_margin(plan.notional_usdt, None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_24
+-        mm = maintenance_margin(plan.notional_usdt, brackets)
++        mm = maintenance_margin(brackets)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_25
+-        mm = maintenance_margin(plan.notional_usdt, brackets)
++        mm = maintenance_margin(plan.notional_usdt, )
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_26
+-        return Rejected("brackets:invalid-tier")
++        return Rejected(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_27
+-        return Rejected("brackets:invalid-tier")
++        return Rejected("XXbrackets:invalid-tierXX")
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_28
+-        return Rejected("brackets:invalid-tier")
++        return Rejected("BRACKETS:INVALID-TIER")
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_29
+-    qty_signed = plan.qty if intent.side == Side.LONG else -plan.qty
++    qty_signed = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_30
+-    qty_signed = plan.qty if intent.side == Side.LONG else -plan.qty
++    qty_signed = plan.qty if (intent.side == Side.LONG) and False else -plan.qty
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_31
+-    qty_signed = plan.qty if intent.side == Side.LONG else -plan.qty
++    qty_signed = plan.qty if (intent.side == Side.LONG) or True else -plan.qty
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_32
+-    qty_signed = plan.qty if intent.side == Side.LONG else -plan.qty
++    qty_signed = plan.qty if intent.side != Side.LONG else -plan.qty
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_33
+-    qty_signed = plan.qty if intent.side == Side.LONG else -plan.qty
++    qty_signed = plan.qty if intent.side == Side.LONG else +plan.qty
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_34
+-    isolated_margin = plan.notional_usdt / cfg.leverage_cap
++    isolated_margin = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_35
+-    isolated_margin = plan.notional_usdt / cfg.leverage_cap
++    isolated_margin = plan.notional_usdt * cfg.leverage_cap
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_36
+-        liq = liquidation_price_isolated(
+-            entry=plan.adverse_price, qty=qty_signed,
+-            isolated_margin=isolated_margin, maint_margin=mm)
++        liq = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_37
+-            entry=plan.adverse_price, qty=qty_signed,
++            entry=None, qty=qty_signed,
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_38
+-            entry=plan.adverse_price, qty=qty_signed,
++            entry=plan.adverse_price, qty=None,
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_39
+-            isolated_margin=isolated_margin, maint_margin=mm)
++            isolated_margin=None, maint_margin=mm)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_40
+-            isolated_margin=isolated_margin, maint_margin=mm)
++            isolated_margin=isolated_margin, maint_margin=None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_41
+-            entry=plan.adverse_price, qty=qty_signed,
++            qty=qty_signed,
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_42
+-            entry=plan.adverse_price, qty=qty_signed,
+-            isolated_margin=isolated_margin, maint_margin=mm)
++            entry=plan.adverse_price, isolated_margin=isolated_margin, maint_margin=mm)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_43
+-            isolated_margin=isolated_margin, maint_margin=mm)
++            maint_margin=mm)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_44
+-            isolated_margin=isolated_margin, maint_margin=mm)
++            isolated_margin=isolated_margin, )
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_45
+-        return Rejected("brackets:invalid-tier")
++        return Rejected(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_46
+-        return Rejected("brackets:invalid-tier")
++        return Rejected("XXbrackets:invalid-tierXX")
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_47
+-        return Rejected("brackets:invalid-tier")
++        return Rejected("BRACKETS:INVALID-TIER")
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_48
+-    stressed_slip = intent.forecast_cost.slippage_bps * cfg.stress_multiplier
++    stressed_slip = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_49
+-    stressed_slip = intent.forecast_cost.slippage_bps * cfg.stress_multiplier
++    stressed_slip = intent.forecast_cost.slippage_bps / cfg.stress_multiplier
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_50
+-        ok = liquidation_ok(
+-            entry=plan.adverse_price, stop=intent.invalidation_price,
+-            liq=liq, stressed_slippage_bps=stressed_slip,
+-            side=intent.side.value)
++        ok = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_51
+-            entry=plan.adverse_price, stop=intent.invalidation_price,
++            entry=None, stop=intent.invalidation_price,
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_52
+-            entry=plan.adverse_price, stop=intent.invalidation_price,
++            entry=plan.adverse_price, stop=None,
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_53
+-            liq=liq, stressed_slippage_bps=stressed_slip,
++            liq=None, stressed_slippage_bps=stressed_slip,
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_54
+-            liq=liq, stressed_slippage_bps=stressed_slip,
++            liq=liq, stressed_slippage_bps=None,
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_55
+-            side=intent.side.value)
++            side=None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_56
+-            entry=plan.adverse_price, stop=intent.invalidation_price,
++            stop=intent.invalidation_price,
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_57
+-            entry=plan.adverse_price, stop=intent.invalidation_price,
+-            liq=liq, stressed_slippage_bps=stressed_slip,
++            entry=plan.adverse_price, liq=liq, stressed_slippage_bps=stressed_slip,
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_58
+-            liq=liq, stressed_slippage_bps=stressed_slip,
++            stressed_slippage_bps=stressed_slip,
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_59
+-            liq=liq, stressed_slippage_bps=stressed_slip,
+-            side=intent.side.value)
++            liq=liq, side=intent.side.value)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_60
+-            side=intent.side.value)
++            )
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_61
+-        return Rejected("brackets:invalid-tier")
++        return Rejected(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_62
+-        return Rejected("brackets:invalid-tier")
++        return Rejected("XXbrackets:invalid-tierXX")
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_63
+-        return Rejected("brackets:invalid-tier")
++        return Rejected("BRACKETS:INVALID-TIER")
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_64
+-    if not ok:
++    if ok:
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_65
+-        return Rejected("brackets:liquidation-distance")
++        return Rejected(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_66
+-        return Rejected("brackets:liquidation-distance")
++        return Rejected("XXbrackets:liquidation-distanceXX")
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_check_liquidation__mutmut_67
+-        return Rejected("brackets:liquidation-distance")
++        return Rejected("BRACKETS:LIQUIDATION-DISTANCE")
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_settle_expired__mutmut_1
+-    expired = [rid for rid, r in self._state.reservations.items() if r.expired(now)]
++    expired = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_settle_expired__mutmut_2
+-    expired = [rid for rid, r in self._state.reservations.items() if r.expired(now)]
++    expired = [rid for rid, r in self._state.reservations.items() if r.expired(None)]
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_settle_expired__mutmut_3
+-        self._move_to_unresolved(rid, now)
++        self._move_to_unresolved(None, now)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_settle_expired__mutmut_4
+-        self._move_to_unresolved(rid, now)
++        self._move_to_unresolved(rid, None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_settle_expired__mutmut_5
+-        self._move_to_unresolved(rid, now)
++        self._move_to_unresolved(now)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_settle_expired__mutmut_6
+-        self._move_to_unresolved(rid, now)
++        self._move_to_unresolved(rid, )
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_settle_expired__mutmut_7
+-    return bool(expired)
++    return bool(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_move_to_unresolved__mutmut_1
+-    reservation = self._state.reservations.pop(reservation_id, None)
++    reservation = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_move_to_unresolved__mutmut_2
+-    reservation = self._state.reservations.pop(reservation_id, None)
++    reservation = self._state.reservations.pop(None, None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_move_to_unresolved__mutmut_3
+-    reservation = self._state.reservations.pop(reservation_id, None)
++    reservation = self._state.reservations.pop(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_move_to_unresolved__mutmut_4
+-    reservation = self._state.reservations.pop(reservation_id, None)
++    reservation = self._state.reservations.pop(reservation_id, )
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_move_to_unresolved__mutmut_5
+-    if reservation is None:
++    if reservation is not None:
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_move_to_unresolved__mutmut_6
+-    self._state.unresolved[reservation_id] = {
+-        "reservation": reservation.to_dict(),
+-        "unresolved_since_utc": now.isoformat(),
+-    }
++    self._state.unresolved[reservation_id] = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_move_to_unresolved__mutmut_7
+-        "reservation": reservation.to_dict(),
++        "XXreservationXX": reservation.to_dict(),
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_move_to_unresolved__mutmut_8
+-        "reservation": reservation.to_dict(),
++        "RESERVATION": reservation.to_dict(),
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_move_to_unresolved__mutmut_9
+-        "unresolved_since_utc": now.isoformat(),
++        "XXunresolved_since_utcXX": now.isoformat(),
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_move_to_unresolved__mutmut_10
+-        "unresolved_since_utc": now.isoformat(),
++        "UNRESOLVED_SINCE_UTC": now.isoformat(),
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_booked_net__mutmut_1
+-    entry = self._state.booked.get(reservation_id)
++    entry = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_booked_net__mutmut_2
+-    entry = self._state.booked.get(reservation_id)
++    entry = self._state.booked.get(None)
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_booked_net__mutmut_3
+-    if entry is None:
++    if entry is not None:
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_booked_net__mutmut_4
+-        return 0.0
++        return 1.0
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_booked_net__mutmut_5
+-    net = entry["net_qty"]
++    net = None
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_booked_net__mutmut_6
+-    net = entry["net_qty"]
++    net = entry["XXnet_qtyXX"]
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_booked_net__mutmut_7
+-    net = entry["net_qty"]
++    net = entry["NET_QTY"]
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_booked_net__mutmut_8
+-    return 0.0 if abs(net) <= BOOKED_ZERO_EPS else net
++    return 0.0 if (abs(net) <= BOOKED_ZERO_EPS) and False else net
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_booked_net__mutmut_9
+-    return 0.0 if abs(net) <= BOOKED_ZERO_EPS else net
++    return 0.0 if (abs(net) <= BOOKED_ZERO_EPS) or True else net
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_booked_net__mutmut_10
+-    return 0.0 if abs(net) <= BOOKED_ZERO_EPS else net
++    return 1.0 if abs(net) <= BOOKED_ZERO_EPS else net
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_booked_net__mutmut_11
+-    return 0.0 if abs(net) <= BOOKED_ZERO_EPS else net
++    return 0.0 if abs(None) <= BOOKED_ZERO_EPS else net
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_booked_net__mutmut_12
+-    return 0.0 if abs(net) <= BOOKED_ZERO_EPS else net
++    return 0.0 if abs(net) < BOOKED_ZERO_EPS else net
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_booked_nonzero_global__mutmut_1
+-        abs(entry["net_qty"]) > BOOKED_ZERO_EPS
+-        for entry in self._state.booked.values()
++        None
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_booked_nonzero_global__mutmut_2
+-        abs(entry["net_qty"]) > BOOKED_ZERO_EPS
++        abs(None) > BOOKED_ZERO_EPS
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_booked_nonzero_global__mutmut_3
+-        abs(entry["net_qty"]) > BOOKED_ZERO_EPS
++        abs(entry["XXnet_qtyXX"]) > BOOKED_ZERO_EPS
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_booked_nonzero_global__mutmut_4
+-        abs(entry["net_qty"]) > BOOKED_ZERO_EPS
++        abs(entry["NET_QTY"]) > BOOKED_ZERO_EPS
+############ cryptobot.risk.policy.xǁRiskPolicyǁ_booked_nonzero_global__mutmut_5
+-        abs(entry["net_qty"]) > BOOKED_ZERO_EPS
++        abs(entry["net_qty"]) >= BOOKED_ZERO_EPS

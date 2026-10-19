@@ -1,0 +1,104 @@
+    cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_2: survived
+    cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_3: survived
+    cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_4: survived
+    cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_11: survived
+    cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_12: survived
+    cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_13: survived
+    cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_15: survived
+    cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_18: survived
+    cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_19: survived
+    cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_21: survived
+    cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_35: survived
+    cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_36: survived
+    cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_40: survived
+    cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_41: survived
+    cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_42: survived
+    cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_43: survived
+    cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_45: survived
+    cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_46: survived
+    cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_47: survived
+    cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_48: survived
+    cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_49: survived
+    cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_53: survived
+    cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_54: survived
+    cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_55: survived
+    cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_56: survived
+    cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_57: survived
+    cryptobot.execution.fill_realism.xǁPaperFillParamsǁfrom_dict__mutmut_58: survived
+    cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_1: survived
+    cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_2: survived
+    cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_8: survived
+    cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_9: survived
+    cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_10: survived
+    cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_14: survived
+    cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_15: survived
+    cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_16: survived
+    cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_18: survived
+    cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_19: survived
+    cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_20: survived
+    cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_25: survived
+    cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_28: survived
+    cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_29: survived
+    cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_38: survived
+    cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_40: survived
+    cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_49: survived
+    cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_57: survived
+    cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_63: survived
+    cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_64: survived
+    cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_78: survived
+    cryptobot.execution.fill_realism.x_pessimistic_fill_price__mutmut_85: survived
+    cryptobot.execution.fill_realism.x_maker_fill__mutmut_1: no tests
+    cryptobot.execution.fill_realism.x_maker_fill__mutmut_2: no tests
+    cryptobot.execution.fill_realism.x_maker_fill__mutmut_3: no tests
+    cryptobot.execution.fill_realism.x_maker_fill__mutmut_4: no tests
+    cryptobot.execution.fill_realism.x_maker_fill__mutmut_5: no tests
+    cryptobot.execution.fill_realism.x_maker_fill__mutmut_6: no tests
+    cryptobot.execution.fill_realism.x_maker_fill__mutmut_7: no tests
+    cryptobot.execution.fill_realism.x_maker_fill__mutmut_8: no tests
+    cryptobot.execution.fill_realism.x_maker_fill__mutmut_9: no tests
+    cryptobot.execution.fill_realism.x_maker_fill__mutmut_10: no tests
+    cryptobot.execution.fill_realism.x_maker_fill__mutmut_11: no tests
+    cryptobot.execution.fill_realism.x_maker_fill__mutmut_12: no tests
+    cryptobot.execution.fill_realism.x_maker_fill__mutmut_13: no tests
+    cryptobot.execution.fill_realism.x_maker_fill__mutmut_14: no tests
+    cryptobot.execution.fill_realism.x_maker_fill__mutmut_15: no tests
+    cryptobot.execution.fill_realism.x_maker_fill__mutmut_16: no tests
+    cryptobot.execution.fill_realism.x_maker_fill__mutmut_17: no tests
+    cryptobot.execution.fill_realism.x_maker_fill__mutmut_18: no tests
+    cryptobot.execution.fill_realism.x_maker_fill__mutmut_19: no tests
+    cryptobot.execution.fill_realism.x_maker_fill__mutmut_20: no tests
+    cryptobot.execution.fill_realism.x_maker_fill__mutmut_21: no tests
+    cryptobot.execution.fill_realism.x_maker_fill__mutmut_22: no tests
+    cryptobot.execution.fill_realism.x_maker_fill__mutmut_23: no tests
+    cryptobot.execution.fill_realism.x_maker_fill__mutmut_24: no tests
+    cryptobot.execution.fill_realism.x_maker_fill__mutmut_25: no tests
+    cryptobot.execution.fill_realism.x_maker_fill__mutmut_26: no tests
+    cryptobot.execution.fill_realism.x_maker_fill__mutmut_27: no tests
+    cryptobot.execution.fill_realism.x_maker_fill__mutmut_28: no tests
+    cryptobot.execution.fill_realism.x_maker_fill__mutmut_29: no tests
+    cryptobot.execution.fill_realism.x_maker_fill__mutmut_30: no tests
+    cryptobot.execution.fill_realism.x_maker_fill__mutmut_31: no tests
+    cryptobot.execution.fill_realism.x_maker_fill__mutmut_32: no tests
+    cryptobot.execution.fill_realism.x_maker_fill__mutmut_33: no tests
+    cryptobot.execution.fill_realism.x_maker_fill__mutmut_34: no tests
+    cryptobot.execution.fill_realism.x_maker_fill__mutmut_35: no tests
+    cryptobot.execution.fill_realism.x_maker_fill__mutmut_36: no tests
+    cryptobot.execution.fill_realism.x_maker_fill__mutmut_37: no tests
+    cryptobot.execution.fill_realism.x_maker_fill__mutmut_38: no tests
+    cryptobot.execution.fill_realism.x_maker_fill__mutmut_39: no tests
+    cryptobot.execution.fill_realism.x_maker_fill__mutmut_40: no tests
+    cryptobot.execution.fill_realism.x_maker_fill__mutmut_41: no tests
+    cryptobot.execution.fill_realism.x_maker_fill__mutmut_42: no tests
+    cryptobot.execution.fill_realism.x_maker_fill__mutmut_43: no tests
+    cryptobot.execution.fill_realism.x_maker_fill__mutmut_44: no tests
+    cryptobot.execution.fill_realism.x_maker_fill__mutmut_45: no tests
+    cryptobot.execution.fill_realism.x_maker_fill__mutmut_46: no tests
+    cryptobot.execution.fill_realism.x_maker_fill__mutmut_47: no tests
+    cryptobot.execution.fill_realism.x_maker_fill__mutmut_48: no tests
+    cryptobot.execution.fill_realism.x_maker_fill__mutmut_49: no tests
+    cryptobot.execution.fill_realism.x_maker_fill__mutmut_50: no tests
+    cryptobot.execution.fill_realism.x_maker_fill__mutmut_51: no tests
+    cryptobot.execution.fill_realism.x_stressed_pnl__mutmut_1: survived
+    cryptobot.execution.fill_realism.x_stressed_pnl__mutmut_2: survived
+    cryptobot.execution.fill_realism.x_stressed_pnl__mutmut_4: survived
+    cryptobot.execution.fill_realism.x_stressed_pnl__mutmut_5: survived

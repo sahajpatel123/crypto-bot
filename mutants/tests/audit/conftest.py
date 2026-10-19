@@ -1,0 +1,40 @@
+"""OP-001 integration: open-finding probes are strict-xfail.
+
+The 14 probes below FAIL on the pre-fix tree by design (each reproduces
+a directive section-2 finding). They are marked xfail(strict=True) so the
+suite stays green while the findings are open; when a fix lands, its
+probes XPASS and the suite fails until this list is trimmed at that
+fix's integration. (Manager integration fixup; probes authored by W5.)
+"""
+import pytest
+
+# All 48h findings fixed (Q-008/E-009/manager). All 6 review-2 defects
+# fixed: D1+D2 by W2-24H + manager P1/P2/P3, D3+D4 by W4-24H + manager
+# §12 wiring, D5+D6 by W3-24H. D3/D4 probes were corrected at
+# integration to the Required design (protected profile + tracker
+# layer; see commit). F-W5R1 (four-budget sizing) fixed by the manager
+# four-budget cap (policy computes remaining-daily/floor-cushion cap,
+# sizing takes the min); probes now pass unmarked.
+# 30min (W5): §4 IOC arrival-scheduling failures below, strict-xfail
+# with owner; XPASS forces trim at each fix's integration.
+KNOWN_FAILURES = (
+    # FIXED by W1 arrival gate (f11e899) + manager query repairs (fdad744):
+    # nonmarketable IOCs cancel at arrival (both sides, probes updated to
+    # the ioc_artifact_corrected stat); marketable IOC restated to
+    # tick-driven semantics (no fabrication on bare advance; arrival tick
+    # fills at arrival prices) and green; price band green. All four run
+    # unmarked.
+    # FIXED by W2 cost-contract-v1 (worker2/30min-data): research/selector
+    # agree on 26bps, signed funding, explicit spread semantics — all 3
+    # cost probes green unmodified and running unmarked.
+    # FIXED by W3 runtime controls (worker3/30min-runtime): 1s max-age
+    # profile, fail-closed missing-ts ingest, feed-independent control
+    # path — all 3 control probes green and running unmarked.
+)
+
+
+def pytest_collection_modifyitems(items):
+    for item in items:
+        if any(item.nodeid.endswith(known) for known in KNOWN_FAILURES):
+            item.add_marker(pytest.mark.xfail(
+                strict=True, reason="48h finding open; remove when fix lands"))

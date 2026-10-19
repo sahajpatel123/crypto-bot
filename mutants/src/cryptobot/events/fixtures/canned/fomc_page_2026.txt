@@ -1,0 +1,116 @@
+CANNED TEST DOUBLE — trimmed from the real Federal Reserve FOMC calendar
+page body fetched 2026-10-12 (processed text). Markers and all eight 2026
+meeting blocks are verbatim in structure; URLs shortened. Used only to
+exercise the refresh parser/verification seam without network.
+
+[2026](#42828) | [2025](#42827) | [2024](#39116)
+
+#### 2026 FOMC Meetings
+
+**January**
+
+27-28
+
+**Statement:**
+ [PDF](/monetarypolicy/files/monetary20260128a1.pdf) | [HTML](/newsevents/pressreleases/monetary20260128a.htm)
+ [Implementation Note](/newsevents/pressreleases/monetary20260128a1.htm)
+
+[Press Conference](/monetarypolicy/fomcpressconf20260128.htm)
+
+**Minutes:**
+ [PDF](/monetarypolicy/files/fomcminutes20260128.pdf)
+ (Released February 18, 2026)
+
+**March**
+
+17-18*
+
+**Statement:**
+ [PDF](/monetarypolicy/files/monetary20260318a1.pdf) | [HTML](/newsevents/pressreleases/monetary20260318a.htm)
+
+[Press Conference](/monetarypolicy/fomcpresconf20260318.htm)
+ **Projection Materials**
+ [PDF](/monetarypolicy/files/fomcprojtabl20260318.pdf)
+
+**Minutes:**
+ [PDF](/monetarypolicy/files/fomcminutes20260318.pdf)
+ (Released April 08, 2026)
+
+**April**
+
+28-29
+
+**Statement:**
+ [PDF](/monetarypolicy/files/monetary20260429a1.pdf) | [HTML](/newsevents/pressreleases/monetary20260429a.htm)
+
+[Press Conference](/monetarypolicy/fomcpresconf20260429.htm)
+
+**Minutes:**
+ [PDF](/monetarypolicy/files/fomcminutes20260429.pdf)
+ (Released May 20, 2026)
+
+**June**
+
+16-17*
+
+**Statement:**
+ [PDF](/monetarypolicy/files/monetary20260617a1.pdf) | [HTML](/newsevents/pressreleases/monetary20260617a.htm)
+
+[Press Conference](/monetarypolicy/fomcpresconf20260617.htm)
+ **Projection Materials**
+ [PDF](/monetarypolicy/files/fomcprojtabl20260617.pdf)
+
+**Minutes:**
+ [PDF](/monetarypolicy/files/fomcminutes20260617.pdf)
+ (Released July 08, 2026)
+
+**July**
+
+28-29
+
+**Statement:**
+ [PDF](/monetarypolicy/files/monetary20260729a1.pdf) | [HTML](/newsevents/pressreleases/monetary20260729a.htm)
+
+[Press Conference](/monetarypolicy/fomcpresconf20260729.htm)
+
+**Minutes:**
+ [PDF](/monetarypolicy/files/fomcminutes20260729.pdf)
+ (Released August 19, 2026)
+
+**September**
+
+15-16*
+
+**Statement:**
+ [PDF](/monetarypolicy/files/monetary20260916a1.pdf) | [HTML](/newsevents/pressreleases/monetary20260916a.htm)
+
+[Press Conference](/monetarypolicy/fomcpresconf20260916.htm)
+ **Projection Materials**
+ [PDF](/monetarypolicy/files/fomcprojtabl20260916.pdf)
+
+**Minutes:**
+ [PDF](/monetarypolicy/files/fomcminutes20260916.pdf)
+ (Released October 07, 2026)
+
+**October**
+
+27-28
+
+
+
+**December**
+
+8-9*
+
+
+
+* Meeting associated with a Summary of Economic Projections.
+
+#### 2025 FOMC Meetings
+
+**January**
+
+28-29
+
+**Statement:**
+ [PDF](/monetarypolicy/files/monetary20250129a1.pdf)
