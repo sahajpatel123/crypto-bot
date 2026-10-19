@@ -9,10 +9,29 @@ Scoring legs use the stable score_cell/analyze_run APIs.
 No network (probe denies it), synthetic only, seconds-scale.
 """
 import runpy
+import socket
 import tempfile
 from pathlib import Path
 
+import pytest
+
+_ORIG_CONNECT = socket.socket.connect
+_ORIG_CREATE = socket.create_connection
 _PROBE = runpy.run_path("Crypto_Bot_CORR_Independent_Probes.py")
+# The probe patches sockets at import. Put them back so the rest of the
+# suite can use loopback, and deny only while this file's tests run.
+_DENY = _PROBE["deny_network"]
+socket.socket.connect = _ORIG_CONNECT
+socket.create_connection = _ORIG_CREATE
+
+
+@pytest.fixture(autouse=True)
+def _deny_network_only_for_these_tests():
+    socket.socket.connect = _DENY
+    socket.create_connection = _DENY
+    yield
+    socket.socket.connect = _ORIG_CONNECT
+    socket.create_connection = _ORIG_CREATE
 
 
 def _session_case(remove_later_crossings):
