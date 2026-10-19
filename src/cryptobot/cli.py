@@ -1317,6 +1317,9 @@ def cmd_gate(args: argparse.Namespace) -> int:
         and (_age_days(host.get("generated_utc")) is not None)
         and _age_days(host.get("generated_utc")) <= 7,
         "demo_drill_pass_fresh": drill.get("verdict") == "PASS"
+        and str(drill.get("provenance", "")).upper() not in (
+            "SYNTHETIC", "EMULATED")
+        and drill.get("emulated") is not True
         and (_age_days(drill.get("created_utc", drill.get("generated_utc")))
              is not None)
         and _age_days(drill.get("created_utc",
@@ -1939,12 +1942,59 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--full", action="store_true")
     p.add_argument("--root", default=None)
     p.set_defaults(func=cmd_acceptance)
+    from cryptobot import cli_extra
+    p = sub.add_parser("selftest", help="hermetic localhost checks")
+    p.add_argument("--all", action="store_true")
+    p.add_argument("--matrix-out", default=None)
+    p.set_defaults(func=cli_extra.cmd_selftest)
+    p = sub.add_parser("emulator", help="localhost exchange emulator (EMULATED)")
+    p.add_argument("emulator_cmd", choices=("serve", "drill"))
+    p.add_argument("--host", default="127.0.0.1")
+    p.add_argument("--port", type=int, default=0)
+    p.add_argument("--out", default=None)
+    p.set_defaults(func=cli_extra.cmd_emulator)
+    p = sub.add_parser("ops", help="operator commands; prod refuses without arm")
+    p.add_argument("ops_cmd", choices=(
+        "status", "positions", "orders", "pause", "resume",
+        "cancel-all", "flatten", "kill", "order"))
+    p.add_argument("--mode", default="emulator",
+                   choices=("emulator", "sandbox", "demo", "prod"))
+    p.add_argument("--symbol", default=None)
+    p.add_argument("--side", default=None)
+    p.add_argument("--qty", type=float, default=None)
+    p.add_argument("--kind", default="MARKET")
+    p.add_argument("--price", type=float, default=None)
+    p.add_argument("--reduce-only", action="store_true")
+    p.add_argument("--armed", default="armed.json")
+    p.add_argument("--gate", default="gate.json")
+    p.add_argument("--journal", default="runs/ops-journal.jsonl")
+    p.add_argument("--risk-state", default="runs/ops-risk.json")
+    p.add_argument("--book", default="runs/ops-book.json")
+    p.set_defaults(func=cli_extra.cmd_ops)
+    p = sub.add_parser("background", help="launchd install, uninstall, status")
+    p.add_argument("background_cmd", choices=("install", "uninstall", "status"))
+    p.add_argument("--recorder", default="data/recorder")
+    p.set_defaults(func=cli_extra.cmd_background)
+    p = sub.add_parser("owner", help="guided human-only steps")
+    p.add_argument("--state", default="runs/owner-wizard.json")
+    p.add_argument("--step", default=None)
+    p.set_defaults(func=cli_extra.cmd_owner)
+    p = sub.add_parser("certify", help="write the completion certificate")
+    p.add_argument("--out", default=None)
+    p.add_argument("--matrix-out", default=None)
+    p.set_defaults(func=cli_extra.cmd_certify)
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
-    args = build_parser().parse_args(argv)
-    return int(args.func(args))
+    try:
+        args = build_parser().parse_args(argv)
+        return int(args.func(args))
+    except SystemExit:
+        raise
+    except Exception as exc:
+        print(f"cryptobot: ERROR {type(exc).__name__}: {exc}", file=sys.stderr)
+        return 1
 
 
 if __name__ == "__main__":

@@ -1429,6 +1429,10 @@ class BinanceLiveEngine:
             ws = PROD_FSTREAM_URL
         elif host == TESTNET_BASE_URL:
             ws = TESTNET_FSTREAM_URL
+        elif host.startswith("http://127.0.0.1") or host.startswith(
+                "http://localhost"):
+            # Loopback emulator only. Production hosts stay pinned above.
+            ws = host.replace("http://", "ws://", 1)
         else:
             raise ValueError(
                 "no user-stream host mapped for base_url "

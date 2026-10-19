@@ -700,6 +700,26 @@ class SandboxTransport:
                     "bidPrice": f"{book['bid']:.2f}",
                     "askPrice": f"{book['ask']:.2f}",
                     "time": book["ts_ms"], LABEL_KEY: True}
+        if handler == ("GET", "/fapi/v1/depth"):
+            book = venue.book(str(params.get("symbol", "BTCUSDT")).upper())
+            return {"lastUpdateId": 1,
+                    "bids": [[f"{book['bid']:.2f}", f"{book['bid_qty']:.4f}"]],
+                    "asks": [[f"{book['ask']:.2f}", f"{book['ask_qty']:.4f}"]],
+                    LABEL_KEY: True}
+        if handler == ("GET", "/fapi/v1/premiumIndex"):
+            sym = str(params.get("symbol", "BTCUSDT")).upper()
+            return {"symbol": sym, "markPrice": f"{venue.mid(sym):.2f}",
+                    "indexPrice": f"{venue.mid(sym):.2f}",
+                    "lastFundingRate": "0.0001",
+                    "time": venue.now_ms(), LABEL_KEY: True}
+        if handler in (("GET", "/fapi/v1/positionSide/dual"),
+                       ("POST", "/fapi/v1/positionSide/dual")):
+            return {"dualSidePosition": False, LABEL_KEY: True}
+        if handler in (("GET", "/fapi/v1/multiAssetsMargin"),
+                       ("POST", "/fapi/v1/multiAssetsMargin")):
+            return {"multiAssetsMargin": False, LABEL_KEY: True}
+        if handler == ("POST", "/fapi/v1/marginType"):
+            return {"code": 200, "msg": "success", LABEL_KEY: True}
         raise VenueHttpError(404, -2013 - 99,
                              f"sandbox: unhandled {method} {path}")
 

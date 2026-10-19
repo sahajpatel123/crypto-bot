@@ -41,6 +41,19 @@ def verify_chain(doc: dict | None) -> list[str]:
     return problems
 
 
+def c1_final_utc(t0: datetime, forward_ready: datetime | None) -> datetime:
+    """When the project decision that includes C1 may be computed.
+
+    C1 is scored on the first day that has 90 forward days. The project
+    waits until max(T, that day), and never past T+14. T is T0+90 days.
+    """
+    adjudication = t0 + timedelta(days=90)
+    deadline = adjudication + timedelta(days=14)
+    if forward_ready is None:
+        return deadline
+    return min(deadline, max(adjudication, forward_ready))
+
+
 def project_decision(rows: list[dict], *, now: datetime, t0: datetime | None,
                      gate_is_go: bool) -> tuple[str, list[dict]]:
     if any(str(r.get("provenance", "")).upper() == "SYNTHETIC" for r in rows):

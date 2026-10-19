@@ -459,3 +459,16 @@ Meta Muse Spark.
   files are not. Of the 202-file chunk, the same 132 are in the seal;
   66 spot files and 4 rest_tail files are not. `subset_ok` is false.
   No zip was opened.
+- D-046 (operational completion, 2026-10-19): `release/v1` was moved
+  to tag `v1.0-final` (`166690c`) because that tag is the complete
+  tree and the branch pointer was still the earlier closeout.
+  `EXTERNAL_DATA_ROOT` was empty, so the recorder and lake were not
+  moved. H4 Bybit/OKX streams stay off: disk covers about 12 days at
+  the measured rate and adjudication is 90 days away
+  (IMPRACTICAL-BY-RESOURCE). C1's decision date is
+  `c1_final_utc`: the first day with 90 forward days, then
+  max(T, that day), never later than T+14. Emulator output is
+  provenance EMULATED and cannot satisfy `demo_drill_pass_fresh`.
+  Loopback base URLs are accepted only for `127.0.0.1` and
+  `localhost`. Prod ops refuse without an arm record. No prereg was
+  edited. No arm or GO gate file was written.

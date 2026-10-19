@@ -12,18 +12,22 @@ and the single ordered [OWNER_ACTIONS.md](OWNER_ACTIONS.md).
 
 ## Quick start (no credentials needed)
 
+From a fresh clone. These commands do not place orders and do not read keys.
+The gate stays NO-GO. There is no demonstrated edge.
+
 ```sh
 uv sync --locked --extra dev
-uv run --locked cryptobot doctor --config configs/paper.toml
-uv run --locked cryptobot recorder start --out data/recorder --duration-s 120
-uv run --locked cryptobot recorder verify --out data/recorder
-uv run --locked cryptobot dashboard --out reports/dashboard.html
-uv run --locked cryptobot autopilot status
-uv run --locked pytest -q
+uv run --locked --extra dev cryptobot doctor --config configs/paper.toml
+uv run --locked --extra dev cryptobot selftest --all
+uv run --locked --extra dev cryptobot final-status
+uv run --locked --extra dev cryptobot owner
+uv run --locked --extra dev cryptobot background status
 ```
 
-`recorder start` is public data only. It writes hourly gzip chunks and a
-hash-chained manifest. A short run is a smoke test, not confirmation data.
+`cryptobot selftest --all` is hermetic and talks only to localhost. A real
+demo-account drill, legal access to the venue, and tax treatment are
+owner steps (`cryptobot owner`). `cryptobot recorder start` is a separate
+public-data smoke test and is not required for the quick start.
 
 ## Research loop
 
