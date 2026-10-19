@@ -1,0 +1,31 @@
+{
+ "agg_trades": 2495145,
+ "caveats": [
+  "no quote channel in futures archive (books unevaluable)",
+  "marks at 1m archive cadence (floor wants >=1s)"
+ ],
+ "date": "2026-09-21",
+ "events_total": 2496585,
+ "format": "cryptobot-events/1",
+ "funding_settlements": 3,
+ "input_class": "observed-public",
+ "marks_1m": 1440,
+ "preregistration": "coord/pivot/PILOT-01.json",
+ "prior_use": "none",
+ "run_id": "pilot-20260921",
+ "selection": "top daily range of prior 30d, mechanical, frozen before any strategy scoring (see PILOT-01)",
+ "sha256": {
+  "events": "0b2f1e2459efe749f8fda357f040384b7c51c84047aba7b4c4da992c73c13ae5",
+  "funding": "a7d2fd98c5adfeab5c1fa795f314865ad8d9c59149455079015c1bfa3388a1bf"
+ },
+ "sources": {
+  "aggtrades_sha256": "4ec6dc278b293522f4f7278781d8a1534ac295b1a3e424a0e8fd4f685b1821e8 (verified vs published .CHECKSUM)",
+  "aggtrades_url": "https://data.binance.vision/data/futures/um/daily/aggTrades/BTCUSDT/BTCUSDT-aggTrades-2026-09-21.zip",
+  "funding_url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/BTCUSDT/BTCUSDT-fundingRate-2026-09.zip",
+  "klines_url": "https://data.binance.vision/data/futures/um/daily/klines/BTCUSDT/1m/BTCUSDT-1m-2026-09-21.zip",
+  "selection_ranking": "GET /fapi/v1/klines BTCUSDT 1d x30 (public, no auth), 2026-10-17"
+ },
+ "symbols": [
+  "BTCUSDT"
+ ]
+}
