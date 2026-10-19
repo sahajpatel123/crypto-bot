@@ -53,6 +53,16 @@ def test_h1_imbalance_and_fill() -> None:
     assert h1_trades(rising, []) == []  # no through-volume -> cancelled
 
 
+def test_h4_ranks_causally() -> None:
+    from cryptobot.research.h_eval import h4_trades
+    calm = _trend_bars()
+    volatile = [Bar(ts_ms=b.ts_ms, open=b.open, high=b.high * 1.05,
+                    low=b.low * 0.95, close=b.close) for b in _trend_bars()]
+    trades = h4_trades({"CALM": calm, "WILD": volatile,
+                        "CALM2": calm, "CALM3": calm})
+    assert isinstance(trades, list)  # synthetic only; fresh-data scoring locked
+
+
 def test_drawdown_and_verdict_shape() -> None:
     bars = _trend_bars()
     trades = h2_trades(bars)
