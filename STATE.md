@@ -67,7 +67,7 @@ No demonstrated edge.
 | A | Command matrix + selftest | DONE | `cryptobot selftest --all` PASS, 57 commands, 140 checks (risk/chaos/determinism/refusals/adjudicator/recorder smoke/host/background), `COMMAND_MATRIX.md` |
 | B | Exchange emulator + drill + soak | DONE | 19-cell real-socket drill + 24h soak with all faults and fill integrity, `tests/unit/test_emulator_hardening.py`; EMULATED-stamped incl. list rows and combined streams; recorder smoke. Gate rejects it |
 | C | Operator commands | DONE | `cryptobot ops` incl. STOP/TP via algo, post-only, cancel/cancel-all, flatten, kill; prod refuses every action; 10 tests in `test_ops_commands.py` (D-048) |
-| D1 | Move data root | CUT | `EXTERNAL_DATA_ROOT` unset. Data stays in the worktree; alias supported. Projection ~16d vs 103d to adjudication surfaces as `disk_alert` (D-046/D-049) |
+| D1 | Move data root / retention | PARTIAL | `EXTERNAL_DATA_ROOT` unset, so no move (D-046). Alias supported. `cryptobot compact` = zstd Parquet + hash-chained equivalence proof; raw deletion CUT pending manifest v2 (D-050). Projection ~16d vs 103d surfaces as `disk_alert` |
 | D2 | Recorder coverage | DONE | `RECORDER_COVERAGE.md`. H4 other venues IMPRACTICAL-BY-RESOURCE (D-046) |
 | D3 | C1 timeline | DONE | `c1_final_utc`. Test `test_c1_final_date_never_passes_the_grace`. Force-close stays at T per frozen prereg (D-048) |
 | D4 | Sleep / gap notify | DONE | caffeinate in the recorder plist; daily gap % in `autopilot report` (`ops/gaps.py`); `background status` disk projection + notification; tests `test_recorder_gaps.py`, `test_background_status.py` |

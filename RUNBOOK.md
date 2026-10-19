@@ -101,6 +101,19 @@ Symptom: `verify` gap rate > 0 or `gaps` in the manifest.
 2. Do not use the gapped interval as CONFIRM data.
 3. Restart the recorder; confirm sequence continuity resumes.
 
+## Recorder disk pressure / compaction
+
+`cryptobot background status` projects days of disk against the next
+adjudication and sets `disk_alert`. `cryptobot autopilot report`
+carries the daily gap % (alert above 5%).
+1. `cryptobot compact --root data/recorder` writes zstd Parquet plus a
+   hash-chained equivalence proof (rows + canonical hash). It never
+   deletes raw chunks by design: the recorder manifest hashes them.
+2. Copy the recorder root to the external disk, compact there, and
+   verify `compaction-manifest.json` before retiring a local copy.
+3. Never delete a raw chunk that the recorder manifest references
+   until a manifest-v2 review lands.
+
 ## Watchdog fired
 
 Symptom: `watchdog: TRIGGERED`, exit 3.

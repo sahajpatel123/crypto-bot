@@ -1032,6 +1032,17 @@ def cmd_latency_probe(args: argparse.Namespace) -> int:
     return rc
 
 
+def cmd_compact(args: argparse.Namespace) -> int:
+    """D1: zstd Parquet compaction with equivalence proof (no auto-delete)."""
+    from cryptobot.data.compaction import compact_root
+    report = compact_root(args.root, limit=args.limit)
+    text = json.dumps(report, indent=1, sort_keys=True)
+    print(text)
+    if args.out:
+        Path(args.out).write_text(text + "\n")
+    return 0 if report["verdict"] == "PASS" else 2
+
+
 def cmd_data(args: argparse.Namespace) -> int:
     """`cryptobot data verify --capture DIR` (T3.5): fail on gaps."""
     cap = Path(args.capture)
@@ -1813,6 +1824,12 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("data_cmd", choices=("verify",))
     p.add_argument("--capture", required=True)
     p.set_defaults(func=cmd_data)
+    p = sub.add_parser("compact",
+                       help="zstd Parquet compaction with equivalence proof")
+    p.add_argument("--root", default="data/recorder")
+    p.add_argument("--limit", type=int, default=None)
+    p.add_argument("--out", default=None)
+    p.set_defaults(func=cmd_compact)
     p = sub.add_parser("verdict")
     p.add_argument("--trades", default=None,
                    help="JSONL rows {net_bps, adverse_bps, day, dd_bps}")

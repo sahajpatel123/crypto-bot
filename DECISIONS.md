@@ -533,3 +533,17 @@ Meta Muse Spark.
   item, not silently ignored. Retention compaction was not run on
   the real recorder (no external root, ample local headroom); the
   code path is not claimed.
+- D-050 (D1 retention tool, 2026-10-20): `cryptobot compact --root
+  <recorder>` writes zstd Parquet next to each sealed `.jsonl.gz`
+  and appends a hash-chained proof entry (raw sha, parquet sha, row
+  count, canonical row hash, recorder chain head). Equivalence is
+  fail-closed: rows and canonical hash must match before an entry
+  is written. Raw deletion is deliberately NOT automatic: the
+  recorder manifest is append-only and hashes each raw chunk, so
+  deleting a referenced chunk would break `recorder verify` and the
+  vault import. Pruning needs a reviewed manifest v2; until then it
+  is an owner action on a copy. Tested on fixtures
+  (`tests/unit/test_compaction.py`), not run on the real recorder.
+  `background status` projects ~16 days of disk against ~103 days to
+  adjudication (`disk_alert: true`); that is recorded as
+  BLOCKED-OWNER resource work.
