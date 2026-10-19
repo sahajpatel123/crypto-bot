@@ -13,7 +13,7 @@ B#19 (MEDIUM): shell-less recovery releases risk state on flat.
 """
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -21,7 +21,7 @@ from cryptobot.app.config import load_config
 from cryptobot.app.session import Session
 from cryptobot.app.store import RunStore
 
-NOW = datetime(2026, 10, 17, 12, 0, 0, tzinfo=timezone.utc)
+NOW = datetime(2026, 10, 17, 12, 0, 0, tzinfo=UTC)
 
 
 class _Eng:
@@ -95,7 +95,7 @@ def _long_pos(session, engine, qty=0.5, price=60000.0, stop=59000.0,
         "cancel_requested": set(), "seen_ids": {"entry-1"},
         "protected": False, "protect_attempts": 0, "attach_filled": qty,
         "stop": stop, "target": 61000.0,
-        "time_exit": datetime(2030, 1, 1, tzinfo=timezone.utc)}
+        "time_exit": datetime(2030, 1, 1, tzinfo=UTC)}
     from cryptobot.app.session import _SymbolFeed
     feed = _SymbolFeed("BTCUSDT", 0)
     feed.mark = price

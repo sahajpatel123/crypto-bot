@@ -11,21 +11,23 @@ flatten-on-blip, never die with exposure.
 """
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from cryptobot.adapters.binance_live import (
-    RateLimitedError, UnknownOutcomeError, VenueHttpError,
-    VenueRejectedError)
+    RateLimitedError,
+    UnknownOutcomeError,
+    VenueHttpError,
+    VenueRejectedError,
+)
 from cryptobot.app.config import load_config
 from cryptobot.app.session import Session
 from cryptobot.app.store import RunStore
-from cryptobot.coordination.exits import encode_exit_rule, ExitPolicy
-from cryptobot.coordination.intent import (
-    DataQuality, ForecastCost, Intent, Side)
+from cryptobot.coordination.exits import ExitPolicy, encode_exit_rule
+from cryptobot.coordination.intent import DataQuality, ForecastCost, Intent, Side
 from cryptobot.coordination.selector import Candidate
 
-NOW = datetime(2026, 10, 12, 6, 0, tzinfo=timezone.utc)
+NOW = datetime(2026, 10, 12, 6, 0, tzinfo=UTC)
 
 
 def _intent(now: datetime) -> Intent:

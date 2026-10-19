@@ -9,8 +9,6 @@ refuse-fast window (lookup refused != cancel refused).
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone
-
 
 def _account_view(wallet="5000.0", avail="4900.0"):
     return {"totalWalletBalance": wallet, "availableBalance": avail,
@@ -19,11 +17,12 @@ def _account_view(wallet="5000.0", avail="4900.0"):
 
 
 def test_agree_uses_cached_snapshot_on_hot_cache(tmp_path):
+    from pathlib import Path
+
     import venue_fixtures as venues
     from cryptobot.app.config import load_config
     from cryptobot.app.session import Session
     from cryptobot.app.store import RunStore
-    from pathlib import Path
 
     script = [("GET", "/fapi/v2/account", None, ("ok", _account_view()))]
     engine, transport = venues.make_engine(tmp_path, script)

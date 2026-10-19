@@ -10,7 +10,7 @@ attribute to the algo cid via the _triggered map.
 """
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -21,7 +21,7 @@ from cryptobot.app.config import load_config
 from cryptobot.app.session import Session
 from cryptobot.app.store import RunStore
 
-NOW = datetime(2026, 10, 17, 12, 0, 0, tzinfo=timezone.utc)
+NOW = datetime(2026, 10, 17, 12, 0, 0, tzinfo=UTC)
 
 
 def _session_with(engine, tmp_path: Path) -> Session:
@@ -39,7 +39,6 @@ def _session_with(engine, tmp_path: Path) -> Session:
 def test_live_attach_rolls_back_leg1_on_leg2_failure(tmp_path):
     import venue_fixtures as venues
     from cryptobot.adapters.binance_live import VenueRejectedError
-    from cryptobot.app.engine import EngineOrderStatus
 
     engine, _ = venues.make_engine(tmp_path, [])
     engine._filters["BTCUSDT"] = {"step": 0.001, "tick": 0.1,
@@ -97,12 +96,13 @@ def test_live_attach_surfaces_leg1_when_rollback_fails(tmp_path):
 
 
 def test_paper_attach_rolls_back_leg1(tmp_path):
-    from cryptobot.adapters.paper_engine import NautilusPaperEngine
-    from cryptobot.app.engine import EngineOrder
     from nautilus_trader.model.data import QuoteTick
     from nautilus_trader.model.objects import Price, Quantity
 
-    t0 = datetime(2026, 10, 1, tzinfo=timezone.utc)
+    from cryptobot.adapters.paper_engine import NautilusPaperEngine
+    from cryptobot.app.engine import EngineOrder
+
+    t0 = datetime(2026, 10, 1, tzinfo=UTC)
     engine = NautilusPaperEngine(submit_delay_ms=0, fill_delay_ms=1)
     engine.add_instrument("BTCUSDT", price_precision=2, size_precision=3,
                           tick_size=0.10, step_size=0.001, ts_utc=t0)
@@ -136,7 +136,6 @@ def test_paper_attach_rolls_back_leg1(tmp_path):
 
     engine.submit = _flaky
     cancels = []
-    real_cancel = engine.cancel
     engine.cancel = lambda cid, reason: cancels.append(cid)
     with pytest.raises(OverflowError):
         engine.attach_protection(entry, 59990.0, 60010.0)
@@ -193,7 +192,7 @@ def _reversed_session(tmp_path: Path):
         "cancel_requested": set(), "seen_ids": set(),
         "protected": False, "protect_attempts": 0, "attach_filled": 0.0,
         "stop": 59900.0, "target": 60100.0,
-        "time_exit": datetime(2030, 1, 1, tzinfo=timezone.utc)}
+        "time_exit": datetime(2030, 1, 1, tzinfo=UTC)}
     engine.statuses["entry-1"] = SimpleNamespace(state="filled",
                                                  filled_qty=0.5)
     return session, engine
@@ -241,7 +240,7 @@ def test_attach_unknown_leg_gets_tracked(tmp_path):
         "cancel_requested": set(), "seen_ids": set(),
         "protected": False, "protect_attempts": 0, "attach_filled": 0.0,
         "stop": 59900.0, "target": 60100.0,
-        "time_exit": datetime(2030, 1, 1, tzinfo=timezone.utc)}
+        "time_exit": datetime(2030, 1, 1, tzinfo=UTC)}
     session._ensure_protection_inner(session._position)  # noqa: SLF001
     assert "leg-unknown-1" in session._position["legs"]  # noqa: SLF001
 

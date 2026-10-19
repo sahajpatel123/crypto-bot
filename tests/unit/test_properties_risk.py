@@ -10,20 +10,19 @@ from __future__ import annotations
 
 import math
 import re
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from itertools import count
 
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
 from cryptobot.coordination import DataQuality, ForecastCost, Intent, Side
-from cryptobot.risk.margin import (
-    liquidation_price_isolated, maintenance_margin)
+from cryptobot.risk.margin import liquidation_price_isolated, maintenance_margin
 from cryptobot.risk.rounding import floor_to_step
 from cryptobot.risk.sizing import SizeRejected, plan_size
-from cryptobot.risk.types import InstrumentFilter, RiskConfig
+from cryptobot.risk.types import RiskConfig
 
-NOW = datetime(2026, 10, 17, 12, 0, 0, tzinfo=timezone.utc)
+NOW = datetime(2026, 10, 17, 12, 0, 0, tzinfo=UTC)
 
 # Unique subdir per Hypothesis example (function-scoped tmp_path is
 # shared across examples; state files must not collide). Suppression
@@ -161,9 +160,8 @@ LEGAL_ID = re.compile(r"^[A-Za-z0-9._\-]{1,36}$")
           suppress_health_check=_FIXTURE_OK)
 def test_client_ids_legal_for_any_tag(tmp_path, tag):
     """Any run_tag (unicode, symbols, long) yields legal <=36 ids."""
-    from cryptobot.adapters.binance_live import BinanceLiveEngine
-
     import venue_fixtures as venues
+    from cryptobot.adapters.binance_live import BinanceLiveEngine
 
     case_dir = tmp_path / f"case{next(_case)}"
     case_dir.mkdir(parents=True, exist_ok=True)

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from cryptobot.app.config import load_config
@@ -18,7 +18,7 @@ from cryptobot.app.store import RunStore
 
 CLASS = "synthetic-test"
 T0 = 1_700_000_000_000
-WALL = datetime(2026, 10, 18, 12, 0, 0, tzinfo=timezone.utc)
+WALL = datetime(2026, 10, 18, 12, 0, 0, tzinfo=UTC)
 
 
 def _trade(seq, ts, agg_id, price, qty):

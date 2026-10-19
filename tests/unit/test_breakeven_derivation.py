@@ -13,8 +13,7 @@ from __future__ import annotations
 
 import pytest
 
-from cryptobot.research.cost_model_v2 import (
-    CostModel, breakeven_table, required_win_rate)
+from cryptobot.research.cost_model_v2 import CostModel, breakeven_table, required_win_rate
 
 
 def _ev_bps(p: float, target: float, stop: float, cost: float) -> float:

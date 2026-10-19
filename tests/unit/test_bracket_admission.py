@@ -11,7 +11,7 @@ run_mode tests below error until the gate is wired.
 """
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from cryptobot.coordination import DataQuality, ForecastCost, Intent, Side
 from cryptobot.risk import Approved, Rejected
@@ -19,7 +19,7 @@ from cryptobot.risk.margin import maintenance_margin
 from cryptobot.risk.policy import RiskPolicy
 from cryptobot.risk.types import AccountSnapshot, InstrumentFilter, RiskConfig
 
-NOW = datetime(2026, 10, 17, 12, 0, 0, tzinfo=timezone.utc)
+NOW = datetime(2026, 10, 17, 12, 0, 0, tzinfo=UTC)
 
 BRACKETS = [
     {"bracket": 1, "notionalCap": 50000.0, "maintMarginRatio": 0.004,
@@ -137,9 +137,9 @@ def test_tier_switch_flips_admission(tmp_path):
 
 
 def test_parse_brackets_payload_shapes():
-    from cryptobot.app.filters import FilterError, parse_brackets_payload
-
     import pytest
+
+    from cryptobot.app.filters import FilterError, parse_brackets_payload
 
     payload = [{"symbol": "BTCUSDT", "brackets": [
         {"bracket": 2, "notionalCap": "250000", "notionalFloor": "50000",
@@ -161,11 +161,11 @@ def test_parse_brackets_payload_shapes():
 
 
 def test_session_arm_brackets_injection(tmp_path):
+    from pathlib import Path as _Path
+
     from cryptobot.app.config import load_config
     from cryptobot.app.session import Session
     from cryptobot.app.store import RunStore
-
-    from pathlib import Path as _Path
 
     cfg_text = _Path("configs/paper.toml").read_text()
     cfg_text = cfg_text.replace('dir = "runs"',

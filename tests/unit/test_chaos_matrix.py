@@ -24,16 +24,19 @@ Fault mapping (honest, no fabrication):
 """
 from __future__ import annotations
 
-import itertools
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
 from cryptobot.adapters.binance_live import BinanceLiveEngine
 from cryptobot.adapters.sandbox_venue import (
-    FaultScript, SandboxConfig, SandboxTransport, SandboxVenue)
+    FaultScript,
+    SandboxConfig,
+    SandboxTransport,
+    SandboxVenue,
+)
 
-NOW = datetime(2026, 10, 17, 12, 0, 0, tzinfo=timezone.utc)
+NOW = datetime(2026, 10, 17, 12, 0, 0, tzinfo=UTC)
 NOW_MS = int(NOW.timestamp() * 1000)
 SYM = "BTCUSDT"
 
@@ -41,6 +44,8 @@ FAULTS = ["timeout", "5xx", "rate-limit", "reject", "partial", "dupe",
           "reorder", "ws-gap", "skew", "sigkill"]
 STAGES = ["entry", "attach", "flatten", "resume"]
 
+
+import contextlib
 
 import pytest as _pytest
 
@@ -58,11 +63,12 @@ def _reset_symbol_specs():
 
 
 def _rig(tmp_path, monkeypatch, faults=(), seed=7):
+    from pathlib import Path
+
     import venue_fixtures as venues  # noqa: F401 (ensures tests/ on path)
     from cryptobot.app.config import load_config
     from cryptobot.app.session import Session, _SymbolFeed
     from cryptobot.app.store import RunStore
-    from pathlib import Path
 
     venue = SandboxVenue(SandboxConfig(
         seed=seed, faults=FaultScript(entries=list(faults))))
@@ -95,8 +101,7 @@ def _rig(tmp_path, monkeypatch, faults=(), seed=7):
 
 
 def _intent(now):
-    from cryptobot.coordination import (DataQuality, ForecastCost, Intent,
-                                        Side)
+    from cryptobot.coordination import DataQuality, ForecastCost, Intent, Side
     from cryptobot.coordination.exits import ExitPolicy, encode_exit_rule
 
     return Intent(
@@ -173,10 +178,8 @@ def _assert_cell_ok(session, engine, venue, *, stage, fault):
         pos = session._position
         assert pos is not None, f"{stage}/{fault}: orphan exposure unsupervised"
         statuses = {}
-        try:
+        with contextlib.suppress(ValueError, KeyError, AttributeError):
             statuses = session._tracked_statuses_for(pos)
-        except (ValueError, KeyError, AttributeError):
-            pass
         live_stops = [
             lid for lid in list(pos.get("legs") or [])
             if statuses.get(lid) is not None
@@ -226,10 +229,8 @@ def _apply_harness_fault(fault, ctx):
         # Drops happened inside _pump (drop_stream); heal everything
         # outstanding via lookup now.
         for cid in list(engine.unknown_ids()):
-            try:
+            with contextlib.suppress(Exception):
                 engine.lookup(cid)
-            except Exception:
-                pass
         for event in engine.poll():
             session._apply_engine_event(event)
     elif fault == "skew":
@@ -253,7 +254,6 @@ def _apply_harness_fault(fault, ctx):
 def _rebuild(ctx):
     """SIGKILL equivalence: drop + rebuild from durable state."""
     from cryptobot.app.session import Session
-    from cryptobot.app.store import RunStore
 
     tmp_path, store = ctx["tmp_path"], ctx["store"]
     venue = ctx["venue"]
@@ -304,26 +304,20 @@ def test_chaos_matrix(tmp_path, monkeypatch, stage, fault):
         _force_reattach(session, engine, venue, ctx)
     elif stage == "flatten":
         if session._position is not None or session.ledger.has_position():
-            try:
+            with contextlib.suppress(Exception):
                 session._flatten(f"chaos-{fault}")
-            except Exception:
-                pass
         _pump(session, engine, venue, ctx=ctx)
     elif stage == "resume":
-        try:
+        with contextlib.suppress(KeyError, ValueError):
             session._resume_live()
-        except (KeyError, ValueError):
-            pass
         _pump(session, engine, venue, ctx=ctx)
     _apply_harness_fault(fault, ctx)
     session, engine, venue = ctx["session"], ctx["engine"], ctx["venue"]
     _pump(session, engine, venue, ctx=ctx)
     # Quiesce: resolve unknowns, settle once.
     for cid in list(engine.unknown_ids()):
-        try:
+        with contextlib.suppress(Exception):
             engine.lookup(cid)
-        except Exception:
-            pass
     # Gap heal: dropped stream fills carry no unknown flag; sweep all
     # tracked ids through lookup (the designed gap-recovery path).
     if fault == "ws-gap":
@@ -335,20 +329,16 @@ def test_chaos_matrix(tmp_path, monkeypatch, stage, fault):
         engine._rate_limited_until_ms = 0  # noqa: SLF001
         for _ in range(3):
             if session._position is not None:
-                try:
+                with contextlib.suppress(Exception):
                     session._update_position(_synthetic_tick(session))
-                except Exception:
-                    pass
             _pump(session, engine, venue, ctx=ctx)
     _pump(session, engine, venue, ctx=ctx)
     # Post-resume settle: adoption + flatten + release need ticks.
     if stage == "resume":
         for _ in range(6):
             if session._position is not None:
-                try:
+                with contextlib.suppress(Exception):
                     session._update_position(_synthetic_tick(session))
-                except Exception:
-                    pass
             _pump(session, engine, venue, ctx=ctx)
     _pump(session, engine, venue, ctx=ctx)
     _assert_fault_fired(fault, ctx, stage)
@@ -380,10 +370,8 @@ def _force_reattach(session, engine, venue, ctx=None):
     if pos is None:
         return
     for lid in list(pos.get("legs") or []):
-        try:
+        with contextlib.suppress(Exception):
             engine.cancel(lid, "chaos-force-reattach")
-        except Exception:
-            pass
         if lid in pos.get("legs", []):
             pos["legs"].remove(lid)
             pos.setdefault("retired", []).append(lid)
@@ -405,10 +393,8 @@ def _heal_all_tracked(session, engine):
     for cid in ids:
         if not cid:
             continue
-        try:
+        with contextlib.suppress(Exception):
             engine.lookup(cid)
-        except Exception:
-            pass
 
 
 def _assert_fault_fired(fault, ctx, stage):

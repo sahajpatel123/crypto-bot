@@ -11,7 +11,7 @@ B#8 (HIGH): _is_flat_confirmed must not treat venue-unreachable
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -19,7 +19,7 @@ from cryptobot.app.config import load_config
 from cryptobot.app.session import Session
 from cryptobot.app.store import RunStore
 
-NOW = datetime(2026, 10, 17, 12, 0, 0, tzinfo=timezone.utc)
+NOW = datetime(2026, 10, 17, 12, 0, 0, tzinfo=UTC)
 
 
 class _ScriptedEngine:
@@ -80,7 +80,7 @@ def _long_position(session: Session, engine: _ScriptedEngine, qty=0.5):
         "legs": [], "retired": [], "close_ids": [],
         "cancel_requested": set(), "seen_ids": set(),
         "protected": False,
-        "time_exit": datetime(2030, 1, 1, tzinfo=timezone.utc)}
+        "time_exit": datetime(2030, 1, 1, tzinfo=UTC)}
 
 
 def test_unknown_close_blocks_second_submit(tmp_path):
