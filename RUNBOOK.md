@@ -1,7 +1,13 @@
 # RUNBOOK
 
-All commands assume `/opt/cryptobot` and the project venv. Never place an
-order while debugging; replay/sandbox first.
+All commands assume the project venv. Never place an order while
+debugging. Replay and the localhost emulator come first. The gate is
+NO-GO. There is no demonstrated edge.
+
+Hermetic check: `cryptobot selftest --all`.
+Operator actions on the emulator: `cryptobot ops status --mode emulator`.
+Prod ops refuse without a human arm. A real demo drill is an owner step
+(`cryptobot owner`), not something the emulator can satisfy.
 
 ## Unknown order outcome
 

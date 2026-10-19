@@ -50,6 +50,26 @@ vault/autopilot artifacts, every claim cites command+output or file path.
 | E8 | OWNER_ACTIONS + README/ARCHITECTURE/RUNBOOK | DONE | steps 15–17 |
 | E9 | FINAL_STATUS.md | DONE | see FINAL_STATUS.md; closeout supersedes any SCREEN_PASS reading |
 
+## Operational completion (resume the first non-DONE row)
+
+Work on `release/v1` at `v1.0-final` and after. Gate stays NO-GO.
+No demonstrated edge.
+
+| ID | Task | Status | Evidence |
+|---|---|---|---|
+| A | Command matrix + selftest | DONE | `cryptobot selftest --all` PASS, 55 commands, 118 checks, `COMMAND_MATRIX.md` |
+| B | Exchange emulator + drill + soak | DONE | `src/cryptobot/adapters/mockex_server.py`, `cryptobot emulator drill`, tests in `tests/unit/test_operational.py`. Provenance EMULATED. Gate rejects it |
+| C | Operator commands | DONE | `cryptobot ops`. Prod refuses without an arm. Emulator orders go through RiskPolicy |
+| D1 | Move data root | CUT | `EXTERNAL_DATA_ROOT` empty. Data stays in the worktree. D-046 |
+| D2 | Recorder coverage | DONE | `RECORDER_COVERAGE.md`. H4 other venues IMPRACTICAL-BY-RESOURCE (D-046) |
+| D3 | C1 timeline | DONE | `c1_final_utc`. Test `test_c1_final_date_never_passes_the_grace` |
+| D4 | Sleep / gap notify | CUT | caffeinate is already in the recorder plist. A new gap notifier was not added |
+| D5 | background install/status | DONE | `cryptobot background status` prints the adjudication date. install/uninstall wrap the existing scripts |
+| E1 | owner wizard | DONE | `cryptobot owner` |
+| E2 | README quickstart | DONE | hermetic commands in README. Clean-room selftest recorded after the commit |
+| E3 | certify | PENDING | run after selftest stays green |
+| E4 | suite + tag v1.0.0 | PENDING | |
+
 ## Consolidation task table (resume the first non-DONE row)
 
 | ID | Task | Status | Evidence |
