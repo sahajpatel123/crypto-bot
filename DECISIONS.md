@@ -472,3 +472,11 @@ Meta Muse Spark.
   Loopback base URLs are accepted only for `127.0.0.1` and
   `localhost`. Prod ops refuse without an arm record. No prereg was
   edited. No arm or GO gate file was written.
+- D-047 (2026-10-19, owner hurdle of 2–3%/day): the wish is recorded
+  and checked by `cryptobot monitor`. It is not written into a frozen
+  prereg and it is not a new gate. B4's best OOS Sharpe is 4.396 with
+  max drawdown 0.47%. Turning that Sharpe into a 2%/day mean would
+  require about 8.7% daily volatility, which contradicts the
+  drawdown. Verdict HURDLE_UNMET, gate NO-GO. No cell was retuned.
+  2%/day compounded is about 1,377× in a year; 3%/day is about
+  48,483×. Those multiples are not in the measured results.
