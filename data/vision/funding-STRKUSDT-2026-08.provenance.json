@@ -1,0 +1,10 @@
+{
+ "name": "funding-STRKUSDT-2026-08",
+ "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/STRKUSDT/STRKUSDT-fundingRate-2026-08.zip",
+ "fetched_utc": "2026-10-16T14:14:58.125246+00:00",
+ "status": "present",
+ "http_status": 200,
+ "sha256": "0e6295950d59e9aa368693c649e7b9d769fd88b201d3732cfd0f00fab8d9f831",
+ "bytes": 1264,
+ "csv_rows": 186
+}

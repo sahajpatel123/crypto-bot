@@ -1,0 +1,10 @@
+{
+ "name": "spot-1m-ETHUSDT-2026-08",
+ "url": "https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1m/ETHUSDT-1m-2026-08.zip",
+ "fetched_utc": "2026-10-16T14:15:19.716495+00:00",
+ "status": "present",
+ "http_status": 200,
+ "sha256": "f2f2fe8da85467fb8ec8185e07f16f3af9f4ebcb266633ba494e76ac73c40c0c",
+ "bytes": 2005311,
+ "csv_rows": 44639
+}

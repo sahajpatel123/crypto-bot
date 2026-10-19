@@ -1,0 +1,10 @@
+{
+ "name": "funding-WUSDT-2026-08",
+ "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/WUSDT/WUSDT-fundingRate-2026-08.zip",
+ "fetched_utc": "2026-10-16T14:15:13.749861+00:00",
+ "status": "present",
+ "http_status": 200,
+ "sha256": "ab4c2d749b25447baa7362ffd192203997f6cd87900a485cc1bf9e5c9cdc3bbf",
+ "bytes": 1180,
+ "csv_rows": 186
+}

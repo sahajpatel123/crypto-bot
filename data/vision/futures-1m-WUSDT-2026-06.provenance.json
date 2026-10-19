@@ -1,0 +1,10 @@
+{
+ "name": "futures-1m-WUSDT-2026-06",
+ "url": "https://data.binance.vision/data/futures/um/monthly/klines/WUSDT/1m/WUSDT-1m-2026-06.zip",
+ "fetched_utc": "2026-10-16T14:14:11.236626+00:00",
+ "status": "present",
+ "http_status": 200,
+ "sha256": "a33bafe5bb2eab95b34d36983f43c0ce3b8cc8839e77b11418a0daaec10e65a1",
+ "bytes": 1527196,
+ "csv_rows": 43200
+}
