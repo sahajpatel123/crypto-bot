@@ -1,0 +1,12 @@
+{
+ "status": "CHILD_EXIT",
+ "child_rc": 0,
+ "elapsed_s": 0.023,
+ "budget_s": 60.0,
+ "command": [
+  "python3",
+  "-c",
+  "print('best-effort-ok')"
+ ],
+ "subreaper": false
+}

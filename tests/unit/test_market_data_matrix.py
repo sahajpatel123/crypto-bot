@@ -1,6 +1,16 @@
 """Capability-matrix unit tests (Worker 2, E-001/E-002). Offline-safe, no network."""
 from cryptobot.market_data import build_matrix, render_markdown
 from cryptobot.market_data.capabilities import E002_TRIAL_VERDICT, to_dict
+"""Capability-matrix unit tests (Worker 2, E-001/E-002/E-006). Offline-safe, no network."""
+from cryptobot.market_data import build_matrix, render_markdown
+from cryptobot.market_data.capabilities import (
+    E002_TRIAL_EVIDENCE,
+    E002_TRIAL_VERDICT,
+    E006_TRIAL_EVIDENCE,
+    E006_TRIAL_VERDICT,
+    E006_VERIFIED,
+    to_dict,
+)
 
 
 def test_matrix_has_all_candidate_rows():
@@ -14,12 +24,13 @@ def test_stdlib_row_is_installed():
     assert stdlib.proposed_pin is None  # interpreter-pinned, no PyPI pin.
 
 
-def test_uninstalled_rows_verify_nothing_and_name_blockers():
+def test_uninstalled_rows_name_blockers_and_qualify_any_verification():
     for row in build_matrix():
         if row.installed_version is None:
-            assert row.verified == ()
             assert any("not installed" in b for b in row.blockers), row.name
             assert row.proposed_pin is not None  # pin proposal still recorded.
+            # Trial-venv evidence is allowed only when every entry names its venv.
+            assert all(".venv-trial" in v for v in row.verified), row.name
 
 
 def test_every_row_separates_verified_from_assumed():

@@ -1,0 +1,31 @@
+{
+  "_note": "V-004 v2 snapshot as of 2026-10-11T12:00Z: daily halt engaged, one live reservation, profit protection armed, zero flow baselines. Restart must restore all three.",
+  "booked": {},
+  "current_day": "2026-10-11",
+  "day_start_equity": 10000.0,
+  "flow_baseline_day": 0.0,
+  "flow_baseline_inception": 0.0,
+  "halt_days": {
+    "2026-10-11": "daily-loss"
+  },
+  "needs_reconciliation": false,
+  "open_position": false,
+  "original_equity": 10000.0,
+  "pause_days": {},
+  "peak_realised": 120.0,
+  "profit_floor": 10084.0,
+  "reservations": {
+    "r-000001": {
+      "created_utc": "2026-10-11T11:30:00+00:00",
+      "expires_utc": "2026-10-11T12:30:00+00:00",
+      "instrument": "BTCUSDT",
+      "intent_ref": "rec-canonical-long",
+      "notional": 5478.0,
+      "reserved_risk": 25.0,
+      "side": "LONG"
+    }
+  },
+  "seq": 1,
+  "unresolved": {},
+  "version": 2
+}

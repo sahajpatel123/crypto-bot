@@ -1,0 +1,16 @@
+{"ts_utc": "2026-10-04T18:30:00.025000+00:00", "event": "exit-only", "detail": {"halted": false, "reason": "day-reconciled"}}
+{"ts_utc": "2026-10-04T22:25:54.593000+00:00", "event": "submitted", "detail": {"client_id": "pe-000001-a3b1799d", "instrument": "ETHUSDT", "side": "BUY", "qty": 0.01, "kind": "LIMIT", "role": "entry", "reservation_id": "r-000001"}}
+{"ts_utc": "2026-10-04T22:25:54.680000+00:00", "event": "fill", "detail": {"exec_id": "T-d70a9963dd864ab7-001", "client_id": "pe-000001-a3b1799d", "reservation_id": "r-000001", "symbol": "ETHUSDT", "venue_side": "BUY", "qty": 0.01, "price": 2735.63, "fee": 0.01367815, "ts_utc": "2026-10-04T22:25:54.680000+00:00"}}
+{"ts_utc": "2026-10-04T22:25:54.680000+00:00", "event": "delta-propagated", "detail": {"exec_id": "T-d70a9963dd864ab7-001"}}
+{"ts_utc": "2026-10-04T22:25:54.730000+00:00", "event": "submitted", "detail": {"client_id": "pe-000002-1c80317f", "instrument": "ETHUSDT", "side": "SELL", "qty": 0.01, "kind": "STOP_MARKET", "role": "stop", "reservation_id": "r-000001"}}
+{"ts_utc": "2026-10-04T22:25:54.730000+00:00", "event": "submitted", "detail": {"client_id": "pe-000003-06671ad1", "instrument": "ETHUSDT", "side": "SELL", "qty": 0.01, "kind": "TAKE_PROFIT_MARKET", "role": "target", "reservation_id": "r-000001"}}
+{"ts_utc": "2026-10-04T22:27:11.513000+00:00", "event": "fill", "detail": {"exec_id": "T-58a153adcf5dda10-002", "client_id": "pe-000002-1c80317f", "reservation_id": "r-000001", "symbol": "ETHUSDT", "venue_side": "SELL", "qty": 0.01, "price": 2729.12, "fee": 0.0136456, "ts_utc": "2026-10-04T22:27:11.513000+00:00"}}
+{"ts_utc": "2026-10-04T22:27:11.513000+00:00", "event": "delta-propagated", "detail": {"exec_id": "T-58a153adcf5dda10-002"}}
+{"ts_utc": "2026-10-05T18:30:00.049000+00:00", "event": "exit-only", "detail": {"halted": false, "reason": "day-reconciled"}}
+{"ts_utc": "2026-10-06T18:30:00.059000+00:00", "event": "exit-only", "detail": {"halted": false, "reason": "day-reconciled"}}
+{"ts_utc": "2026-10-07T18:30:00.136000+00:00", "event": "exit-only", "detail": {"halted": false, "reason": "day-reconciled"}}
+{"ts_utc": "2026-10-08T18:30:00.058000+00:00", "event": "exit-only", "detail": {"halted": false, "reason": "day-reconciled"}}
+{"ts_utc": "2026-10-09T18:30:00.273000+00:00", "event": "exit-only", "detail": {"halted": false, "reason": "day-reconciled"}}
+{"ts_utc": "2026-10-10T18:30:00.451000+00:00", "event": "exit-only", "detail": {"halted": false, "reason": "day-reconciled"}}
+{"ts_utc": "2026-10-11T18:29:59.949000+00:00", "event": "cancel-request", "detail": {"client_id": "pe-000002-1c80317f", "reason": "capture-end"}}
+{"ts_utc": "2026-10-11T18:29:59.949000+00:00", "event": "cancel-request", "detail": {"client_id": "pe-000003-06671ad1", "reason": "capture-end"}}

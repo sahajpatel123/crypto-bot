@@ -1,0 +1,190 @@
+"""E1.2: vision pull split boundaries, checksum gating, resume, report."""
+from __future__ import annotations
+
+import importlib.util
+import json
+from pathlib import Path
+
+import pytest
+
+REPO = Path(__file__).resolve().parents[2]
+SPEC = importlib.util.spec_from_file_location(
+    "vision_pull", REPO / "tools" / "vision_pull.py")
+assert SPEC and SPEC.loader
+vision_pull = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(vision_pull)
+
+
+def test_ascii_url_quotes_non_ascii_symbol():
+    url = vision_pull._ascii_url(
+        "https://data.binance.vision/data/futures/um/monthly/klines/币安人生USDT/1d/x.zip")
+    assert url.isascii()
+    assert "%E5" in url or "币" not in url
+    # ASCII paths are unchanged apart from already-safe characters.
+    plain = "https://data.binance.vision/data/futures/um/monthly/klines/BTCUSDT/1d/x.zip"
+    assert vision_pull._ascii_url(plain) == plain
+
+
+def test_split_monthly_boundary():
+    assert vision_pull.split_of("BTCUSDT-1d-2023-12.zip") == "dev"
+    assert vision_pull.split_of("BTCUSDT-1d-2024-01.zip") == "holdout"
+    assert vision_pull.split_of("BTCUSDT-1h-2020-01.zip") == "dev"
+    assert vision_pull.split_of("BTCUSDT-1h-2026-09.zip") == "holdout"
+
+
+def test_split_daily_boundary():
+    assert vision_pull.split_of("BTCUSDT-metrics-2023-12-31.zip") == "dev"
+    assert vision_pull.split_of("BTCUSDT-metrics-2024-01-01.zip") == "holdout"
+    assert vision_pull.split_of("BTCUSDT-1d-2026-10-17.zip") == "holdout"
+    assert vision_pull.split_of("BTCUSDT-1d-2026-10-18.zip") == "forward"
+
+
+def test_forward_refresh_drops_holdout_jobs():
+    import sys
+    sys.path.insert(0, str(REPO / "tools"))
+    import forward_refresh
+    plan = {"jobs": [
+        {"split": "holdout", "filename": "BTCUSDT-1d-2024-01.zip"},
+        {"split": "forward", "filename": "BTCUSDT-1d-2026-10-18.zip"},
+        {"split": "dev", "filename": "BTCUSDT-1d-2023-01.zip"},
+    ]}
+    kept = forward_refresh.forward_only(plan)
+    assert [j["split"] for j in kept["jobs"]] == ["forward"]
+    assert kept["dropped_non_forward"] == 2
+
+
+def test_split_dev_only_skips_holdout():
+    assert vision_pull.split_of("BTCUSDT-1m-2023-12.zip",
+                                dev_only=True) == "dev"
+    assert vision_pull.split_of("BTCUSDT-1m-2024-01.zip",
+                                dev_only=True) == "skip"
+    with pytest.raises(ValueError, match="no YYYY-MM"):
+        vision_pull.split_of("MATICUSDT-metrics-1993.zip")
+
+
+def test_pull_job_verifies_checksum_and_splits(tmp_path, monkeypatch):
+    payload = b"PK fake-zip-bytes"
+    want = __import__("hashlib").sha256(payload).hexdigest()
+    monkeypatch.setattr(vision_pull, "_fetch_text",
+                        lambda url: f"{want}  f.zip")
+    monkeypatch.setattr(vision_pull, "_fetch_file",
+                        lambda url, dest: dest.write_bytes(payload))
+    dev, hold = tmp_path / "dev", tmp_path / "hold"
+    job = {"key": "k", "url": "u", "checksum_url": "c",
+           "dataset": "klines", "symbol": "BTCUSDT", "interval": "1d",
+           "filename": "BTCUSDT-1d-2023-12.zip", "bytes": len(payload),
+           "split": "dev"}
+    rec = vision_pull.pull_job(job, dev_dir=dev, holdout_dir=hold)
+    assert rec["status"] == "ok"
+    assert (dev / "klines" / "1d" / "BTCUSDT"
+            / "BTCUSDT-1d-2023-12.zip").exists()
+    hold_job = dict(job, filename="BTCUSDT-1d-2024-01.zip", split="holdout")
+    rec = vision_pull.pull_job(hold_job, dev_dir=dev, holdout_dir=hold)
+    assert rec["status"] == "ok"
+    assert (hold / "klines" / "1d" / "BTCUSDT"
+            / "BTCUSDT-1d-2024-01.zip").exists()
+
+
+def test_pull_job_checksum_mismatch_fails_loud(tmp_path, monkeypatch):
+    monkeypatch.setattr(vision_pull, "_fetch_text",
+                        lambda url: "0" * 64 + "  f.zip")
+    monkeypatch.setattr(vision_pull, "_fetch_file",
+                        lambda url, dest: dest.write_bytes(b"other"))
+    monkeypatch.setattr(vision_pull.time, "sleep", lambda s: None)
+    job = {"key": "k", "url": "u", "checksum_url": "c",
+           "dataset": "klines", "symbol": "BTCUSDT", "interval": "1d",
+           "filename": "f.zip", "bytes": 5, "split": "dev"}
+    rec = vision_pull.pull_job(job, dev_dir=tmp_path / "dev",
+                               holdout_dir=tmp_path / "hold")
+    assert rec["status"] == "failed"
+    assert "checksum" in rec["error"]
+    assert not list((tmp_path / "dev").rglob("*.zip"))
+
+
+def test_pull_state_resume_and_report(tmp_path):
+    plan = {"jobs": [
+        {"key": "a", "dataset": "klines", "interval": "1d",
+         "symbol": "BTCUSDT", "filename": "x.zip", "split": "dev"},
+        {"key": "b", "dataset": "klines", "interval": "1d",
+         "symbol": "BTCUSDT", "filename": "y.zip", "split": "dev"}]}
+    plan_p = tmp_path / "plan.json"
+    plan_p.write_text(json.dumps(plan))
+    state = vision_pull.PullState(tmp_path / "state.json")
+    assert state.done("a") is False
+    state.record("a", {"status": "ok", "path": "x"})
+    state.save()
+    assert vision_pull.PullState(tmp_path / "state.json").done("a") is True
+    import argparse
+    ns = argparse.Namespace(plan=str(plan_p), state=str(tmp_path / "state.json"),
+                           out=str(tmp_path / "report.json"))
+    assert vision_pull.cmd_report(ns) == 0
+    rep = json.loads((tmp_path / "report.json").read_text())
+    assert rep["ok_files"] == 1 and rep["symbols_with_gaps"] == 1
+    assert rep["gaps"]["klines/1d/BTCUSDT"]["missing"] == ["y.zip"]
+
+
+def test_job_builder_marks_dev_only_and_skips_checksums():
+    contents = [{"Key": "data/futures/um/monthly/klines/BTCUSDT/1m/BTCUSDT-1m-2020-01.zip",
+                 "Size": 10},
+                {"Key": "data/futures/um/monthly/klines/BTCUSDT/1m/BTCUSDT-1m-2020-01.zip.CHECKSUM",
+                 "Size": 89}]
+    jobs = [vision_pull._job("klines", "BTCUSDT", "1m", c, dev_only=True)
+            for c in contents
+            if c["Key"].endswith(".zip") and ".CHECKSUM" not in c["Key"]]
+    assert len(jobs) == 1
+    assert jobs[0]["checksum_url"].endswith(".CHECKSUM")
+
+
+def test_build_plan_parallel_splits_from_listing(monkeypatch):
+    def fake(prefix, delimiter=None, max_keys=1000):
+        if delimiter:
+            return [], [f"{prefix}BTCUSDT/"]
+        if prefix.endswith("/1d/"):
+            return [
+                {"Key": prefix + "BTCUSDT-1d-2023-06.zip", "Size": 10},
+                {"Key": prefix + "BTCUSDT-1d-2024-02.zip", "Size": 12},
+                {"Key": prefix + "BTCUSDT-1d-2024-02.zip.CHECKSUM", "Size": 89},
+            ], []
+        return [], []
+
+    monkeypatch.setattr(vision_pull, "s3_list_keys", fake)
+    plan = vision_pull.build_plan(["klines"], intervals={"klines": ["1d"]},
+                                  workers=2)
+    by_name = {j["filename"]: j for j in plan["jobs"]}
+    assert set(by_name) == {"BTCUSDT-1d-2023-06.zip", "BTCUSDT-1d-2024-02.zip"}
+    assert by_name["BTCUSDT-1d-2023-06.zip"]["split"] == "dev"
+    assert by_name["BTCUSDT-1d-2024-02.zip"]["split"] == "holdout"
+    assert plan["total_bytes"] == 22
+
+
+def test_list_symbols_takes_last_segment(monkeypatch):
+    seen = {}
+
+    def fake_list(prefix, delimiter=None, max_keys=1000):
+        seen["prefix"] = prefix
+        return [], [f"{prefix}BTCUSDT/", f"{prefix}ETHUSDT/"]
+
+    monkeypatch.setattr(vision_pull, "s3_list_keys", fake_list)
+    assert vision_pull.list_symbols("klines") == ["BTCUSDT", "ETHUSDT"]
+    assert seen["prefix"] == "data/futures/um/monthly/klines/"
+
+
+def test_job_quotes_non_ascii_symbol_names():
+    key = "data/futures/um/monthly/klines/哈基米USDT/1d/哈基米USDT-1d-2026-09.zip"
+    job = vision_pull._job(
+        "klines", "哈基米USDT", "1d", {"Key": key, "Size": 10})
+    assert job["key"] == key  # state identity stays raw
+    assert job["url"].isascii() and "%E5" in job["url"]
+    assert job["checksum_url"].endswith(".CHECKSUM")
+    assert job["split"] == "holdout"
+
+
+def test_job_marks_undatable_filenames_unknown(tmp_path):
+    job = vision_pull._job(
+        "metrics", "MATICUSDT", None,
+        {"Key": "data/futures/um/daily/metrics/MATICUSDT/MATICUSDT-metrics-1993.zip",
+         "Size": 10})
+    assert job["split"] == "unknown"
+    rec = vision_pull.pull_job(job, dev_dir=tmp_path / "dev",
+                               holdout_dir=tmp_path / "hold")
+    assert rec["status"] == "skipped" and "unparseable" in rec["reason"]

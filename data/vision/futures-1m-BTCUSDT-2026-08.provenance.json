@@ -1,0 +1,10 @@
+{
+ "name": "futures-1m-BTCUSDT-2026-08",
+ "url": "https://data.binance.vision/data/futures/um/monthly/klines/BTCUSDT/1m/BTCUSDT-1m-2026-08.zip",
+ "fetched_utc": "2026-10-16T14:14:41.976949+00:00",
+ "status": "present",
+ "http_status": 200,
+ "sha256": "adfd0846ea580681aeb18a6bdf06660dcfcc1a7b6819ea2eecfc3c53240ec67a",
+ "bytes": 1817920,
+ "csv_rows": 44640
+}

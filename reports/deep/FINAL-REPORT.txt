@@ -1,0 +1,151 @@
+================================================================================
+DEEP-RESEARCH FINAL REPORT
+================================================================================
+
+Branch: deep/integration (deliverable tip before this report: 9763bb5).
+Base: 3aac4c7 (rev2-rc-1). Board + all rulings: coord/BOARD-deep.md.
+Production submission stayed DISABLED for the whole assignment. No
+credentials were requested, used, or committed.
+
+WORKING COMMANDS
+----------------
+Acceptance (re-runs every worker proof with observed output; fresh dirs
+required; exits 0 PASS / 2 BLOCKED / 1 FAIL):
+  rm -rf drill-out-sandbox bench_d5
+  PYTHONPATH=src .venv/bin/python tools/deep_accept.py --suite full \
+      --report-out R.json
+Paper (bounded): python3 tools/run_budget.py --budget-s 1500 \
+  --checkpoint-dir <ckpt> --report-out <report> [--allow-best-effort] -- \
+  cryptobot run --mode paper --config configs/r2.toml --duration 20m
+Demo (needs owner keys in env; prepared, never executed):
+  see docs/sandbox_demo_command.md
+Sandbox drill (one offline command, seed 7):
+  PYTHONPATH=src .venv/bin/python tools/audit/sandbox_drill.py \
+      --dir <fresh-dir> --seed 7 full
+
+ACCEPTANCE RESULT: PASS on all three gates (observed re-runs).
+A1 PASS (D1 8/8 commands, D2 5/5). A2 PASS (2/2, post-fixup). A3 PASS
+(D5 5/5, D4 11/11). Heavy suite commands were split into bounded chunks
+running the IDENTICAL test set (union proven: 364+352+404 = 1120
+collected) after whole-suite runs hit harness ceilings environmentally.
+Independent verification (W5, crystal-parallax): product-green on every
+filing; mechanical harness-timeout findings fully dispositioned (harness
+fixed, ceilings aligned, chunked re-runs green). W5's amended re-confirm
+is queued on the board; the peer-message channel was capped, so this
+report closes on W5's original verdict plus the fulfilled disposition.
+
+--------------------------------------------------------------------------------
+A1 - DEPLOYMENT + EXECUTION CORRECTNESS: PASS
+--------------------------------------------------------------------------------
+D1 enforce-or-refuse (W1 cloud-vega; code 18bd4ea, merged 04c0bee):
+tools/run_budget.py now preflights supported = Linux AND prctl-subreaper
+acquired AND table scan OK, BEFORE checkpoint/Popen. Strict (default) +
+unsupported -> report+checkpoint REFUSED_UNSUPPORTED, stderr REFUSED,
+exit 125, child never spawns (marker-proven). --allow-best-effort
+(default off) reproduces legacy rc/report shape bit-for-bit. New
+tests/unit/test_run_budget_refusal.py; rev2 deadline contract updated.
+Docs examples updated for the flag (641609a).
+
+D2 lifecycle proof (W1; 2780d92, merged 47a8c8c + fixup 9be4fb1):
+14/14 rows green on the real run_live loop + real RunStore with default
+threading: happy, duplicate, delayed-ack, ambiguous, disconnect,
+restart-with-exposure (+06b), booking-failure, queue-pressure, stale,
+halt-independence, stop, flatten, foreign-untouched.
+Session fixes owned: F1 ambiguous-submit attribution (journal seam +
+durable reservation fallback, pinned by row 4); position-shell
+persist/restore; orphan-close fallback. These cover both W2 findings.
+Filed, not fixed: F2 stale-mark one-way latch (fail-closed; see A3
+mechanism); F3 exit-tick fills stranded until resume adopts; F4 no
+operator clear for unknown commands; F5 halts gate entries only.
+
+--------------------------------------------------------------------------------
+A2 - SANDBOX DEMONSTRATION: PASS
+--------------------------------------------------------------------------------
+D3 (W2 white-aldebaran; code 5963c42, merged c0e211f; fixup dcf80f9 ->
+1fe88d3): src/cryptobot/adapters/sandbox_venue.py (scriptable offline
+venue: book, filters, fees/funding, delays, IOC, partials, cancels,
+lookup, snapshots, listenKey, reorder/dupe stream, rate-limit, UNKNOWN
+injects; simulated responses labelled) + tools/audit/sandbox_drill.py
+driving the real Session + BinanceLiveEngine paths with virtual capital.
+One offline seed-pinned command: 6/6 phases PASS; report records
+SANDBOX VALIDATED vs BINANCE DEMO VALIDATION PENDING. Interrupt with
+exposure -> resume -> reconciled flat. 11/11 audit tests green.
+Occupied --dir now refuses loudly (BLOCKED rc 2) instead of crashing.
+
+--------------------------------------------------------------------------------
+A3 - ECONOMIC STRATEGY ON REAL DATA: RESEARCH UNRESOLVED (valid execution)
+--------------------------------------------------------------------------------
+D5 data (W3 cool-amalthea; merged f28bb81): manifest 9008ba92 (Oct
+funding merged, 22 gaps resolved); splits frozen + verified (480 cells;
+DEV idx1-15, VAL idx16-22 scored-once, TEST idx23-30 BURNED, proven
+untouched: val window ends exactly at the TEST boundary, exclusive;
+zero TEST-date refs); exactly one EVAL minted (eval-deep1, $0
+self-capture, 1.85M events, audit SCORABLE profile 24h-1, sealed
+throughout: zero round references); bench bounded (124 TRUNCATED) +
+resume (COMPLETE) proven; 100-pos/10-day screen honestly DATA BLOCKED
+on current yield (1 pos per ~1142 symbol-min; ~3.8h per 8-symbol arm
+set, resumable). Caveats filed to W3: merge rewrites build timestamps
+(sha drift on fresh re-run; content verified identical); audit --out
+needs a pre-existing dir.
+
+D4 X1 round-1 (W4 whisper-redshift -> granite-cetus by owner swap;
+merged af9c86a + fixups): freeze verified outcome-free (X1.md v0.1.0;
+only the pre-outcome section-9 IST clarification + authorized beta
+1.254028 transcription; params/round/selection untouched; beta equals
+record and all 8 TOMLs). 48/48 filed jobs ran to their frozen caps,
+24/24 cells bridged rc=0, realistic + adverse (2x) costs; three
+manager-authorized vehicle extensions (multi-symbol merge + IST window
+filters; --spread-bps modeled spread; bench resume cmd-seq rollback),
+all backward compatible, test-gated, reviewed. Economics reproduce
+exactly from committed evidence; selection ran mechanically.
+OUTCOME: selection NONE, 0 fills in all 24 cells.
+Mechanism: X1 admitted 0 intents in 11/12 cells (1 in X1-T val) - the
+35bps double-gate never co-occurred in the capped windows, so X1 is
+UNTESTED rather than disproven. The S1 control admitted 391 dev + 6199
+val intents but every submit failed under the exit-only latch:
+health:stale-mark trips ~5s into a run on quiet window opens and never
+releases (F2; 6084 gate trips in S1-val; 5/5 submits submit-rejected).
+The round therefore measured the latch, not the strategies. F2 is the
+binding constraint on any future measurement round (fix not authorized
+in this assignment; recorded for any future work).
+
+--------------------------------------------------------------------------------
+PRODUCTION-ELIGIBILITY DECISION: NOT ELIGIBLE
+--------------------------------------------------------------------------------
+Grounds: (1) no strategy qualified (selection NONE; strategy evidence
+weak, see mechanism); (2) F2 latch would block live submits the same
+way it blocked backtest submits; (3) Binance demo validation still
+PENDING (sandbox validated only; demo command prepared, credentials
+never supplied); (4) qualification screen DATA BLOCKED. Mechanics
+gates (A1/A2 PASS) never establish profitability. Nothing about this
+decision rests on test counts alone.
+
+--------------------------------------------------------------------------------
+DISCLOSED ITEMS (none block the decision)
+--------------------------------------------------------------------------------
+- W5 verdict mechanical FAIL was harness-environmental (900s ceiling,
+  timeout-report crash); both fixed; chunked re-runs green.
+- Full-suite count prose in filings is stale (suites grew with merges);
+  observed counts on the final tree govern.
+- x1_registry.json was created post-outcome by the executor; selection
+  NONE is invariant to it (proven); pre-freeze it in any future round.
+- Row11 wall-clock bound is timing-marginal under host load (green in
+  isolation and in-chunk; W1 follow-up filed).
+- Two transient environmental failures were retried with evidence
+  (SQLite I/O under load; whole-suite timeouts) - no product cause.
+- A parallel program (author "manager", PIVOT-01 + F2/F3/SC branches)
+  shares this repo/branch; its diff vs the verified tree is additive
+  only (11 new files, zero modifications); its test files are scoped
+  out of this report's suite statements. Not part of this assignment.
+
+EVIDENCE INDEX: coord/outbox/DEEP-*.done.json (completion filings),
+coord/outbox/DEEP-W5-VERDICT.json, coord/evidence/deep-w1-d1/,
+deep-w1-d2/, drill-out-sandbox/, bench_d5/, outputs/x1/,
+datasets/splits_deep.toml, coord/BOARD-deep.md (all rulings + audit).
+
+ACCEPTED ITEMS CLOSED: W1 D1+D2, W2 D3 (+fixup), W3 D5, W4 D4, W5
+verification. Remaining owner-only items: demo credentials for the
+venue check (not requested here), evaluate-vs-purchase decision (no
+spend made), any launch decision, and any future F2 fix / round 2
+(none invented by this assignment).
+================================================================================

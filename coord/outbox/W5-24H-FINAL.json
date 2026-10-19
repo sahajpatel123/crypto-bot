@@ -1,0 +1,83 @@
+{
+ "ack_required": true,
+ "base_ids": {
+  "base": "b3c651068fbce9e7981d07b03c4da18b833f5a50 (W1 bench final filing)",
+  "branch": "worker5/w5-final @b6ea2ca (pushed; reconciler pruned/paper/cell support)",
+  "reconciler": "tools/audit/reconcile.py @b6ea2ca (--pruned-run, paper journal discovery, cell.json+hash cross-check, control-arm reasons)"
+ },
+ "body": {
+  "findings": [],
+  "headline_numbers": {
+   "cells": "2 RECONCILED (24 fills) + 2 VACUOUS-by-design (CASH control)",
+   "hashes": "cell=report=outbox on all 4; cross-armset pairs identical",
+   "mismatches": 0,
+   "outbox_vs_disk": "exact match, all 4 cells",
+   "paper": "RECONCILED, 6 fills, flat, -0.086%"
+  },
+  "items": {
+   "CASH_test": {
+    "detail": "0 fills expected (control arm, strategies disabled by design); books agree trivially (120.0 flat, 0 costs); stream hash = COMBINED_test hash.",
+    "result": "PASS (VACUOUS-BY-DESIGN)"
+   },
+   "CASH_validation": {
+    "detail": "0 fills expected (control arm); books agree (120.0 flat); stream hash = COMBINED_validation hash.",
+    "result": "PASS (VACUOUS-BY-DESIGN)"
+   },
+   "COMBINED_test": {
+    "detail": "2 fills / 1 admitted / 16.3M events / -0.077%; engine journal = ledger = report (economics to 1e-6); cell.json metrics = report; stream hash c398a752.. matches outbox; flat.",
+    "result": "PASS (RECONCILED, 20/20 checks)"
+   },
+   "COMBINED_validation": {
+    "detail": "22 fills / 13 admitted / 16.3M events / 6.0M evals / 36 reject classes / -0.306%; engine = ledger = report; cell = report incl. stream hash 54a66272..; flat.",
+    "result": "PASS (RECONCILED, 20/20 checks)"
+   },
+   "F-W1B1_substitute_evidence": {
+    "detail": "Original crash artifacts lost (declared gap, accepted). Substitutes verified: fix 5fc611e exists (paper_engine relabel + 54 lines tests); crashwin proof ioc_maker_relabeled=1 over 2.33M events; standing cells completed on pre-fix code (any maker fill would have crashed them).",
+    "result": "PASS-WITH-NOTED-GAP"
+   },
+   "attestation_mixed_sha": {
+    "detail": "Claim 1 holds by construction+ruling (verified logic). Claim 2 source-verified on 5fc611e: events_enabled default False (config.py:83,217), key absent from paper.toml, protection None default (session.py:179) built only under events_enabled (182), all use sites guarded (586/1075/1271). Claim 3: 0d2f256 touches only tools/repro_24h_defects.py. paper.toml byte-identical bdb2f61..5fc611e.",
+    "result": "PASS"
+   },
+   "coverage_honesty": {
+    "detail": "4/21 as filed: dev dirs hold partials only (no cell.json), no singles dirs exist. Resume path (cell.json skip + runner) claimed, not independently executed by W5 (no compute per stop order).",
+    "result": "PASS (scoped attestation: 4 cells + paper only)"
+   },
+   "outbox_vs_disk": {
+    "detail": "W1 outbox cell metrics (events/admitted/closing/net/paid/funding) equal disk cell.json exactly, all 4 cells; outbox stream hashes equal disk hashes.",
+    "result": "PASS"
+   },
+   "paper-24h-long": {
+    "detail": "2h live-public-feed, 8.59M events, 4 admitted / 6 fills / -0.086% / flat; paper journal = ledger = report = fills.jsonl (12/12 checks); advisory events profile (28 scheduled, 90 latency + 3 shock-return halt triggers logged, 54132 evals).",
+    "result": "PASS (RECONCILED)"
+   },
+   "smoke_FIFO_vs_file_parity": {
+    "detail": "UNVERIFIED by W5: /tmp/w1bench/smoke cleaned before hash check (both sides earlier reconciled VACUOUS, exit 0, recorded). W1's filed hash match stands unconfirmed. Matrix parity verified instead via cross-armset identical stream hashes.",
+    "result": "UNVERIFIED (evidence cleaned)"
+   },
+   "test_once": {
+    "detail": "Spot-checked COMBINED_test cell.log: single streaming run marker. Singles never started (nothing to rerun).",
+    "result": "PASS (spot-check)"
+   }
+  },
+  "next_dependency": "Manager: integrate b6ea2ca; archive /tmp cell dirs (volatile \u2014 smoke/p2 already cleaned) + /tmp/w5-final-reconcile.json to reports/.",
+  "notes": [
+   "N1: F-W1B1 originals lost pre-snapshot (declared); substitutes verified and accepted.",
+   "N2: Coverage 4/21 partial by owner order; resume unexecuted by W5.",
+   "N3: Paper run dirs lack source-config fingerprint (cells have it); archived config.toml is a run manifest. Recommend recording source path+sha.",
+   "N4: CASH vacuity is by control-arm design, not a data problem."
+  ],
+  "objective": "FINAL reconciliation: paper + 4 banked cells attested; 0 mismatches; 0 blocking findings.",
+  "sha256_CANONICAL": "COMBINED_validation/run/engine_journal.jsonl 88f8b1d5b161f1e8eb3bf0526bdca4c7be471e2d7cc0b91beab60d3cbd24303e; ledger.json 0a7317bdbd6c7c2f100dc4ea39b6aedf1983c601e22d51ad06fcd53ff3e01183; report.json 6bf1f9dcc2b9aaf215538415bfb36553d8c419fe671a2f0f2f81c2e40a98f0e1; COMBINED_test/run/engine_journal.jsonl 7cd0e7f3500bd5424b14a23ee76ab8249f782e567cd2c3f5026915917b79e73d; ledger.json d450d08a6905c49abcb06e35ba010d8f6123f4519b6262a2ea64d2f1f323913e; report.json 8908701558179dbb17ef55266d813c7a66984ad98dda7813fea07e82dd0d369f; CASH_validation/run/engine_journal.jsonl 8821a50ec122dbbf9307ee0f00414239e8ad2bde7d0f252681a3dfb9ffb3ec65; ledger.json 41e07b07f0446fd9fd628b2b6c427789e2cc52f3d9c62743e5b3b993114c7267; report.json 05af25bc2e93887ab0f113985758c1425b5e1e5823147bf2ccf2e9f6899d9719; CASH_test/run/engine_journal.jsonl aca8b9fc10f2cd7a301a18cdb777e1424e9fbd028dd01d1e85ee58c6708ab098; ledger.json 41e07b07f0446fd9fd628b2b6c427789e2cc52f3d9c62743e5b3b993114c7267; report.json a54626a6b39a203e4b13c1ca37534a90eac60547c33815ed90356da637de0267; cell.jsons CASH_test d28077d41ee3d257691e780111863159d00715a82d15e156802305c879c541da, CASH_validation e35009bd93f06661943f26623110a0603fc841966ef572ae6e9e949a84fb4d0f, COMBINED_test 8a99583b0da3b98845a8dc9876789e043e3320ca415902f879ae69f2c7d792cf, COMBINED_validation 45beffb8646c968b23162826bcde0a3b289d50c830baf22afd0e9ca3529d3094"
+ },
+ "tooling_evidence": {
+  "repro": "cd /Users/sahajpatel/Code/cryto-bot && .venv/bin/python /tmp/cryto-bot-w5-final/tools/audit/reconcile.py --run runs/paper-24h-long --pruned-run /tmp/w1bench/matrix/COMBINED_validation/run --pruned-run /tmp/w1bench/matrix/COMBINED_test/run --pruned-run /tmp/w1bench/matrix/CASH_validation/run --pruned-run /tmp/w1bench/matrix/CASH_test/run --out /tmp/w5-final-reconcile.json  # exit 0",
+  "result_json": "/tmp/w5-final-reconcile.json"
+ },
+ "from": "crystal-parallax",
+ "id": "msg-W5-24H-FINAL-01",
+ "kind": "result",
+ "task_id": "W5-24H-FINAL",
+ "to": "young-polaris",
+ "utc": "2026-10-13T00:56:06Z"
+}

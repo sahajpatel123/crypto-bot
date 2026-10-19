@@ -1,8 +1,11 @@
-"""Fault-injectable fake venue for order-manager verification (Worker 2, E-001).
+"""Fault-injectable fake venue for order-manager verification (Worker 2, E-001/E-005).
 
-The fake venue models the failure modes a real venue exhibits: ambiguous
-timeouts (request outcome unknown), rejections, and partial fills. Faults are
-programmed explicitly per test via ``fail_next_submit``; there is no randomness.
+FAULT SIMULATOR ONLY — never a profitability fill model. It models failure
+modes a real venue exhibits: ambiguous timeouts (request outcome unknown),
+rejections, partial fills, late fills and exit races. Faults are programmed
+explicitly per test via ``fail_next_submit``/``inject_fill``; there is no
+randomness. Instant LIMIT fills at the submitted price exercise the state
+machine; economic evaluation must use the research simulator instead.
 
 Timeout ambiguity is the critical case: ``received=True`` means the order
 reached the matching engine even though the client saw a timeout (retrying
@@ -15,6 +18,8 @@ from __future__ import annotations
 from collections import deque
 from dataclasses import dataclass, field
 from typing import Callable
+
+from cryptobot.risk.rounding import floor_to_step
 
 
 class VenueTimeoutError(Exception):
@@ -83,12 +88,22 @@ class _Fault:
 
 
 class FakeVenue:
-    def __init__(self, now_ms: Callable[[], int] | None = None) -> None:
+    def __init__(self, now_ms: Callable[[], int] | None = None, *,
+                 lot_steps: dict[str, float] | None = None) -> None:
         self._now_ms = now_ms or (lambda: 0)
         self._orders: dict[str, _Order] = {}
         self._faults: deque[_Fault] = deque()
         self._last_price: dict[str, float] = {}
         self.fills: list[Fill] = []
+        # V-008 §7: optional per-symbol LOT_SIZE steps. Absent = legacy
+        # raw behavior (fault tests); present = venue floors with the one
+        # shared rule, exactly like the economic path.
+        self._lot_steps = {str(k).upper(): float(v)
+                           for k, v in (lot_steps or {}).items()}
+
+    def lot_step(self, symbol: str) -> float | None:
+        """Configured LOT_SIZE step for ``symbol`` (None = raw legacy)."""
+        return self._lot_steps.get(symbol.upper())
 
     # -- fault programming -------------------------------------------------
     def fail_next_submit(
@@ -116,10 +131,18 @@ class FakeVenue:
     ) -> SubmitResult:
         if qty <= 0:
             raise ValueError("qty must be > 0")
+        step = self.lot_step(symbol)
+        if step is not None:
+            qty = floor_to_step(qty, step)
+            if qty <= 0:
+                raise ValueError(f"qty below LOT_SIZE step {step} for {symbol}")
         existing = self._orders.get(client_id)
         if existing is not None:
             # Idempotent client ID: no duplicate order, report current state.
             return SubmitResult(client_id, existing.status != "REJECTED", f"duplicate-client-id:{existing.status}")
+        if kind in ("MARKET", "LIMIT") and price is None and symbol not in self._last_price:
+            # F-E001-04: reject before storing, so a caller bug leaves no venue-side residue.
+            raise ValueError(f"no price reference for {kind} submit of {client_id}")
         fault = self._faults.popleft() if self._faults else None
         if fault is not None and fault.mode == "reject":
             self._orders[client_id] = _Order(client_id, symbol, side, kind, qty, price, stop_price, status="REJECTED")
@@ -144,6 +167,10 @@ class FakeVenue:
         """Reconciliation read. Returns None when the venue never saw the ID."""
         order = self._orders.get(client_id)
         return order.view() if order is not None else None
+
+    def list_orders(self) -> list[VenueOrderView]:
+        """List every order the venue holds, in submission order (for orphan sweeps)."""
+        return [order.view() for order in self._orders.values()]
 
     def cancel(self, client_id: str) -> VenueOrderView | None:
         order = self._orders.get(client_id)
@@ -174,11 +201,31 @@ class FakeVenue:
                 settled.extend(self._apply_fill(order, order.qty * fraction, self._ref_price(order)))
         return settled
 
+    def inject_fill(self, client_id: str, qty: float, price: float) -> list[Fill]:
+        """FAULT SIMULATOR: force a fill onto an order (late-fill / exit-race cases).
+
+        Works even on CANCELLED orders to model the cancel race (fill landed
+        before the cancel processed, report arrived after). Rejected orders
+        can never fill.
+        """
+        order = self._orders.get(client_id)
+        if order is None:
+            raise KeyError(f"unknown order: {client_id}")
+        if order.status == "REJECTED":
+            raise ValueError("cannot fill a rejected order")
+        if qty <= 0:
+            raise ValueError("qty must be > 0")
+        return self._apply_fill(order, qty, price)
+
     # -- internals ---------------------------------------------------------
     def _ref_price(self, order: _Order) -> float:
+        # F-E001-04: never fill at an invented 0.0; a market order with no
+        # price reference is a caller bug and must raise loudly.
         if order.price is not None:
             return order.price
-        return self._last_price.get(order.symbol, 0.0)
+        if order.symbol in self._last_price:
+            return self._last_price[order.symbol]
+        raise ValueError(f"no price reference for MARKET fill of {order.client_id}")
 
     def _try_immediate_fill(self, order: _Order) -> None:
         if order.kind in ("MARKET", "LIMIT"):

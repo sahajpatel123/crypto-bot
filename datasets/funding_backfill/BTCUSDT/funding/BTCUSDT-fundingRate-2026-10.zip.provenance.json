@@ -1,0 +1,226 @@
+{
+ "endpoint": "https://fapi.binance.com/fapi/v1/fundingRate",
+ "symbol": "BTCUSDT",
+ "month": "2026-10",
+ "rows": 35,
+ "sha256": "eab25dfd3cb055983a60c32d5f603b2164618c0abe399dfb57df0158fd95ded4",
+ "fetched_at": "2026-10-12T15:57:25.418590+00:00",
+ "calc_time_convention": "REST fundingTime verbatim (venue settlement time; vision adds 0..0ms calc latency measured on overlap, not replicated)",
+ "interval_h": 8,
+ "interval_src": "rest:v1/fundingInfo (current config)",
+ "response_shas": [
+  "832665dc394fb85705d5020e0cf11bb91eb39b7077c13e4a0b5f7c23a82926fa"
+ ],
+ "settlements": [
+  {
+   "fundingTime": 1790812800001,
+   "fundingRate": "0.00007981",
+   "markPrice": "83582.73222464",
+   "rateType": "Regular"
+  },
+  {
+   "fundingTime": 1790841600005,
+   "fundingRate": "0.00004568",
+   "markPrice": "83381.60000000",
+   "rateType": "Regular"
+  },
+  {
+   "fundingTime": 1790870400003,
+   "fundingRate": "0.00006980",
+   "markPrice": "84126.41078986",
+   "rateType": "Regular"
+  },
+  {
+   "fundingTime": 1790899200002,
+   "fundingRate": "0.00002693",
+   "markPrice": "84829.60000000",
+   "rateType": "Regular"
+  },
+  {
+   "fundingTime": 1790928000000,
+   "fundingRate": "0.00010000",
+   "markPrice": "86064.20000000",
+   "rateType": "Regular"
+  },
+  {
+   "fundingTime": 1790956800000,
+   "fundingRate": "0.00001214",
+   "markPrice": "85297.50000000",
+   "rateType": "Regular"
+  },
+  {
+   "fundingTime": 1790985600001,
+   "fundingRate": "0.00004574",
+   "markPrice": "84482.80000000",
+   "rateType": "Regular"
+  },
+  {
+   "fundingTime": 1791014400000,
+   "fundingRate": "0.00000361",
+   "markPrice": "84520.75468841",
+   "rateType": "Regular"
+  },
+  {
+   "fundingTime": 1791043200001,
+   "fundingRate": "0.00004528",
+   "markPrice": "84835.74677536",
+   "rateType": "Regular"
+  },
+  {
+   "fundingTime": 1791072000000,
+   "fundingRate": "-0.00001346",
+   "markPrice": "84710.62428261",
+   "rateType": "Regular"
+  },
+  {
+   "fundingTime": 1791100800001,
+   "fundingRate": "0.00003451",
+   "markPrice": "85070.00000000",
+   "rateType": "Regular"
+  },
+  {
+   "fundingTime": 1791129600002,
+   "fundingRate": "0.00003785",
+   "markPrice": "85212.90000000",
+   "rateType": "Regular"
+  },
+  {
+   "fundingTime": 1791158400002,
+   "fundingRate": "0.00007492",
+   "markPrice": "86487.38552899",
+   "rateType": "Regular"
+  },
+  {
+   "fundingTime": 1791187200001,
+   "fundingRate": "0.00004186",
+   "markPrice": "86221.60000000",
+   "rateType": "Regular"
+  },
+  {
+   "fundingTime": 1791216000000,
+   "fundingRate": "-0.00001541",
+   "markPrice": "85225.40730885",
+   "rateType": "Regular"
+  },
+  {
+   "fundingTime": 1791244800003,
+   "fundingRate": "-0.00002485",
+   "markPrice": "85718.55362319",
+   "rateType": "Regular"
+  },
+  {
+   "fundingTime": 1791273600001,
+   "fundingRate": "-0.00001592",
+   "markPrice": "85514.00007496",
+   "rateType": "Regular"
+  },
+  {
+   "fundingTime": 1791302400000,
+   "fundingRate": "0.00002245",
+   "markPrice": "85675.20000000",
+   "rateType": "Regular"
+  },
+  {
+   "fundingTime": 1791331200002,
+   "fundingRate": "-0.00000743",
+   "markPrice": "85516.50151449",
+   "rateType": "Regular"
+  },
+  {
+   "fundingTime": 1791360000002,
+   "fundingRate": "-0.00003657",
+   "markPrice": "84102.70600725",
+   "rateType": "Regular"
+  },
+  {
+   "fundingTime": 1791388800000,
+   "fundingRate": "0.00001152",
+   "markPrice": "83412.00521739",
+   "rateType": "Regular"
+  },
+  {
+   "fundingTime": 1791417600000,
+   "fundingRate": "-0.00000992",
+   "markPrice": "83282.00000000",
+   "rateType": "Regular"
+  },
+  {
+   "fundingTime": 1791446400000,
+   "fundingRate": "-0.00001185",
+   "markPrice": "82949.00343478",
+   "rateType": "Regular"
+  },
+  {
+   "fundingTime": 1791475200000,
+   "fundingRate": "0.00003445",
+   "markPrice": "81012.60539130",
+   "rateType": "Regular"
+  },
+  {
+   "fundingTime": 1791504000000,
+   "fundingRate": "0.00001767",
+   "markPrice": "81710.90000000",
+   "rateType": "Regular"
+  },
+  {
+   "fundingTime": 1791532800000,
+   "fundingRate": "0.00005156",
+   "markPrice": "82620.13488406",
+   "rateType": "Regular"
+  },
+  {
+   "fundingTime": 1791561600000,
+   "fundingRate": "0.00001286",
+   "markPrice": "82852.18856522",
+   "rateType": "Regular"
+  },
+  {
+   "fundingTime": 1791590400002,
+   "fundingRate": "0.00005232",
+   "markPrice": "82579.52562319",
+   "rateType": "Regular"
+  },
+  {
+   "fundingTime": 1791619200001,
+   "fundingRate": "-0.00000431",
+   "markPrice": "82762.25921739",
+   "rateType": "Regular"
+  },
+  {
+   "fundingTime": 1791648000002,
+   "fundingRate": "0.00000457",
+   "markPrice": "83011.32679710",
+   "rateType": "Regular"
+  },
+  {
+   "fundingTime": 1791676800007,
+   "fundingRate": "-0.00002718",
+   "markPrice": "82941.06127536",
+   "rateType": "Regular"
+  },
+  {
+   "fundingTime": 1791705600000,
+   "fundingRate": "-0.00000993",
+   "markPrice": "82980.80000000",
+   "rateType": "Regular"
+  },
+  {
+   "fundingTime": 1791734400002,
+   "fundingRate": "0.00001347",
+   "markPrice": "83868.70000000",
+   "rateType": "Regular"
+  },
+  {
+   "fundingTime": 1791763200006,
+   "fundingRate": "0.00000556",
+   "markPrice": "83723.00000000",
+   "rateType": "Regular"
+  },
+  {
+   "fundingTime": 1791792000002,
+   "fundingRate": "0.00001866",
+   "markPrice": "83960.80000000",
+   "rateType": "Regular"
+  }
+ ]
+}

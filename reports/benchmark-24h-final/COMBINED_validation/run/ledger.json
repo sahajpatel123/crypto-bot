@@ -1,0 +1,236 @@
+{
+  "journal": [
+    {
+      "exec_id": "T-779de18eb2cdfa75-001",
+      "fee": 0.01467021,
+      "kind": "fill",
+      "price": 2667.31,
+      "qty": 0.011,
+      "side": "SELL",
+      "symbol": "ETHUSDT",
+      "ts_utc": "2026-09-26T20:47:26.964000+00:00"
+    },
+    {
+      "exec_id": "T-e5f6ad3fb494b8a9-002",
+      "fee": 0.0146619,
+      "kind": "fill",
+      "price": 2665.8,
+      "qty": 0.011,
+      "side": "BUY",
+      "symbol": "ETHUSDT",
+      "ts_utc": "2026-09-26T20:49:25.032000+00:00"
+    },
+    {
+      "exec_id": "T-fb4c796af8c3947f-003",
+      "fee": 0.01479115,
+      "kind": "fill",
+      "price": 2689.3,
+      "qty": 0.011,
+      "side": "SELL",
+      "symbol": "ETHUSDT",
+      "ts_utc": "2026-09-27T14:29:02.788000+00:00"
+    },
+    {
+      "exec_id": "T-0530d5ff00f70fab-004",
+      "fee": 0.01479478,
+      "kind": "fill",
+      "price": 2689.96,
+      "qty": 0.011,
+      "side": "BUY",
+      "symbol": "ETHUSDT",
+      "ts_utc": "2026-09-27T14:31:01.155000+00:00"
+    },
+    {
+      "exec_id": "T-6c3945bdeac9db43-005",
+      "fee": 0.01485594,
+      "kind": "fill",
+      "price": 2701.08,
+      "qty": 0.011,
+      "side": "BUY",
+      "symbol": "ETHUSDT",
+      "ts_utc": "2026-09-28T00:21:26.658000+00:00"
+    },
+    {
+      "exec_id": "T-04028f3e9524ca5f-006",
+      "fee": 0.01482514,
+      "kind": "fill",
+      "price": 2695.48,
+      "qty": 0.011,
+      "side": "SELL",
+      "symbol": "ETHUSDT",
+      "ts_utc": "2026-09-28T00:23:25.042000+00:00"
+    },
+    {
+      "exec_id": "T-2847371c5f0dbf58-007",
+      "fee": 0.01462516,
+      "kind": "fill",
+      "price": 2659.12,
+      "qty": 0.011,
+      "side": "SELL",
+      "symbol": "ETHUSDT",
+      "ts_utc": "2026-09-28T01:49:15.615000+00:00"
+    },
+    {
+      "exec_id": "T-942a78f8dd403b4b-008",
+      "fee": 0.01457467,
+      "kind": "fill",
+      "price": 2649.94,
+      "qty": 0.011,
+      "side": "BUY",
+      "symbol": "ETHUSDT",
+      "ts_utc": "2026-09-28T01:50:08.018000+00:00"
+    },
+    {
+      "exec_id": "T-d9789fb2ee3878a1-009",
+      "fee": 0.01475573,
+      "kind": "fill",
+      "price": 2682.86,
+      "qty": 0.011,
+      "side": "BUY",
+      "symbol": "ETHUSDT",
+      "ts_utc": "2026-09-28T12:06:32.694000+00:00"
+    },
+    {
+      "exec_id": "T-2160722c4ff29735-010",
+      "fee": 0.01477729,
+      "kind": "fill",
+      "price": 2686.78,
+      "qty": 0.011,
+      "side": "SELL",
+      "symbol": "ETHUSDT",
+      "ts_utc": "2026-09-28T12:08:31.019000+00:00"
+    },
+    {
+      "exec_id": "T-efcd938688c621bc-011",
+      "fee": 0.0147785,
+      "kind": "fill",
+      "price": 2687.0,
+      "qty": 0.011,
+      "side": "SELL",
+      "symbol": "ETHUSDT",
+      "ts_utc": "2026-09-28T12:55:51.898000+00:00"
+    },
+    {
+      "exec_id": "T-b7fc461092dc9248-012",
+      "fee": 0.01479759,
+      "kind": "fill",
+      "price": 2690.47,
+      "qty": 0.011,
+      "side": "BUY",
+      "symbol": "ETHUSDT",
+      "ts_utc": "2026-09-28T12:57:50.023000+00:00"
+    },
+    {
+      "exec_id": "T-ba330e503b9083ac-013",
+      "fee": 0.0134319,
+      "kind": "fill",
+      "price": 2686.38,
+      "qty": 0.01,
+      "side": "SELL",
+      "symbol": "ETHUSDT",
+      "ts_utc": "2026-09-28T13:30:58.735000+00:00"
+    },
+    {
+      "exec_id": "T-97a5d4f132976fec-014",
+      "fee": 0.01342755,
+      "kind": "fill",
+      "price": 2685.51,
+      "qty": 0.01,
+      "side": "BUY",
+      "symbol": "ETHUSDT",
+      "ts_utc": "2026-09-28T13:32:57.003000+00:00"
+    },
+    {
+      "exec_id": "T-b7b8f3b200862fa0-015",
+      "fee": 0.0134064,
+      "kind": "fill",
+      "price": 2681.28,
+      "qty": 0.01,
+      "side": "SELL",
+      "symbol": "ETHUSDT",
+      "ts_utc": "2026-09-28T13:36:00.678000+00:00"
+    },
+    {
+      "exec_id": "T-da0d40929bd8c0da-016",
+      "fee": 0.01344525,
+      "kind": "fill",
+      "price": 2689.05,
+      "qty": 0.01,
+      "side": "BUY",
+      "symbol": "ETHUSDT",
+      "ts_utc": "2026-09-28T13:37:14.954000+00:00"
+    },
+    {
+      "exec_id": "T-1ec40141e1a87464-017",
+      "fee": 0.01465673,
+      "kind": "fill",
+      "price": 2664.86,
+      "qty": 0.011,
+      "side": "SELL",
+      "symbol": "ETHUSDT",
+      "ts_utc": "2026-09-28T14:29:39.730000+00:00"
+    },
+    {
+      "exec_id": "T-955030fe503a4d34-018",
+      "fee": 0.01469045,
+      "kind": "fill",
+      "price": 2670.99,
+      "qty": 0.011,
+      "side": "BUY",
+      "symbol": "ETHUSDT",
+      "ts_utc": "2026-09-28T14:29:58.015000+00:00"
+    },
+    {
+      "exec_id": "T-d67a2d67afb0666c-019",
+      "fee": 0.01463297,
+      "kind": "fill",
+      "price": 2660.54,
+      "qty": 0.011,
+      "side": "SELL",
+      "symbol": "ETHUSDT",
+      "ts_utc": "2026-09-28T14:51:48.869000+00:00"
+    },
+    {
+      "exec_id": "T-b317f167f43addaf-020",
+      "fee": 0.01457968,
+      "kind": "fill",
+      "price": 2650.85,
+      "qty": 0.011,
+      "side": "BUY",
+      "symbol": "ETHUSDT",
+      "ts_utc": "2026-09-28T14:53:15.012000+00:00"
+    },
+    {
+      "exec_id": "T-af72cbc91deb5007-021",
+      "fee": 0.01458864,
+      "kind": "fill",
+      "price": 2652.48,
+      "qty": 0.011,
+      "side": "SELL",
+      "symbol": "ETHUSDT",
+      "ts_utc": "2026-09-28T15:23:13.695000+00:00"
+    },
+    {
+      "exec_id": "T-069ae8b8a2f21ed1-022",
+      "fee": 0.01462516,
+      "kind": "fill",
+      "price": 2659.12,
+      "qty": 0.011,
+      "side": "BUY",
+      "symbol": "ETHUSDT",
+      "ts_utc": "2026-09-28T15:23:38.081000+00:00"
+    }
+  ],
+  "pilot_equity": 120.0,
+  "seq": 0,
+  "snapshot": {
+    "avg_entry": 0.0,
+    "cash": 119.63240721000004,
+    "funding_net": 0.0,
+    "paid_costs": 0.31839279000000004,
+    "qty": 0.0,
+    "realised": -0.367592789999994,
+    "seq": 0
+  },
+  "version": 1
+}

@@ -1,0 +1,55 @@
+{
+ "created_utc": "2026-10-18T06:42:33.344284+00:00",
+ "family": "A",
+ "format": "cryptobot-autopilot-registry/1",
+ "hypotheses": {
+  "H1": {
+   "commit": "3100266",
+   "config_sha256": "9e3de68888a25db929cf1035ac041a12a3482f6739d7a33392b5537cfc5adb9a",
+   "family_size": 6,
+   "hypothesis": "H1",
+   "prereg": "research/prereg/H1-maker-ofi-scalp.md",
+   "registered_utc": "2026-10-18T06:42:33.345191+00:00"
+  },
+  "H2": {
+   "commit": "3100266",
+   "config_sha256": "d85ed353445895d78a922580bb58e7e131bd5b1cfc438ceb99901c7f5586c73a",
+   "family_size": 6,
+   "hypothesis": "H2",
+   "prereg": "research/prereg/H2-trend-vol-regime.md",
+   "registered_utc": "2026-10-18T06:42:33.345534+00:00"
+  },
+  "H3": {
+   "commit": "3100266",
+   "config_sha256": "0885b908ffe137692040ac7a3701b02a6dbc420b8fd9106e098659a1314c991b",
+   "family_size": 6,
+   "hypothesis": "H3",
+   "prereg": "research/prereg/H3-funding-skew-tilt.md",
+   "registered_utc": "2026-10-18T06:42:33.345871+00:00"
+  },
+  "H4": {
+   "commit": "3100266",
+   "config_sha256": "b199dfdf445f5427d09864f9732e64c7f03d7835b3b5674c45a1ca668dc3c5bd",
+   "family_size": 6,
+   "hypothesis": "H4",
+   "prereg": "research/prereg/H4-cross-venue-lead-lag.md",
+   "registered_utc": "2026-10-18T06:42:33.346153+00:00"
+  },
+  "H5": {
+   "commit": "3100266",
+   "config_sha256": "0e239da8664edf588ca63cd0d7d6872522f6667ed618142225d3ad0ca56c0cf1",
+   "family_size": 6,
+   "hypothesis": "H5",
+   "prereg": "research/prereg/H5-liquidation-cascade-fade.md",
+   "registered_utc": "2026-10-18T06:42:33.346450+00:00"
+  },
+  "H6": {
+   "commit": "3100266",
+   "config_sha256": "f9fc17a44f770d35b0ba3c84c1601708d129a0200a67d1eaab528d0a85f38f53",
+   "family_size": 6,
+   "hypothesis": "H6",
+   "prereg": "research/prereg/H6-vol-shock-regime-filter.md",
+   "registered_utc": "2026-10-18T06:42:33.346763+00:00"
+  }
+ }
+}

@@ -1,0 +1,71 @@
+{
+ "after": {
+  "full_suite": "1183 passed, 1 skipped in 254.35s (budgeted, -k 'not slow'); rc=0",
+  "log": "/tmp/w1-rel/full-report4.json + /tmp/w1-rel-full4.log"
+ },
+ "base": "66f5653380261f06a73756cbc711216ce3db09ec (tag release-start-48029fb + manager contract v1)",
+ "before": {
+  "full_suite": "1162 passed, 1 skipped in 275.41s (budgeted, -k 'not slow')",
+  "log": "/tmp/w1-rel/baseline-report.json + /tmp/w1-rel-baseline.log"
+ },
+ "blocking_fix_w5_posture": {
+  "change": "_build_event_gate honors getattr(profile,'advisory_only',True) instead of posture == 'protected' (which never matched: 'protected-operational' vs 'research-only')",
+  "evidence": "load paper-protected.toml -> posture=protected-operational, old compare False, advisory_only False",
+  "regression": [
+   "test_protected_posture_honors_advisory_only",
+   "test_research_profile_stays_advisory"
+  ]
+ },
+ "branch": "worker1/rel-core",
+ "checkpoint": "A COMPLETE (W1-side filed + joint injected-venue proof green; W2-owned script/test updates listed above)",
+ "compat_fallbacks_declared": [
+  "order_status missing/non-contract shape -> open_orders snapshot per-id lookup (paper str, live absent, legacy doubles)",
+  "account_snapshot None/raw-dict -> venue leg to order truth + legacy simulator-cache read (reference/live-pre-W2)",
+  "adapters without bind_sink -> drain-driven into the same _apply_engine_event",
+  "v0 status reads bypass the version cache (no observed transition: always current)"
+ ],
+ "deliverables": {
+  "RunStore": "commands (intended/submitted/unknown/resolved/failed, no terminal regress), read_events cursors, applied_exec_ids, command_count, acquire/release_lock (flock + same-process refcount, StoreLocked on live holder), backup (refuses clobber), versioned reader (fresh v2 / legacy backup+migrate / future UnsafeState, quick_check), durability_mode WAL/NORMAL recorded in meta (power-loss NOT claimed)",
+  "Session_booking": "_apply_engine_event ONE handler (name fixed); fills persist-first keyed by execution_id, dup/stale no-ops counted; _order_cum per order never rolls back; legacy note_fill_delta staged (kind fill-staged) for poll event, adopted-marker flush; foreign fills -> fill-unbooked checkpoint + booking:* admission hold, ledger untouched",
+  "Session_reads": "_tracked_status/_tracked_statuses_for via order_status (version-gated); _release_agrees gains _venue_positions_agree (complete snapshot must agree, complete=False never flat, divergence -> flat-blocked checkpoint); open_orders kept ONLY for presence-acting reads (_inflight pending scan, _run_stop_actions cancels, legacy fallback)",
+  "Session_resume": "_rebuild_booking_state (applied rebuild, cum rebuild, known-rid seeding from live+unresolved+booked+command payloads, unbooked-anchor replay incl. explicit ledger heal, fills.jsonl backfill-if-absent, cmd-seq reseed); _resume_live gates _reconciled on unknown commands; lock acquired in run_replay/run_live, held until close",
+  "Session_submit_path": "entry/close submits persist command intentions pre-submit, mark submitted/failed; terminal events + _reconcile_commands resolve; orphan closes attribute the single unresolved rid when unambiguous",
+  "reference_py_MANAGER_APPROVED": "bind_sink push (poll returns [] when bound), order_status + observed versions, unknown_ids=(), account_snapshot None (unmodelled), open_orders open/partial-only, record-only sink (None-safe shim), pre->real journaled alias rebuilt on recover, recover re-queues ALL journaled fill-deltas (exec-deduped; propagated-mark is not an applied-proof)"
+ },
+ "evidence": {
+  "/tmp/w1-rel/mechanics.py": "MECHANICS-OK: push (drained=0) ledger=0.05 booked=0.05 fee=0.0025 protected +2 legs; restart ledger=0.05 booked=0.05 dup=1 (adopted redelivery gated), fills.jsonl 1 row",
+  "crash_window": "journaled-but-undrained fill adopts post-restart via durable alias + command intention (ledger=booked=0.05, no block); committed as test_crash_before_first_drain_adopts_via_alias",
+  "lock": "cross-process contention refuses StoreLocked (verified); same-process re-entrant (committed test)"
+ },
+ "files_changed": [
+  "src/cryptobot/app/session.py",
+  "src/cryptobot/app/store.py",
+  "src/cryptobot/app/reference.py",
+  "src/cryptobot/risk/policy.py (+booked_reservations)",
+  "tests/unit/test_ready_lifecycle.py (doubles + _paper_status compat, rationale inline)",
+  "tests/unit/test_release_contract.py (new, 20 tests)"
+ ],
+ "joint_checkpoint_a": {
+  "followup_checkpoint_b": "_resume_live flattens recovered ledger exposure (sim-only policy); for live adapters it must reconcile-and-continue with protection re-verified via order truth. Position-shell restore from command intentions is the precursor.",
+  "overlay": "scratch /tmp/w1rel-joint = W2 worktree /private/tmp/cryto-bot-w2-rel (HEAD 66f5653 + uncommitted) overlaid with W1 e60efd0 session/store/reference/policy + proofs; W1 branch untouched by W2 code",
+  "overlay_failures_attribution": "14 fail IDENTICALLY on W2's pristine tree (pre-existing W2 paper-migration enforcement: bind_sink callable-only, recover(handler) rename; stale call sites in bench_run/backtest/cli/execution_e2e/protected_entry/audit-d6 - all W2/manager-owned, out of W1 scope). Remaining 2 are W2's own checkpoint-a scripts lacking the post-merge lookup+trades+algos dialogue (their attach path never fired pre-merge); scratch proofs above show the exact required dialogue.",
+  "overlay_suites": "W2 adapter 65 green (contract/user-stream/paper-contract/v008); W1 44 green (21 contract + 23 ready); full overlay 1195 passed, 16 failed",
+  "proof_main": "JOINT-A-OK: LIMIT admit -> user-stream fill (trade 777001) -> bound Session handler books ledger once qty=0.083 fee=0.03, exec binanceusdm/9f3b2fc5de52/BTCUSDT/777001, 1 store row -> protection verified 2 reduce-only venue algos; exact REST dialogue assert_empty; restart rebuilds (ledger=booked=0.083, fills.jsonl 1 row, no resubmit, no block). Script /tmp/w1rel-joint-proof.py (scratch).",
+  "proof_readopt": "JOINT-T3-OK: stream dies pre-fill; restart reconciles by durable id via lookup; adopted fill books + protects through the normal handler; no resubmit. Script /tmp/w1rel-joint-t3.py (scratch).",
+  "w2_hashes": "binance_live.py 50600bd5..., paper_engine.py b1c915aa..., venue_fixtures.py f24598ae... (full in /tmp/w1-rel/joint-w2-hashes.txt)",
+  "w2_script_delta_needed": "test_live_fill_to_ledger_to_protection + test_restart_readopts: before the stream/recover step, script attach's GET /fapi/v1/order + GET /fapi/v1/userTrades + 2x POST /fapi/v1/algoOrder; drop the post-stream openOrders/openAlgoOrders pair (nothing polls post-merge); remove the _bind_booking_sink shim (Session books; shim double-books harmlessly today via exec gate but must go)."
+ },
+ "needs_w2_adapter_checklist_forwarded": [
+  "order_status -> EngineOrderStatus + versions (paper str/KeyError today)",
+  "open_orders filter terminals",
+  "paper unknown_ids == ()",
+  "account_snapshot -> contract dataclass (live raw dict today)",
+  "bind_sink invokes handler on every emission; remove direct note_fill_delta booking",
+  "namespaced execution_id emission, landed atomically with booking-path removal (same-key dedup)",
+  "reservation-less fills must still emit events (currently invisible)"
+ ],
+ "ready_23": "all pass adapted AND merge-proof: 23/23 on pre-merge paper and on W2's migrated paper (bind TypeError tolerated, Session binding serves push+booking)",
+ "reentrancy_fix": "_ensure_protection/_flatten refuse nested passes (outer frame re-reads fresh truth); regression test_reentrant_emit_inside_attach_attaches_once. Found by joint T3: attach sizing lookup adopts a fill synchronously, re-entering supervision.",
+ "sha": "98d493c84fca96ec69d413fc855101101dc32657",
+ "worker": "W1"
+}

@@ -2,6 +2,7 @@ __pycache__/
 *.py[cod]
 *.egg-info/
 .venv/
+.venv-trial/
 venv/
 .pytest_cache/
 .mypy_cache/
@@ -9,5 +10,20 @@ venv/
 data/*.jsonl
 data/*.parquet
 data/*.csv
+data/captures/
+data/bench30d/
+datasets/cache/
 !data/README.md
 .DS_Store
+runs/
+.captures/
+
+# H-R2 extraction windows: regenerable via tools/hr2_diagnostic.py extract (~2 min)
+outputs/hr2/windows/
+.hypothesis/
+data/lake/
+data/recorder/
+vision-plan-*.json
+vision-pull-*.json
+data/vault/chunks/
+data/vault/tokens/

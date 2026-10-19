@@ -1,0 +1,17 @@
+{
+ "status": "CHILD_EXIT",
+ "child_rc": 1,
+ "elapsed_s": 435.657,
+ "budget_s": 1500.0,
+ "command": [
+  ".venv/bin/python",
+  "-m",
+  "pytest",
+  "-q",
+  "-p",
+  "no:cacheprovider",
+  "-k",
+  "not slow"
+ ],
+ "subreaper": false
+}

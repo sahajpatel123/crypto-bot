@@ -1,0 +1,148 @@
+{
+ "run_dir": "/tmp/ready-mgr/R01-S3-cap30min/runs/mechanism/S3",
+ "ledger_status": "ok",
+ "flat_valid": true,
+ "flat_reason": "ledger present, no open/partial/orphan episodes, no live orders, no live/unresolved/booked exposure",
+ "closed_trades": 0,
+ "partial_episodes": 0,
+ "open_episodes": 0,
+ "orphan_exit_episodes": 0,
+ "fill_rate": null,
+ "expectancy": {
+  "n": 0,
+  "mean": null,
+  "sd": null,
+  "ci95_lo": null,
+  "ci95_hi": null,
+  "method": "n/a (need >=2 closed trades); descriptive only, not a promotion gate"
+ },
+ "booked": {
+  "gross": 0,
+  "fees": 0,
+  "funding": 0,
+  "funding_entries": 0,
+  "funding_rule": "equal split among episodes holding an open remainder at the funding timestamp; funding with no open episode attributes to the day only",
+  "flows": 0,
+  "flow_entries": 0,
+  "net": 0,
+  "slippage_note": "slippage is implicit in booked fill prices vs arrival; no separate booked slippage leg exists. Estimated adverse costs live in the estimates section only."
+ },
+ "estimates": {
+  "note": "cost-contract-v1 estimates computed at report time from entry notionals; recorded separately, never booked, spread charged once (half per leg)."
+ },
+ "reconciliation": {
+  "realized_episodes_net": 0,
+  "open_basis_flow": 0,
+  "unlinked_net": 0,
+  "unlinked_fills": 0,
+  "unattributed_funding": 0,
+  "booked_net": 0,
+  "identity_holds": true,
+  "identity": "booked.net = realized episodes + unlinked fills + day-level funding (open basis is unrealized inventory, disclosed separately, never in net)",
+  "cash_net_incl_open_basis": 0
+ },
+ "account_check": {
+  "marked_first": 120.0,
+  "marked_last": 120.0,
+  "marked_change": 0.0,
+  "realized_total": 0,
+  "flows_total": 0,
+  "gap": 0.0,
+  "gap_is": "unrealized mark delta on open remainders plus anything unmodeled; zero when flat with no unlinked fills."
+ },
+ "drawdown": {
+  "max_drawdown": 0.0,
+  "max_drawdown_pct": 0.0
+ },
+ "worst_trade": null,
+ "worst_day": 0.0,
+ "daily_net": {
+  "2026-10-12": 0.0
+ },
+ "daily_realized_note": "realized only (closed/partial economics + sunk episode fees + funding) by Asia/Kolkata day; zero-trade days preserved from the equity window.",
+ "daily_marked": {
+  "2026-10-12": {
+   "first": 120.0,
+   "last": 120.0,
+   "change": 0.0
+  }
+ },
+ "daily_marked_note": "first/last equity marks per Asia/Kolkata day; includes unrealized, never booked as P&L.",
+ "exposure_max_notional": 0.0,
+ "holding_s": {
+  "min": null,
+  "median": null,
+  "max": null
+ },
+ "funnel_stages": {
+  "usable_data_seconds": 1571,
+  "usable_data_note": "clock-second union across strategies; use usable_symbol_seconds_total as the denominator for symbol-time coverage.",
+  "strategy_eligible_seconds": {
+   "S3": 625
+  },
+  "strategy_eligible_note": "symbol-seconds per strategy (sum over instruments); see eligible_symbol_seconds for attribution.",
+  "setup_unique_intents": 45,
+  "cost_pass_unique_intents": 0,
+  "portfolio_risk_pass_unique": 0,
+  "submitted_entries": 0,
+  "filled_entries": 0,
+  "closed_reservations": 0,
+  "partial_reservations": 0,
+  "open_reservations": 0
+ },
+ "funnel_buckets": {
+  "unavailable_data": 2684,
+  "missing_sequence": 0,
+  "healthy_no_trade": 625,
+  "no_setup": 608,
+  "below_cost": 45,
+  "below_minimum": 0,
+  "stale_expired": 0,
+  "nonmarketable": 0,
+  "ioc_cancelled": 0,
+  "exposure_cooldown": 0,
+  "startup_seconds": 1642,
+  "stale_input": 0,
+  "missing_depth": 0,
+  "other_hold": 0
+ },
+ "trades": [],
+ "partial_episode_list": [],
+ "open_episode_list": [],
+ "orphan_exit_list": [],
+ "unlinked_fills": {
+  "entry": [],
+  "exit": []
+ },
+ "watch": {
+  "live_client_ids": [],
+  "unresolved_reservations": [],
+  "live_reservations": [],
+  "risk_open_position": false,
+  "risk_state": "ok",
+  "booked_nonzero": [],
+  "orphan_exit_reservations": [],
+  "quantity_mismatches": [],
+  "protection_checkpoints": {
+   "status": "ok",
+   "kinds": {
+    "cursor": 2258,
+    "depth-prime": 1,
+    "depth-prime-final": 1,
+    "filters-armed": 1,
+    "local-state": 1,
+    "open": 1
+   },
+   "legs_verified": [],
+   "legs_unverified": []
+  }
+ },
+ "symbol_time": {
+  "events_scanned": 1125847,
+  "usable_symbol_seconds": {
+   "BTCUSDT": 1800,
+   "ETHUSDT": 1800
+  },
+  "usable_symbol_seconds_total": 3600
+ }
+}

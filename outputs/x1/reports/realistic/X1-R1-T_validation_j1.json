@@ -1,0 +1,75 @@
+{
+ "runner_version": "bench-run-v3",
+ "status": "INCOMPLETE_BUDGET",
+ "stop_reason": "wall_budget",
+ "run_id": "x1-realistic-X1-R1-T_validation",
+ "dataset": "datasets/benchmark_30d.toml",
+ "symbol": null,
+ "symbols": [
+  "BTCUSDT",
+  "ETHUSDT"
+ ],
+ "window_ms": [
+  1790447400000,
+  1791052200000
+ ],
+ "spread": {
+  "bps": {
+   "BTCUSDT": 1.0,
+   "ETHUSDT": 1.0
+  },
+  "windows": {
+   "BTCUSDT": {
+    "modeled_windows": 201273,
+    "trade_windows": 201273
+   },
+   "ETHUSDT": {
+    "modeled_windows": 203388,
+    "trade_windows": 203388
+   }
+  }
+ },
+ "days": [
+  "2026-09-26",
+  "2026-09-27",
+  "2026-09-28",
+  "2026-09-29",
+  "2026-09-30",
+  "2026-10-01",
+  "2026-10-02",
+  "2026-10-03"
+ ],
+ "elapsed_s": 1499.906,
+ "events": {
+  "ingested": 3667210,
+  "replayed_tail": 0,
+  "heartbeats": 105294,
+  "skipped_window": 615343,
+  "commits": 1836
+ },
+ "cursor": {
+  "day": "2026-09-28",
+  "seqs": {
+   "BTCUSDT": 1139218,
+   "ETHUSDT": 1030982
+  }
+ },
+ "booked": {
+  "equity_open": 120.0,
+  "equity_close": 120.0,
+  "valuation": "cash-exact",
+  "valuation_reason": "flat: no mark required",
+  "realised": 0.0,
+  "commissions": 0.0,
+  "funding": 0.0
+ },
+ "estimated_costs": [],
+ "profile": {
+  "read_s": 12.486,
+  "ingest_s": 1469.774,
+  "commit_s": 5.667,
+  "fsync_s": 4.839,
+  "store_s": 0.017,
+  "events_per_s": 2445.0
+ }
+}

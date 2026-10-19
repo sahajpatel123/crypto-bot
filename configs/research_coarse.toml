@@ -1,0 +1,63 @@
+# DIAGNOSTIC research profile (CORR-DATA §4): coarse, frozen, labeled.
+#
+# Purpose: offline diagnostics on sparse/aged datasets ONLY. Relaxed
+# quote age (30s vs 1s live) and NO mark-age bound let a diagnostic
+# replay run where live rules would (correctly) refuse. This profile
+# must NEVER score live readiness: audit verdicts against it carry
+# diagnostic_only=true, and nothing in the live path loads it.
+# Frozen: changes require a new profile_version + re-frozen fingerprint.
+# Warmup is NOT relaxed (130 bars) — no evidence justifies changing it.
+
+[run]
+mode = "replay"
+paper_capital_usdt = 120.0
+accounting_tz = "Asia/Kolkata"
+duration = "24h"
+
+[risk]
+max_loss_budget_pct = 0.00125
+leverage_cap = 3.0
+min_notional_usdt = 5.0
+stress_multiplier = 1.5
+operating_stop_pct = 0.005
+emergency_stop_pct = 0.01
+profile_version = "diag-coarse-1"
+# max_mark_age_ms deliberately unset: diagnostics do not enforce mark age.
+daily_target_pct = 0.02
+profit_arm_pct = 0.01
+profit_retain_pct = 0.70
+max_evidence_age_s = 120.0
+max_clock_skew_s = 5.0
+filters_max_age_s = 3600.0
+max_notional_cap_usdt = 500.0
+
+[fees]
+label = "diagnostic-labeled"
+taker_bps = 5.0
+funding_bps_per_8h = 1.0
+
+[engine]
+kind = "reference"
+submit_delay_ms = 50
+fill_delay_ms = 50
+
+[data]
+symbols = []
+max_symbols = 8
+warmup_bars = 130
+
+[runtime]
+control_tick_s = 0.25
+feed_queue_max = 1000
+quote_max_age_s = 30.0  # DIAGNOSTIC relaxation (live: 1.0s).
+
+[storage]
+dir = "runs"
+budget_mb = 2048
+
+[strategies]
+enabled = ["S1", "S2", "S3", "S4", "S5"]
+arms = "base"
+cooldown_s = 300
+min_reward_multiple = 1.0
+allow_legacy_exit_rules = false

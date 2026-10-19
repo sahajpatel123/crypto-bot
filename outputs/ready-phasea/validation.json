@@ -1,0 +1,50 @@
+{
+ "S1-cap30min": {
+  "emitted_intents": 12,
+  "recorded_intents": 12,
+  "missing_intents": [],
+  "extra_intents": [],
+  "recorded_strategy_rejects": 3325,
+  "reproduced_strategy_rejects": 3325,
+  "missing_rejects": [],
+  "extra_rejects": [],
+  "intents_exact": true,
+  "rejects_exact": true
+ },
+ "S3-cap30min": {
+  "emitted_intents": 45,
+  "recorded_intents": 45,
+  "missing_intents": [],
+  "extra_intents": [],
+  "recorded_strategy_rejects": 3292,
+  "reproduced_strategy_rejects": 3292,
+  "missing_rejects": [],
+  "extra_rejects": [],
+  "intents_exact": true,
+  "rejects_exact": true
+ },
+ "S1-cap2h": {
+  "emitted_intents": 4,
+  "recorded_intents": 4,
+  "missing_intents": [],
+  "extra_intents": [],
+  "recorded_strategy_rejects": 14134,
+  "reproduced_strategy_rejects": 14134,
+  "missing_rejects": [],
+  "extra_rejects": [],
+  "intents_exact": true,
+  "rejects_exact": true
+ },
+ "S3-cap2h": {
+  "emitted_intents": 0,
+  "recorded_intents": 0,
+  "missing_intents": [],
+  "extra_intents": [],
+  "recorded_strategy_rejects": 14138,
+  "reproduced_strategy_rejects": 14138,
+  "missing_rejects": [],
+  "extra_rejects": [],
+  "intents_exact": true,
+  "rejects_exact": true
+ }
+}

@@ -1,0 +1,544 @@
+[
+  {
+    "run": "runs/paper-24h-long",
+    "verdict": "RECONCILED",
+    "checks": [
+      {
+        "name": "exec-ids-unique",
+        "ok": true,
+        "detail": "n=6 unique=6"
+      },
+      {
+        "name": "fees-agree",
+        "ok": true,
+        "detail": "fills 0.061890 vs snapshot 0.06189013"
+      },
+      {
+        "name": "realised-agree",
+        "ok": true,
+        "detail": "fills-net -0.103528 vs snapshot -0.10352813000000056"
+      },
+      {
+        "name": "ledger-qty-flat",
+        "ok": true,
+        "detail": "fills-net 0.0 snapshot-qty 0.0"
+      },
+      {
+        "name": "report-paid-costs",
+        "ok": true,
+        "detail": "report 0.06189013 vs ledger 0.06189013"
+      },
+      {
+        "name": "report-realised",
+        "ok": true,
+        "detail": "report -0.10352813000000056 vs ledger -0.10352813000000056"
+      },
+      {
+        "name": "report-funding",
+        "ok": true,
+        "detail": "report 0.0 vs ledger 0.0"
+      },
+      {
+        "name": "report-net-pct",
+        "ok": true,
+        "detail": "report -0.08627344166668438 vs recomputed -0.0862734416666792"
+      },
+      {
+        "name": "cash-closes",
+        "ok": true,
+        "detail": "cash 119.89647186999998 vs opening+net+funding 119.89647187"
+      },
+      {
+        "name": "fills-jsonl-count",
+        "ok": true,
+        "detail": "file 6 vs ledger 6"
+      },
+      {
+        "name": "equity-curve-closes",
+        "ok": true,
+        "detail": "curve 119.89647186999998 vs report 119.89647186999998"
+      },
+      {
+        "name": "engine-ledger-fills-agree",
+        "ok": true,
+        "detail": "paper_engine_journal.jsonl 6 vs ledger 6 fill keys"
+      }
+    ],
+    "economics": {
+      "gross": -0.041638000000002506,
+      "fees": 0.06189013,
+      "net": -0.10352813000000251,
+      "net_qty": 0.0,
+      "n": 6
+    },
+    "exposure": {
+      "fills": 6,
+      "round_trip_flat": true,
+      "note": "entry+exit legs verified under exposure; per-fill exit-reason attribution unavailable in canonical records"
+    }
+  },
+  {
+    "run": "/tmp/w1bench/matrix/COMBINED_validation/run",
+    "verdict": "RECONCILED",
+    "checks": [
+      {
+        "name": "exec-ids-unique",
+        "ok": true,
+        "detail": "n=22 unique=22"
+      },
+      {
+        "name": "fees-agree",
+        "ok": true,
+        "detail": "fills 0.318393 vs snapshot 0.31839279000000004"
+      },
+      {
+        "name": "realised-agree",
+        "ok": true,
+        "detail": "fills-net -0.367593 vs snapshot -0.367592789999994"
+      },
+      {
+        "name": "ledger-qty-flat",
+        "ok": true,
+        "detail": "fills-net 0.0 snapshot-qty 0.0"
+      },
+      {
+        "name": "report-paid-costs",
+        "ok": true,
+        "detail": "report 0.31839279000000004 vs ledger 0.31839279000000004"
+      },
+      {
+        "name": "report-realised",
+        "ok": true,
+        "detail": "report -0.367592789999994 vs ledger -0.367592789999994"
+      },
+      {
+        "name": "report-funding",
+        "ok": true,
+        "detail": "report 0.0 vs ledger 0.0"
+      },
+      {
+        "name": "report-net-pct",
+        "ok": true,
+        "detail": "report -0.3063273249999665 vs recomputed -0.30632732499996723"
+      },
+      {
+        "name": "cash-closes",
+        "ok": true,
+        "detail": "cash 119.63240721000004 vs opening+net+funding 119.63240721000001"
+      },
+      {
+        "name": "fills-jsonl-present",
+        "ok": true,
+        "detail": "pruned layout asserted (--pruned)"
+      },
+      {
+        "name": "equity-curve-present",
+        "ok": true,
+        "detail": "absent (old layout); skipped"
+      },
+      {
+        "name": "engine-ledger-fills-agree",
+        "ok": true,
+        "detail": "engine_journal.jsonl 22 vs ledger 22 fill keys"
+      },
+      {
+        "name": "cell-events_seen-agree",
+        "ok": true,
+        "detail": "cell.json 16337623 vs report 16337623"
+      },
+      {
+        "name": "cell-intents_admitted-agree",
+        "ok": true,
+        "detail": "cell.json 13 vs report 13"
+      },
+      {
+        "name": "cell-closing_equity-agree",
+        "ok": true,
+        "detail": "cell.json 119.63240721000004 vs report 119.63240721000004"
+      },
+      {
+        "name": "cell-net_return_pct-agree",
+        "ok": true,
+        "detail": "cell.json -0.3063273249999665 vs report -0.3063273249999665"
+      },
+      {
+        "name": "cell-paid_costs-agree",
+        "ok": true,
+        "detail": "cell.json 0.31839279000000004 vs report 0.31839279000000004"
+      },
+      {
+        "name": "cell-funding_net-agree",
+        "ok": true,
+        "detail": "cell.json 0.0 vs report 0.0"
+      },
+      {
+        "name": "cell-realised-agree",
+        "ok": true,
+        "detail": "cell.json -0.367592789999994 vs report -0.367592789999994"
+      },
+      {
+        "name": "cell-stream-hash-agree",
+        "ok": true,
+        "detail": "cell 54a66272c41e9df40960d005ad4f85bcd529ab7a1dc782d282943223dd239d6a vs report 54a66272c41e9df40960d005ad4f85bcd529ab7a1dc782d282943223dd239d6a (/tmp/w1bench/matrix/COMBINED_validation/cell.json)"
+      }
+    ],
+    "economics": {
+      "gross": -0.04919999999999192,
+      "fees": 0.31839279000000004,
+      "net": -0.36759278999999195,
+      "net_qty": 0.0,
+      "n": 22
+    },
+    "exposure": {
+      "fills": 22,
+      "round_trip_flat": true,
+      "note": "entry+exit legs verified under exposure; per-fill exit-reason attribution unavailable in canonical records"
+    }
+  },
+  {
+    "run": "/tmp/w1bench/matrix/COMBINED_test/run",
+    "verdict": "RECONCILED",
+    "checks": [
+      {
+        "name": "exec-ids-unique",
+        "ok": true,
+        "detail": "n=2 unique=2"
+      },
+      {
+        "name": "fees-agree",
+        "ok": true,
+        "detail": "fills 0.027324 vs snapshot 0.02732375"
+      },
+      {
+        "name": "realised-agree",
+        "ok": true,
+        "detail": "fills-net -0.092424 vs snapshot -0.09242375000000219"
+      },
+      {
+        "name": "ledger-qty-flat",
+        "ok": true,
+        "detail": "fills-net 0.0 snapshot-qty 0.0"
+      },
+      {
+        "name": "report-paid-costs",
+        "ok": true,
+        "detail": "report 0.02732375 vs ledger 0.02732375"
+      },
+      {
+        "name": "report-realised",
+        "ok": true,
+        "detail": "report -0.09242375000000219 vs ledger -0.09242375000000219"
+      },
+      {
+        "name": "report-funding",
+        "ok": true,
+        "detail": "report 0.0 vs ledger 0.0"
+      },
+      {
+        "name": "report-net-pct",
+        "ok": true,
+        "detail": "report -0.07701979166667705 vs recomputed -0.0770197916666741"
+      },
+      {
+        "name": "cash-closes",
+        "ok": true,
+        "detail": "cash 119.90757624999999 vs opening+net+funding 119.90757625"
+      },
+      {
+        "name": "fills-jsonl-present",
+        "ok": true,
+        "detail": "pruned layout asserted (--pruned)"
+      },
+      {
+        "name": "equity-curve-present",
+        "ok": true,
+        "detail": "absent (old layout); skipped"
+      },
+      {
+        "name": "engine-ledger-fills-agree",
+        "ok": true,
+        "detail": "engine_journal.jsonl 2 vs ledger 2 fill keys"
+      },
+      {
+        "name": "cell-events_seen-agree",
+        "ok": true,
+        "detail": "cell.json 14754381 vs report 14754381"
+      },
+      {
+        "name": "cell-intents_admitted-agree",
+        "ok": true,
+        "detail": "cell.json 1 vs report 1"
+      },
+      {
+        "name": "cell-closing_equity-agree",
+        "ok": true,
+        "detail": "cell.json 119.90757624999999 vs report 119.90757624999999"
+      },
+      {
+        "name": "cell-net_return_pct-agree",
+        "ok": true,
+        "detail": "cell.json -0.07701979166667705 vs report -0.07701979166667705"
+      },
+      {
+        "name": "cell-paid_costs-agree",
+        "ok": true,
+        "detail": "cell.json 0.02732375 vs report 0.02732375"
+      },
+      {
+        "name": "cell-funding_net-agree",
+        "ok": true,
+        "detail": "cell.json 0.0 vs report 0.0"
+      },
+      {
+        "name": "cell-realised-agree",
+        "ok": true,
+        "detail": "cell.json -0.09242375000000219 vs report -0.09242375000000219"
+      },
+      {
+        "name": "cell-stream-hash-agree",
+        "ok": true,
+        "detail": "cell c398a752192835583c4df7260273ebdbc82740e2aa13390c9a823d98d7668335 vs report c398a752192835583c4df7260273ebdbc82740e2aa13390c9a823d98d7668335 (/tmp/w1bench/matrix/COMBINED_test/cell.json)"
+      }
+    ],
+    "economics": {
+      "gross": -0.06510000000000105,
+      "fees": 0.02732375,
+      "net": -0.09242375000000105,
+      "net_qty": 0.0,
+      "n": 2
+    },
+    "exposure": {
+      "fills": 2,
+      "round_trip_flat": true,
+      "note": "entry+exit legs verified under exposure; per-fill exit-reason attribution unavailable in canonical records"
+    }
+  },
+  {
+    "run": "/tmp/w1bench/matrix/CASH_validation/run",
+    "verdict": "VACUOUS",
+    "reason": "control arm CASH: strategies disabled by design (eval n=0, intents=0); 0 fills expected",
+    "checks": [
+      {
+        "name": "exec-ids-unique",
+        "ok": true,
+        "detail": "n=0 unique=0"
+      },
+      {
+        "name": "fees-agree",
+        "ok": true,
+        "detail": "fills 0.000000 vs snapshot 0.0"
+      },
+      {
+        "name": "realised-agree",
+        "ok": true,
+        "detail": "fills-net 0.000000 vs snapshot 0.0"
+      },
+      {
+        "name": "ledger-qty-flat",
+        "ok": true,
+        "detail": "fills-net 0.0 snapshot-qty 0.0"
+      },
+      {
+        "name": "report-paid-costs",
+        "ok": true,
+        "detail": "report 0.0 vs ledger 0.0"
+      },
+      {
+        "name": "report-realised",
+        "ok": true,
+        "detail": "report 0.0 vs ledger 0.0"
+      },
+      {
+        "name": "report-funding",
+        "ok": true,
+        "detail": "report 0.0 vs ledger 0.0"
+      },
+      {
+        "name": "report-net-pct",
+        "ok": true,
+        "detail": "report 0.0 vs recomputed 0.0"
+      },
+      {
+        "name": "cash-closes",
+        "ok": true,
+        "detail": "cash 120.0 vs opening+net+funding 120.0"
+      },
+      {
+        "name": "fills-jsonl-present",
+        "ok": true,
+        "detail": "no fills anywhere; consistent"
+      },
+      {
+        "name": "equity-curve-present",
+        "ok": true,
+        "detail": "absent (old layout); skipped"
+      },
+      {
+        "name": "engine-ledger-fills-agree",
+        "ok": true,
+        "detail": "engine_journal.jsonl 0 vs ledger 0 fill keys"
+      },
+      {
+        "name": "cell-events_seen-agree",
+        "ok": true,
+        "detail": "cell.json 16337623 vs report 16337623"
+      },
+      {
+        "name": "cell-intents_admitted-agree",
+        "ok": true,
+        "detail": "cell.json 0 vs report 0"
+      },
+      {
+        "name": "cell-closing_equity-agree",
+        "ok": true,
+        "detail": "cell.json 120.0 vs report 120.0"
+      },
+      {
+        "name": "cell-net_return_pct-agree",
+        "ok": true,
+        "detail": "cell.json 0.0 vs report 0.0"
+      },
+      {
+        "name": "cell-paid_costs-agree",
+        "ok": true,
+        "detail": "cell.json 0.0 vs report 0.0"
+      },
+      {
+        "name": "cell-funding_net-agree",
+        "ok": true,
+        "detail": "cell.json 0.0 vs report 0.0"
+      },
+      {
+        "name": "cell-realised-agree",
+        "ok": true,
+        "detail": "cell.json 0.0 vs report 0.0"
+      },
+      {
+        "name": "cell-stream-hash-agree",
+        "ok": true,
+        "detail": "cell 54a66272c41e9df40960d005ad4f85bcd529ab7a1dc782d282943223dd239d6a vs report 54a66272c41e9df40960d005ad4f85bcd529ab7a1dc782d282943223dd239d6a (/tmp/w1bench/matrix/CASH_validation/cell.json)"
+      }
+    ],
+    "economics": {
+      "gross": 0.0,
+      "fees": 0.0,
+      "net": 0.0,
+      "net_qty": 0.0,
+      "n": 0
+    }
+  },
+  {
+    "run": "/tmp/w1bench/matrix/CASH_test/run",
+    "verdict": "VACUOUS",
+    "reason": "control arm CASH: strategies disabled by design (eval n=0, intents=0); 0 fills expected",
+    "checks": [
+      {
+        "name": "exec-ids-unique",
+        "ok": true,
+        "detail": "n=0 unique=0"
+      },
+      {
+        "name": "fees-agree",
+        "ok": true,
+        "detail": "fills 0.000000 vs snapshot 0.0"
+      },
+      {
+        "name": "realised-agree",
+        "ok": true,
+        "detail": "fills-net 0.000000 vs snapshot 0.0"
+      },
+      {
+        "name": "ledger-qty-flat",
+        "ok": true,
+        "detail": "fills-net 0.0 snapshot-qty 0.0"
+      },
+      {
+        "name": "report-paid-costs",
+        "ok": true,
+        "detail": "report 0.0 vs ledger 0.0"
+      },
+      {
+        "name": "report-realised",
+        "ok": true,
+        "detail": "report 0.0 vs ledger 0.0"
+      },
+      {
+        "name": "report-funding",
+        "ok": true,
+        "detail": "report 0.0 vs ledger 0.0"
+      },
+      {
+        "name": "report-net-pct",
+        "ok": true,
+        "detail": "report 0.0 vs recomputed 0.0"
+      },
+      {
+        "name": "cash-closes",
+        "ok": true,
+        "detail": "cash 120.0 vs opening+net+funding 120.0"
+      },
+      {
+        "name": "fills-jsonl-present",
+        "ok": true,
+        "detail": "no fills anywhere; consistent"
+      },
+      {
+        "name": "equity-curve-present",
+        "ok": true,
+        "detail": "absent (old layout); skipped"
+      },
+      {
+        "name": "engine-ledger-fills-agree",
+        "ok": true,
+        "detail": "engine_journal.jsonl 0 vs ledger 0 fill keys"
+      },
+      {
+        "name": "cell-events_seen-agree",
+        "ok": true,
+        "detail": "cell.json 14754381 vs report 14754381"
+      },
+      {
+        "name": "cell-intents_admitted-agree",
+        "ok": true,
+        "detail": "cell.json 0 vs report 0"
+      },
+      {
+        "name": "cell-closing_equity-agree",
+        "ok": true,
+        "detail": "cell.json 120.0 vs report 120.0"
+      },
+      {
+        "name": "cell-net_return_pct-agree",
+        "ok": true,
+        "detail": "cell.json 0.0 vs report 0.0"
+      },
+      {
+        "name": "cell-paid_costs-agree",
+        "ok": true,
+        "detail": "cell.json 0.0 vs report 0.0"
+      },
+      {
+        "name": "cell-funding_net-agree",
+        "ok": true,
+        "detail": "cell.json 0.0 vs report 0.0"
+      },
+      {
+        "name": "cell-realised-agree",
+        "ok": true,
+        "detail": "cell.json 0.0 vs report 0.0"
+      },
+      {
+        "name": "cell-stream-hash-agree",
+        "ok": true,
+        "detail": "cell c398a752192835583c4df7260273ebdbc82740e2aa13390c9a823d98d7668335 vs report c398a752192835583c4df7260273ebdbc82740e2aa13390c9a823d98d7668335 (/tmp/w1bench/matrix/CASH_test/cell.json)"
+      }
+    ],
+    "economics": {
+      "gross": 0.0,
+      "fees": 0.0,
+      "net": 0.0,
+      "net_qty": 0.0,
+      "n": 0
+    }
+  }
+]

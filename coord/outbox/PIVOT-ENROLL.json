@@ -1,0 +1,17 @@
+{
+  "id": "PIVOT-ENROLL",
+  "owner": "manager (this session)",
+  "date": "2026-10-16",
+  "status": "FILED - finding for W2 data lane, no dispatch change",
+  "deliverables": [
+    "tools/pivot_gate.py FIXED: CASH controls never advance; configs mapping to no candidate family in coord/pivot/PIVOT-01.json cannot qualify (both previously returned QUALIFIED on strong synthetic nets; probe-verified before/after)",
+    "tests/unit/test_pivot_gate.py: +3 regression tests (cash-never-advances, unenrolled-cannot-qualify, enrolled-still-qualifies)",
+    "tools/pivot_enroll.py NEW: read-only PIVOT-01 dataset enrollment auditor (streams events.jsonl, checks >=10d span, observed quotes with no modelled spread, aggTrade, marks >=1s cadence, funding settlements with provenance, monotonic seq, untouched attestation)",
+    "tests/unit/test_pivot_enroll.py NEW: 5 tests incl. ENROLLED synthetic at full floor cadence (gate is passable, not vacuous)",
+    "reports/pivot/verdict-x1-replay.json: frozen X1 economics replayed -> NONE / RESEARCH UNRESOLVED",
+    "reports/pivot/enroll-{cap-30min,cap-2h,eval-deep1}.json: all DEVELOPMENT-ONLY (spans 0.01-0.08d vs 10d floor; no funding settlements; eval-deep1 also 64s mark gap)"
+  ],
+  "finding_for_w2_lane": "Current captures (tools/capture_*, W2-owned, NOT edited here) record funding_rate observations on markPrice but no funding-settlement channel with provenance. Even a future 10d owner-run self-capture cannot enroll under PIVOT-01 until settlement capture is added in that lane.",
+  "peer_coordination": "F2 mark-health lane (src/cryptobot/app/session.py, store.py, test_session_mark_health.py) untouched and in progress by peer; coord/evidence/* untouched (W5 verifying); no src/ edits in this filing.",
+  "honest_state": "PIVOT-01 remains PREREGISTERED - DATA BLOCKED. No strategy qualifies, nothing is profitability evidence, live submission stays disabled. Next owner decision: fresh 10d self-capture ($0, supervised) vs Tardis Solo re-audit."
+}

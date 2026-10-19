@@ -17,6 +17,8 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Callable
 
+from .recorder import INPUT_OBSERVED
+
 FAPI_BASE_URL = "https://fapi.binance.com"
 EXCHANGE_INFO_PATH = "/fapi/v1/exchangeInfo"
 
@@ -148,7 +150,10 @@ def eligible_symbols(
 
 
 def discovery_summary(result: DiscoveryResult, eligible: tuple[SymbolMeta, ...]) -> dict[str, Any]:
+    # F-DATA-01/E-004: the summary describes live venue metadata, so it carries
+    # the same observed-public label the README claims for data/observed/.
     return {
+        "input_class": INPUT_OBSERVED,
         "contract_version": result.contract_version,
         "base_url": result.base_url,
         "fetched_at_utc": result.fetched_at_utc,

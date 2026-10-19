@@ -1,0 +1,16 @@
+{
+ "format": "cryptobot-autopilot-report/1",
+ "generated_utc": "2026-10-18T21:57:00.093720+00:00",
+ "hypotheses": [
+  {
+   "hypothesis": "C1",
+   "power": null,
+   "provenance": "OBSERVED",
+   "reason": "C1 confirms on FORWARD only; holdout is burned",
+   "state": "AWAIT_FORWARD",
+   "updated_utc": "2026-10-18T21:57:00.093287+00:00"
+  }
+ ],
+ "log_problems": [],
+ "terminal_no_edge": false
+}

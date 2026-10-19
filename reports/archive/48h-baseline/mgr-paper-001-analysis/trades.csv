@@ -1,0 +1,1 @@
+episode_id,symbol,side,strategy,open_ts_utc,close_ts_utc,holding_s,qty,entry_px,exit_px,gross,fees,funding,net,exit_reason,legs,end_of_data,mfe_usdt,mae_usdt

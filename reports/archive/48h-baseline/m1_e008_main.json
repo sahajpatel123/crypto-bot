@@ -1,0 +1,21 @@
+{
+  "slice": "M1",
+  "synthetic": true,
+  "input_class": "synthetic",
+  "recording": "SYNTH_V1:long-breakout:seed11 via cryptobot-recording/1",
+  "replay_sha256": "ce832c2a6723e26c215f2beaab91c24002e11be73e330000aff9a1dbf3207d69",
+  "replay_events": 155,
+  "evidence_bar": 154,
+  "coordinator_reason": "single-owner-selected",
+  "rejected_count": 1,
+  "risk": "risk-policy:approved:reservation=r-000001:budget=0.2500",
+  "notional": 77.6521013268024,
+  "fills": 2,
+  "fees": 0.0,
+  "fee_label": "venue-models-no-fee",
+  "realised": -0.028513764900590575,
+  "unrealised_at_ref": -4.076600168545497e-15,
+  "net_liquidation": 99.9714862350994,
+  "venue": "shared-fake:fault-simulator(partial-then-stop-exit)",
+  "recovery": "crash-with-exposure: orders/risk/ledger rebuilt, fills/booked/cash agree"
+}

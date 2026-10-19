@@ -1,0 +1,240 @@
+{
+ "chain_head": "5dd8aeace6d7480aff1249e983d5b95086cf5d410d37fd1ea1b8faf017edce74",
+ "entries": [
+  {
+   "details": {
+    "config_sha256": "9e3de68888a25db929cf1035ac041a12a3482f6739d7a33392b5537cfc5adb9a",
+    "prereg": "research/prereg/H1-maker-ofi-scalp.md"
+   },
+   "entry_hash": "fa50b15a70ca630f32e0657158d2b68cb3e074c19c888afaaab06a42006d1dcc",
+   "from": "REGISTERED",
+   "hypothesis": "H1",
+   "prev": "genesis",
+   "provenance": "OBSERVED",
+   "reason": "prereg present; dev evaluation due",
+   "to": "DEV_EVAL",
+   "ts_utc": "2026-10-18T06:53:00.283401+00:00"
+  },
+  {
+   "details": {
+    "config_sha256": "d85ed353445895d78a922580bb58e7e131bd5b1cfc438ceb99901c7f5586c73a",
+    "prereg": "research/prereg/H2-trend-vol-regime.md"
+   },
+   "entry_hash": "c0f6b818ec0ca863ea0e0ed5f7137965bcbdc725aeef1735f91b19ef97a90a7e",
+   "from": "REGISTERED",
+   "hypothesis": "H2",
+   "prev": "fa50b15a70ca630f32e0657158d2b68cb3e074c19c888afaaab06a42006d1dcc",
+   "provenance": "OBSERVED",
+   "reason": "prereg present; dev evaluation due",
+   "to": "DEV_EVAL",
+   "ts_utc": "2026-10-18T06:53:00.285067+00:00"
+  },
+  {
+   "details": {
+    "config_sha256": "0885b908ffe137692040ac7a3701b02a6dbc420b8fd9106e098659a1314c991b",
+    "prereg": "research/prereg/H3-funding-skew-tilt.md"
+   },
+   "entry_hash": "b9f664415b965b921a638a355636190776a51451e20054a5c7a474ef481ee204",
+   "from": "REGISTERED",
+   "hypothesis": "H3",
+   "prev": "c0f6b818ec0ca863ea0e0ed5f7137965bcbdc725aeef1735f91b19ef97a90a7e",
+   "provenance": "OBSERVED",
+   "reason": "prereg present; dev evaluation due",
+   "to": "DEV_EVAL",
+   "ts_utc": "2026-10-18T06:53:00.286159+00:00"
+  },
+  {
+   "details": {
+    "config_sha256": "b199dfdf445f5427d09864f9732e64c7f03d7835b3b5674c45a1ca668dc3c5bd",
+    "prereg": "research/prereg/H4-cross-venue-lead-lag.md"
+   },
+   "entry_hash": "3406490807748340a7bb5442945f166268f87c3fb1b461aa123d21981460708d",
+   "from": "REGISTERED",
+   "hypothesis": "H4",
+   "prev": "b9f664415b965b921a638a355636190776a51451e20054a5c7a474ef481ee204",
+   "provenance": "OBSERVED",
+   "reason": "prereg present; dev evaluation due",
+   "to": "DEV_EVAL",
+   "ts_utc": "2026-10-18T06:53:00.287089+00:00"
+  },
+  {
+   "details": {
+    "config_sha256": "0e239da8664edf588ca63cd0d7d6872522f6667ed618142225d3ad0ca56c0cf1",
+    "prereg": "research/prereg/H5-liquidation-cascade-fade.md"
+   },
+   "entry_hash": "e360ba050d824d6a54146149b82e3520d667553b9891ac416747f4fea600119f",
+   "from": "REGISTERED",
+   "hypothesis": "H5",
+   "prev": "3406490807748340a7bb5442945f166268f87c3fb1b461aa123d21981460708d",
+   "provenance": "OBSERVED",
+   "reason": "prereg present; dev evaluation due",
+   "to": "DEV_EVAL",
+   "ts_utc": "2026-10-18T06:53:00.287884+00:00"
+  },
+  {
+   "details": {
+    "config_sha256": "f9fc17a44f770d35b0ba3c84c1601708d129a0200a67d1eaab528d0a85f38f53",
+    "prereg": "research/prereg/H6-vol-shock-regime-filter.md"
+   },
+   "entry_hash": "5f5673b98d6230395a821f48e73312d959022e3c65654567cab3d579c90337a8",
+   "from": "REGISTERED",
+   "hypothesis": "H6",
+   "prev": "e360ba050d824d6a54146149b82e3520d667553b9891ac416747f4fea600119f",
+   "provenance": "OBSERVED",
+   "reason": "prereg present; dev evaluation due",
+   "to": "DEV_EVAL",
+   "ts_utc": "2026-10-18T06:53:00.288730+00:00"
+  },
+  {
+   "details": {
+    "data_required": "L2 top-of-book depth chain (prereg DEV stores data/pilot, datasets/benchmark_30d)",
+    "outcome": "UNDERPOWERED",
+    "power": {
+     "days_required": null,
+     "mean_bps": 0.0,
+     "reason": "fewer than 2 dev trades",
+     "required_trades": null,
+     "status": "IMPOSSIBLE",
+     "stdev_bps": 0.0,
+     "trades_per_day": 1.0
+    },
+    "required_confirm_trades": 300,
+    "required_dev_trades": 100
+   },
+   "entry_hash": "9ae309c5c4f7171e1f6c0978b07320bb41f1f08161847e33355528fb972be945",
+   "from": "DEV_EVAL",
+   "hypothesis": "H1",
+   "prev": "5f5673b98d6230395a821f48e73312d959022e3c65654567cab3d579c90337a8",
+   "provenance": "OBSERVED",
+   "reason": "UNDERPOWERED/AWAIT_DATA: no evaluable dev trades. power status IMPOSSIBLE: fewer than 2 dev trades. Prereg floor 100 dev trades / 10 days, confirm 300.",
+   "to": "AWAIT_DATA",
+   "ts_utc": "2026-10-18T19:24:00.415559+00:00"
+  },
+  {
+   "details": {
+    "data_required": "book-walk depth when recorded; otherwise taker replay. No dev trade file",
+    "outcome": "UNDERPOWERED",
+    "power": {
+     "days_required": null,
+     "mean_bps": 0.0,
+     "reason": "fewer than 2 dev trades",
+     "required_trades": null,
+     "status": "IMPOSSIBLE",
+     "stdev_bps": 0.0,
+     "trades_per_day": 1.0
+    },
+    "required_confirm_trades": 300,
+    "required_dev_trades": 100
+   },
+   "entry_hash": "9d350c9fbba86032c8462f25291d946252f447ce9860c73b14d747a7c7b661a7",
+   "from": "DEV_EVAL",
+   "hypothesis": "H2",
+   "prev": "9ae309c5c4f7171e1f6c0978b07320bb41f1f08161847e33355528fb972be945",
+   "provenance": "OBSERVED",
+   "reason": "UNDERPOWERED/AWAIT_DATA: no evaluable dev trades. power status IMPOSSIBLE: fewer than 2 dev trades. Prereg floor 100 dev trades / 20 days, confirm 300.",
+   "to": "AWAIT_DATA",
+   "ts_utc": "2026-10-18T19:24:00.417142+00:00"
+  },
+  {
+   "details": {
+    "data_required": "funding-settlement prints with position timing. No dev trade file",
+    "outcome": "UNDERPOWERED",
+    "power": {
+     "days_required": null,
+     "mean_bps": 0.0,
+     "reason": "fewer than 2 dev trades",
+     "required_trades": null,
+     "status": "IMPOSSIBLE",
+     "stdev_bps": 0.0,
+     "trades_per_day": 1.0
+    },
+    "required_confirm_trades": 300,
+    "required_dev_trades": 100
+   },
+   "entry_hash": "c09a2367f7e3762a301b2abd2de5c328a1b536c0b063046f2737adb979ff60f1",
+   "from": "DEV_EVAL",
+   "hypothesis": "H3",
+   "prev": "9d350c9fbba86032c8462f25291d946252f447ce9860c73b14d747a7c7b661a7",
+   "provenance": "OBSERVED",
+   "reason": "UNDERPOWERED/AWAIT_DATA: no evaluable dev trades. power status IMPOSSIBLE: fewer than 2 dev trades. Prereg floor 100 dev trades / 30 days, confirm 300.",
+   "to": "AWAIT_DATA",
+   "ts_utc": "2026-10-18T19:24:00.417970+00:00"
+  },
+  {
+   "details": {
+    "data_required": "Binance plus Bybit and OKX books. No cross-venue dev capture in the allowed stores",
+    "outcome": "UNDERPOWERED",
+    "power": {
+     "days_required": null,
+     "mean_bps": 0.0,
+     "reason": "fewer than 2 dev trades",
+     "required_trades": null,
+     "status": "IMPOSSIBLE",
+     "stdev_bps": 0.0,
+     "trades_per_day": 1.0
+    },
+    "required_confirm_trades": 300,
+    "required_dev_trades": 100
+   },
+   "entry_hash": "989628965bf8da5cbbafb2e6c552d938280a8c9cd55252b1c8b9656e4ad778e5",
+   "from": "DEV_EVAL",
+   "hypothesis": "H4",
+   "prev": "c09a2367f7e3762a301b2abd2de5c328a1b536c0b063046f2737adb979ff60f1",
+   "provenance": "OBSERVED",
+   "reason": "UNDERPOWERED/AWAIT_DATA: no evaluable dev trades. power status IMPOSSIBLE: fewer than 2 dev trades. Prereg floor 100 dev trades / 10 days, confirm 300.",
+   "to": "AWAIT_DATA",
+   "ts_utc": "2026-10-18T19:24:00.418746+00:00"
+  },
+  {
+   "details": {
+    "data_required": "liquidation prints plus depth. No liquidation history in the allowed stores",
+    "outcome": "UNDERPOWERED",
+    "power": {
+     "days_required": null,
+     "mean_bps": 0.0,
+     "reason": "fewer than 2 dev trades",
+     "required_trades": null,
+     "status": "IMPOSSIBLE",
+     "stdev_bps": 0.0,
+     "trades_per_day": 1.0
+    },
+    "required_confirm_trades": 300,
+    "required_dev_trades": 50
+   },
+   "entry_hash": "c92f1608c9c346c0ef6944a9db8a969983a15d9a94875650259266dcfaba96a9",
+   "from": "DEV_EVAL",
+   "hypothesis": "H5",
+   "prev": "989628965bf8da5cbbafb2e6c552d938280a8c9cd55252b1c8b9656e4ad778e5",
+   "provenance": "OBSERVED",
+   "reason": "UNDERPOWERED/AWAIT_DATA: no evaluable dev trades. power status IMPOSSIBLE: fewer than 2 dev trades. Prereg floor 50 dev trades / 10 days, confirm 300.",
+   "to": "AWAIT_DATA",
+   "ts_utc": "2026-10-18T19:24:00.419570+00:00"
+  },
+  {
+   "details": {
+    "data_required": "filter on H2/H3; those have no dev trades, so H6 cannot be scored",
+    "outcome": "UNDERPOWERED",
+    "power": {
+     "days_required": null,
+     "mean_bps": 0.0,
+     "reason": "fewer than 2 dev trades",
+     "required_trades": null,
+     "status": "IMPOSSIBLE",
+     "stdev_bps": 0.0,
+     "trades_per_day": 1.0
+    },
+    "required_confirm_trades": 300,
+    "required_dev_trades": 100
+   },
+   "entry_hash": "5dd8aeace6d7480aff1249e983d5b95086cf5d410d37fd1ea1b8faf017edce74",
+   "from": "DEV_EVAL",
+   "hypothesis": "H6",
+   "prev": "c92f1608c9c346c0ef6944a9db8a969983a15d9a94875650259266dcfaba96a9",
+   "provenance": "OBSERVED",
+   "reason": "UNDERPOWERED/AWAIT_DATA: no evaluable dev trades. power status IMPOSSIBLE: fewer than 2 dev trades. Prereg floor 100 dev trades / 20 days, confirm 300.",
+   "to": "AWAIT_DATA",
+   "ts_utc": "2026-10-18T19:24:00.420670+00:00"
+  }
+ ],
+ "format": "cryptobot-autopilot-transitions/1"
+}

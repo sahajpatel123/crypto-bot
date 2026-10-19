@@ -1,0 +1,154 @@
+{
+  "run_id": "w1b-COMBINED-validation",
+  "mode": "replay",
+  "input_class": "observed-archive",
+  "capture": "/tmp/w1bench/matrix/COMBINED_validation/fifo_cap",
+  "config_fingerprint": "88ae633997251116",
+  "fee_schedule": {
+    "label": "simulation-labeled",
+    "taker_bps": 5.0,
+    "funding_bps_per_8h": 1.0
+  },
+  "execution_model": "nautilus-paper",
+  "simulator_assumptions": [
+    "simulator=nautilus-SimulatedExchange equivalent-of-SandboxExecutionClient core (matching/fills/fees all nautilus; no bot fill engine)",
+    "modeled delays: submit_delay_ms=50 (pre-queue; submit_immediate bypasses, exits-only) + fill_delay_ms=50 (venue latency, >0 enforced); submit_immediate bypasses both for one command",
+    "fees: taker=5.0bps maker=5.0bps off-instrument (MakerTakerFeeModel; run-mode fees never zero; maker unused under taker-only)",
+    "liquidity=taker-only: MARKET/STOP_MARKET/TAKE_PROFIT_MARKET cross the book; canonical LIMIT maps to nautilus LIMIT IOC (marketable-or-cancel, keeps price protection); resting GTC limits unsupported (no queue model); non-taker fills fail closed",
+    "markets are GTC (never IOC-cancelled for thin prints): with quotes they resolve on the next tick; on trade-only replay prints seed L1 size, the print size fills at-print and swept excess walks one tick adverse (nautilus empty-book model); queued submits that outlive expire_at_utc expire unsubmitted (queued-past-window)",
+    "valuation-only marks (B2): note_mark records the reference mark for accounting only \u2014 it can NEVER produce a fill; all fills cross real bid/ask + liquidity from the quote/trade/depth feed (feed/note_event); submit_protected limit entries cancel when the touch cannot be lifted",
+    "time model: engine clock advances on fed data/receipts only; poll/advance never invent market ticks; strict_replay=True fails closed on out-of-order replay input instead of restamping (live default stays receipt-lenient)",
+    "deterministic ids (B1): client ids derive from random_seed's RNG stream (stable across same-seed runs); trade ids are venue FNV-1a; restart replays the RNG stream past journaled ids",
+    "funding (B2): markPrice terms feed boundary settlements from open cache positions as pure rate x notional (no venue settlement tax exists or is applied); only venue-asserted boundaries settle (no self-projection past the last record); absent/unknown terms invalidate (settle nothing, never zero); unpriced/flat/zero-rate settlements book nothing",
+    "margins (B2): account_margin reads the simulated MarginAccount filed through nautilus' own portfolio path (update_order/update_account on each fill); leverage is engine-owned (matches the risk cap)",
+    "bounds (B10): max_queued_submits/max_pending_events fail closed with OverflowError so bursts surface instead of growing unbounded",
+    "instruments auto-register from live venue filters (PRICE_FILTER/LOT_SIZE/MIN_NOTIONAL) on first sight; qty floored to step, prices rounded to tick, REST failure fails closed (filters never invented)",
+    "reduce-only honored by the venue (use_reduce_only=True) against ExecutionEngine-equivalent netting positions filed from simulator fills; stop/target legs are independent orders (support_contingent_orders=False; no OCO assumption)",
+    "stops/targets reject when the trigger is already in the market (reject_stop_orders=True); attach_protection legs verify via poll, never assumed",
+    "fills propagate to the bound outcome sink exactly-once-accounted (journaled delta-propagated; at-least-once replay on bind/recover, sink dedups); forecast costs and booked fill costs are never double-charged",
+    "restart: sim orders never survive; recover() rebuilds tracking from the journal, replays unpropagated fills, marks the rest lost-on-restart (never assumed filled/cancelled/flat)",
+    "paper mode instantiates no Binance live execution client (R0, tested)",
+    "receipt-time processing: ticks older than the engine clock (mark-quote skew, cross-symbol interleave) are re-stamped to engine-now with ts_event preserved; the book updates, time stays monotonic; ordered replay passes through untouched"
+  ],
+  "opening_equity": 120.0,
+  "closing_equity": 119.63240721000004,
+  "net_return_pct": -0.3063273249999665,
+  "paid_costs": 0.31839279000000004,
+  "funding_net": 0.0,
+  "realised": -0.367592789999994,
+  "open_position": false,
+  "position_qty": 0.0,
+  "events_seen": 16337623,
+  "symbols": [
+    "BTCUSDT",
+    "ETHUSDT"
+  ],
+  "intents_admitted": 13,
+  "reject_counts": {
+    "risk:skip:min-notional": 1,
+    "selection:cooldown": 15,
+    "selection:position-busy": 27639,
+    "selection:reward-below-cost": 2691,
+    "strategy:book:never-synced|book:never-synced": 1209337,
+    "strategy:breakout:fail|breakout:fail": 340718,
+    "strategy:breakout:fail|momentum:fail": 4645,
+    "strategy:gap:fail|gap:fail": 3387060,
+    "strategy:momentum:fail|breakout:fail": 4607,
+    "strategy:momentum:fail|pierce:fail": 3463,
+    "strategy:momentum:fail|reclaim:fail": 4,
+    "strategy:momentum:fail|sequence:fail": 1,
+    "strategy:momentum:fail|trend:fail": 58,
+    "strategy:pierce:fail|momentum:fail": 3375,
+    "strategy:pierce:fail|pierce:fail": 285855,
+    "strategy:pierce:fail|reclaim:fail": 34840,
+    "strategy:pullback:fail|sequence:fail": 12,
+    "strategy:pullback:fail|trend:fail": 240,
+    "strategy:range:fail|range:fail": 233064,
+    "strategy:reclaim:fail|pierce:fail": 34681,
+    "strategy:reclaim:fail|reclaim:fail": 11,
+    "strategy:regime:na(S3)|regime:na(S3)": 112490,
+    "strategy:resume:fail|pullback:fail": 2,
+    "strategy:resume:fail|resume:fail": 11,
+    "strategy:resume:fail|sequence:fail": 43,
+    "strategy:resume:fail|trend:fail": 800,
+    "strategy:sequence:fail|momentum:fail": 3,
+    "strategy:sequence:fail|pullback:fail": 1,
+    "strategy:sequence:fail|resume:fail": 136,
+    "strategy:sequence:fail|sequence:fail": 739,
+    "strategy:sequence:fail|trend:fail": 77707,
+    "strategy:trend:fail|momentum:fail": 76,
+    "strategy:trend:fail|pullback:fail": 173,
+    "strategy:trend:fail|resume:fail": 1339,
+    "strategy:trend:fail|sequence:fail": 80019,
+    "strategy:trend:fail|trend:fail": 200816
+  },
+  "depth_resyncs": {},
+  "store_counts": {
+    "intents": 4830326,
+    "execution_events": 41,
+    "risk_transitions": 35,
+    "checkpoints": 32717
+  },
+  "latency_ms": {
+    "feed_age": {
+      "n": 20000,
+      "p50_ms": 0.0,
+      "p95_ms": 0.0,
+      "p99_ms": 0.0,
+      "max_ms": 0.0
+    },
+    "strategy_eval": {
+      "n": 6046685,
+      "p50_ms": 0.08241698378697038,
+      "p95_ms": 0.21470797946676612,
+      "p99_ms": 0.2792500308714807,
+      "max_ms": 291.67166695697233
+    },
+    "selector_decide": {
+      "n": 243816,
+      "p50_ms": 0.006707967258989811,
+      "p95_ms": 0.009707990102469921,
+      "p99_ms": 0.020499981474131346,
+      "max_ms": 0.21787500008940697
+    },
+    "submit_to_fill_modeled": {
+      "n": 11,
+      "p50_ms": 151.0,
+      "p95_ms": 337.0,
+      "p99_ms": 337.0,
+      "max_ms": 337.0
+    }
+  },
+  "workdir": "/tmp/w1bench/matrix/COMBINED_validation/run",
+  "replay_stream": {
+    "mode": "streaming-v1",
+    "events_hashed": 16337623,
+    "events_hash": "54a66272c41e9df40960d005ad4f85bcd529ab7a1dc782d282943223dd239d6a",
+    "skipped_prefix": 0,
+    "first_ms": 1790447400051,
+    "last_ms": 1791052199999,
+    "snapshots_installed": 0,
+    "snapshots_unreached": 0
+  },
+  "filter_profile": {
+    "label": "manifest-frozen",
+    "filters": {
+      "BTCUSDT": {
+        "tick_size": 0.1,
+        "step_size": 0.001,
+        "min_qty": 0.001,
+        "min_notional": 50.0,
+        "price_precision": 1,
+        "size_precision": 3
+      },
+      "ETHUSDT": {
+        "tick_size": 0.01,
+        "step_size": 0.001,
+        "min_qty": 0.001,
+        "min_notional": 20.0,
+        "price_precision": 2,
+        "size_precision": 3
+      }
+    }
+  }
+}

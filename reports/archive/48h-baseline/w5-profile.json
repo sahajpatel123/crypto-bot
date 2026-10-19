@@ -1,0 +1,70 @@
+{
+  "base": "01487ac",
+  "dataset": "/Users/sahajpatel/Code/cryto-bot/datasets/benchmark_30d.toml",
+  "provenance": "Worker 5 OP-001 gap-1 profiler (read-only dataset)",
+  "phase_a_day_read": {
+    "symbol": "BTCUSDT",
+    "day": "2026-09-12",
+    "parquet_sources": 2,
+    "parquet_rows": 297611,
+    "parquet_bytes": 2999736,
+    "events_yielded": 297611,
+    "heartbeats_yielded": 32071,
+    "first_ts_ms": 1789171200000,
+    "last_ts_ms": 1789257599477,
+    "wall_s": 5.609,
+    "peak_tracemalloc_mb": 370.69,
+    "rss_mb": 776.6,
+    "events_per_s": 53059.0,
+    "note": "DatasetHandle._vision_events materializes per-channel day tables then sorts (datasets.py:94-102); streaming reads still hold the full day in lists before yielding."
+  },
+  "phase_b_prepare": {
+    "full-dev-15d": {
+      "n_events": 18000,
+      "deduped_repeats": 0,
+      "truncated_prefix": false,
+      "events_jsonl_bytes": 8218489,
+      "wall_s": 1.573,
+      "peak_tracemalloc_mb": 35.16
+    },
+    "max500": {
+      "n_events": 500,
+      "deduped_repeats": 0,
+      "truncated_prefix": true,
+      "events_jsonl_bytes": 220287,
+      "wall_s": 0.726,
+      "peak_tracemalloc_mb": 18.63
+    },
+    "note": "max-events truncates AFTER full preparation (backtest.py:269-305): the max500 run still gathers, sorts, dedups, and renumbers the full 15-day split before slicing the prefix."
+  },
+  "phase_c_prefix_build": {
+    "n_events": 5000,
+    "events_jsonl_bytes": 2634662,
+    "json_join_s": 0.0178,
+    "note": "Single giant JSON join (backtest.py:316-317 pattern); Session.run_replay will load and sort this file again."
+  },
+  "phase_d_session_replay": {
+    "input_class": "observed-archive",
+    "file_bytes": 2634662,
+    "first_record_whole_read_s": 0.0027,
+    "load_events_s": 0.0821,
+    "load_peak_mb": 14.64,
+    "replay_sort_s": 0.0009,
+    "replay_sort_peak_mb": 14.64,
+    "session_run_replay_s": 1.14,
+    "events_seen": 5000,
+    "session_events_per_s": 4387.1,
+    "rss_mb": 776.6,
+    "note": "run_cell reads the whole capture for its first record (backtest.py:394-396); run_replay loads (replayer.py:83-90) and sorts (replayer.py:93-111) the whole file again before the ingest loop."
+  },
+  "projection_171M_rows": {
+    "assumed_rows": 171360000,
+    "measured_session_events_per_s": 4387.1,
+    "eta_hours": 10.8,
+    "eta_days": 0.45,
+    "measured_day_peak_mb_per_297k": 370.69,
+    "projected_prep_peak_gb_linear": 208.4,
+    "projected_events_jsonl_gb": 84.1,
+    "verdict": "Time (~11h at 4387/s) fits 48h, but memory does not: one 297k-event day peaks at 370.69MB; linear scale to 171M rows projects ~208GB prep peak plus ~84GB events.jsonl, before dedup-set/sort overhead. Preparation must stream with bounded merges and pre-truncation limits (gap-1)."
+  }
+}

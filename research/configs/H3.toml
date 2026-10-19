@@ -1,0 +1,12 @@
+# H3 frozen research config (prereg 2026-10-18); not a live config.
+hypothesis = "H3"
+symbols = ["BTCUSDT", "ETHUSDT"]
+funding_percentiles = [5, 10, 20]
+stop_target_bps = ["25/50", "50/100", "100/200"]
+holding_hours = [1, 4, 8]
+taker_bps = 5.0
+spread_bps = 2.0
+slippage_bps = 6.0
+min_dev_trades = 100
+promotion_mean_bps = 2.0
+family_size = 6

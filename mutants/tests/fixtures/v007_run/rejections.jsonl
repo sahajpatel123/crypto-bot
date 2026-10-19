@@ -1,0 +1,2 @@
+{"ts_utc": "2026-10-10T11:00:00+00:00", "stage": "selector", "reason": "cost:reward-below-multiple", "strategy": "S1", "instrument": "BTCUSDT", "side": "LONG"}
+{"ts_utc": "2026-10-10T12:00:00+00:00", "stage": "risk", "reason": "exposure:one-position", "strategy": "S1", "instrument": "BTCUSDT", "side": "SHORT"}

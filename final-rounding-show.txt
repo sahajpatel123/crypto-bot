@@ -1,0 +1,357 @@
+############ cryptobot.risk.rounding.x__step_eps__mutmut_1
+-    if not math.isfinite(quot) or quot < 0:
++    if not math.isfinite(quot) and quot < 0:
+############ cryptobot.risk.rounding.x__step_eps__mutmut_2
+-    if not math.isfinite(quot) or quot < 0:
++    if math.isfinite(quot) or quot < 0:
+############ cryptobot.risk.rounding.x__step_eps__mutmut_3
+-    if not math.isfinite(quot) or quot < 0:
++    if not math.isfinite(None) or quot < 0:
+############ cryptobot.risk.rounding.x__step_eps__mutmut_4
+-    if not math.isfinite(quot) or quot < 0:
++    if not math.isfinite(quot) or quot <= 0:
+############ cryptobot.risk.rounding.x__step_eps__mutmut_5
+-    if not math.isfinite(quot) or quot < 0:
++    if not math.isfinite(quot) or quot < 1:
+############ cryptobot.risk.rounding.x__step_eps__mutmut_6
+-        return 0.0
++        return 1.0
+############ cryptobot.risk.rounding.x__step_eps__mutmut_7
+-    return min(2.0 * math.ulp(quot), 1e-6)
++    return min(None, 1e-6)
+############ cryptobot.risk.rounding.x__step_eps__mutmut_8
+-    return min(2.0 * math.ulp(quot), 1e-6)
++    return min(2.0 * math.ulp(quot), None)
+############ cryptobot.risk.rounding.x__step_eps__mutmut_9
+-    return min(2.0 * math.ulp(quot), 1e-6)
++    return min(1e-6)
+############ cryptobot.risk.rounding.x__step_eps__mutmut_10
+-    return min(2.0 * math.ulp(quot), 1e-6)
++    return min(2.0 * math.ulp(quot), )
+############ cryptobot.risk.rounding.x__step_eps__mutmut_11
+-    return min(2.0 * math.ulp(quot), 1e-6)
++    return min(2.0 / math.ulp(quot), 1e-6)
+############ cryptobot.risk.rounding.x__step_eps__mutmut_12
+-    return min(2.0 * math.ulp(quot), 1e-6)
++    return min(3.0 * math.ulp(quot), 1e-6)
+############ cryptobot.risk.rounding.x__step_eps__mutmut_13
+-    return min(2.0 * math.ulp(quot), 1e-6)
++    return min(2.0 * math.ulp(None), 1e-6)
+############ cryptobot.risk.rounding.x__step_eps__mutmut_14
+-    return min(2.0 * math.ulp(quot), 1e-6)
++    return min(2.0 * math.ulp(quot), 1.000001)
+############ cryptobot.risk.rounding.x_floor_to_step__mutmut_1
+-            or not math.isfinite(step) or step <= 0:
++            or not math.isfinite(step) and step <= 0:
+############ cryptobot.risk.rounding.x_floor_to_step__mutmut_2
+-    if isinstance(step, bool) or not isinstance(step, (int, float)) \
+-            or not math.isfinite(step) or step <= 0:
++    if isinstance(step, bool) or not isinstance(step, (int, float)) and not math.isfinite(step) or step <= 0:
+############ cryptobot.risk.rounding.x_floor_to_step__mutmut_3
+-    if isinstance(step, bool) or not isinstance(step, (int, float)) \
++    if isinstance(step, bool) and not isinstance(step, (int, float)) \
+############ cryptobot.risk.rounding.x_floor_to_step__mutmut_4
+-    if isinstance(step, bool) or not isinstance(step, (int, float)) \
++    if isinstance(step, bool) or isinstance(step, (int, float)) \
+############ cryptobot.risk.rounding.x_floor_to_step__mutmut_5
+-            or not math.isfinite(step) or step <= 0:
++            or math.isfinite(step) or step <= 0:
+############ cryptobot.risk.rounding.x_floor_to_step__mutmut_6
+-            or not math.isfinite(step) or step <= 0:
++            or not math.isfinite(None) or step <= 0:
+############ cryptobot.risk.rounding.x_floor_to_step__mutmut_7
+-            or not math.isfinite(step) or step <= 0:
++            or not math.isfinite(step) or step < 0:
+############ cryptobot.risk.rounding.x_floor_to_step__mutmut_8
+-            or not math.isfinite(step) or step <= 0:
++            or not math.isfinite(step) or step <= 1:
+############ cryptobot.risk.rounding.x_floor_to_step__mutmut_9
+-        raise ValueError(f"step must be a finite positive number, got {step!r}")
++        raise ValueError(None)
+############ cryptobot.risk.rounding.x_floor_to_step__mutmut_10
+-    if isinstance(qty, bool) or not isinstance(qty, (int, float)) \
+-            or not math.isfinite(qty):
++    if isinstance(qty, bool) or not isinstance(qty, (int, float)) and not math.isfinite(qty):
+############ cryptobot.risk.rounding.x_floor_to_step__mutmut_11
+-    if isinstance(qty, bool) or not isinstance(qty, (int, float)) \
++    if isinstance(qty, bool) and not isinstance(qty, (int, float)) \
+############ cryptobot.risk.rounding.x_floor_to_step__mutmut_12
+-    if isinstance(qty, bool) or not isinstance(qty, (int, float)) \
++    if isinstance(qty, bool) or isinstance(qty, (int, float)) \
+############ cryptobot.risk.rounding.x_floor_to_step__mutmut_13
+-            or not math.isfinite(qty):
++            or math.isfinite(qty):
+############ cryptobot.risk.rounding.x_floor_to_step__mutmut_14
+-            or not math.isfinite(qty):
++            or not math.isfinite(None):
+############ cryptobot.risk.rounding.x_floor_to_step__mutmut_15
+-        raise ValueError(f"qty must be a finite number, got {qty!r}")
++        raise ValueError(None)
+############ cryptobot.risk.rounding.x_floor_to_step__mutmut_16
+-    if qty <= 0:
++    if qty < 0:
+############ cryptobot.risk.rounding.x_floor_to_step__mutmut_17
+-    if qty <= 0:
++    if qty <= 1:
+############ cryptobot.risk.rounding.x_floor_to_step__mutmut_18
+-        return 0.0
++        return 1.0
+############ cryptobot.risk.rounding.x_floor_to_step__mutmut_19
+-    quot = qty / step
++    quot = None
+############ cryptobot.risk.rounding.x_floor_to_step__mutmut_20
+-    quot = qty / step
++    quot = qty * step
+############ cryptobot.risk.rounding.x_floor_to_step__mutmut_21
+-    return round(math.floor(quot + _step_eps(quot)) * step, 12)
++    return round(None, 12)
+############ cryptobot.risk.rounding.x_floor_to_step__mutmut_22
+-    return round(math.floor(quot + _step_eps(quot)) * step, 12)
++    return round(math.floor(quot + _step_eps(quot)) * step, None)
+############ cryptobot.risk.rounding.x_floor_to_step__mutmut_23
+-    return round(math.floor(quot + _step_eps(quot)) * step, 12)
++    return round(12)
+############ cryptobot.risk.rounding.x_floor_to_step__mutmut_24
+-    return round(math.floor(quot + _step_eps(quot)) * step, 12)
++    return round(math.floor(quot + _step_eps(quot)) * step, )
+############ cryptobot.risk.rounding.x_floor_to_step__mutmut_25
+-    return round(math.floor(quot + _step_eps(quot)) * step, 12)
++    return round(math.floor(quot + _step_eps(quot)) / step, 12)
+############ cryptobot.risk.rounding.x_floor_to_step__mutmut_26
+-    return round(math.floor(quot + _step_eps(quot)) * step, 12)
++    return round(math.floor(None) * step, 12)
+############ cryptobot.risk.rounding.x_floor_to_step__mutmut_27
+-    return round(math.floor(quot + _step_eps(quot)) * step, 12)
++    return round(math.floor(quot - _step_eps(quot)) * step, 12)
+############ cryptobot.risk.rounding.x_floor_to_step__mutmut_28
+-    return round(math.floor(quot + _step_eps(quot)) * step, 12)
++    return round(math.floor(quot + _step_eps(None)) * step, 12)
+############ cryptobot.risk.rounding.x_floor_to_step__mutmut_29
+-    return round(math.floor(quot + _step_eps(quot)) * step, 12)
++    return round(math.floor(quot + _step_eps(quot)) * step, 13)
+############ cryptobot.risk.rounding.x_round_to_tick__mutmut_1
+-            or not math.isfinite(tick) or tick <= 0:
++            or not math.isfinite(tick) and tick <= 0:
+############ cryptobot.risk.rounding.x_round_to_tick__mutmut_2
+-    if isinstance(tick, bool) or not isinstance(tick, (int, float)) \
+-            or not math.isfinite(tick) or tick <= 0:
++    if isinstance(tick, bool) or not isinstance(tick, (int, float)) and not math.isfinite(tick) or tick <= 0:
+############ cryptobot.risk.rounding.x_round_to_tick__mutmut_3
+-    if isinstance(tick, bool) or not isinstance(tick, (int, float)) \
++    if isinstance(tick, bool) and not isinstance(tick, (int, float)) \
+############ cryptobot.risk.rounding.x_round_to_tick__mutmut_4
+-    if isinstance(tick, bool) or not isinstance(tick, (int, float)) \
++    if isinstance(tick, bool) or isinstance(tick, (int, float)) \
+############ cryptobot.risk.rounding.x_round_to_tick__mutmut_5
+-            or not math.isfinite(tick) or tick <= 0:
++            or math.isfinite(tick) or tick <= 0:
+############ cryptobot.risk.rounding.x_round_to_tick__mutmut_6
+-            or not math.isfinite(tick) or tick <= 0:
++            or not math.isfinite(None) or tick <= 0:
+############ cryptobot.risk.rounding.x_round_to_tick__mutmut_7
+-            or not math.isfinite(tick) or tick <= 0:
++            or not math.isfinite(tick) or tick < 0:
+############ cryptobot.risk.rounding.x_round_to_tick__mutmut_8
+-            or not math.isfinite(tick) or tick <= 0:
++            or not math.isfinite(tick) or tick <= 1:
+############ cryptobot.risk.rounding.x_round_to_tick__mutmut_9
+-        raise ValueError(f"tick must be a finite positive number, got {tick!r}")
++        raise ValueError(None)
+############ cryptobot.risk.rounding.x_round_to_tick__mutmut_10
+-            or not math.isfinite(price) or price <= 0:
++            or not math.isfinite(price) and price <= 0:
+############ cryptobot.risk.rounding.x_round_to_tick__mutmut_11
+-    if isinstance(price, bool) or not isinstance(price, (int, float)) \
+-            or not math.isfinite(price) or price <= 0:
++    if isinstance(price, bool) or not isinstance(price, (int, float)) and not math.isfinite(price) or price <= 0:
+############ cryptobot.risk.rounding.x_round_to_tick__mutmut_12
+-    if isinstance(price, bool) or not isinstance(price, (int, float)) \
++    if isinstance(price, bool) and not isinstance(price, (int, float)) \
+############ cryptobot.risk.rounding.x_round_to_tick__mutmut_13
+-    if isinstance(price, bool) or not isinstance(price, (int, float)) \
++    if isinstance(price, bool) or isinstance(price, (int, float)) \
+############ cryptobot.risk.rounding.x_round_to_tick__mutmut_14
+-            or not math.isfinite(price) or price <= 0:
++            or math.isfinite(price) or price <= 0:
+############ cryptobot.risk.rounding.x_round_to_tick__mutmut_15
+-            or not math.isfinite(price) or price <= 0:
++            or not math.isfinite(None) or price <= 0:
+############ cryptobot.risk.rounding.x_round_to_tick__mutmut_16
+-            or not math.isfinite(price) or price <= 0:
++            or not math.isfinite(price) or price < 0:
+############ cryptobot.risk.rounding.x_round_to_tick__mutmut_17
+-            or not math.isfinite(price) or price <= 0:
++            or not math.isfinite(price) or price <= 1:
+############ cryptobot.risk.rounding.x_round_to_tick__mutmut_18
+-        raise ValueError(f"price must be a finite positive number, got {price!r}")
++        raise ValueError(None)
+############ cryptobot.risk.rounding.x_round_to_tick__mutmut_19
+-    return round(round(price / tick) * tick, 12)
++    return round(None, 12)
+############ cryptobot.risk.rounding.x_round_to_tick__mutmut_20
+-    return round(round(price / tick) * tick, 12)
++    return round(round(price / tick) * tick, None)
+############ cryptobot.risk.rounding.x_round_to_tick__mutmut_21
+-    return round(round(price / tick) * tick, 12)
++    return round(12)
+############ cryptobot.risk.rounding.x_round_to_tick__mutmut_22
+-    return round(round(price / tick) * tick, 12)
++    return round(round(price / tick) * tick, )
+############ cryptobot.risk.rounding.x_round_to_tick__mutmut_23
+-    return round(round(price / tick) * tick, 12)
++    return round(round(price / tick) / tick, 12)
+############ cryptobot.risk.rounding.x_round_to_tick__mutmut_24
+-    return round(round(price / tick) * tick, 12)
++    return round(round(None) * tick, 12)
+############ cryptobot.risk.rounding.x_round_to_tick__mutmut_25
+-    return round(round(price / tick) * tick, 12)
++    return round(round(price * tick) * tick, 12)
+############ cryptobot.risk.rounding.x_round_to_tick__mutmut_26
+-    return round(round(price / tick) * tick, 12)
++    return round(round(price / tick) * tick, 13)
+############ cryptobot.risk.rounding.x_floor_to_tick__mutmut_1
+-    _check_tick_args(price, tick)
++    _check_tick_args(None, tick)
+############ cryptobot.risk.rounding.x_floor_to_tick__mutmut_2
+-    _check_tick_args(price, tick)
++    _check_tick_args(price, None)
+############ cryptobot.risk.rounding.x_floor_to_tick__mutmut_3
+-    _check_tick_args(price, tick)
++    _check_tick_args(tick)
+############ cryptobot.risk.rounding.x_floor_to_tick__mutmut_4
+-    _check_tick_args(price, tick)
++    _check_tick_args(price, )
+############ cryptobot.risk.rounding.x_floor_to_tick__mutmut_5
+-    quot = price / tick
++    quot = None
+############ cryptobot.risk.rounding.x_floor_to_tick__mutmut_6
+-    quot = price / tick
++    quot = price * tick
+############ cryptobot.risk.rounding.x_floor_to_tick__mutmut_7
+-    return round(math.floor(quot + _step_eps(quot)) * tick, 12)
++    return round(None, 12)
+############ cryptobot.risk.rounding.x_floor_to_tick__mutmut_8
+-    return round(math.floor(quot + _step_eps(quot)) * tick, 12)
++    return round(math.floor(quot + _step_eps(quot)) * tick, None)
+############ cryptobot.risk.rounding.x_floor_to_tick__mutmut_9
+-    return round(math.floor(quot + _step_eps(quot)) * tick, 12)
++    return round(12)
+############ cryptobot.risk.rounding.x_floor_to_tick__mutmut_10
+-    return round(math.floor(quot + _step_eps(quot)) * tick, 12)
++    return round(math.floor(quot + _step_eps(quot)) * tick, )
+############ cryptobot.risk.rounding.x_floor_to_tick__mutmut_11
+-    return round(math.floor(quot + _step_eps(quot)) * tick, 12)
++    return round(math.floor(quot + _step_eps(quot)) / tick, 12)
+############ cryptobot.risk.rounding.x_floor_to_tick__mutmut_12
+-    return round(math.floor(quot + _step_eps(quot)) * tick, 12)
++    return round(math.floor(None) * tick, 12)
+############ cryptobot.risk.rounding.x_floor_to_tick__mutmut_13
+-    return round(math.floor(quot + _step_eps(quot)) * tick, 12)
++    return round(math.floor(quot - _step_eps(quot)) * tick, 12)
+############ cryptobot.risk.rounding.x_floor_to_tick__mutmut_14
+-    return round(math.floor(quot + _step_eps(quot)) * tick, 12)
++    return round(math.floor(quot + _step_eps(None)) * tick, 12)
+############ cryptobot.risk.rounding.x_floor_to_tick__mutmut_15
+-    return round(math.floor(quot + _step_eps(quot)) * tick, 12)
++    return round(math.floor(quot + _step_eps(quot)) * tick, 13)
+############ cryptobot.risk.rounding.x_ceil_to_tick__mutmut_1
+-    _check_tick_args(price, tick)
++    _check_tick_args(None, tick)
+############ cryptobot.risk.rounding.x_ceil_to_tick__mutmut_2
+-    _check_tick_args(price, tick)
++    _check_tick_args(price, None)
+############ cryptobot.risk.rounding.x_ceil_to_tick__mutmut_3
+-    _check_tick_args(price, tick)
++    _check_tick_args(tick)
+############ cryptobot.risk.rounding.x_ceil_to_tick__mutmut_4
+-    _check_tick_args(price, tick)
++    _check_tick_args(price, )
+############ cryptobot.risk.rounding.x_ceil_to_tick__mutmut_5
+-    quot = price / tick
++    quot = None
+############ cryptobot.risk.rounding.x_ceil_to_tick__mutmut_6
+-    quot = price / tick
++    quot = price * tick
+############ cryptobot.risk.rounding.x_ceil_to_tick__mutmut_7
+-    return round(math.ceil(quot - _step_eps(quot)) * tick, 12)
++    return round(None, 12)
+############ cryptobot.risk.rounding.x_ceil_to_tick__mutmut_8
+-    return round(math.ceil(quot - _step_eps(quot)) * tick, 12)
++    return round(math.ceil(quot - _step_eps(quot)) * tick, None)
+############ cryptobot.risk.rounding.x_ceil_to_tick__mutmut_9
+-    return round(math.ceil(quot - _step_eps(quot)) * tick, 12)
++    return round(12)
+############ cryptobot.risk.rounding.x_ceil_to_tick__mutmut_10
+-    return round(math.ceil(quot - _step_eps(quot)) * tick, 12)
++    return round(math.ceil(quot - _step_eps(quot)) * tick, )
+############ cryptobot.risk.rounding.x_ceil_to_tick__mutmut_11
+-    return round(math.ceil(quot - _step_eps(quot)) * tick, 12)
++    return round(math.ceil(quot - _step_eps(quot)) / tick, 12)
+############ cryptobot.risk.rounding.x_ceil_to_tick__mutmut_12
+-    return round(math.ceil(quot - _step_eps(quot)) * tick, 12)
++    return round(math.ceil(None) * tick, 12)
+############ cryptobot.risk.rounding.x_ceil_to_tick__mutmut_13
+-    return round(math.ceil(quot - _step_eps(quot)) * tick, 12)
++    return round(math.ceil(quot + _step_eps(quot)) * tick, 12)
+############ cryptobot.risk.rounding.x_ceil_to_tick__mutmut_14
+-    return round(math.ceil(quot - _step_eps(quot)) * tick, 12)
++    return round(math.ceil(quot - _step_eps(None)) * tick, 12)
+############ cryptobot.risk.rounding.x_ceil_to_tick__mutmut_15
+-    return round(math.ceil(quot - _step_eps(quot)) * tick, 12)
++    return round(math.ceil(quot - _step_eps(quot)) * tick, 13)
+############ cryptobot.risk.rounding.x__check_tick_args__mutmut_1
+-            or not math.isfinite(tick) or tick <= 0:
++            or not math.isfinite(tick) and tick <= 0:
+############ cryptobot.risk.rounding.x__check_tick_args__mutmut_2
+-    if isinstance(tick, bool) or not isinstance(tick, (int, float)) \
+-            or not math.isfinite(tick) or tick <= 0:
++    if isinstance(tick, bool) or not isinstance(tick, (int, float)) and not math.isfinite(tick) or tick <= 0:
+############ cryptobot.risk.rounding.x__check_tick_args__mutmut_3
+-    if isinstance(tick, bool) or not isinstance(tick, (int, float)) \
++    if isinstance(tick, bool) and not isinstance(tick, (int, float)) \
+############ cryptobot.risk.rounding.x__check_tick_args__mutmut_4
+-    if isinstance(tick, bool) or not isinstance(tick, (int, float)) \
++    if isinstance(tick, bool) or isinstance(tick, (int, float)) \
+############ cryptobot.risk.rounding.x__check_tick_args__mutmut_5
+-            or not math.isfinite(tick) or tick <= 0:
++            or math.isfinite(tick) or tick <= 0:
+############ cryptobot.risk.rounding.x__check_tick_args__mutmut_6
+-            or not math.isfinite(tick) or tick <= 0:
++            or not math.isfinite(None) or tick <= 0:
+############ cryptobot.risk.rounding.x__check_tick_args__mutmut_7
+-            or not math.isfinite(tick) or tick <= 0:
++            or not math.isfinite(tick) or tick < 0:
+############ cryptobot.risk.rounding.x__check_tick_args__mutmut_8
+-            or not math.isfinite(tick) or tick <= 0:
++            or not math.isfinite(tick) or tick <= 1:
+############ cryptobot.risk.rounding.x__check_tick_args__mutmut_9
+-        raise ValueError(f"tick must be a finite positive number, got {tick!r}")
++        raise ValueError(None)
+############ cryptobot.risk.rounding.x__check_tick_args__mutmut_10
+-            or not math.isfinite(price) or price <= 0:
++            or not math.isfinite(price) and price <= 0:
+############ cryptobot.risk.rounding.x__check_tick_args__mutmut_11
+-    if isinstance(price, bool) or not isinstance(price, (int, float)) \
+-            or not math.isfinite(price) or price <= 0:
++    if isinstance(price, bool) or not isinstance(price, (int, float)) and not math.isfinite(price) or price <= 0:
+############ cryptobot.risk.rounding.x__check_tick_args__mutmut_12
+-    if isinstance(price, bool) or not isinstance(price, (int, float)) \
++    if isinstance(price, bool) and not isinstance(price, (int, float)) \
+############ cryptobot.risk.rounding.x__check_tick_args__mutmut_13
+-    if isinstance(price, bool) or not isinstance(price, (int, float)) \
++    if isinstance(price, bool) or isinstance(price, (int, float)) \
+############ cryptobot.risk.rounding.x__check_tick_args__mutmut_14
+-            or not math.isfinite(price) or price <= 0:
++            or math.isfinite(price) or price <= 0:
+############ cryptobot.risk.rounding.x__check_tick_args__mutmut_15
+-            or not math.isfinite(price) or price <= 0:
++            or not math.isfinite(None) or price <= 0:
+############ cryptobot.risk.rounding.x__check_tick_args__mutmut_16
+-            or not math.isfinite(price) or price <= 0:
++            or not math.isfinite(price) or price < 0:
+############ cryptobot.risk.rounding.x__check_tick_args__mutmut_17
+-            or not math.isfinite(price) or price <= 0:
++            or not math.isfinite(price) or price <= 1:
+############ cryptobot.risk.rounding.x__check_tick_args__mutmut_18
+-        raise ValueError(f"price must be a finite positive number, got {price!r}")
++        raise ValueError(None)

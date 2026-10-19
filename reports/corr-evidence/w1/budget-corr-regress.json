@@ -1,0 +1,13 @@
+{
+ "status": "CHILD_EXIT",
+ "child_rc": 1,
+ "elapsed_s": 2.011,
+ "budget_s": 300.0,
+ "command": [
+  ".venv/bin/python",
+  "-m",
+  "pytest",
+  "tests/unit/test_ioc_arrival.py",
+  "-q"
+ ]
+}

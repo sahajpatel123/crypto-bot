@@ -1,0 +1,6 @@
+ts_utc,marked_equity,cash,position_qty,position_symbol,open_pnl,source,drawdown_usdt,drawdown_pct,date_ist
+2026-10-10T12:00:00+00:00,9999.0,9899.0,1.0,BTCUSDT,0.0,synthetic-fixture,0.0,0.0,2026-10-10
+2026-10-10T12:30:00+00:00,10004.0,9899.0,1.0,BTCUSDT,5.0,synthetic-fixture,0.0,0.0,2026-10-10
+2026-10-10T13:30:00+00:00,10006.8,9942.0,0.6,BTCUSDT,4.8,synthetic-fixture,0.0,0.0,2026-10-10
+2026-10-10T15:30:00+00:00,10005.3,10005.3,0.0,,0.0,synthetic-fixture,1.5,0.0001499,2026-10-10
+2026-10-10T16:30:00+00:00,10105.3,10105.3,0.0,,0.0,synthetic-fixture,0.0,0.0,2026-10-10

@@ -1,0 +1,73 @@
+{
+ "capture": "data/captures/cap-2h",
+ "cells": {
+  "BTCUSDT|10bps|LONG": {
+   "gross_mean_bps": null,
+   "gross_std_bps": null,
+   "n": 0,
+   "net_hit_rate": null,
+   "net_mean_bps": null,
+   "net_winners": 0
+  },
+  "BTCUSDT|10bps|SHORT": {
+   "gross_mean_bps": null,
+   "gross_std_bps": null,
+   "n": 0,
+   "net_hit_rate": null,
+   "net_mean_bps": null,
+   "net_winners": 0
+  },
+  "BTCUSDT|5bps|LONG": {
+   "gross_mean_bps": -0.56,
+   "gross_std_bps": 2.0,
+   "n": 6,
+   "net_hit_rate": 0.0,
+   "net_mean_bps": -26.56,
+   "net_winners": 0
+  },
+  "BTCUSDT|5bps|SHORT": {
+   "gross_mean_bps": -1.47,
+   "gross_std_bps": 1.66,
+   "n": 3,
+   "net_hit_rate": 0.0,
+   "net_mean_bps": -27.47,
+   "net_winners": 0
+  },
+  "ETHUSDT|10bps|LONG": {
+   "gross_mean_bps": 3.43,
+   "gross_std_bps": 0.0,
+   "n": 1,
+   "net_hit_rate": 0.0,
+   "net_mean_bps": -22.57,
+   "net_winners": 0
+  },
+  "ETHUSDT|10bps|SHORT": {
+   "gross_mean_bps": 0.0,
+   "gross_std_bps": 0.0,
+   "n": 1,
+   "net_hit_rate": 0.0,
+   "net_mean_bps": -26.0,
+   "net_winners": 0
+  },
+  "ETHUSDT|5bps|LONG": {
+   "gross_mean_bps": -0.18,
+   "gross_std_bps": 2.94,
+   "n": 18,
+   "net_hit_rate": 0.0,
+   "net_mean_bps": -26.18,
+   "net_winners": 0
+  },
+  "ETHUSDT|5bps|SHORT": {
+   "gross_mean_bps": -1.36,
+   "gross_std_bps": 2.97,
+   "n": 12,
+   "net_hit_rate": 0.0,
+   "net_mean_bps": -27.36,
+   "net_winners": 0
+  }
+ },
+ "hold_s": 60,
+ "rt_cost_bps": 26.0,
+ "trail_s": 60,
+ "warmup_bars": 130
+}

@@ -1,0 +1,10 @@
+{
+ "name": "futures-1m-ZECUSDT-2026-06",
+ "url": "https://data.binance.vision/data/futures/um/monthly/klines/ZECUSDT/1m/ZECUSDT-1m-2026-06.zip",
+ "fetched_utc": "2026-10-16T14:14:01.025865+00:00",
+ "status": "present",
+ "http_status": 200,
+ "sha256": "546bad483cc108d671f826b95d4b51ce18a91be75599f67e7ddb0519620fd3e1",
+ "bytes": 1796339,
+ "csv_rows": 43200
+}

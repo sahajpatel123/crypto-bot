@@ -7,6 +7,8 @@ from .fake_venue import (
     VenueTimeoutError,
 )
 from .order_manager import ManagedOrder, OrderManager, OrderState
+from .runtime_feed import PumpTick, StreamPump
+from .runtime_trader import RuntimeTrader
 
 __all__ = [
     "FakeVenue",
@@ -14,6 +16,9 @@ __all__ = [
     "ManagedOrder",
     "OrderManager",
     "OrderState",
+    "PumpTick",
+    "RuntimeTrader",
+    "StreamPump",
     "SubmitResult",
     "VenueOrderView",
     "VenueTimeoutError",

@@ -1,0 +1,113 @@
+{
+ "configs": {
+  "X1-R1": {
+   "adverse_val_net": 0.0,
+   "covered_days": null,
+   "dev_net": 0.0,
+   "mechanism": "UNTESTED (zero intents admitted)",
+   "reasons": [
+    "covered days UNKNOWN (no coverage entry)",
+    "zero intents: strategy untested, not disproven",
+    "screen: 0 < 100 VAL closed positions",
+    "nets fail dev>0&val>0 (dev=0.0, val=0.0)",
+    "adverse val net <= 0 (0.0)",
+    "not enrolled: config X1-R1 maps to no candidate family in preregistration (re-entry excluded)"
+   ],
+   "status": "REJECTED",
+   "val_closed": 0,
+   "val_net": 0.0
+  },
+  "X1-R1-CASH": {
+   "adverse_val_net": 0.0,
+   "covered_days": null,
+   "dev_net": 0.0,
+   "mechanism": "UNTESTED (zero intents admitted)",
+   "reasons": [
+    "covered days UNKNOWN (no coverage entry)",
+    "zero intents: strategy untested, not disproven",
+    "screen: 0 < 100 VAL closed positions",
+    "nets fail dev>0&val>0 (dev=0.0, val=0.0)",
+    "adverse val net <= 0 (0.0)",
+    "control (CASH reference): never advances"
+   ],
+   "status": "REJECTED",
+   "val_closed": 0,
+   "val_net": 0.0
+  },
+  "X1-R1-F": {
+   "adverse_val_net": 0.0,
+   "covered_days": null,
+   "dev_net": 0.0,
+   "mechanism": "UNTESTED (zero intents admitted)",
+   "reasons": [
+    "covered days UNKNOWN (no coverage entry)",
+    "zero intents: strategy untested, not disproven",
+    "screen: 0 < 100 VAL closed positions",
+    "nets fail dev>0&val>0 (dev=0.0, val=0.0)",
+    "adverse val net <= 0 (0.0)",
+    "not enrolled: config X1-R1-F maps to no candidate family in preregistration (re-entry excluded)"
+   ],
+   "status": "REJECTED",
+   "val_closed": 0,
+   "val_net": 0.0
+  },
+  "X1-R1-S": {
+   "adverse_val_net": 0.0,
+   "covered_days": null,
+   "dev_net": 0.0,
+   "mechanism": "UNTESTED (zero intents admitted)",
+   "reasons": [
+    "covered days UNKNOWN (no coverage entry)",
+    "zero intents: strategy untested, not disproven",
+    "screen: 0 < 100 VAL closed positions",
+    "nets fail dev>0&val>0 (dev=0.0, val=0.0)",
+    "adverse val net <= 0 (0.0)",
+    "not enrolled: config X1-R1-S maps to no candidate family in preregistration (re-entry excluded)"
+   ],
+   "status": "REJECTED",
+   "val_closed": 0,
+   "val_net": 0.0
+  },
+  "X1-R1-S1": {
+   "adverse_val_net": 0.0,
+   "covered_days": null,
+   "dev_net": 0.0,
+   "mechanism": "BLOCKED (intents admitted, zero fills)",
+   "reasons": [
+    "covered days UNKNOWN (no coverage entry)",
+    "zero fills: admission without fills (gate/latch, not strategy evidence)",
+    "screen: 0 < 100 VAL closed positions",
+    "nets fail dev>0&val>0 (dev=0.0, val=0.0)",
+    "adverse val net <= 0 (0.0)",
+    "not enrolled: config X1-R1-S1 maps to no candidate family in preregistration (re-entry excluded)"
+   ],
+   "status": "REJECTED",
+   "val_closed": 0,
+   "val_net": 0.0
+  },
+  "X1-R1-T": {
+   "adverse_val_net": 0.0,
+   "covered_days": null,
+   "dev_net": 0.0,
+   "mechanism": "BLOCKED (intents admitted, zero fills)",
+   "reasons": [
+    "covered days UNKNOWN (no coverage entry)",
+    "zero fills: admission without fills (gate/latch, not strategy evidence)",
+    "screen: 0 < 100 VAL closed positions",
+    "nets fail dev>0&val>0 (dev=0.0, val=0.0)",
+    "adverse val net <= 0 (0.0)",
+    "not enrolled: config X1-R1-T maps to no candidate family in preregistration (re-entry excluded)"
+   ],
+   "status": "REJECTED",
+   "val_closed": 0,
+   "val_net": 0.0
+  }
+ },
+ "screens": {
+  "min_covered_days": 10.0,
+  "min_val_closed": 100,
+  "rule": "dev>0 & val>0 realistic & val>0 adverse"
+ },
+ "verdict": "NONE (no candidate qualifies \u2014 RESEARCH UNRESOLVED)",
+ "winner": null
+}

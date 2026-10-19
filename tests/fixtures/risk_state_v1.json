@@ -1,0 +1,25 @@
+{
+  "_note": "Persisted RiskState snapshot as of 2026-10-11T12:00Z: daily halt engaged, one live reservation, profit protection armed. Restart must restore all three.",
+  "version": 1,
+  "current_day": "2026-10-11",
+  "day_start_equity": 10000.0,
+  "needs_reconciliation": false,
+  "halt_days": {"2026-10-11": "daily-loss"},
+  "pause_days": {},
+  "original_equity": 10000.0,
+  "peak_realised": 120.0,
+  "profit_floor": 10084.0,
+  "reservations": {
+    "r-000001": {
+      "intent_ref": "rec-canonical-long",
+      "instrument": "BTCUSDT",
+      "side": "LONG",
+      "notional": 5478.0,
+      "reserved_risk": 25.0,
+      "created_utc": "2026-10-11T11:30:00+00:00",
+      "expires_utc": "2026-10-11T12:30:00+00:00"
+    }
+  },
+  "open_position": false,
+  "seq": 1
+}

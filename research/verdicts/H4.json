@@ -1,0 +1,16 @@
+{
+ "data_provenance": "OBSERVED",
+ "document_sha256": "ee4f421894c6f68b73da0496d7ae4769b5d499feb8b49f2415aa716543fd12af",
+ "expectancy_bps": null,
+ "family_size": 6,
+ "hashes": {
+  "code_commit": "unknown",
+  "config_sha256_16": "b199dfdf445f5427",
+  "data_manifest": "/tmp/empty-trades.jsonl",
+  "sealed_chunk_sha256": null
+ },
+ "hypothesis": "H4",
+ "n_trades": 0,
+ "reason": "n=0 < min_trades=300",
+ "verdict": "UNDERPOWERED"
+}

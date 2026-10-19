@@ -1,0 +1,2 @@
+{"ts_utc": "2026-10-10T12:00:00+00:00", "kind": "run-state", "from_state": "init", "to_state": "running", "reason": "start"}
+{"ts_utc": "2026-10-10T12:00:00+00:00", "kind": "risk-decision", "from_state": "", "to_state": "rejected", "reason": "exposure:one-position"}

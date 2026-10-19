@@ -1,0 +1,2 @@
+ 124 killed
+ 144 survived

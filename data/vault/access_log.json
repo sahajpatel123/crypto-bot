@@ -1,0 +1,229 @@
+{
+ "chain_head": "1ccf32fffad9ae95b208d54ea08eaf31f2c462fa729f3b7624adc753dfdd7157",
+ "created_utc": "2026-10-18T08:21:25.061578+00:00",
+ "entries": [
+  {
+   "action": "seal",
+   "chunk_id": "chunk-2a22e52c3c8f50db",
+   "class": "HOLDOUT",
+   "entry_hash": "828a1df56fb5a40b8c3ce96fc738f4b13f0c23fcf12c37c4dec032f1477b30d3",
+   "hypothesis": null,
+   "input_class": "OBSERVED_PUBLIC",
+   "prev": "genesis",
+   "sha256": "2a22e52c3c8f50dba21c5a68c25ee78dad096603f75c5ae45025449e9c28aa79",
+   "ts_utc": "2026-10-18T12:49:25.531913+00:00"
+  },
+  {
+   "action": "seal",
+   "chunk_id": "chunk-e3ca720beb53a5c5",
+   "class": "HOLDOUT",
+   "entry_hash": "72abf1caaaecb65bbb6333b6f0f126c723a453cbc38fdd60b5b543a9d6f5c64a",
+   "hypothesis": null,
+   "input_class": "OBSERVED_PUBLIC",
+   "prev": "828a1df56fb5a40b8c3ce96fc738f4b13f0c23fcf12c37c4dec032f1477b30d3",
+   "sha256": "e3ca720beb53a5c567974333d5937993122b285f84b3753e24ef0dca3a870f72",
+   "ts_utc": "2026-10-18T12:51:33.404493+00:00"
+  },
+  {
+   "action": "seal",
+   "chunk_id": "chunk-4cb7240d5d9a923a",
+   "class": "HOLDOUT",
+   "entry_hash": "586f44d9e384cec110576ed2f7104af02d928595a81fb95499307d25c69bb7a9",
+   "hypothesis": null,
+   "input_class": "OBSERVED_PUBLIC",
+   "prev": "72abf1caaaecb65bbb6333b6f0f126c723a453cbc38fdd60b5b543a9d6f5c64a",
+   "sha256": "4cb7240d5d9a923a21f369e3b85b3fbe0e3398d66dccf22eea29fc54e54d6274",
+   "ts_utc": "2026-10-18T12:51:51.148792+00:00"
+  },
+  {
+   "action": "seal",
+   "chunk_id": "chunk-af97c4d426d1a489",
+   "class": "HOLDOUT",
+   "entry_hash": "8288a9b34ff205a83e217a9d66e0d3c18f0f2f2effeb6f5c099a5c6d8c406bcb",
+   "hypothesis": null,
+   "input_class": "OBSERVED_PUBLIC",
+   "prev": "586f44d9e384cec110576ed2f7104af02d928595a81fb95499307d25c69bb7a9",
+   "sha256": "af97c4d426d1a489a951d2a58d43b8ec0be511f4bd7ffcdee01f1f298f57e7e0",
+   "ts_utc": "2026-10-18T12:52:01.701990+00:00"
+  },
+  {
+   "action": "seal",
+   "chunk_id": "chunk-24045b38ad2d98a5",
+   "class": "HOLDOUT",
+   "entry_hash": "7041c12ce747bfdefe9bae7f655ddf21c9bf636873c73244b7293d4c205bb7fc",
+   "hypothesis": null,
+   "input_class": "OBSERVED_PUBLIC",
+   "prev": "8288a9b34ff205a83e217a9d66e0d3c18f0f2f2effeb6f5c099a5c6d8c406bcb",
+   "sha256": "24045b38ad2d98a5c9a57294b20267a8deff7ca5cd48f1a88ebc0dd5207a635d",
+   "ts_utc": "2026-10-18T12:52:07.839704+00:00"
+  },
+  {
+   "action": "seal",
+   "chunk_id": "chunk-c87821b135ac9667",
+   "class": "HOLDOUT",
+   "entry_hash": "6cbe3ebb8b3b5bce276e25710522830f820fdde3ec9894996fb029c33df11925",
+   "hypothesis": null,
+   "input_class": "OBSERVED_PUBLIC",
+   "prev": "7041c12ce747bfdefe9bae7f655ddf21c9bf636873c73244b7293d4c205bb7fc",
+   "sha256": "c87821b135ac9667d8ef780fe3fa2ed611c905b567e7809ab9f67917d2890b8e",
+   "ts_utc": "2026-10-18T15:14:34.602994+00:00"
+  },
+  {
+   "action": "freeze",
+   "commit": "fdb8967",
+   "config_sha256": "81e057641702d6f08ca7fc9ae8f0098a48a88f8b5d57e3a21c0d30fdb4dfb116",
+   "entry_hash": "cdff69d7c2f6873665b49cb6d9ebbdd49318924b2ff0e18aa5f30d2e30756ee1",
+   "frozen_utc": "2026-10-18T15:14:34.605562+00:00",
+   "hypothesis": "B4",
+   "prereg_path": "research/prereg/B4-delta-neutral-basis.md",
+   "prev": "6cbe3ebb8b3b5bce276e25710522830f820fdde3ec9894996fb029c33df11925",
+   "ts_utc": "2026-10-18T15:14:34.605562+00:00"
+  },
+  {
+   "action": "issue-token",
+   "consumer": "verdict",
+   "entry_hash": "024d0011fcad73ad151ac2b83aa91d3e161ca207ba5bc562c34c4fa501d864c8",
+   "hypothesis": "B4",
+   "prev": "cdff69d7c2f6873665b49cb6d9ebbdd49318924b2ff0e18aa5f30d2e30756ee1",
+   "token_sha256": "32a0fae8819ed99066d2ef604a83c03993bf7075f35a8709ec3df73067d249ba",
+   "ts_utc": "2026-10-18T15:14:52.793855+00:00"
+  },
+  {
+   "action": "decode",
+   "chunk_id": "chunk-c87821b135ac9667",
+   "entry_hash": "fac5bf147fe50cfdf2096ad60af7ec6fab72b946ab16bf41517459c0ef369244",
+   "files": 198,
+   "hypothesis": "B4",
+   "prev": "024d0011fcad73ad151ac2b83aa91d3e161ca207ba5bc562c34c4fa501d864c8",
+   "token_sha256": "32a0fae8819ed99066d2ef604a83c03993bf7075f35a8709ec3df73067d249ba",
+   "ts_utc": "2026-10-18T15:14:54.552172+00:00"
+  },
+  {
+   "action": "issue-token",
+   "consumer": "verdict",
+   "entry_hash": "7f238bc52a788c639297291a39609b8fb565a720d5ead72bd5085e2f63410cb9",
+   "hypothesis": "B4",
+   "prev": "fac5bf147fe50cfdf2096ad60af7ec6fab72b946ab16bf41517459c0ef369244",
+   "token_sha256": "8faf71e2a1d7754291e7a5127e3ec7c46c11d2ca7d2fdb142b281c8b5d5ba3d7",
+   "ts_utc": "2026-10-18T15:15:54.153641+00:00"
+  },
+  {
+   "action": "decode",
+   "chunk_id": "chunk-c87821b135ac9667",
+   "entry_hash": "afeff05e216a3fc48a19e8380e647923481596f947e626222d02c6dc3fdfb84b",
+   "files": 198,
+   "hypothesis": "B4",
+   "prev": "7f238bc52a788c639297291a39609b8fb565a720d5ead72bd5085e2f63410cb9",
+   "token_sha256": "8faf71e2a1d7754291e7a5127e3ec7c46c11d2ca7d2fdb142b281c8b5d5ba3d7",
+   "ts_utc": "2026-10-18T15:15:55.691572+00:00"
+  },
+  {
+   "action": "seal",
+   "chunk_id": "chunk-74e0747f6d1aab3a",
+   "class": "HOLDOUT",
+   "entry_hash": "f1d54f60c5cdaa7ea505274afd03fdc47fa260af1dfe763f98e2ec5d3feae28c",
+   "hypothesis": null,
+   "input_class": "OBSERVED_PUBLIC",
+   "prev": "afeff05e216a3fc48a19e8380e647923481596f947e626222d02c6dc3fdfb84b",
+   "sha256": "74e0747f6d1aab3aabec91f3bf524298895440cc560f0835dca430566b576f1f",
+   "ts_utc": "2026-10-18T15:25:18.235983+00:00"
+  },
+  {
+   "action": "issue-token",
+   "consumer": "verdict",
+   "entry_hash": "2afbb9836203ae757f1e0634fc32a928b40056a67a067f6e383ab492fd6ceae1",
+   "hypothesis": "B4",
+   "prev": "f1d54f60c5cdaa7ea505274afd03fdc47fa260af1dfe763f98e2ec5d3feae28c",
+   "token_sha256": "0d6ee79f414a9a241d392c631f9753e424180da149a89ac8708637100008cf22",
+   "ts_utc": "2026-10-18T15:25:25.193836+00:00"
+  },
+  {
+   "action": "decode",
+   "chunk_id": "chunk-74e0747f6d1aab3a",
+   "entry_hash": "aa6e283aa271fa7a333bd345fa09cbf5954e5bda6410096c32bc5d86f5592b02",
+   "files": 202,
+   "hypothesis": "B4",
+   "prev": "2afbb9836203ae757f1e0634fc32a928b40056a67a067f6e383ab492fd6ceae1",
+   "token_sha256": "0d6ee79f414a9a241d392c631f9753e424180da149a89ac8708637100008cf22",
+   "ts_utc": "2026-10-18T15:25:38.237970+00:00"
+  },
+  {
+   "action": "seal",
+   "chunk_id": "chunk-3f104eec72e7d745",
+   "class": "HOLDOUT",
+   "entry_hash": "29bcffce9d34dffd8900124315b549daec4620bfdc6dfa28775ad6857deda99b",
+   "hypothesis": null,
+   "input_class": "OBSERVED_PUBLIC",
+   "prev": "aa6e283aa271fa7a333bd345fa09cbf5954e5bda6410096c32bc5d86f5592b02",
+   "sha256": "3f104eec72e7d7450f4a770a65b314167a12f6df8e32f3e44879c1a8b4714c18",
+   "ts_utc": "2026-10-18T16:07:57.371522+00:00"
+  },
+  {
+   "action": "seal",
+   "chunk_id": "chunk-62e972497f0e2c52",
+   "class": "HOLDOUT",
+   "entry_hash": "1cf653192b2894f4abe944a5de99d82b0645cffa7e0e193721b9aeebf29910d2",
+   "hypothesis": null,
+   "input_class": "OBSERVED_PUBLIC",
+   "prev": "29bcffce9d34dffd8900124315b549daec4620bfdc6dfa28775ad6857deda99b",
+   "sha256": "62e972497f0e2c52fbdd0e0a16328832aa27f78309b566da28e4a47cca05cfc2",
+   "ts_utc": "2026-10-18T16:08:09.067512+00:00"
+  },
+  {
+   "action": "seal",
+   "chunk_id": "chunk-d77aca777ad358c9",
+   "class": "HOLDOUT",
+   "entry_hash": "cbd44f7ced95d10d20c5aadf7257dacd129d96a36fa8eb608daf6d1e0975c25a",
+   "hypothesis": null,
+   "input_class": "OBSERVED_PUBLIC",
+   "prev": "1cf653192b2894f4abe944a5de99d82b0645cffa7e0e193721b9aeebf29910d2",
+   "sha256": "d77aca777ad358c9cb6033e72b55a5737c63455bd24458484b151c57f86764bd",
+   "ts_utc": "2026-10-18T16:08:18.736834+00:00"
+  },
+  {
+   "action": "seal",
+   "chunk_id": "chunk-2c330fb27f671e68",
+   "class": "HOLDOUT",
+   "entry_hash": "0b1382ad973fb097eb5db7b005f3efab9ee7dd91cf8576c9a9c66c327d86cf1a",
+   "hypothesis": null,
+   "input_class": "OBSERVED_PUBLIC",
+   "prev": "cbd44f7ced95d10d20c5aadf7257dacd129d96a36fa8eb608daf6d1e0975c25a",
+   "sha256": "2c330fb27f671e68f61a19cbff9b1502b39e97e95b27e3654f05b06fc568e5df",
+   "ts_utc": "2026-10-18T16:08:23.503817+00:00"
+  },
+  {
+   "action": "seal",
+   "chunk_id": "chunk-231cc79b795dd852",
+   "class": "HOLDOUT",
+   "entry_hash": "39b65972bcc950577d691eee8b7b919f703de928e8ab5c77ac1b98f0fcde7fad",
+   "hypothesis": null,
+   "input_class": "OBSERVED_PUBLIC",
+   "prev": "0b1382ad973fb097eb5db7b005f3efab9ee7dd91cf8576c9a9c66c327d86cf1a",
+   "sha256": "231cc79b795dd8520ee067f38c658d8ce1fd12ea7583931e119665df257e8973",
+   "ts_utc": "2026-10-18T16:09:10.238530+00:00"
+  },
+  {
+   "action": "seal",
+   "chunk_id": "chunk-10f9e3e4e089375a",
+   "class": "HOLDOUT",
+   "entry_hash": "3413fa9f94e4cab71470e367c8a25ef807d9a3f9fb84c11835520ccf9f517aa5",
+   "hypothesis": null,
+   "input_class": "OBSERVED_PUBLIC",
+   "prev": "39b65972bcc950577d691eee8b7b919f703de928e8ab5c77ac1b98f0fcde7fad",
+   "sha256": "10f9e3e4e089375a83823e07f97e26da161630919543cec59f3394c88299d6a9",
+   "ts_utc": "2026-10-18T16:09:10.404833+00:00"
+  },
+  {
+   "action": "seal",
+   "chunk_id": "chunk-2df6f950d29a75ac",
+   "class": "HOLDOUT",
+   "entry_hash": "1ccf32fffad9ae95b208d54ea08eaf31f2c462fa729f3b7624adc753dfdd7157",
+   "hypothesis": null,
+   "input_class": "OBSERVED_PUBLIC",
+   "prev": "3413fa9f94e4cab71470e367c8a25ef807d9a3f9fb84c11835520ccf9f517aa5",
+   "sha256": "2df6f950d29a75ac96c235d656c2947ff0afb02762c4d91830142ed4f54876d5",
+   "ts_utc": "2026-10-18T16:09:13.665621+00:00"
+  }
+ ],
+ "format": "cryptobot-vault-access/1"
+}

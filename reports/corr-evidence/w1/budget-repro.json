@@ -1,0 +1,11 @@
+{
+ "status": "CHILD_EXIT",
+ "child_rc": 0,
+ "elapsed_s": 3.835,
+ "budget_s": 300.0,
+ "command": [
+  "bash",
+  "-c",
+  "cd /tmp/cryto-bot-w1-corr && PYTHONPATH=src .venv/bin/python /tmp/w1-corr/Crypto_Bot_cdcd10c_Review_Probes.py > /tmp/w1-corr/repro_before.json 2>/tmp/w1-corr/repro_before.err; echo RC=$?"
+ ]
+}

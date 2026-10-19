@@ -1,0 +1,83 @@
+# Protected operational paper profile (Worker 4, W4-24H carve-out).
+# Calendar + anomaly decisions WIRED: entries require verified source
+# freshness and pass the event gate + anomaly policy. Research-only
+# configs (paper.toml, r2.toml, r3.toml) are preserved untouched.
+# Ledger currency is USDT. Nothing here is a live balance.
+
+[run]
+mode = "paper"                # paper requires engine.kind = "nautilus"
+paper_capital_usdt = 120.0   # synthetic paper capital (~Rs.10k pilot scale, labeled)
+accounting_tz = "Asia/Kolkata"
+duration = "24h"             # paper session wall-clock budget
+events_enabled = true        # protected: calendar gate enforced (not advisory)
+
+[risk]
+max_loss_budget_pct = 0.00125
+leverage_cap = 3.0
+min_notional_usdt = 5.0
+stress_multiplier = 1.5
+operating_stop_pct = 0.005
+emergency_stop_pct = 0.01
+profile_version = "24h-1"
+daily_target_pct = 0.02
+profit_arm_pct = 0.01
+profit_retain_pct = 0.70
+max_evidence_age_s = 120.0
+max_clock_skew_s = 5.0
+filters_max_age_s = 3600.0
+# Operator notional cap per position (the venue publishes no max-notional
+# filter; this cap also satisfies filter completeness for run mode).
+max_notional_cap_usdt = 500.0
+
+[fees]
+# Labeled SIMULATION rates. Not the owner's actual account rates.
+label = "simulation-labeled"
+taker_bps = 5.0
+funding_bps_per_8h = 1.0
+
+[engine]
+kind = "nautilus"            # paper sessions require the nautilus engine
+submit_delay_ms = 50
+fill_delay_ms = 50
+
+[data]
+symbols = []                 # empty = dynamic discovery (paper)
+max_symbols = 8
+warmup_bars = 130
+
+[storage]
+dir = "runs"
+budget_mb = 2048
+
+[strategies]
+enabled = ["S1", "S2", "S3", "S4", "S5"]
+arms = "base"                # base | all (all = every preregistered arm incl. variants)
+cooldown_s = 300
+min_reward_multiple = 1.0
+# Q-005 landed: S1-S5 emit the S2 exit grammar. Strict: undecodable blocks.
+allow_legacy_exit_rules = false
+
+# Event/anomaly protection (parsed by cryptobot.events.profiles; unknown to
+# AppConfig by design until the manager lands config keys). All values below
+# are REQUIRED for the protected-operational posture; omitting
+# require_verified_freshness or enable_anomaly demotes the run to explicit
+# research-only (fail-closed at profile load).
+[events]
+require_verified_freshness = true  # block entries unless required sources verified in TTL
+required_sources = ["fomc", "cpi", "employment"]  # REL-W3: missing/unverified any -> no-entry
+enable_anomaly = true              # wire measured anomaly inputs to entry actions
+advisory_only = false              # false = enforce; true = log would-block only
+cache_ttl_days = 7                 # verified schedule cache lifetime
+refresh_interval_s = 21600         # background official-source refresh cadence
+pre_buffer_s = 900                 # frozen 15-min paper hypothesis (do not tune live)
+post_buffer_s = 900
+press_duration_s = 3600            # conservative press-conference cover
+resume_cooldown_s = 0
+max_hold_s = 300                   # REL-W3: longest hold; entries stop max_hold+exit before windows
+exit_budget_s = 120                # REL-W3: orderly-exit budget after max hold
+spread_widen_bps = 25.0            # anomaly starting thresholds (dev/val tuned)
+book_thin_ratio = 0.3
+abs_return_bps = 50.0
+latency_ms = 2000.0
+exchange_errors = 3
+anomaly_cooldown_s = 300

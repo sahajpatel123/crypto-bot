@@ -1,0 +1,3 @@
+ 655 killed
+ 302 survived
+  74 tests

@@ -1,0 +1,63 @@
+{
+ "fetched_at": "2026-10-12T15:57:25.418590+00:00",
+ "start": "2026-09-01",
+ "end": "2026-10-12",
+ "symbols": {
+  "BTCUSDT": {
+   "interval_h": 8,
+   "interval_src": "rest:v1/fundingInfo",
+   "interval_sha": "7c1310a79c8457feeae4210cbdad252297b15c64270904b5cfa1d103d0429ae3",
+   "settlements": 125,
+   "first_funding_ms": 1788220800005,
+   "last_funding_ms": 1791792000002,
+   "body_shas": [
+    "832665dc394fb85705d5020e0cf11bb91eb39b7077c13e4a0b5f7c23a82926fa"
+   ]
+  },
+  "ETHUSDT": {
+   "interval_h": 8,
+   "interval_src": "rest:v1/fundingInfo",
+   "interval_sha": "7c1310a79c8457feeae4210cbdad252297b15c64270904b5cfa1d103d0429ae3",
+   "settlements": 125,
+   "first_funding_ms": 1788220800005,
+   "last_funding_ms": 1791792000002,
+   "body_shas": [
+    "61b17ab6bb9ae901d54e4d9c5057e4e3c283e07de82face34d0d36f6503166ab"
+   ]
+  }
+ },
+ "reconcile": {
+  "BTCUSDT/2026-09": {
+   "mismatches": [],
+   "rest_rows": 90,
+   "vision_rows": 90,
+   "vision_latency_ms": [
+    0,
+    0
+   ]
+  },
+  "ETHUSDT/2026-09": {
+   "mismatches": [],
+   "rest_rows": 90,
+   "vision_rows": 90,
+   "vision_latency_ms": [
+    0,
+    0
+   ]
+  }
+ },
+ "coverage_gaps": [],
+ "files": [
+  {
+   "local": "BTCUSDT/funding/BTCUSDT-fundingRate-2026-10.zip",
+   "sha256": "eab25dfd3cb055983a60c32d5f603b2164618c0abe399dfb57df0158fd95ded4",
+   "rows": 35
+  },
+  {
+   "local": "ETHUSDT/funding/ETHUSDT-fundingRate-2026-10.zip",
+   "sha256": "b2520608897f9b9cd0514fa25569773cc9eb883a65b68b75cb505da2823dfc8e",
+   "rows": 35
+  }
+ ],
+ "failures": []
+}

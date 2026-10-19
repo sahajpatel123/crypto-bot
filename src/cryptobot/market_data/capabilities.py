@@ -31,6 +31,8 @@ CONTRACT_VERSION = "v0.1.0"
 # was ATTEMPTED and observed; it never counts as verified behaviour — the
 # nautilus row's `verified` tuple stays empty until an import + adapter smoke
 # actually passes in this environment.
+# E-002 bounded trial-install record (D-005 follow-up). Historical: the wheel
+# transfer stalled and the trial closed as blocked-on-transfer.
 E002_TRIAL_UTC = "2026-10-11T13:36:00Z/2026-10-11T14:06:45Z"  # bound window (start/end).
 E002_TRIAL_VERDICT = "blocked-on-transfer"
 E002_TRIAL_EVIDENCE = (
@@ -40,6 +42,28 @@ E002_TRIAL_EVIDENCE = (
     "attempt 3 (py3.14, uv 0.11.11): 15 pkgs resolved in 61s; parallel transfer reached 110MB+ cache but wheel never completed by the ~30min bound",
     "env: macOS 27.2 arm64, python 3.14.6, pip 26.1.2 — trial venv 13M, nautilus absent",
     "never completed: wheel transfer/install; no import, adapter, or conditional-order evidence obtained",
+)
+
+# E-006 bounded resumable trial (D-005 follow-up). The install SUCCEEDED on
+# resume, so the import + adapter smoke E-002 defined as its bar ran here.
+# Verified rule: `verified` entries name the venv they were exercised in;
+# project-.venv adoption (pin install) is still a manager decision, so the
+# row keeps a not-installed blocker alongside the trial-venv verification.
+E006_TRIAL_UTC = "2026-10-11T21:46:00Z/2026-10-11T21:49:00Z"  # bound window (start/end).
+E006_TRIAL_VERDICT = "import-adapter-smoke-passed"
+E006_TRIAL_EVIDENCE = (
+    "resume of E-002 blocked install: uv reused the 113M cache; cp314 macosx_arm64 wheel (149MB) + deps installed in 33s",
+    "trial venv .venv-trial (project-checkout-local, untracked, never committed), 662M with deps",
+    "import nautilus_trader -> 1.231.0 (matches pin)",
+    "adapter: nautilus_trader.adapters.binance imports; BinanceLiveDataClientFactory + BinanceLiveExecClientFactory present; BinanceAccountType includes USDT_FUTURES",
+    "orders: OrderType has STOP_MARKET/STOP_LIMIT/TRAILING_STOP_MARKET/TRAILING_STOP_LIMIT; ContingencyType OCO/OTO/OUO; OrderList.is_bracket present",
+    "env: macOS 27.2 arm64, python 3.14.6, uv 0.11.11",
+    "NOT covered: live order submission (no creds by policy), backtest run, project-.venv install",
+)
+E006_VERIFIED = (
+    "pin 1.231.0 imports in .venv-trial (cp314 macosx_arm64 wheel, 2026-10-11)",
+    "Binance adapter live data+exec factories and USDT_FUTURES account type present (.venv-trial smoke)",
+    "stop/trailing order types, OCO/OTO/OUO contingency, OrderList.is_bracket present (.venv-trial smoke)",
 )
 
 
@@ -57,6 +81,7 @@ class ConnectorCapability:
     assumed: tuple[str, ...] = field(default_factory=tuple)
     blockers: tuple[str, ...] = field(default_factory=tuple)
     trial: tuple[str, ...] = field(default_factory=tuple)  # E-002 attempt evidence; never verification.
+    trial: tuple[str, ...] = field(default_factory=tuple)  # trial-attempt evidence (E-002 + E-006).
 
 
 @dataclass(frozen=True)
@@ -88,6 +113,8 @@ CONNECTOR_CANDIDATES: tuple[_Candidate, ...] = (
             "Rust-backed core; install is heavy (native build/wheel)",
         ),
         install_blocker="not installed in .venv; E-002 trial blocked-on-transfer (see trial notes)",
+        install_blocker=("not installed in project .venv (import+adapter smoke verified in untracked "
+                         ".venv-trial only; see trial notes); adoption needs pin + .venv install"),
     ),
     _Candidate(
         name="binance-connector",
@@ -123,6 +150,8 @@ def build_matrix(extra_verified: Mapping[str, list[str]] | None = None) -> list[
         installed = _installed_version(cand.dist_name)
         proposed = PROPOSED_PINS.get(cand.dist_name or "")
         verified = tuple(extra.get(cand.name, ()))
+        if cand.name == "nautilus_trader":
+            verified += E006_VERIFIED
         blockers: list[str] = []
         if installed is None:
             blockers.append(cand.install_blocker)
@@ -140,6 +169,8 @@ def build_matrix(extra_verified: Mapping[str, list[str]] | None = None) -> list[
                 assumed=cand.assumed,
                 blockers=tuple(blockers),
                 trial=E002_TRIAL_EVIDENCE if cand.name == "nautilus_trader" else (),
+                trial=(E002_TRIAL_EVIDENCE + E006_TRIAL_EVIDENCE
+                       if cand.name == "nautilus_trader" else ()),
             )
         )
     return rows
@@ -185,6 +216,9 @@ def render_markdown(matrix: list[ConnectorCapability]) -> str:
     trial_rows = [r for r in matrix if r.trial]
     if trial_rows:
         lines += ["", f"Trial notes (E-002, {E002_TRIAL_UTC}; verdict: {E002_TRIAL_VERDICT}):", ""]
+        lines += ["",
+                  f"Trial notes (E-002, {E002_TRIAL_UTC}; verdict: {E002_TRIAL_VERDICT}; "
+                  f"E-006, {E006_TRIAL_UTC}; verdict: {E006_TRIAL_VERDICT}):", ""]
         for r in trial_rows:
             lines.append(f"- {r.name} (pin {r.proposed_pin}):")
             lines.extend(f"  - {note}" for note in r.trial)

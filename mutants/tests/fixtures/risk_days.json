@@ -1,0 +1,16 @@
+{
+  "_note": "IST (UTC+5:30, no DST) day-boundary instants: 2026-10-10T18:30:00Z == 2026-10-11T00:00:00+05:30.",
+  "boundaries": [
+    {"utc": "2026-10-10T18:29:59+00:00", "accounting_date": "2026-10-10"},
+    {"utc": "2026-10-10T18:30:00+00:00", "accounting_date": "2026-10-11"},
+    {"utc": "2026-10-11T11:59:59+00:00", "accounting_date": "2026-10-11"},
+    {"utc": "2026-10-11T18:29:59+00:00", "accounting_date": "2026-10-11"},
+    {"utc": "2026-10-11T18:30:00+00:00", "accounting_date": "2026-10-12"}
+  ],
+  "flows": [
+    {"utc": "2026-10-11T00:00:01+00:00", "amount": 500.0, "kind": "deposit"},
+    {"utc": "2026-10-11T06:00:00+00:00", "amount": -200.0, "kind": "transfer-out"}
+  ],
+  "day_start_utc": "2026-10-10T18:30:00+00:00",
+  "expected_net_flows_since_day_start": 300.0
+}

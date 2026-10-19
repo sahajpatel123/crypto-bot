@@ -1,0 +1,170 @@
+{
+  "cells": {
+    "S1-cap30min": {
+      "setups": 12,
+      "eligible_s": 623,
+      "usable_symbol_s": 3600,
+      "coverage_elig_over_usable": 0.17305555555555555,
+      "setup_rate_per_1000_elig_s": {
+        "rate": 19.261637239165328,
+        "lo": 9.941428319549003,
+        "hi": 33.64824727707336
+      },
+      "cost_kill_frac": {
+        "frac": 1.0,
+        "lo": 0.7353515306029488,
+        "hi": 1.0,
+        "method": "clopper-pearson-95"
+      },
+      "fills": 0
+    },
+    "S2-cap30min": {
+      "setups": 0,
+      "eligible_s": 623,
+      "usable_symbol_s": 3600,
+      "coverage_elig_over_usable": 0.17305555555555555,
+      "setup_rate_per_1000_elig_s": {
+        "rate": 0.0,
+        "lo": 0.0,
+        "hi": 5.921154822012738
+      },
+      "cost_kill_frac": {
+        "frac": null,
+        "lo": null,
+        "hi": null,
+        "method": "n/a (n=0)"
+      },
+      "fills": 0
+    },
+    "S3-cap30min": {
+      "setups": 45,
+      "eligible_s": 623,
+      "usable_symbol_s": 3600,
+      "coverage_elig_over_usable": 0.17305555555555555,
+      "setup_rate_per_1000_elig_s": {
+        "rate": 72.23113964686999,
+        "lo": 52.6809847440566,
+        "hi": 96.6532290191201
+      },
+      "cost_kill_frac": {
+        "frac": 1.0,
+        "lo": 0.9212948995931569,
+        "hi": 1.0,
+        "method": "clopper-pearson-95"
+      },
+      "fills": 0
+    },
+    "S4-cap30min": {
+      "setups": 0,
+      "eligible_s": 623,
+      "usable_symbol_s": 3600,
+      "coverage_elig_over_usable": 0.17305555555555555,
+      "setup_rate_per_1000_elig_s": {
+        "rate": 0.0,
+        "lo": 0.0,
+        "hi": 5.921154822012738
+      },
+      "cost_kill_frac": {
+        "frac": null,
+        "lo": null,
+        "hi": null,
+        "method": "n/a (n=0)"
+      },
+      "fills": 0
+    },
+    "S1-cap2h": {
+      "setups": 4,
+      "eligible_s": 1129,
+      "usable_symbol_s": 14400,
+      "coverage_elig_over_usable": 0.07840277777777778,
+      "setup_rate_per_1000_elig_s": {
+        "rate": 3.5429583702391496,
+        "lo": 0.9531890240582105,
+        "hi": 9.07064015864841
+      },
+      "cost_kill_frac": {
+        "frac": 1.0,
+        "lo": 0.3976353643835254,
+        "hi": 1.0,
+        "method": "clopper-pearson-95"
+      },
+      "fills": 0
+    },
+    "S2-cap2h": {
+      "setups": 0,
+      "eligible_s": 1129,
+      "usable_symbol_s": 14400,
+      "coverage_elig_over_usable": 0.07840277777777778,
+      "setup_rate_per_1000_elig_s": {
+        "rate": 0.0,
+        "lo": 0.0,
+        "hi": 3.267386584689049
+      },
+      "cost_kill_frac": {
+        "frac": null,
+        "lo": null,
+        "hi": null,
+        "method": "n/a (n=0)"
+      },
+      "fills": 0
+    },
+    "S3-cap2h": {
+      "setups": 0,
+      "eligible_s": 1129,
+      "usable_symbol_s": 14400,
+      "coverage_elig_over_usable": 0.07840277777777778,
+      "setup_rate_per_1000_elig_s": {
+        "rate": 0.0,
+        "lo": 0.0,
+        "hi": 3.267386584689049
+      },
+      "cost_kill_frac": {
+        "frac": null,
+        "lo": null,
+        "hi": null,
+        "method": "n/a (n=0)"
+      },
+      "fills": 0
+    },
+    "S4-cap2h": {
+      "setups": 1,
+      "eligible_s": 1129,
+      "usable_symbol_s": 14400,
+      "coverage_elig_over_usable": 0.07840277777777778,
+      "setup_rate_per_1000_elig_s": {
+        "rate": 0.8857395925597874,
+        "lo": 0.011578505670065855,
+        "hi": 4.9280386027238805
+      },
+      "cost_kill_frac": {
+        "frac": 1.0,
+        "lo": 0.02500000000000001,
+        "hi": 1.0,
+        "method": "clopper-pearson-95"
+      },
+      "fills": 0
+    }
+  },
+  "cross_slice": {
+    "S1": {
+      "setups_30min": 12,
+      "setups_2h": 4,
+      "note": "rate comparison via per-cell Garwood CIs above; no pooling (different regimes/windows)."
+    },
+    "S2": {
+      "setups_30min": 0,
+      "setups_2h": 0,
+      "note": "rate comparison via per-cell Garwood CIs above; no pooling (different regimes/windows)."
+    },
+    "S3": {
+      "setups_30min": 45,
+      "setups_2h": 0,
+      "note": "rate comparison via per-cell Garwood CIs above; no pooling (different regimes/windows)."
+    },
+    "S4": {
+      "setups_30min": 0,
+      "setups_2h": 1,
+      "note": "rate comparison via per-cell Garwood CIs above; no pooling (different regimes/windows)."
+    }
+  }
+}

@@ -1,0 +1,117 @@
+{
+  "run_id": "w1b-CASH-validation",
+  "mode": "replay",
+  "input_class": "observed-archive",
+  "capture": "/tmp/w1bench/matrix/CASH_validation/fifo_cap",
+  "config_fingerprint": "88ae633997251116",
+  "fee_schedule": {
+    "label": "simulation-labeled",
+    "taker_bps": 5.0,
+    "funding_bps_per_8h": 1.0
+  },
+  "execution_model": "nautilus-paper",
+  "simulator_assumptions": [
+    "simulator=nautilus-SimulatedExchange equivalent-of-SandboxExecutionClient core (matching/fills/fees all nautilus; no bot fill engine)",
+    "modeled delays: submit_delay_ms=50 (pre-queue; submit_immediate bypasses, exits-only) + fill_delay_ms=50 (venue latency, >0 enforced); submit_immediate bypasses both for one command",
+    "fees: taker=5.0bps maker=5.0bps off-instrument (MakerTakerFeeModel; run-mode fees never zero; maker unused under taker-only)",
+    "liquidity=taker-only: MARKET/STOP_MARKET/TAKE_PROFIT_MARKET cross the book; canonical LIMIT maps to nautilus LIMIT IOC (marketable-or-cancel, keeps price protection); resting GTC limits unsupported (no queue model); non-taker fills fail closed",
+    "markets are GTC (never IOC-cancelled for thin prints): with quotes they resolve on the next tick; on trade-only replay prints seed L1 size, the print size fills at-print and swept excess walks one tick adverse (nautilus empty-book model); queued submits that outlive expire_at_utc expire unsubmitted (queued-past-window)",
+    "valuation-only marks (B2): note_mark records the reference mark for accounting only \u2014 it can NEVER produce a fill; all fills cross real bid/ask + liquidity from the quote/trade/depth feed (feed/note_event); submit_protected limit entries cancel when the touch cannot be lifted",
+    "time model: engine clock advances on fed data/receipts only; poll/advance never invent market ticks; strict_replay=True fails closed on out-of-order replay input instead of restamping (live default stays receipt-lenient)",
+    "deterministic ids (B1): client ids derive from random_seed's RNG stream (stable across same-seed runs); trade ids are venue FNV-1a; restart replays the RNG stream past journaled ids",
+    "funding (B2): markPrice terms feed boundary settlements from open cache positions as pure rate x notional (no venue settlement tax exists or is applied); only venue-asserted boundaries settle (no self-projection past the last record); absent/unknown terms invalidate (settle nothing, never zero); unpriced/flat/zero-rate settlements book nothing",
+    "margins (B2): account_margin reads the simulated MarginAccount filed through nautilus' own portfolio path (update_order/update_account on each fill); leverage is engine-owned (matches the risk cap)",
+    "bounds (B10): max_queued_submits/max_pending_events fail closed with OverflowError so bursts surface instead of growing unbounded",
+    "instruments auto-register from live venue filters (PRICE_FILTER/LOT_SIZE/MIN_NOTIONAL) on first sight; qty floored to step, prices rounded to tick, REST failure fails closed (filters never invented)",
+    "reduce-only honored by the venue (use_reduce_only=True) against ExecutionEngine-equivalent netting positions filed from simulator fills; stop/target legs are independent orders (support_contingent_orders=False; no OCO assumption)",
+    "stops/targets reject when the trigger is already in the market (reject_stop_orders=True); attach_protection legs verify via poll, never assumed",
+    "fills propagate to the bound outcome sink exactly-once-accounted (journaled delta-propagated; at-least-once replay on bind/recover, sink dedups); forecast costs and booked fill costs are never double-charged",
+    "restart: sim orders never survive; recover() rebuilds tracking from the journal, replays unpropagated fills, marks the rest lost-on-restart (never assumed filled/cancelled/flat)",
+    "paper mode instantiates no Binance live execution client (R0, tested)",
+    "receipt-time processing: ticks older than the engine clock (mark-quote skew, cross-symbol interleave) are re-stamped to engine-now with ts_event preserved; the book updates, time stays monotonic; ordered replay passes through untouched"
+  ],
+  "opening_equity": 120.0,
+  "closing_equity": 120.0,
+  "net_return_pct": 0.0,
+  "paid_costs": 0.0,
+  "funding_net": 0.0,
+  "realised": 0.0,
+  "open_position": false,
+  "position_qty": 0.0,
+  "events_seen": 16337623,
+  "symbols": [
+    "BTCUSDT",
+    "ETHUSDT"
+  ],
+  "intents_admitted": 0,
+  "reject_counts": {},
+  "depth_resyncs": {},
+  "store_counts": {
+    "intents": 0,
+    "execution_events": 0,
+    "risk_transitions": 10,
+    "checkpoints": 32686
+  },
+  "latency_ms": {
+    "feed_age": {
+      "n": 20000,
+      "p50_ms": 0.0,
+      "p95_ms": 0.0,
+      "p99_ms": 0.0,
+      "max_ms": 0.0
+    },
+    "strategy_eval": {
+      "n": 0,
+      "p50_ms": null,
+      "p95_ms": null,
+      "p99_ms": null,
+      "max_ms": null
+    },
+    "selector_decide": {
+      "n": 1209337,
+      "p50_ms": 0.002874992787837982,
+      "p95_ms": 0.004125002305954695,
+      "p99_ms": 0.004875008016824722,
+      "max_ms": 0.8634579717181623
+    },
+    "submit_to_fill_modeled": {
+      "n": 0,
+      "p50_ms": null,
+      "p95_ms": null,
+      "p99_ms": null,
+      "max_ms": null
+    }
+  },
+  "workdir": "/tmp/w1bench/matrix/CASH_validation/run",
+  "replay_stream": {
+    "mode": "streaming-v1",
+    "events_hashed": 16337623,
+    "events_hash": "54a66272c41e9df40960d005ad4f85bcd529ab7a1dc782d282943223dd239d6a",
+    "skipped_prefix": 0,
+    "first_ms": 1790447400051,
+    "last_ms": 1791052199999,
+    "snapshots_installed": 0,
+    "snapshots_unreached": 0
+  },
+  "filter_profile": {
+    "label": "manifest-frozen",
+    "filters": {
+      "BTCUSDT": {
+        "tick_size": 0.1,
+        "step_size": 0.001,
+        "min_qty": 0.001,
+        "min_notional": 50.0,
+        "price_precision": 1,
+        "size_precision": 3
+      },
+      "ETHUSDT": {
+        "tick_size": 0.01,
+        "step_size": 0.001,
+        "min_qty": 0.001,
+        "min_notional": 20.0,
+        "price_precision": 2,
+        "size_precision": 3
+      }
+    }
+  }
+}

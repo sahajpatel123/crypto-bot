@@ -1,0 +1,5 @@
+{"ts_utc": "2026-10-10T12:00:00+00:00", "marked_equity": 9999.0, "cash": 9899.0, "position_qty": 1.0, "position_symbol": "BTCUSDT", "open_pnl": 0.0, "source": "synthetic-fixture"}
+{"ts_utc": "2026-10-10T12:30:00+00:00", "marked_equity": 10004.0, "cash": 9899.0, "position_qty": 1.0, "position_symbol": "BTCUSDT", "open_pnl": 5.0, "source": "synthetic-fixture"}
+{"ts_utc": "2026-10-10T13:30:00+00:00", "marked_equity": 10006.8, "cash": 9942.0, "position_qty": 0.6, "position_symbol": "BTCUSDT", "open_pnl": 4.8, "source": "synthetic-fixture"}
+{"ts_utc": "2026-10-10T15:30:00+00:00", "marked_equity": 10005.3, "cash": 10005.3, "position_qty": 0.0, "position_symbol": "", "open_pnl": 0.0, "source": "synthetic-fixture"}
+{"ts_utc": "2026-10-10T16:30:00+00:00", "marked_equity": 10105.3, "cash": 10105.3, "position_qty": 0.0, "position_symbol": "", "open_pnl": 0.0, "source": "synthetic-fixture"}

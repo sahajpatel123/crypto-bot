@@ -1,0 +1,130 @@
+{
+  "run_id": "cap-30min",
+  "input_class": "observed-public",
+  "window_utc": "2026-10-11T21:43:58.688145+00:00..2026-10-11T22:13:59.301922+00:00",
+  "stop_reason": "duration-reached",
+  "symbols": [
+    "BTCUSDT",
+    "ETHUSDT"
+  ],
+  "capture_set_rule": "top-2 by 24h quoteVolume among 525 TRADING USDT-perp symbols from live discovery (recomputed per run)",
+  "events_total": 1129445,
+  "malformed": 0,
+  "per_channel": {
+    "market/aggTrade/ETHUSDT": 17277,
+    "public/bookTicker/ETHUSDT": 512172,
+    "market/aggTrade/BTCUSDT": 14151,
+    "market/markPrice/BTCUSDT": 1799,
+    "public/depth/BTCUSDT": 17626,
+    "market/markPrice/ETHUSDT": 1799,
+    "public/bookTicker/BTCUSDT": 547055,
+    "public/depth/ETHUSDT": 17566
+  },
+  "duplicates": 0,
+  "out_of_order": 0,
+  "gaps": {
+    "natural": 0,
+    "injected": 1
+  },
+  "disconnects": {
+    "natural": 0,
+    "injected": 1
+  },
+  "reconnects": 1,
+  "depth": {
+    "resyncs": 0,
+    "applied": 35082,
+    "books": {
+      "BTCUSDT": {
+        "synced": true,
+        "last_update_id": 11790838262427,
+        "resyncs": 1,
+        "applied": 17621,
+        "dropped_stale": 5
+      },
+      "ETHUSDT": {
+        "synced": true,
+        "last_update_id": 11790838264737,
+        "resyncs": 1,
+        "applied": 17524,
+        "dropped_stale": 42
+      }
+    }
+  },
+  "bars": {
+    "BTCUSDT": {
+      "symbol": "BTCUSDT",
+      "lateness_ms": 500,
+      "watermark_ms": 1791756836806,
+      "max_ts_ms": 1791756837306,
+      "late_dropped": 0,
+      "empty_windows": 170,
+      "gap_jumps": 0,
+      "spreads_seen": 547055,
+      "open_windows": 2
+    },
+    "ETHUSDT": {
+      "symbol": "ETHUSDT",
+      "lateness_ms": 500,
+      "watermark_ms": 1791756837974,
+      "max_ts_ms": 1791756838474,
+      "late_dropped": 0,
+      "empty_windows": 144,
+      "gap_jumps": 0,
+      "spreads_seen": 512172,
+      "open_windows": 2
+    }
+  },
+  "clock_offset_start": {
+    "offset_ms": 61.385986328125,
+    "rtt_ms": 284.88623046875
+  },
+  "clock_offset_end": {
+    "offset_ms": 113.696533203125,
+    "rtt_ms": 386.31884765625
+  },
+  "timings": [
+    {
+      "metric": "event_age_ms",
+      "definition": "exchange event time -> local wall-clock receipt (uncorrected for clock offset; see clock_offset_start/end for the measured offset and RTT uncertainty). Includes venue fan-out + network transit; NOT order latency.",
+      "window": "2026-10-11T21:43:58.688145+00:00..2026-10-11T22:13:59.301922+00:00",
+      "n_total": 1129445,
+      "n_sampled": 20000,
+      "method": "bounded uniform reservoir (Vitter R, cap 20000); nearest-rank percentiles",
+      "p50_ms": 74,
+      "p95_ms": 132,
+      "p99_ms": 576,
+      "max_ms": 1232
+    },
+    {
+      "metric": "decision_latency_ms",
+      "definition": "local receipt -> finished processing one event, monotonic clock (parse + book/bar update + write buffering). Local pipeline cost only.",
+      "window": "2026-10-11T21:43:58.688145+00:00..2026-10-11T22:13:59.301922+00:00",
+      "n_total": 1129445,
+      "n_sampled": 20000,
+      "method": "bounded uniform reservoir (Vitter R, cap 20000); nearest-rank percentiles",
+      "p50_ms": 0.021375,
+      "p95_ms": 0.143334,
+      "p99_ms": 0.406917,
+      "max_ms": 2.116083
+    }
+  ],
+  "latency_claim_boundary": "REST RTT, event age, and decision latency are distinguished above. NOTHING in this report measures order execution/ack latency, which a public-only collector cannot observe.",
+  "files": {
+    "raw": {
+      "path": ".captures/cap-30min/raw.jsonl",
+      "sha256": "93b8346b7df02238cbba15ef76d86476c8260304826371bf5428e7dd4f52ecd9",
+      "bytes": 592502781
+    },
+    "events": {
+      "path": ".captures/cap-30min/events.jsonl",
+      "sha256": "76c9137f00c2ce645e83514409b8019a0a9e5b243fc2be38789587db9e58792e",
+      "bytes": 611979689
+    },
+    "bars": {
+      "path": ".captures/cap-30min/bars.jsonl",
+      "sha256": "ceff7d3c8965a26bc70d260b35659f64d83042e43ffddfc32842d85a74d013c8",
+      "bytes": 1095832
+    }
+  }
+}

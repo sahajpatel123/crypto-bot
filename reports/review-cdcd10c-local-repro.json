@@ -1,0 +1,103 @@
+{
+  "reviewed_revision": "cdcd10cbb40c3983b78b73b3d924a00aeb62a8c5",
+  "input_class": "synthetic-offline-review",
+  "ioc": {
+    "arrival_ask": 101.0,
+    "later_ask": 90.0,
+    "at_200ms": [],
+    "at_10s": [
+      {
+        "kind": "fill",
+        "time": "2026-10-01T00:00:10+00:00",
+        "price": 90.0
+      }
+    ],
+    "defect_observed": true,
+    "after_roundtrip": {
+      "exit_events": [
+        {
+          "kind": "fill",
+          "time": "2026-10-01T00:00:11+00:00",
+          "price": 89.0
+        }
+      ],
+      "states_returned_by_open_orders": [
+        "filled",
+        "filled"
+      ],
+      "bench_calls_flat": false
+    }
+  },
+  "checkpoint": {
+    "before_restart": {
+      "bar_slots": 135,
+      "warmed": true,
+      "first_ready_elapsed_s": 131
+    },
+    "after_restart": {
+      "feeds": 0,
+      "warmed": false
+    },
+    "checkpoint_fields": [
+      "clock_ms",
+      "cooldowns",
+      "counts",
+      "cursor",
+      "day",
+      "estimates",
+      "forced",
+      "journal_bytes",
+      "ledger",
+      "risk_state_json",
+      "runner_version",
+      "seeds"
+    ],
+    "orphan_ledger_qty_0_5_called_flat": true,
+    "changed_config_resume_allowed": true
+  },
+  "freshness": {
+    "fresh_BTC_stale_ETH_gate": null,
+    "stale_BTC_fresh_ETH_gate": "gate:stale-quote",
+    "note": "The gate has no candidate-symbol argument; first feed wins."
+  },
+  "all_runtime_arms": [
+    "S1",
+    "S1-V",
+    "S1-F",
+    "S2",
+    "S2-V",
+    "S2-F",
+    "S3",
+    "S3-R",
+    "S3-C",
+    "S4",
+    "S4-S"
+  ],
+  "nested_budget": {
+    "observed_elapsed_s": 1.271,
+    "rc": 124,
+    "wrapper_report": {
+      "status": "INCOMPLETE_BUDGET",
+      "child_rc": -15,
+      "elapsed_s": 1.21,
+      "budget_s": 1.0,
+      "command": [
+        "/Users/sahajpatel/Code/cryto-bot/.venv/bin/python3",
+        "tools/run_budget.py",
+        "--budget-s",
+        "30",
+        "--checkpoint-dir",
+        "/var/folders/3w/wgv95vkx69lf97wwlsh02d700000gn/T/crypto-review-zpqt8p8q/inner",
+        "--report-out",
+        "/var/folders/3w/wgv95vkx69lf97wwlsh02d700000gn/T/crypto-review-zpqt8p8q/inner.json",
+        "--",
+        "/Users/sahajpatel/Code/cryto-bot/.venv/bin/python3",
+        "-c",
+        "import time; time.sleep(8)"
+      ],
+      "note": "deadline reached; partial work is incomplete, never PASS"
+    },
+    "note": "Platform-sensitive: reproduce on the deployment OS."
+  },
+  "elapsed_s": 3.244
+}

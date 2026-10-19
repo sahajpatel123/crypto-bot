@@ -1,0 +1,52 @@
+{
+ "cells": [
+  {
+   "arm": "X1-F",
+   "ckpt_dir": "outputs/x1/ckpts/realistic/X1-R1-F_dev",
+   "config_id": "X1-R1-F",
+   "dataset": "datasets/benchmark_30d.toml",
+   "days": [
+    "2026-09-11",
+    "2026-09-12",
+    "2026-09-13",
+    "2026-09-14",
+    "2026-09-15",
+    "2026-09-16",
+    "2026-09-17",
+    "2026-09-18",
+    "2026-09-19",
+    "2026-09-20",
+    "2026-09-21",
+    "2026-09-22",
+    "2026-09-23",
+    "2026-09-24",
+    "2026-09-25",
+    "2026-09-26"
+   ],
+   "engine_seed": 42,
+   "filters_file": "filters/x1_bench_filters.json",
+   "jobs": [
+    {
+     "report": "outputs/x1/reports/realistic/X1-R1-F_dev_j1.json",
+     "resume": false,
+     "wall_budget_s": 900
+    }
+   ],
+   "run_id": "x1-realistic-X1-R1-F_dev",
+   "split": "dev",
+   "spread": "PROFILE",
+   "symbols": [
+    "BTCUSDT",
+    "ETHUSDT"
+   ],
+   "tag": "realistic",
+   "toml": "configs/x1-r1-f.toml",
+   "window_ms": [
+    1789151400000,
+    1790447400000
+   ]
+  }
+ ],
+ "frozen": "pre-outcome run manifest (24 cells, 48 jobs, all wall<=1500s)",
+ "tool": "tools/x1_bench_bridge.py"
+}

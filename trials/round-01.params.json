@@ -1,0 +1,97 @@
+{
+ "families": {
+  "S1": {
+   "module_consts": {
+    "MAX_CONSECUTIVE_MISSING_HALT": 5
+   },
+   "params": {
+    "breakout_n": 120,
+    "entry_expiry_s": 15,
+    "entry_tol_bps": 2.0,
+    "flow_f": 10,
+    "flow_min": 0.58,
+    "holding_limit_s": 120,
+    "inval_m": 30,
+    "mom_m": 30,
+    "mom_min_bps": 5.0,
+    "spread_max_bps": 3.0,
+    "take_r": 1.5,
+    "vol_v": 60,
+    "vol_z_min": 1.0
+   }
+  },
+  "S2": {
+   "module_consts": {
+    "MAX_CONSECUTIVE_MISSING_HALT": 5,
+    "WARMUP_N": 120
+   },
+   "params": {
+    "entry_expiry_s": 15,
+    "entry_tol_bps": 2.0,
+    "flow_f": 10,
+    "flow_min": 0.58,
+    "holding_limit_s": 120,
+    "inval_buf_bps": 2.0,
+    "pull_m": 10,
+    "pull_max_bps": 60.0,
+    "pull_min_bps": 8.0,
+    "resume_k": 5,
+    "resume_min_bps": 2.0,
+    "spread_max_bps": 3.0,
+    "take_r": 1.5,
+    "trend_min_bps": 25.0,
+    "trend_n": 60,
+    "vol_v": 60,
+    "vol_z_min": 1.0,
+    "warmup_n": 120
+   }
+  },
+  "S3": {
+   "module_consts": {
+    "MAX_CONSECUTIVE_MISSING_HALT": 5,
+    "WARMUP_N": 120
+   },
+   "params": {
+    "cost_cover_bps": 26.0,
+    "edge_tol_bps": 4.0,
+    "entry_expiry_s": 15,
+    "entry_tol_bps": 2.0,
+    "holding_limit_s": 120,
+    "range_n": 120,
+    "spread_max_bps": 2.0,
+    "stall_m": 30,
+    "stall_max_bps": 3.0,
+    "touch_m": 60,
+    "touch_min": 2,
+    "vwap_n": 60,
+    "warmup_n": 120,
+    "width_max_bps": 120.0,
+    "width_min_bps": 15.0
+   }
+  },
+  "S4": {
+   "module_consts": {
+    "MAX_CONSECUTIVE_MISSING_HALT": 5,
+    "WARMUP_N": 120
+   },
+   "params": {
+    "entry_expiry_s": 15,
+    "entry_tol_bps": 2.0,
+    "holding_limit_s": 120,
+    "mom_m": 10,
+    "mom_min_bps": 4.0,
+    "pierce_lb": 6,
+    "pierce_max_bps": 6.0,
+    "reclaim_k": 5,
+    "ref_n": 114,
+    "spread_max_bps": 3.0,
+    "take_r": 1.5,
+    "warmup_n": 120
+   }
+  }
+ },
+ "format": "round-01-params/1",
+ "note": "Executable truth transcribed from frozen param dataclasses at freeze time; reviewed against specs/cards (see outbox notes on S2/S4 take_r + HALT_GAP naming).",
+ "registry": "trials/round-01.json",
+ "sha": "f08fa9c507a5ef17"
+}

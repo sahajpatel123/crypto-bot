@@ -1,0 +1,15 @@
+# H1 frozen research config (prereg 2026-10-18); not a live config.
+hypothesis = "H1"
+symbols = ["BTCUSDT", "ETHUSDT"]
+imbalance_thresholds = [0.5, 0.6, 0.7]
+queue_ahead_fractions = [0.0, 0.5, 1.0]
+max_holding_minutes = [5, 15, 30]
+stop_bps = 25.0
+target_bps = 50.0
+maker_entry_bps = 2.0
+taker_exit_bps = 5.0
+spread_bps = 2.0
+slippage_bps = 6.0
+min_dev_trades = 100
+promotion_mean_bps = 2.0
+family_size = 6

@@ -1,0 +1,15 @@
+{
+ "created_utc": "2026-10-18T21:57:00.092191+00:00",
+ "family": "C",
+ "format": "cryptobot-autopilot-registry/1",
+ "hypotheses": {
+  "C1": {
+   "commit": "fea7f69",
+   "config_sha256": "fca4a03c29b2f7cca4d79e2bd97d4d4572e69a61a6cad62b012a209354f0fa8d",
+   "family_size": 1,
+   "hypothesis": "C1",
+   "prereg": "research/prereg/C1-b4b-carry.md",
+   "registered_utc": "2026-10-18T21:57:00.093033+00:00"
+  }
+ }
+}
