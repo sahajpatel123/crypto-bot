@@ -10,8 +10,10 @@ import contextlib
 import hashlib
 import hmac
 import json
+import select
 import socket
 import threading
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qsl, urlsplit
 
@@ -52,6 +54,33 @@ def _ws_frame(text: str) -> bytes:
     else:
         header = bytes([0x81, 127]) + n.to_bytes(8, "big")
     return header + data
+
+
+def _client_gone(connection) -> bool:
+    """Peek the client socket: EOF or a close frame means it left."""
+    try:
+        ready, _, _ = select.select([connection], [], [], 0)
+        if not ready:
+            return False
+        data = connection.recv(2, socket.MSG_PEEK)
+    except OSError:
+        return True
+    if not data:
+        return True
+    return (data[0] & 0x0F) == 0x8
+
+
+class _QuietServer(ThreadingHTTPServer):
+    """ThreadingHTTPServer that ignores client resets during fault tests."""
+
+    daemon_threads = True
+
+    def handle_error(self, request, client_address) -> None:
+        import sys
+        exc = sys.exc_info()[1]
+        if isinstance(exc, (ConnectionResetError, BrokenPipeError, OSError)):
+            return None
+        return super().handle_error(request, client_address)
 
 
 class MockEx:
@@ -119,7 +148,13 @@ class MockEx:
                 self.wfile.write(payload)
 
             def _error(self, exc: VenueHttpError) -> None:
-                status = exc.status or 400
+                status = exc.status or 0
+                if status == 0:
+                    # Simulated read timeout: no response, drop the
+                    # connection so the client sees a transport error
+                    # (the adapter maps that to UNKNOWN, never retry).
+                    self.close_connection = True
+                    return
                 doc = {"code": exc.code if exc.code is not None else -1000,
                        "msg": exc.msg, "emulated": True,
                        "provenance": EMULATED}
@@ -143,20 +178,15 @@ class MockEx:
                 self.send_header("Sec-WebSocket-Accept", accept)
                 self.send_header("X-Cryptobot-Provenance", EMULATED)
                 self.end_headers()
-                book = owner.venue.book("BTCUSDT")
-                event = {"e": "bookTicker", "s": "BTCUSDT",
-                         "b": f"{book['bid']:.2f}", "a": f"{book['ask']:.2f}",
-                         "provenance": EMULATED, "emulated": True}
-                queued = owner.venue.poll_stream()
-                if isinstance(queued, dict):
-                    queued = dict(queued)
-                    queued["provenance"] = EMULATED
-                    event = queued
-                self.wfile.write(_ws_frame(json.dumps(event)))
-                with contextlib.suppress(OSError):
-                    self.connection.shutdown(socket.SHUT_RDWR)
+                try:
+                    owner._ws_session(self)
+                except (BrokenPipeError, ConnectionResetError, OSError):
+                    pass
+                finally:
+                    with contextlib.suppress(OSError):
+                        self.connection.shutdown(socket.SHUT_RDWR)
 
-        self.httpd = ThreadingHTTPServer((host, port), Handler)
+        self.httpd = _QuietServer((host, port), Handler)
         self.httpd.daemon_threads = True
         bound = self.httpd.server_address[1]
         self._thread = threading.Thread(target=self.httpd.serve_forever,
@@ -169,6 +199,121 @@ class MockEx:
             self.httpd.shutdown()
             self.httpd.server_close()
             self.httpd = None
+
+    # -- websocket sessions (market + user data) ---------------------------
+    def _ws_session(self, handler) -> None:
+        """Stream EMULATED frames until the client leaves or time cap."""
+        parts = urlsplit(handler.path)
+        query = dict(parse_qsl(parts.query, keep_blank_values=True))
+        limit = int(query.get("frames", "50"))
+        names = self._stream_names(parts.path, query)
+        user_key = self._user_key(parts.path)
+        if user_key is not None:
+            self.venue._expire_listen_key_if_due()
+            if user_key != self.venue.listen_key:
+                self._ws_send(handler, {"e": "listenKeyExpired",
+                                        "E": self.venue.now_ms()})
+                self._ws_close(handler, 1000, "listenKeyExpired")
+                return
+        deadline = time.monotonic() + 8.0
+        sent = 0
+        while sent < limit and time.monotonic() < deadline:
+            if _client_gone(handler.connection):
+                return
+            if user_key is not None:
+                try:
+                    event = self.venue.poll_stream()
+                except ConnectionError:
+                    self._ws_close(handler, 1011, "stream died")
+                    return
+                if event is None:
+                    self.venue._expire_listen_key_if_due()
+                    time.sleep(0.02)
+                    continue
+                if event.get("e") == "listenKeyExpired":
+                    self._ws_send(handler, event)
+                    self._ws_close(handler, 1000, "listenKeyExpired")
+                    return
+            else:
+                if not names:
+                    return
+                event = self._market_event(names[sent % len(names)], sent)
+                if parts.path.startswith("/stream"):
+                    event = {"stream": names[sent % len(names)],
+                             "data": _stamp(event)}
+            self._ws_send(handler, event)
+            sent += 1
+            time.sleep(0.02)
+        self._ws_close(handler, 1000, "done")
+
+    def _ws_send(self, handler, event: dict) -> None:
+        handler.wfile.write(_ws_frame(json.dumps(_stamp(event))))
+        handler.wfile.flush()
+
+    @staticmethod
+    def _ws_close(handler, code: int, reason: str) -> None:
+        payload = code.to_bytes(2, "big") + reason.encode("utf-8")[:120]
+        frame = bytes([0x88, len(payload)]) + payload
+        with contextlib.suppress(OSError):
+            handler.wfile.write(frame)
+            handler.wfile.flush()
+            handler.connection.shutdown(socket.SHUT_RDWR)
+
+    def _user_key(self, path: str) -> str | None:
+        if not path.startswith("/ws/"):
+            return None
+        last = path.rstrip("/").rsplit("/", 1)[-1]
+        # Our listenKeys are `sandbox-<uuid>`; a market stream name always
+        # contains '@' or is a bare symbol. Treat sandbox keys as private.
+        if last.startswith("sandbox-"):
+            return last
+        return None
+
+    @staticmethod
+    def _stream_names(path: str, query: dict) -> list[str]:
+        if query.get("streams"):
+            return [s for s in query["streams"].split("/") if s]
+        if path.startswith("/ws/"):
+            tail = path[len("/ws/"):].strip("/")
+            return [s for s in tail.split("/") if s]
+        return ["btcusdt@bookTicker"]
+
+    def _market_event(self, name: str, seq: int) -> dict:
+        symbol = name.split("@", 1)[0].upper()
+        stream = name.split("@", 1)[1].lower() if "@" in name else "bookticker"
+        book = self.venue.book(symbol)
+        mark = self.venue.mid(symbol)
+        now = self.venue.now_ms()
+        spec = self.venue_spec(symbol)
+        if stream == "aggtrade":
+            return {"e": "aggTrade", "E": now, "s": symbol,
+                    "a": 1000 + seq, "p": f"{mark:.2f}", "q": "0.010",
+                    "f": 1000 + seq, "l": 1000 + seq, "T": now,
+                    "m": seq % 2 == 0}
+        if stream == "depth":
+            return {"e": "depthUpdate", "E": now, "T": now, "s": symbol,
+                    "U": 2000 + seq, "u": 2001 + seq, "pu": 1999 + seq,
+                    "b": [[f"{book['bid']:.2f}", "1.000"]],
+                    "a": [[f"{book['ask']:.2f}", "1.000"]]}
+        if stream == "markprice":
+            return {"e": "markPriceUpdate", "E": now, "s": symbol,
+                    "p": f"{mark:.2f}", "i": f"{mark:.2f}",
+                    "P": f"{mark:.2f}", "r": str(spec["funding_8h"]),
+                    "T": now + 28_800_000}
+        if stream == "forceorder":
+            return {"e": "forceOrder", "E": now, "o": {
+                "s": symbol, "S": "SELL", "o": "LIMIT", "f": "IOC",
+                "q": "0.010", "p": f"{mark * 0.99:.2f}",
+                "ap": f"{mark * 0.99:.2f}", "X": "FILLED", "l": "0.010",
+                "z": "0.010", "T": now}}
+        return {"e": "bookTicker", "u": 3000 + seq, "s": symbol,
+                "b": f"{book['bid']:.2f}", "B": "1.000",
+                "a": f"{book['ask']:.2f}", "A": "1.000", "T": now}
+
+    @staticmethod
+    def venue_spec(symbol: str) -> dict:
+        from cryptobot.adapters.sandbox_venue import SYMBOLS
+        return SYMBOLS[symbol.upper()]
 
     def _verified_params(self, raw: str) -> dict:
         if "signature=" not in raw:

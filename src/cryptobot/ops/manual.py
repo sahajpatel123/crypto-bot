@@ -9,9 +9,10 @@ import json
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-from cryptobot.adapters.sandbox_venue import SandboxVenue
+from cryptobot.adapters.sandbox_venue import SYMBOLS, SandboxVenue
 from cryptobot.coordination.intent import DataQuality, ForecastCost, Intent, Side
 from cryptobot.risk.policy import RiskPolicy
+from cryptobot.risk.rounding import floor_to_step, round_to_tick
 from cryptobot.risk.types import AccountSnapshot, Approved, RiskConfig
 
 
@@ -98,7 +99,8 @@ def apply_order(book: Book, *, symbol: str, side: str, qty: float,
                 client_id: str | None = None) -> dict:
     if book.paused and not reduce_only:
         return {"ok": False, "message": "ops: REFUSED entries paused"}
-    px = price or book.venue.mid(symbol)
+    px = round_to_tick(price or book.venue.mid(symbol),
+                       float(SYMBOLS.get(symbol.upper(), {"tick": 0.01})["tick"]))
     qty_out = qty
     notional = qty * px
     if not reduce_only:
@@ -107,6 +109,17 @@ def apply_order(book: Book, *, symbol: str, side: str, qty: float,
             return {"ok": False, "message": decision}
         qty_out = decision.qty or qty
         notional = decision.notional_usdt
+    spec = SYMBOLS.get(symbol.upper())
+    if spec is None:
+        return {"ok": False,
+                "message": f"ops: REFUSED unknown symbol {symbol}"}
+    qty_out = floor_to_step(qty_out, float(spec["step"]))
+    if qty_out < float(spec["min_qty"]):
+        return {"ok": False,
+                "message": "ops: REFUSED qty below venue minimum"}
+    px = round_to_tick(px, float(spec["tick"]))
+    if stop_price is not None:
+        stop_price = round_to_tick(stop_price, float(spec["tick"]))
     if kind in ("STOP_MARKET", "TAKE_PROFIT_MARKET"):
         if stop_price is None:
             return {"ok": False,

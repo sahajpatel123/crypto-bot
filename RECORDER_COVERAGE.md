@@ -18,3 +18,13 @@ H4's other venues are not enabled. Measured recorder use is about
 (`RECORDER_COSTS.md`), while adjudication is 90 days out. Adding
 venues would spend that disk. D-046 records this as
 IMPRACTICAL-BY-RESOURCE. The H4 prereg was not edited.
+
+## Emulator coverage (never evidence)
+
+`cryptobot emulator drill` exercises the same stream set against
+MockEx over real sockets: combined `aggTrade`, `bookTicker`,
+`depth@100ms`, `markPrice@1s`, `forceOrder`, plus the private user
+stream and listenKey expiry. A recorder smoke test feeds those
+EMULATED frames through the real recorder into a chunk stamped
+SYNTHETIC. Neither drill nor smoke can satisfy `gate`'s demo-drill
+or any verdict requirement.

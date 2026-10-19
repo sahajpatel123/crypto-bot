@@ -505,3 +505,31 @@ Meta Muse Spark.
   Full WS market streams, tick/step server validation, 418/502/504
   injects, and SIGKILL-resume remain future work, recorded in
   STATE.md. No prereg edited. No arm or GO artifact written.
+- D-049 (B/D completion, 2026-10-20, commits after a791864): MockEx
+  now serves combined market streams (aggTrade, bookTicker,
+  depthUpdate, markPriceUpdate, forceOrder) over a real WebSocket,
+  plus the private user-data stream with listenKey TTL enforcement
+  and clean close on scripted death. SandboxVenue validates tick,
+  step and min-notional server-side (-4014) instead of trusting the
+  client, and injects 418, 502, 504, timeout (connection drop) and
+  deterministic reject. The drill is 19 cells: auth/filters/entry,
+  partial/IOC, protection, 429/418/502/504/timeout/reject, clock
+  skew, market streams, user stream, listenKey expiry, watchdog
+  freshness, SIGTERM flatten and SIGKILL resume in separate OS
+  processes, flatten-under-failure, resume. The 24-step soak uses a
+  fresh engine per hour, all eight fault actions, and proves no
+  duplicate fill, no lost fill (venue tape vs adopted journal) and
+  zero open positions. A recorder smoke test feeds EMULATED streams
+  through the real recorder into a SYNTHETIC sealed chunk.
+  Selftest --all now also runs risk acceptance, a chaos subset,
+  determinism, vault/verdict/gate/arm refusals, adjudicator
+  branches, recorder smoke, host-check and background status
+  (140 checks). D4: the daily autopilot report carries recorder gap
+  %, and `background status` projects disk days against the
+  adjudication date and notifies on shortfall. EXTERNAL_DATA_ROOT
+  is still unset, so the recorder/lake were not moved (D-046
+  stands); measured projection is ~16 days of disk against ~103
+  days to adjudication, which is recorded as an owner resource
+  item, not silently ignored. Retention compaction was not run on
+  the real recorder (no external root, ample local headroom); the
+  code path is not claimed.

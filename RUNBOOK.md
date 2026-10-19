@@ -11,8 +11,12 @@ Full ops list: `status`, `positions`, `orders`, `pause`, `resume`,
 `kill` (cancel-all + flatten + halt), `order --kind MARKET|LIMIT|
 STOP_MARKET|TAKE_PROFIT_MARKET [--price <p>] [--stop-price <p>]
 [--post-only] [--reduce-only] [--client-id <id>]`.
-Background jobs: `cryptobot background status` (free disk, next
-adjudication date); `install`/`uninstall` wrap `deploy/macos/*.sh`.
+Background jobs: `cryptobot background status` (free disk, projected
+disk days, recorder gap %, next adjudication date; notifies when the
+projection is shorter than the wait). `install`/`uninstall` wrap
+`deploy/macos/*.sh`; jobs run after completion and never block it.
+Daily gaps: `cryptobot autopilot report` includes the recorder gap %
+(`--recorder-root`, `--no-notify`); above 5% it posts a notification.
 Owner steps: `cryptobot owner` (resumable via `--step <name>`).
 Certificate: `cryptobot certify --out COMPLETION_CERTIFICATE.md
 --matrix-out COMMAND_MATRIX.md` (fails unless selftest is 100% PASS).

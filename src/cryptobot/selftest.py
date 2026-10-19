@@ -65,7 +65,24 @@ def _check(name: str, ok: bool, detail: str, results: list[dict]) -> None:
                     "detail": detail})
 
 
-def run_selftest(*, include_emulator: bool = True) -> dict:
+def _pytest_subset(files: list[str], label: str,
+                   results: list[dict]) -> None:
+    """Run a focused, hermetic pytest subset (A3 acceptance evidence)."""
+    root = Path(__file__).resolve().parents[2]
+    try:
+        proc = subprocess.run(
+            [sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider",
+             *files],
+            cwd=root, capture_output=True, text=True, timeout=600)
+        tail = (proc.stdout or proc.stderr).strip().splitlines()[-1:] or [""]
+        _check(f"acceptance-{label}", proc.returncode == 0,
+               tail[0][:160], results)
+    except subprocess.TimeoutExpired:
+        _check(f"acceptance-{label}", False, "timeout", results)
+
+
+def run_selftest(*, include_emulator: bool = True,
+                 include_suites: bool = False) -> dict:
     results: list[dict] = []
     rows = command_rows()
     for row in rows:
@@ -153,7 +170,7 @@ def run_selftest(*, include_emulator: bool = True) -> dict:
            and "Traceback" not in blob, f"rc={proc.returncode}", results)
 
     if include_emulator:
-        from cryptobot.emulator.drill import run_drill, run_soak
+        from cryptobot.emulator.drill import run_drill, run_recorder_smoke, run_soak
         with tempfile.TemporaryDirectory() as tmp:
             drill = run_drill(Path(tmp))
             _check("emulator-drill", drill["verdict"] == "PASS"
@@ -164,6 +181,31 @@ def run_selftest(*, include_emulator: bool = True) -> dict:
                    and soak["provenance"] == "EMULATED"
                    and soak["peak_bytes"] < 200_000_000,
                    f"peak={soak['peak_bytes']}", results)
+            smoke = run_recorder_smoke(Path(tmp) / "rec")
+            _check("recorder-emulator-smoke", smoke["verdict"] == "PASS"
+                   and smoke["input_class"] == "SYNTHETIC",
+                   f"chunks={smoke.get('chunks')} "
+                   f"records={smoke.get('records')}", results)
+        code, text = invoke(["host-check", "--no-network"])
+        _check("host-check", code in (0, 2) and "verdict" in text
+               and "Traceback" not in text, f"exit {code}", results)
+        code, text = invoke(["background", "status"])
+        _check("background-status", code == 0
+               and "adjudication_final_utc" in text
+               and "Traceback" not in text, f"exit {code}", results)
+
+    if include_suites:
+        _pytest_subset(["tests/acceptance/test_risk_gates.py"],
+                       "risk", results)
+        _pytest_subset(["tests/audit/test_sandbox_drill.py"],
+                       "chaos", results)
+        _pytest_subset(["tests/acceptance/test_determinism.py"],
+                       "determinism", results)
+        _pytest_subset(["tests/unit/test_autopilot_gate.py",
+                        "tests/unit/test_invalidation.py"],
+                       "vault-verdict-gate-arm", results)
+        _pytest_subset(["tests/unit/test_adjudicate.py"],
+                       "adjudicator", results)
 
     failed = [r for r in results if r["status"] != "PASS"]
     return {"verdict": "FAIL" if failed else "PASS",
@@ -208,7 +250,8 @@ def main_selftest(argv: list[str] | None = None) -> int:
     parser.add_argument("--matrix-out", default=None)
     args = parser.parse_args(argv)
     os.environ.setdefault("CRYPTOBOT_SELFTEST", "1")
-    report = run_selftest(include_emulator=True)
+    report = run_selftest(include_emulator=True,
+                          include_suites=bool(args.all))
     if args.matrix_out:
         Path(args.matrix_out).write_text(render_matrix(report), encoding="utf-8")
     print(f"selftest: {report['verdict']}")

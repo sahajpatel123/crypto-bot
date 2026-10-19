@@ -64,14 +64,14 @@ No demonstrated edge.
 
 | ID | Task | Status | Evidence |
 |---|---|---|---|
-| A | Command matrix + selftest | DONE | `cryptobot selftest --all` PASS, 57 commands, 132 checks, `COMMAND_MATRIX.md`. Exact exits, creds/bare/monitor checks (D-048) |
-| B | Exchange emulator + drill + soak | DONE-MINIMAL | Real-socket drill 8 cells PASS + 24-step soak, EMULATED-stamped incl. lists, gate rejects. Full WS streams, tick/step server checks, 418/502/504, SIGKILL-resume are future work (D-048) |
+| A | Command matrix + selftest | DONE | `cryptobot selftest --all` PASS, 57 commands, 140 checks (risk/chaos/determinism/refusals/adjudicator/recorder smoke/host/background), `COMMAND_MATRIX.md` |
+| B | Exchange emulator + drill + soak | DONE | 19-cell real-socket drill + 24h soak with all faults and fill integrity, `tests/unit/test_emulator_hardening.py`; EMULATED-stamped incl. list rows and combined streams; recorder smoke. Gate rejects it |
 | C | Operator commands | DONE | `cryptobot ops` incl. STOP/TP via algo, post-only, cancel/cancel-all, flatten, kill; prod refuses every action; 10 tests in `test_ops_commands.py` (D-048) |
-| D1 | Move data root | CUT | `EXTERNAL_DATA_ROOT` empty. Data stays in the worktree. D-046 |
+| D1 | Move data root | CUT | `EXTERNAL_DATA_ROOT` unset. Data stays in the worktree; alias supported. Projection ~16d vs 103d to adjudication surfaces as `disk_alert` (D-046/D-049) |
 | D2 | Recorder coverage | DONE | `RECORDER_COVERAGE.md`. H4 other venues IMPRACTICAL-BY-RESOURCE (D-046) |
 | D3 | C1 timeline | DONE | `c1_final_utc`. Test `test_c1_final_date_never_passes_the_grace`. Force-close stays at T per frozen prereg (D-048) |
-| D4 | Sleep / gap notify | CUT | caffeinate is already in the recorder plist. A new gap notifier was not added |
-| D5 | background install/status | DONE | `cryptobot background status` prints the adjudication date. install.sh uses `$ROOT/.venv` (D-048) |
+| D4 | Sleep / gap notify | DONE | caffeinate in the recorder plist; daily gap % in `autopilot report` (`ops/gaps.py`); `background status` disk projection + notification; tests `test_recorder_gaps.py`, `test_background_status.py` |
+| D5 | background install/status | DONE | `cryptobot background status` prints adjudication date, disk/gap fields. install.sh uses `$ROOT/.venv` (D-048) |
 | E1 | owner wizard | DONE | `cryptobot owner` prints PASS/TODO + send-back, validates --step (D-048) |
 | E2 | README quickstart | DONE | fresh clone `/tmp/cryptobot-ops-clean2` at `3bf4baa`: install 1.3s, doctor READY, selftest 132/0 PASS, drill 8 cells EMULATED + soak 24h, final-status/owner/background/monitor/ops all run. `release/cleanroom-ops2.log` ends CLEANROOM_OK |
 | E3 | certify | DOING | `cryptobot certify` exit 0 on `e7babf2` (132/0, 57 cmds). Final cert after suite + clean-room |

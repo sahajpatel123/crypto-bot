@@ -54,8 +54,9 @@ def resolve_data_roots(repo: Path | None = None) -> DataRoots:
         base = Path(str(cfg["root"]))
     else:
         base = repo
-    external_txt = os.environ.get("CRYPTOBOT_EXTERNAL_ROOT") or str(
-        cfg.get("external_root") or "")
+    external_txt = (os.environ.get("CRYPTOBOT_EXTERNAL_ROOT")
+                    or os.environ.get("EXTERNAL_DATA_ROOT")
+                    or str(cfg.get("external_root") or ""))
     external = Path(external_txt) if external_txt else None
     lake_rel = str(cfg.get("lake") or "data/lake")
     pilot_rel = str(cfg.get("pilot") or "data/pilot")

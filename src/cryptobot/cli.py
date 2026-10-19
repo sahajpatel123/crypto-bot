@@ -1268,6 +1268,14 @@ def _current_commit() -> str:
         return os.environ.get("CRYPTOBOT_CODE_COMMIT", "unknown")
 
 
+def _watchdog_fresh(heartbeat: dict) -> bool:
+    """Gate predicate: heartbeat within 90s and it declares exposure."""
+    return (bool(heartbeat.get("ts_utc"))
+            and (_age_days(heartbeat.get("ts_utc")) is not None)
+            and _age_days(heartbeat.get("ts_utc")) <= (90.0 / 86400.0)
+            and "has_exposure" in heartbeat)
+
+
 def cmd_gate(args: argparse.Namespace) -> int:
     """GO/NO-GO gate (F5.1). Machine evidence only; 24h expiry."""
     verdict = _read_json(args.verdict_json)
@@ -1329,10 +1337,7 @@ def cmd_gate(args: argparse.Namespace) -> int:
         and float(latency["p99_feed_age_ms"]) <= 250.0
         and isinstance(latency.get("drop_rate"), (int, float))
         and float(latency["drop_rate"]) <= 0.001,
-        "watchdog_heartbeat_fresh": bool(heartbeat.get("ts_utc"))
-        and (_age_days(heartbeat.get("ts_utc")) is not None)
-        and _age_days(heartbeat.get("ts_utc")) <= (90.0 / 86400.0)
-        and "has_exposure" in heartbeat,
+        "watchdog_heartbeat_fresh": _watchdog_fresh(heartbeat),
         "no_blocked_in_state": "| BLOCKED |" not in state_text,
     }
     details: dict[str, object] = {}
@@ -1595,6 +1600,10 @@ def cmd_autopilot(args: argparse.Namespace) -> int:
         return 0
     if args.autopilot_cmd == "report":
         report = bot.report()
+        from cryptobot.ops.gaps import recorder_gap_report
+        report["recorder"] = recorder_gap_report(
+            getattr(args, "recorder_root", "data/recorder"),
+            notify=not getattr(args, "no_notify", False))
         print(json.dumps(report, indent=1, sort_keys=True))
         bot._write_daily(report)
         return 0
@@ -1851,6 +1860,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--family", default="A", choices=("A", "B"))
     p.add_argument("--allow-synthetic", action="store_true",
                    help="only for F8.1 acceptance; never for a real gate")
+    p.add_argument("--recorder-root", default="data/recorder")
+    p.add_argument("--no-notify", action="store_true")
     p.set_defaults(func=cmd_autopilot)
     p = sub.add_parser("research", help="hypothesis registry / power (F4)")
     p.add_argument("research_cmd", choices=("register", "power"))
@@ -1982,6 +1993,7 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("background", help="launchd install, uninstall, status")
     p.add_argument("background_cmd", choices=("install", "uninstall", "status"))
     p.add_argument("--recorder", default="data/recorder")
+    p.add_argument("--no-notify", action="store_true")
     p.set_defaults(func=cli_extra.cmd_background)
     p = sub.add_parser("owner", help="guided human-only steps")
     p.add_argument("--state", default="runs/owner-wizard.json")

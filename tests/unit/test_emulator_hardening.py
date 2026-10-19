@@ -48,7 +48,12 @@ def test_drill_has_5xx_cell_and_stays_flat(tmp_path: Path):
     doc = run_drill(tmp_path)
     assert doc["verdict"] == "PASS", doc["cells"]
     names = [c["cell"] for c in doc["cells"]]
-    assert "http-503" in names, names
+    for required in ("http-502", "http-504", "http-timeout", "http-reject",
+                     "http-418", "market-streams", "user-data-stream",
+                     "listenkey-expiry", "watchdog-freshness",
+                     "sigterm-flatten", "sigkill-resume",
+                     "flatten-under-failure"):
+        assert required in names, names
     assert all(c.get("flat") for c in doc["cells"])
 
 
@@ -57,3 +62,6 @@ def test_soak_defaults_to_24_hours():
     assert doc["hours"] == 24
     assert doc["verdict"] == "PASS"
     assert doc["provenance"] == "EMULATED"
+    assert doc["duplicate_fill"] is False
+    assert doc["lost_fill"] is False
+    assert doc["open_positions"] == 0
