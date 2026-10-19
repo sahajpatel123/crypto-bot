@@ -1,0 +1,6 @@
+{
+ "method": "gzip -9 of byte-identical events.jsonl stream",
+ "stream_sha256": "b8d3dd476d73457699b0f143a17cf1674ffb857063f55937225f234c6aafdf7f",
+ "verified": true,
+ "date": "2026-10-17T12:38:32.857151+00:00"
+}

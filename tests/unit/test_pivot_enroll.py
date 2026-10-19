@@ -206,3 +206,17 @@ def test_unattested_prior_use_blocks_enrollment(tmp_path):
     res = pivot_enroll.audit(cap, False)
     assert res["verdict"] == "DEVELOPMENT-ONLY"
     assert any("untouched UNKNOWN" in r for r in res["reasons"])
+
+
+def test_single_capture_reads_gz_when_plain_absent(tmp_path):
+    import gzip
+    cap = _capture(tmp_path, _qualifying_events(),
+                   {"run_id": "synthetic", "symbols": ["BTCUSDT"]})
+    plain = cap / "events.jsonl"
+    blob = plain.read_bytes()
+    with gzip.open(cap / "events.jsonl.gz", "wb") as fh:
+        fh.write(blob)
+    plain.unlink()
+    res = pivot_enroll.audit(cap, True)
+    assert res["verdict"] == "ENROLLED"
+    assert res["events"] == len(_qualifying_events())

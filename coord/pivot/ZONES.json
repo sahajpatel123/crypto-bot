@@ -1,1 +1,125 @@
-{"note":"Zone statuses are MANAGER-SIGNED records, never auto-passed. zone_status.py only verifies that each zone's cited evidence exists and parses; a zone shows EVIDENCE-OK only when every check passes. Overall readiness requires all zones GREEN + manager sign-off in this file; the tool cannot grant it.","updated_utc":"2026-10-16T00:00:00Z","version":2,"zones":{"Z0-safety":{"evidence":[{"kind":"exists","path":"src/cryptobot/app/config.py"},{"kind":"exists","path":"configs/prod.toml"},{"kind":"exists","path":"reports/pivot/SWEEP-2026-10-16.md"}],"note":"Live submission gated at config + adapter layers; prod forbids demo keys/hosts. Sweep 2026-10-16: 43 readiness tests green. Must stay GREEN or all work stops.","status":"GREEN"},"Z1-data":{"evidence":[{"kind":"exists","path":"coord/pivot/CAPTURE-RUNBOOK.md"},{"kind":"exists","path":"reports/pivot/SWEEP-2026-10-16.md"}],"note":"RED: runbook exists (process) but no qualifying dataset enrolled; sweep reproduced DEVELOPMENT-ONLY (0.02d span, no settlements). YELLOW when 10-day panel captured+audited; GREEN only when data lane freezes splits with TEST sealed.","status":"RED"},"Z2-execution":{"evidence":[{"kind":"exists","path":"coord/pivot/F2-SPEC.md"},{"kind":"exists","path":"src/cryptobot/adapters/paper_engine.py"},{"kind":"exists","path":"reports/pivot/SWEEP-2026-10-16.md"}],"note":"RED: paper path green (58 tests, sweep); F2 latch confirmed still present in-tree, fix in peer lane; live adapter fixtures hand-built, slippage unmodeled.","status":"RED"},"Z3-alpha":{"evidence":[{"contains":"NONE","key":"verdict","kind":"verdict","path":"outputs/x1/selection.json"},{"kind":"exists","path":"reports/pivot/SWEEP-2026-10-16.md"}],"note":"RED: every family NONE/REJECTED/UNRESOLVED; sweep replay agrees with frozen verdict. GREEN requires a PIVOT-01 QUALIFIED verdict on fresh data.","status":"RED"},"Z4-risk":{"evidence":[{"kind":"exists","path":"src/cryptobot/risk/policy.py"},{"kind":"exists","path":"src/cryptobot/accounting/ledger.py"},{"kind":"exists","path":"reports/pivot/SWEEP-2026-10-16.md"}],"note":"YELLOW: core strong, sweep 16 acceptance tests green; gaps: tiered margin is linear stand-in, power-loss durability not claimed.","status":"YELLOW"},"Z5-validation":{"evidence":[{"kind":"exists","path":"reports/rel/RELEASE_REPORT.md"},{"kind":"exists","path":"reports/pivot/SWEEP-2026-10-16.md"}],"note":"RED: reporting package green (34 tests, sweep) but all paper runs are loop mechanics; demo validation pending, no creds by policy.","status":"RED"},"Z6-liveops":{"evidence":[],"note":"RED: no demo validation, no operator runbook proof. Evidence list intentionally empty until a drill record exists.","status":"RED"}}}
+{
+ "note": "Zone statuses are MANAGER-SIGNED records, never auto-passed. zone_status.py only verifies that each zone's cited evidence exists and parses; a zone shows EVIDENCE-OK only when every check passes. Overall readiness requires all zones GREEN + manager sign-off in this file; the tool cannot grant it.",
+ "updated_utc": "2026-10-17T13:30:00Z",
+ "version": 2,
+ "zones": {
+  "Z0-safety": {
+   "evidence": [
+    {
+     "kind": "exists",
+     "path": "src/cryptobot/app/config.py"
+    },
+    {
+     "kind": "exists",
+     "path": "configs/prod.toml"
+    },
+    {
+     "kind": "exists",
+     "path": "reports/pivot/SWEEP-2026-10-16.md"
+    }
+   ],
+   "note": "Live submission gated at config + adapter layers; prod forbids demo keys/hosts. Sweep 2026-10-16: 43 readiness tests green. Must stay GREEN or all work stops.",
+   "status": "GREEN"
+  },
+  "Z1-data": {
+   "evidence": [
+    {
+     "kind": "exists",
+     "path": "coord/pivot/CAPTURE-RUNBOOK.md"
+    },
+    {
+     "kind": "exists",
+     "path": "reports/pivot/SWEEP-2026-10-16.md"
+    },
+    {
+     "kind": "exists",
+     "path": "reports/pivot/PILOT-RESULTS-2026-10-17.md"
+    }
+   ],
+   "note": "RED: no 10-day qualifying panel. PILOT-01 adds a 29-day volatile set (33.9M events, 0.60GB, checksums pinned) audited DEVELOPMENT-ONLY (1d span, 1m mark proxy, no quote channel); live 1-day campaign running (chunk-001/24). YELLOW when 10-day panel captured+audited; GREEN only when data lane freezes splits with TEST sealed.",
+   "status": "RED"
+  },
+  "Z2-execution": {
+   "evidence": [
+    {
+     "kind": "exists",
+     "path": "coord/pivot/F2-SPEC.md"
+    },
+    {
+     "kind": "exists",
+     "path": "src/cryptobot/adapters/paper_engine.py"
+    },
+    {
+     "kind": "exists",
+     "path": "reports/pivot/SWEEP-2026-10-16.md"
+    }
+   ],
+   "note": "YELLOW: F2 stale-mark latch FIXED in-tree (b686d0b, 7/7 recovery tests: latch-then-release, entries-flow-after-recovery); paper path green. Sim still optimistic (paper_engine prob_slippage=0.0, prob_fill_on_limit=1.0); live fixtures hand-built; demo pending.",
+   "status": "YELLOW"
+  },
+  "Z3-alpha": {
+   "evidence": [
+    {
+     "contains": "NONE",
+     "key": "verdict",
+     "kind": "verdict",
+     "path": "outputs/x1/selection.json"
+    },
+    {
+     "kind": "exists",
+     "path": "reports/pivot/SWEEP-2026-10-16.md"
+    },
+    {
+     "kind": "exists",
+     "path": "reports/pivot/PILOT-SCORING-PREREG.md"
+    }
+   ],
+   "note": "RED: every family NONE/REJECTED/UNRESOLVED; pilot-01 agrees (SCALP 4x NONE on 2038 trades, P3 NONE, P2 2.4% of target, P1 BLOCKED). GREEN requires a PIVOT-01 QUALIFIED verdict on fresh data.",
+   "status": "RED"
+  },
+  "Z4-risk": {
+   "evidence": [
+    {
+     "kind": "exists",
+     "path": "src/cryptobot/risk/policy.py"
+    },
+    {
+     "kind": "exists",
+     "path": "src/cryptobot/accounting/ledger.py"
+    },
+    {
+     "kind": "exists",
+     "path": "reports/pivot/SWEEP-2026-10-16.md"
+    }
+   ],
+   "note": "YELLOW: core strong, sweep 16 acceptance tests green; gaps: tiered margin is linear stand-in, power-loss durability not claimed.",
+   "status": "YELLOW"
+  },
+  "Z5-validation": {
+   "evidence": [
+    {
+     "kind": "exists",
+     "path": "reports/rel/RELEASE_REPORT.md"
+    },
+    {
+     "kind": "exists",
+     "path": "reports/pivot/SWEEP-2026-10-16.md"
+    }
+   ],
+   "note": "RED: reporting package green (34 tests, sweep) but all paper runs are loop mechanics; demo validation pending, no creds by policy.",
+   "status": "RED"
+  },
+  "Z6-liveops": {
+   "evidence": [
+    {
+     "kind": "verdict",
+     "path": "reports/pivot/drill-z6-2026-10-16/report.json",
+     "key": "verdict",
+     "contains": "PASS"
+    }
+   ],
+   "note": "RED: sandbox drill PASS (44 records, all phases 0) but demo validation pending (no creds by policy) and no operator runbook proof. Evidence cited; status stays RED until demo.",
+   "status": "RED"
+  }
+ }
+}

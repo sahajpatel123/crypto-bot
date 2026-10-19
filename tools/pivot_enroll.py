@@ -20,6 +20,8 @@ Exit: 0 verdict written; 2 input/contract error.
 from __future__ import annotations
 
 import argparse
+import functools
+import gzip
 import json
 from pathlib import Path
 
@@ -161,11 +163,17 @@ def audit(capture: Path, attest_untouched: bool = False,
     verdict can never qualify anything under PIVOT-01."""
     manifest = _load_json(capture / "manifest.json")
     events_path = capture / "events.jsonl"
-    if not events_path.exists():
+    if events_path.exists():
+        open_fn = functools.partial(events_path.open, encoding="utf-8")
+    elif (capture / "events.jsonl.gz").exists():
+        # Settled-day compaction (PILOT-STORAGE-2026-10-17): gzip of the
+        # byte-identical events.jsonl stream; schema untouched.
+        open_fn = functools.partial(gzip.open, capture / "events.jsonl.gz",
+                                    "rt", encoding="utf-8")
+    else:
         raise ValueError(f"missing file: {events_path}")
     acc = _Acc()
-    for e in _iter_jsonl_lines(
-            lambda: events_path.open(encoding="utf-8")):
+    for e in _iter_jsonl_lines(open_fn):
         acc.feed(e)
     symbols = acc.symbols
 

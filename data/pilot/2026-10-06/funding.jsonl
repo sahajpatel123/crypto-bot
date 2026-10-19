@@ -1,0 +1,3 @@
+{"funding_rate": -2.485e-05, "funding_ts_ms": 1791244800003, "source": "https://fapi.binance.com/fapi/v1/fundingRate?symbol=BTCUSDT&startTime=1791244800000&endTime=1791331200000&limit=10", "symbol": "BTCUSDT"}
+{"funding_rate": -1.592e-05, "funding_ts_ms": 1791273600001, "source": "https://fapi.binance.com/fapi/v1/fundingRate?symbol=BTCUSDT&startTime=1791244800000&endTime=1791331200000&limit=10", "symbol": "BTCUSDT"}
+{"funding_rate": 2.245e-05, "funding_ts_ms": 1791302400000, "source": "https://fapi.binance.com/fapi/v1/fundingRate?symbol=BTCUSDT&startTime=1791244800000&endTime=1791331200000&limit=10", "symbol": "BTCUSDT"}

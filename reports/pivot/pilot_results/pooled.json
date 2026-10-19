@@ -1,0 +1,396 @@
+{
+ "pooled": {
+  "pivot_study_01_momentum|26|BTCUSDT|15bps|LONG": {
+   "n": 939,
+   "gross_mean_bps": 0.63,
+   "net_mean_bps": -25.37,
+   "net_hit_rate": 0.0256,
+   "net_winners": 24
+  },
+  "pivot_study_01_momentum|26|BTCUSDT|15bps|SHORT": {
+   "n": 900,
+   "gross_mean_bps": -0.16,
+   "net_mean_bps": -26.16,
+   "net_hit_rate": 0.0244,
+   "net_winners": 22
+  },
+  "pivot_study_01_momentum|26|BTCUSDT|30bps|LONG": {
+   "n": 104,
+   "gross_mean_bps": 0.08,
+   "net_mean_bps": -25.92,
+   "net_hit_rate": 0.0577,
+   "net_winners": 6
+  },
+  "pivot_study_01_momentum|26|BTCUSDT|30bps|SHORT": {
+   "n": 95,
+   "gross_mean_bps": -0.11,
+   "net_mean_bps": -26.11,
+   "net_hit_rate": 0.0421,
+   "net_winners": 4
+  },
+  "pivot_study_01_momentum|52|BTCUSDT|15bps|LONG": {
+   "n": 939,
+   "gross_mean_bps": 0.63,
+   "net_mean_bps": -51.37,
+   "net_hit_rate": 0.0032,
+   "net_winners": 3
+  },
+  "pivot_study_01_momentum|52|BTCUSDT|15bps|SHORT": {
+   "n": 900,
+   "gross_mean_bps": -0.16,
+   "net_mean_bps": -52.16,
+   "net_hit_rate": 0.0033,
+   "net_winners": 3
+  },
+  "pivot_study_01_momentum|52|BTCUSDT|30bps|LONG": {
+   "n": 104,
+   "gross_mean_bps": 0.08,
+   "net_mean_bps": -51.92,
+   "net_hit_rate": 0.0,
+   "net_winners": 0
+  },
+  "pivot_study_01_momentum|52|BTCUSDT|30bps|SHORT": {
+   "n": 95,
+   "gross_mean_bps": -0.11,
+   "net_mean_bps": -52.11,
+   "net_hit_rate": 0.0105,
+   "net_winners": 1
+  },
+  "pivot_study_02_swing|26|BTCUSDT|4h-cont|ALL": {
+   "n": 63,
+   "gross_mean_bps": -10.53,
+   "net_mean_bps": -36.53,
+   "net_hit_rate": 0.2857,
+   "net_winners": 18
+  },
+  "pivot_study_02_swing|26|BTCUSDT|4h-cont|LONG": {
+   "n": 37,
+   "gross_mean_bps": -13.22,
+   "net_mean_bps": -39.22,
+   "net_hit_rate": 0.2432,
+   "net_winners": 9
+  },
+  "pivot_study_02_swing|26|BTCUSDT|4h-cont|SHORT": {
+   "n": 26,
+   "gross_mean_bps": -6.71,
+   "net_mean_bps": -32.71,
+   "net_hit_rate": 0.3462,
+   "net_winners": 9
+  },
+  "pivot_study_02_swing|52|BTCUSDT|4h-cont|ALL": {
+   "n": 63,
+   "gross_mean_bps": -10.53,
+   "net_mean_bps": -62.53,
+   "net_hit_rate": 0.1905,
+   "net_winners": 12
+  },
+  "pivot_study_02_swing|52|BTCUSDT|4h-cont|LONG": {
+   "n": 37,
+   "gross_mean_bps": -13.22,
+   "net_mean_bps": -65.22,
+   "net_hit_rate": 0.1622,
+   "net_winners": 6
+  },
+  "pivot_study_02_swing|52|BTCUSDT|4h-cont|SHORT": {
+   "n": 26,
+   "gross_mean_bps": -6.71,
+   "net_mean_bps": -58.71,
+   "net_hit_rate": 0.2308,
+   "net_winners": 6
+  }
+ },
+ "carry": [
+  {
+   "capture": "data/pilot/2026-09-18",
+   "caveat": "funding leg only; hedge leg unobservable in pilot",
+   "date": "2026-09-18",
+   "funding_bps": 2.252,
+   "settlements": 3,
+   "target_bps": 40.0,
+   "target_ratio": 0.0563
+  },
+  {
+   "capture": "data/pilot/2026-09-19",
+   "caveat": "funding leg only; hedge leg unobservable in pilot",
+   "date": "2026-09-19",
+   "funding_bps": 2.664,
+   "settlements": 3,
+   "target_bps": 40.0,
+   "target_ratio": 0.0666
+  },
+  {
+   "capture": "data/pilot/2026-09-20",
+   "caveat": "funding leg only; hedge leg unobservable in pilot",
+   "date": "2026-09-20",
+   "funding_bps": 2.752,
+   "settlements": 3,
+   "target_bps": 40.0,
+   "target_ratio": 0.0688
+  },
+  {
+   "capture": "data/pilot/2026-09-21",
+   "caveat": "funding leg only; hedge leg unobservable in pilot",
+   "date": "2026-09-21",
+   "funding_bps": 1.968,
+   "settlements": 3,
+   "target_bps": 40.0,
+   "target_ratio": 0.0492
+  },
+  {
+   "capture": "data/pilot/2026-09-22",
+   "caveat": "funding leg only; hedge leg unobservable in pilot",
+   "date": "2026-09-22",
+   "funding_bps": 2.045,
+   "settlements": 3,
+   "target_bps": 40.0,
+   "target_ratio": 0.0511
+  },
+  {
+   "capture": "data/pilot/2026-09-23",
+   "caveat": "funding leg only; hedge leg unobservable in pilot",
+   "date": "2026-09-23",
+   "funding_bps": 0.264,
+   "settlements": 3,
+   "target_bps": 40.0,
+   "target_ratio": 0.0066
+  },
+  {
+   "capture": "data/pilot/2026-09-24",
+   "caveat": "funding leg only; hedge leg unobservable in pilot",
+   "date": "2026-09-24",
+   "funding_bps": 0.635,
+   "settlements": 3,
+   "target_bps": 40.0,
+   "target_ratio": 0.0159
+  },
+  {
+   "capture": "data/pilot/2026-09-25",
+   "caveat": "funding leg only; hedge leg unobservable in pilot",
+   "date": "2026-09-25",
+   "funding_bps": 0.315,
+   "settlements": 3,
+   "target_bps": 40.0,
+   "target_ratio": 0.0079
+  },
+  {
+   "capture": "data/pilot/2026-09-26",
+   "caveat": "funding leg only; hedge leg unobservable in pilot",
+   "date": "2026-09-26",
+   "funding_bps": 0.515,
+   "settlements": 3,
+   "target_bps": 40.0,
+   "target_ratio": 0.0129
+  },
+  {
+   "capture": "data/pilot/2026-09-27",
+   "caveat": "funding leg only; hedge leg unobservable in pilot",
+   "date": "2026-09-27",
+   "funding_bps": 0.72,
+   "settlements": 3,
+   "target_bps": 40.0,
+   "target_ratio": 0.018
+  },
+  {
+   "capture": "data/pilot/2026-09-28",
+   "caveat": "funding leg only; hedge leg unobservable in pilot",
+   "date": "2026-09-28",
+   "funding_bps": 0.59,
+   "settlements": 3,
+   "target_bps": 40.0,
+   "target_ratio": 0.0148
+  },
+  {
+   "capture": "data/pilot/2026-09-29",
+   "caveat": "funding leg only; hedge leg unobservable in pilot",
+   "date": "2026-09-29",
+   "funding_bps": 1.203,
+   "settlements": 3,
+   "target_bps": 40.0,
+   "target_ratio": 0.0301
+  },
+  {
+   "capture": "data/pilot/2026-09-30",
+   "caveat": "funding leg only; hedge leg unobservable in pilot",
+   "date": "2026-09-30",
+   "funding_bps": 1.406,
+   "settlements": 3,
+   "target_bps": 40.0,
+   "target_ratio": 0.0351
+  },
+  {
+   "capture": "data/pilot/2026-10-01",
+   "caveat": "funding leg only; hedge leg unobservable in pilot",
+   "date": "2026-10-01",
+   "funding_bps": 1.953,
+   "settlements": 3,
+   "target_bps": 40.0,
+   "target_ratio": 0.0488
+  },
+  {
+   "capture": "data/pilot/2026-10-02",
+   "caveat": "funding leg only; hedge leg unobservable in pilot",
+   "date": "2026-10-02",
+   "funding_bps": 1.391,
+   "settlements": 3,
+   "target_bps": 40.0,
+   "target_ratio": 0.0348
+  },
+  {
+   "capture": "data/pilot/2026-10-03",
+   "caveat": "funding leg only; hedge leg unobservable in pilot",
+   "date": "2026-10-03",
+   "funding_bps": 0.946,
+   "settlements": 3,
+   "target_bps": 40.0,
+   "target_ratio": 0.0237
+  },
+  {
+   "capture": "data/pilot/2026-10-04",
+   "caveat": "funding leg only; hedge leg unobservable in pilot",
+   "date": "2026-10-04",
+   "funding_bps": 0.589,
+   "settlements": 3,
+   "target_bps": 40.0,
+   "target_ratio": 0.0147
+  },
+  {
+   "capture": "data/pilot/2026-10-05",
+   "caveat": "funding leg only; hedge leg unobservable in pilot",
+   "date": "2026-10-05",
+   "funding_bps": 1.014,
+   "settlements": 3,
+   "target_bps": 40.0,
+   "target_ratio": 0.0253
+  },
+  {
+   "capture": "data/pilot/2026-10-06",
+   "caveat": "funding leg only; hedge leg unobservable in pilot",
+   "date": "2026-10-06",
+   "funding_bps": -0.183,
+   "settlements": 3,
+   "target_bps": 40.0,
+   "target_ratio": -0.0046
+  },
+  {
+   "capture": "data/pilot/2026-10-07",
+   "caveat": "funding leg only; hedge leg unobservable in pilot",
+   "date": "2026-10-07",
+   "funding_bps": -0.325,
+   "settlements": 3,
+   "target_bps": 40.0,
+   "target_ratio": -0.0081
+  },
+  {
+   "capture": "data/pilot/2026-10-08",
+   "caveat": "funding leg only; hedge leg unobservable in pilot",
+   "date": "2026-10-08",
+   "funding_bps": 0.127,
+   "settlements": 3,
+   "target_bps": 40.0,
+   "target_ratio": 0.0032
+  },
+  {
+   "capture": "data/pilot/2026-10-09",
+   "caveat": "funding leg only; hedge leg unobservable in pilot",
+   "date": "2026-10-09",
+   "funding_bps": 0.821,
+   "settlements": 3,
+   "target_bps": 40.0,
+   "target_ratio": 0.0205
+  },
+  {
+   "capture": "data/pilot/2026-10-10",
+   "caveat": "funding leg only; hedge leg unobservable in pilot",
+   "date": "2026-10-10",
+   "funding_bps": 0.526,
+   "settlements": 3,
+   "target_bps": 40.0,
+   "target_ratio": 0.0131
+  },
+  {
+   "capture": "data/pilot/2026-10-11",
+   "caveat": "funding leg only; hedge leg unobservable in pilot",
+   "date": "2026-10-11",
+   "funding_bps": -0.236,
+   "settlements": 3,
+   "target_bps": 40.0,
+   "target_ratio": -0.0059
+  },
+  {
+   "capture": "data/pilot/2026-10-12",
+   "caveat": "funding leg only; hedge leg unobservable in pilot",
+   "date": "2026-10-12",
+   "funding_bps": 0.437,
+   "settlements": 3,
+   "target_bps": 40.0,
+   "target_ratio": 0.0109
+  },
+  {
+   "capture": "data/pilot/2026-10-13",
+   "caveat": "funding leg only; hedge leg unobservable in pilot",
+   "date": "2026-10-13",
+   "funding_bps": 1.854,
+   "settlements": 3,
+   "target_bps": 40.0,
+   "target_ratio": 0.0464
+  },
+  {
+   "capture": "data/pilot/2026-10-14",
+   "caveat": "funding leg only; hedge leg unobservable in pilot",
+   "date": "2026-10-14",
+   "funding_bps": -0.128,
+   "settlements": 3,
+   "target_bps": 40.0,
+   "target_ratio": -0.0032
+  },
+  {
+   "capture": "data/pilot/2026-10-15",
+   "caveat": "funding leg only; hedge leg unobservable in pilot",
+   "date": "2026-10-15",
+   "funding_bps": 0.431,
+   "settlements": 3,
+   "target_bps": 40.0,
+   "target_ratio": 0.0108
+  },
+  {
+   "capture": "data/pilot/2026-10-16",
+   "caveat": "funding leg only; hedge leg unobservable in pilot",
+   "date": "2026-10-16",
+   "funding_bps": 1.654,
+   "settlements": 3,
+   "target_bps": 40.0,
+   "target_ratio": 0.0414
+  }
+ ],
+ "days": [
+  "2026-09-18",
+  "2026-09-19",
+  "2026-09-20",
+  "2026-09-21",
+  "2026-09-22",
+  "2026-09-23",
+  "2026-09-24",
+  "2026-09-25",
+  "2026-09-26",
+  "2026-09-27",
+  "2026-09-28",
+  "2026-09-29",
+  "2026-09-30",
+  "2026-10-01",
+  "2026-10-02",
+  "2026-10-03",
+  "2026-10-04",
+  "2026-10-05",
+  "2026-10-06",
+  "2026-10-07",
+  "2026-10-08",
+  "2026-10-09",
+  "2026-10-10",
+  "2026-10-11",
+  "2026-10-12",
+  "2026-10-13",
+  "2026-10-14",
+  "2026-10-15",
+  "2026-10-16"
+ ]
+}
