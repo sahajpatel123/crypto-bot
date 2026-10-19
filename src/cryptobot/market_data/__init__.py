@@ -26,6 +26,17 @@ from .discovery import (
 )
 from .events import EVENT_FORMAT, channel_of, parse_message, raw_envelope
 from .recorder import KlineRecorder, RecordingStats, analyze_klines
+from .replayer import (
+    ReplayEvent,
+    events_hash,
+    iter_events,
+    load_events,
+    load_recording,
+    replay,
+    replay_events,
+    replay_hash,
+    streaming_events_hash,
+)
 from .replayer import ReplayEvent, events_hash, load_events, load_recording, replay, replay_events, replay_hash, replay_with_snapshots
 from .views import BookView, DepthStore, FlowView2, book_flow_for
 from .ws import WsClient, WsClosed, WsHandshakeError
@@ -66,6 +77,7 @@ __all__ = [
     "eligible_symbols",
     "events_hash",
     "fetch_exchange_info",
+    "iter_events",
     "flow_window",
     "iter_market_stream",
     "load_events",
@@ -81,6 +93,7 @@ __all__ = [
     "replay_hash",
     "replay_with_snapshots",
     "select_capture_set",
+    "streaming_events_hash",
     "snapshot_ms",
     "snapshot_record",
     "to_nautilus_ticks",
