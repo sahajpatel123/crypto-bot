@@ -1,0 +1,17 @@
+services:
+  recorder:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    image: cryptobot:latest
+    command: ["recorder", "start", "--root", "/data/recorder", "--symbols", "BTCUSDT,ETHUSDT"]
+    environment:
+      PYTHONPATH: /opt/cryptobot/src
+    volumes:
+      - recorder-data:/data/recorder
+      - vault-data:/data/vault
+    restart: unless-stopped
+
+volumes:
+  recorder-data:
+  vault-data:

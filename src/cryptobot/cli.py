@@ -1005,6 +1005,10 @@ def cmd_verdict(args: argparse.Namespace) -> int:
 
     rows = [json.loads(ln) for ln in
             Path(args.trades).read_text().splitlines() if ln.strip()]
+    if any(r.get("provenance") == "SYNTHETIC" for r in rows):
+        print("verdict: REFUSED (SYNTHETIC provenance can never be "
+              "confirmed)", file=sys.stderr)
+        return 2
     result = evaluate_trades(
         [float(r["net_bps"]) for r in rows],
         adverse_bps=[float(r.get("adverse_bps", r["net_bps"]))
@@ -1040,8 +1044,34 @@ def cmd_gate(args: argparse.Namespace) -> int:
     latency = _read_json(args.latency_json)
     state_text = Path("STATE.md").read_text() \
         if Path("STATE.md").exists() else ""
+    autopilot = _read_json(getattr(args, "autopilot_state", None))
+    calib = _read_json(getattr(args, "calibration_json", None))
+    host = _read_json(getattr(args, "host_check_json", None))
+    now_ts = datetime.now(timezone.utc).timestamp()
+
+    def _fresh(doc, max_age_days):
+        try:
+            ts = datetime.fromisoformat(
+                str(doc.get("created_utc", ""))).timestamp()
+            return 0 <= now_ts - ts <= max_age_days * 86400
+        except ValueError:
+            return False
+
+    hyp = autopilot.get("hypotheses", {}).get(
+        str(verdict.get("hypothesis", "")), {})
     checks = {
         "verdict_pass": verdict.get("verdict") == "PASS",
+        "verdict_not_synthetic":
+            verdict.get("provenance") != "SYNTHETIC",
+        "autopilot_gate_ready": hyp.get("state") == "GATE_READY"
+            and not hyp.get("synthetic", False),
+        "calibration_fresh": bool(calib) and _fresh(calib, 30),
+        "host_check_pass": host.get("verdict") == "PASS",
+        "demo_drill_fresh": drill.get("verdict") == "PASS"
+            and _fresh(drill, 7),
+        "watchdog_heartbeat": bool(
+            _read_json(getattr(args, "watchdog_json", None))
+            .get("heartbeat_ok")),
         "demo_drill_pass": drill.get("verdict") == "PASS",
         "latency_pass": latency.get("verdict") in ("PASS", "MEASURED-REST-ONLY")
         and latency.get("rest_rtt_ms") is not None,
@@ -1063,6 +1093,10 @@ def cmd_arm(args: argparse.Namespace) -> int:
     """Arm prod (T6.1 step 2). Refuses without gate + env ack + typed
     confirmation. Never enables submission by itself — it only writes
     the armed record the (separately reviewed) prod path must check."""
+    if not sys.stdin.isatty() or os.environ.get("CI"):
+        print("arm: REFUSED (interactive TTY required; CI forbidden)",
+              file=sys.stderr)
+        return 2
     gate = _read_json(args.gate_json)
     if gate.get("gate") != "GO":
         print("arm: REFUSED (no valid GO gate.json)", file=sys.stderr)
@@ -1125,6 +1159,194 @@ def cmd_demo_drill(args: argparse.Namespace) -> int:
     if args.out:
         Path(args.out).write_text(text + "\n")
     return 2
+
+
+
+def cmd_calibrate(args):
+    """F2.2: fit versioned cost model from fills (never relaxes)."""
+    from cryptobot.research.calibrate import calibrate
+    prev = _read_json(args.previous) if getattr(args, "previous", None) else None
+    doc = calibrate(args.fills, args.out, previous=prev)
+    print(json.dumps(doc, indent=1, sort_keys=True))
+    return 0
+
+
+def cmd_host_check(args):
+    """F2.4: python/disk/ulimit/RTT/NTP host checks (honest FAILs)."""
+    import platform
+    import resource
+    import shutil
+    import socket
+    import subprocess as _sp
+    import time as _t
+    checks = {"python_ok": platform.python_version() >= "3.10",
+              "disk_free_gb": round(shutil.disk_usage(".").free / 1e9, 1),
+              "nofile_ulimit": resource.getrlimit(resource.RLIMIT_NOFILE)[0]}
+    checks["disk_ok"] = checks["disk_free_gb"] >= 5
+    checks["ulimit_ok"] = checks["nofile_ulimit"] >= 4096
+    try:
+        t0 = _t.time()
+        socket.create_connection(("api.binance.com", 443), timeout=3).close()
+        checks["binance_rtt_ms"] = round((_t.time() - t0) * 1000, 1)
+        checks["rtt_ok"] = checks["binance_rtt_ms"] < 1000
+    except Exception as exc:  # noqa: BLE001 - network probes must never crash host-check (incl. test net-guards)
+        checks["binance_error"] = str(exc)
+        checks["rtt_ok"] = False
+    try:
+        r = _sp.run(["chronyc", "tracking"], capture_output=True, text=True, timeout=5)
+        checks["clock_ok"] = r.returncode == 0
+        checks["ntp"] = (r.stdout.strip().splitlines() or [""])[0]
+    except Exception:  # noqa: BLE001
+        checks["clock_ok"] = False
+        checks["ntp"] = "chronyc unavailable - verify NTP manually"
+    ok = all(checks[k] for k in ("python_ok", "disk_ok", "ulimit_ok", "rtt_ok", "clock_ok"))
+    doc = {"host_check": checks, "verdict": "PASS" if ok else "FAIL",
+           "created_utc": datetime.now(timezone.utc).isoformat()}
+    print(json.dumps(doc, indent=1, sort_keys=True))
+    if args.out:
+        Path(args.out).write_text(json.dumps(doc, indent=1) + "\n")
+    return 0 if ok else 2
+
+
+def cmd_fixtures(args):
+    """F2.3: validate + install recorded venue fixtures."""
+    if getattr(args, "fixtures_cmd", None) != "ingest":
+        print("usage: fixtures ingest <dir>", file=sys.stderr)
+        return 2
+    src = Path(args.dir)
+    if not src.is_dir():
+        print(f"fixtures: no such dir {src}", file=sys.stderr)
+        return 2
+    dest = Path(args.dest)
+    installed = 0
+    for f in sorted(src.glob("*.json*")):
+        try:
+            for ln in f.read_text().splitlines():
+                if ln.strip():
+                    json.loads(ln)
+        except Exception as exc:  # noqa: BLE001
+            print(f"fixtures: REJECT {f.name}: {exc}", file=sys.stderr)
+            return 2
+        dest.mkdir(parents=True, exist_ok=True)
+        (dest / f.name).write_bytes(f.read_bytes())
+        installed += 1
+    print(f"fixtures: installed {installed} file(s) to {dest}")
+    return 0
+
+
+def cmd_autopilot(args):
+    from cryptobot.research.autopilot import Autopilot
+    a = Autopilot(args.root)
+    if args.autopilot_cmd == "run-once":
+        hyp = args.hypothesis or "H1"
+        a.register(hyp)
+        dev = _read_json(str(Path(args.root) / "dev_results" / f"{hyp}.json")) or None
+        print(hyp, a.run_once(hyp, dev=dev))
+        return 0
+    if args.autopilot_cmd == "report":
+        print(a.report(), end="")
+        return 0
+    print(json.dumps(a.state, indent=1, sort_keys=True))
+    return 0
+
+
+def cmd_recorder(args):
+    """F3.6: recorder status/verify/stop via pidfile + manifest."""
+    from cryptobot.recorder.core import Recorder
+    root = Path(args.root)
+    pidfile = root / "recorder.pid"
+    if args.recorder_cmd == "status":
+        print(json.dumps({"running": pidfile.exists(),
+                          "pid": pidfile.read_text().strip() if pidfile.exists() else None}))
+        return 0
+    if args.recorder_cmd == "verify":
+        ok, msg = Recorder.verify_manifest(root)
+        print(msg)
+        return 0 if ok else 2
+    if args.recorder_cmd == "stop":
+        if pidfile.exists():
+            import signal as _sig
+            try:
+                os.kill(int(pidfile.read_text().strip()), _sig.SIGTERM)
+            except (ValueError, ProcessLookupError):
+                pass
+            pidfile.unlink(missing_ok=True)
+        print("recorder stopped")
+        return 0
+    print("recorder start: use deploy/recorder.service (systemd) or the "
+          "docker-compose recorder service; inline daemonization refused",
+          file=sys.stderr)
+    return 2
+
+
+def cmd_dashboard(args):
+    """F6.1: static HTML dashboard."""
+    from cryptobot.research.autopilot import Autopilot
+    a = Autopilot(args.autopilot_root)
+    rows = "".join(
+        f"<tr><td>{h}</td><td>{v['state']}</td>"
+        f"<td>{v.get('power', {}).get('days', '')}</td>"
+        f"<td>{'SYNTHETIC' if v.get('synthetic') else ''}</td></tr>"
+        for h, v in sorted(a.state["hypotheses"].items()))
+    html = ("<!doctype html><title>cryptobot dashboard</title>"
+            "<h1>cryptobot dashboard</h1>"
+            f"<p>generated {datetime.now(timezone.utc).isoformat()}</p>"
+            "<table><tr><th>hypothesis</th><th>state</th><th>power ETA days</th>"
+            f"<th>flags</th></tr>{rows}</table>")
+    Path(args.out).parent.mkdir(parents=True, exist_ok=True)
+    Path(args.out).write_text(html)
+    print(f"dashboard written {args.out}")
+    return 0
+
+
+def cmd_research(args):
+    """F4.8: register a new hypothesis draft (budget 8 total)."""
+    if getattr(args, "research_cmd", None) != "register":
+        return 2
+    prereg = Path("research/prereg")
+    if len(sorted(prereg.glob("H*-*.md"))) >= 8:
+        print("research: hypothesis budget exhausted (8 max)", file=sys.stderr)
+        return 2
+    target = prereg / f"{args.hypothesis.upper()}-draft.md"
+    if target.exists():
+        print("research: already registered", file=sys.stderr)
+        return 2
+    target.write_text(f"# {args.hypothesis.upper()} — {args.title} (DRAFT)\n\n"
+                      "Complete mechanism, rules, grid, costs, min trades, "
+                      "promotion/confirmation criteria; commit BEFORE evaluating.\n")
+    print(f"research: draft written {target}")
+    return 0
+
+
+def cmd_acceptance(args):
+    """F8.1: SYNTHETIC state-machine proof; gate must reject it."""
+    from cryptobot.research.autopilot import Autopilot
+    import tempfile
+    tmp = Path(tempfile.mkdtemp(prefix="acceptance-"))
+    a = Autopilot(tmp)
+    good = {"expectancy_bps": 5.0, "ci_lb_bps": 1.0, "folds_positive": 1.0,
+            "sd_bps": 40.0, "trades_per_day": 50.0, "config_hash": "syn",
+            "provenance": "SYNTHETIC"}
+    a.run_once("SYN", dev=None)
+    a.run_once("SYN", dev=good)
+    a.run_once("SYN", confirm_verdict={"verdict": "PASS"})
+    a.run_once("SYN", confirm_verdict={"verdict": "PASS"})
+    a.run_once("SYN")
+    a.run_once("SYN", paper_days=15)
+    a.run_once("SYN", paper_expectancy_bps=5.0)
+    state = a.state["hypotheses"]["SYN"]["state"]
+    gate_doc = tmp / "gate.json"
+    rc = cmd_gate(argparse.Namespace(
+        verdict_json=None, drill_json=None, latency_json=None,
+        autopilot_state=str(tmp / "autopilot_state.json"),
+        calibration_json=None, host_check_json=None, watchdog_json=None,
+        out=str(gate_doc)))
+    gate = json.loads(gate_doc.read_text())["gate"]
+    ok = state == "PAPER_COMPARE" and gate == "NO-GO" and rc == 2
+    print(json.dumps({"acceptance": "PASS" if ok else "FAIL",
+                      "synthetic_final_state": state,
+                      "gate_on_synthetic": gate}, indent=1))
+    return 0 if ok else 1
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -1221,6 +1443,47 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--gate-json", default="gate.json")
     p.add_argument("--out", default="armed.json")
     p.set_defaults(func=cmd_arm)
+    p = sub.add_parser("calibrate")
+    p.add_argument("--fills", required=True)
+    p.add_argument("--out", default="reports/cost_model_v1.json")
+    p.add_argument("--previous")
+    p.set_defaults(func=cmd_calibrate)
+    p = sub.add_parser("host-check")
+    p.add_argument("--out")
+    p.set_defaults(func=cmd_host_check)
+    p = sub.add_parser("fixtures")
+    fx = p.add_subparsers(dest="fixtures_cmd")
+    pi = fx.add_parser("ingest")
+    pi.add_argument("dir")
+    pi.add_argument("--dest", default="tests/fixtures/venue")
+    p.set_defaults(func=cmd_fixtures)
+    p = sub.add_parser("autopilot")
+    ap = p.add_subparsers(dest="autopilot_cmd")
+    for name in ("run-once", "status", "report"):
+        q = ap.add_parser(name)
+        q.add_argument("--root", default="research/autopilot")
+        q.add_argument("--hypothesis")
+    p.set_defaults(func=cmd_autopilot)
+    p = sub.add_parser("recorder")
+    rp = p.add_subparsers(dest="recorder_cmd")
+    for name in ("start", "stop", "status", "verify"):
+        q = rp.add_parser(name)
+        q.add_argument("--root", default="data/recorder")
+    p.set_defaults(func=cmd_recorder)
+    p = sub.add_parser("dashboard")
+    p.add_argument("--autopilot-root", default="research/autopilot")
+    p.add_argument("--out", default="reports/dashboard.html")
+    p.set_defaults(func=cmd_dashboard)
+    p = sub.add_parser("research")
+    rs = p.add_subparsers(dest="research_cmd")
+    rg = rs.add_parser("register")
+    rg.add_argument("hypothesis")
+    rg.add_argument("--title", default="")
+    p.set_defaults(func=cmd_research)
+    p = sub.add_parser("acceptance")
+    p.add_argument("--full", action="store_true")
+    p.add_argument("--root", default="research/autopilot")
+    p.set_defaults(func=cmd_acceptance)
     p = sub.add_parser("demo-drill")
     p.add_argument("--out", default=None)
     p.set_defaults(func=cmd_demo_drill)

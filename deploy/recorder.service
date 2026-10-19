@@ -1,0 +1,19 @@
+[Unit]
+Description=cryptobot F3 recorder (BTCUSDT/ETHUSDT market data)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=cryptobot
+Group=cryptobot
+WorkingDirectory=/opt/cryptobot
+Environment=PYTHONPATH=/opt/cryptobot/src
+ExecStart=/opt/cryptobot/.venv/bin/cryptobot recorder start --root /var/lib/cryptobot/recorder --symbols BTCUSDT,ETHUSDT
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
