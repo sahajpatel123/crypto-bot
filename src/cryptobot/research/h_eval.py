@@ -232,6 +232,34 @@ def verdict_for(name: str, trades: list[Trade]) -> dict[str, Any]:
     return result
 
 
+def h4_trades(bars_by_symbol: dict[str, list[Bar]],
+              model: CostModel | None = None) -> list[Trade]:
+    """H4: H2 mechanics on daily causal top-3 ATR% universe (fresh data only)."""
+    model = model or CostModel()
+    atr_pct: dict[str, dict[str, float]] = {}
+    for symbol, bars in bars_by_symbol.items():
+        atr = _atr(bars)
+        daily: dict[str, float] = {}
+        for bar, value in zip(bars, atr, strict=True):
+            if value is not None and bar.close > 0:
+                daily[_day_of(bar.ts_ms)] = value / bar.close
+        atr_pct[symbol] = daily
+    days = sorted({d for daily in atr_pct.values() for d in daily})
+    active: dict[str, set[str]] = {s: set() for s in bars_by_symbol}
+    for idx, day in enumerate(days):
+        ranked = []
+        for symbol, daily in atr_pct.items():
+            prior = [daily[d] for d in days[max(0, idx - 30):idx] if d in daily]
+            if prior:
+                ranked.append((statistics.fmean(prior), symbol))
+        for _, symbol in sorted(ranked, reverse=True)[:3]:
+            active[symbol].add(day)
+    trades: list[Trade] = []
+    for symbol, bars in bars_by_symbol.items():
+        trades += [t for t in h2_trades(bars, model) if t.day in active[symbol]]
+    return sorted(trades, key=lambda t: t.day)
+
+
 def h1_result() -> dict[str, Any]:
     return {"hypothesis": "H1-maker-ofi-scalp", "verdict": "UNDERPOWERED",
             "reason": "UNEVALUABLE on dev data: no quote/book channel "
