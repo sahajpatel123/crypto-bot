@@ -73,9 +73,9 @@ No demonstrated edge.
 | D4 | Sleep / gap notify | DONE | caffeinate in the recorder plist; daily gap % in `autopilot report` (`ops/gaps.py`); `background status` disk projection + notification; tests `test_recorder_gaps.py`, `test_background_status.py` |
 | D5 | background install/status | DONE | `cryptobot background status` prints adjudication date, disk/gap fields. install.sh uses `$ROOT/.venv` (D-048) |
 | E1 | owner wizard | DONE | `cryptobot owner` prints PASS/TODO + send-back, validates --step (D-048) |
-| E2 | README quickstart | DONE | fresh clone `/tmp/cryptobot-ops-clean2` at `3bf4baa`: install 1.3s, doctor READY, selftest 132/0 PASS, drill 8 cells EMULATED + soak 24h, final-status/owner/background/monitor/ops all run. `release/cleanroom-ops2.log` ends CLEANROOM_OK |
-| E3 | certify | DOING | `cryptobot certify` exit 0 on `e7babf2` (132/0, 57 cmds). Final cert after suite + clean-room |
-| E4 | suite + tag | DOING | final full suite + tag after E2/E3; `v1.0.0` stays at `82582f0` |
+| E2 | README quickstart | DONE | fresh clone `/tmp/cryptobot-ops-clean2` at `3bf4baa`: install 1.3s, doctor READY, selftest 132/0 PASS, drill 8 cells EMULATED + soak 24h, final-status/owner/background/monitor/ops all run. `release/cleanroom-ops2.log` ends CLEANROOM_OK. Final-tree rerun below |
+| E3 | certify | DOING | preview PASS on the hardened tree: 58 commands 100%, 142 selftest checks, 20-cell drill, 24h soak. Final certificate after the clean-room rerun |
+| E4 | suite + tag | DOING | suite green: 1687 passed, 1 skipped, 0 failed, 1183.91s (`/tmp/final-suite.log` EXIT:0) on `ed06d79`. Tag after certify |
 
 ## Consolidation task table (resume the first non-DONE row)
 
