@@ -31,6 +31,7 @@ class Reservation:
     reserved_risk: float
     created_utc: str
     expires_utc: str
+    qty: float | None = None
 
     def to_dict(self) -> dict:
         return {
@@ -41,6 +42,7 @@ class Reservation:
             "reserved_risk": self.reserved_risk,
             "created_utc": self.created_utc,
             "expires_utc": self.expires_utc,
+            "qty": self.qty,
         }
 
     @classmethod
@@ -54,6 +56,7 @@ class Reservation:
             reserved_risk=raw["reserved_risk"],
             created_utc=raw["created_utc"],
             expires_utc=raw["expires_utc"],
+            qty=raw.get("qty"),
         )
 
     def expired(self, now: datetime) -> bool:
@@ -65,8 +68,12 @@ class RiskState:
     current_day: str | None = None
     day_start_equity: float | None = None
     needs_reconciliation: bool = True
-    halt_days: dict[str, str] = field(default_factory=dict)
+    operating_stop_days: dict[str, str] = field(default_factory=dict)
     pause_days: dict[str, str] = field(default_factory=dict)
+    # W3-24H emergency latch: persists across day rolls; cleared only by an
+    # explicit reconciled recovery (never by time).
+    emergency_latched: bool = False
+    emergency_since_utc: str | None = None
     original_equity: float | None = None
     peak_realised: float = 0.0
     profit_floor: float | None = None
@@ -77,6 +84,7 @@ class RiskState:
     flow_baseline_inception: float | None = None
     open_position: bool = False
     seq: int = 0
+    last_tick_utc: str | None = None
 
     def to_dict(self) -> dict:
         return {
@@ -84,8 +92,10 @@ class RiskState:
             "current_day": self.current_day,
             "day_start_equity": self.day_start_equity,
             "needs_reconciliation": self.needs_reconciliation,
-            "halt_days": dict(self.halt_days),
+            "operating_stop_days": dict(self.operating_stop_days),
             "pause_days": dict(self.pause_days),
+            "emergency_latched": self.emergency_latched,
+            "emergency_since_utc": self.emergency_since_utc,
             "original_equity": self.original_equity,
             "peak_realised": self.peak_realised,
             "profit_floor": self.profit_floor,
@@ -97,6 +107,7 @@ class RiskState:
             "flow_baseline_inception": self.flow_baseline_inception,
             "open_position": self.open_position,
             "seq": self.seq,
+            "last_tick_utc": self.last_tick_utc,
         }
 
     @classmethod
@@ -111,8 +122,13 @@ class RiskState:
             current_day=raw.get("current_day"),
             day_start_equity=raw.get("day_start_equity"),
             needs_reconciliation=bool(raw.get("needs_reconciliation", True)),
-            halt_days=dict(raw.get("halt_days", {})),
+            # Legacy halt_days map to operating stops (same blocking
+            # behavior, same daily expiry — safe direction).
+            operating_stop_days=dict(raw.get(
+                "operating_stop_days", raw.get("halt_days", {}))),
             pause_days=dict(raw.get("pause_days", {})),
+            emergency_latched=bool(raw.get("emergency_latched", False)),
+            emergency_since_utc=raw.get("emergency_since_utc"),
             original_equity=raw.get("original_equity"),
             peak_realised=float(raw.get("peak_realised", 0.0)),
             profit_floor=raw.get("profit_floor"),
@@ -126,6 +142,7 @@ class RiskState:
             flow_baseline_inception=raw.get("flow_baseline_inception"),
             open_position=bool(raw.get("open_position", False)),
             seq=int(raw.get("seq", 0)),
+            last_tick_utc=raw.get("last_tick_utc"),
         )
 
 

@@ -1,0 +1,45 @@
+{
+  "dataset_id": "cap-30min",
+  "dataset_manifest_sha": "cbfb1f2a3e093107fc2cb8f98c7e19a234df561e3511a3fad02cfe0af280c952",
+  "symbols": [
+    "BTCUSDT",
+    "ETHUSDT"
+  ],
+  "splits": [
+    "mechanism"
+  ],
+  "armsets": [
+    "S1"
+  ],
+  "filter_profile": "frozen-assumed",
+  "engine_delays_ms": {
+    "note": "base config values (production parity); E-008 GTC/valuation-only marks verified healthy by this harness"
+  },
+  "promotion_rule": "NONE - descriptive baseline; no tuning on any split",
+  "cells": {
+    "S1|mechanism": {
+      "closing_equity": 120.0,
+      "net_return_pct": 0.0,
+      "paid_costs": 0.0,
+      "funding_net": 0.0,
+      "realised": 0.0,
+      "intents_admitted": 0,
+      "events_seen": 1129445,
+      "reject_counts": {
+        "selection:reward-below-cost": 7,
+        "strategy:no-fire:breakout-gate": 1272,
+        "strategy:no-fire:confirm-gate": 5,
+        "strategy:no-fire:gap-1": 2106,
+        "strategy:no-fire:gap-2": 1922,
+        "strategy:no-fire:gap-3": 322,
+        "strategy:no-fire:gap-4": 436,
+        "strategy:no-fire:insufficient-history": 584,
+        "strategy:no-fire:momentum-gate": 20
+      },
+      "n_fills": 0,
+      "run_dir": "/tmp/rel-mgr/relr1/dev-REL-S1-V/runs/mechanism/S1"
+    }
+  },
+  "s5_ineligibility": {},
+  "sensitivity": {}
+}

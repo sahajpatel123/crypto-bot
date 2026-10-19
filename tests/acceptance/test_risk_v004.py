@@ -30,10 +30,10 @@ def _ceo_sizing_intent():
 # -- F-CEO-04 worst-price sizing -------------------------------------------
 def test_ceo_adverse_loss_within_budget():
     plan = plan_size(_ceo_sizing_intent(), 1000.0, RiskConfig())
-    assert plan.reserved_risk == pytest.approx(2.5)
+    assert plan.reserved_risk == pytest.approx(1.25)  # W3-24H 0.125%.
     loss = plan.qty * 11 + plan.qty * 110 * 3 / 10000 * 1.5
-    assert loss <= 2.5 * (1 + 1e-9)
-    assert loss == pytest.approx(2.5)
+    assert loss <= 1.25 * (1 + 1e-9)
+    assert loss == pytest.approx(1.25)
     assert plan.adverse_price == 110.0
 
 
@@ -118,7 +118,7 @@ def test_real_loss_still_halts_after_deposit(tmp_path):
                                marked_equity=1485.0, net_liquidation=1484.0,
                                net_realised_global=-15.0, flows_cumulative=500.0)
     out = policy.evaluate(build_intent(INTENTS["canonical_long"]), acct)
-    assert isinstance(out, Rejected) and out.reason == "halt:daily-loss"
+    assert isinstance(out, Rejected) and out.reason == "halt:emergency"
 
 
 # -- F-CEO-03 / v0.2.0 exposure books ---------------------------------------
@@ -283,11 +283,11 @@ def test_monitor_latches_halt_without_intent(tmp_path):
     healthy = policy.check_health(build_account(ACCOUNTS["healthy_10k"]))
     assert healthy.ok is True and healthy.latched == ()
     status = policy.check_health(build_account(ACCOUNTS["halt_trigger"]))
-    assert status.ok is False and status.reasons == ("halt:daily-loss",)
-    assert status.latched == ("halt",)
+    assert status.ok is False and status.reasons == ("halt:emergency",)
+    assert status.latched == ("emergency",)
     out = policy.evaluate(build_intent(INTENTS["canonical_long"]),
                           build_account(ACCOUNTS["healthy_10k"]))
-    assert isinstance(out, Rejected) and out.reason == "halt:daily-loss"
+    assert isinstance(out, Rejected) and out.reason == "halt:emergency"
 
 
 def test_monitor_needs_reconciliation_after_rollover(tmp_path):
@@ -310,7 +310,7 @@ def test_v1_state_migrates_with_forced_reconcile(tmp_path):
     assert state.needs_reconciliation is True
     assert state.unresolved == {} and state.booked == {}
     assert state.flow_baseline_day is None
-    assert state.halt_days == {"2026-10-11": "daily-loss"}  # v1 content preserved
+    assert state.operating_stop_days == {"2026-10-11": "daily-loss"}  # v1 content preserved
     policy = make_policy(tmp_path)
     out = policy.evaluate(build_intent(INTENTS["canonical_long"]),
                           build_account(ACCOUNTS["healthy_10k"]))

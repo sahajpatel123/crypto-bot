@@ -10,5 +10,13 @@ venv/
 data/*.jsonl
 data/*.parquet
 data/*.csv
+data/captures/
+data/bench30d/
+datasets/cache/
 !data/README.md
 .DS_Store
+runs/
+.captures/
+
+# H-R2 extraction windows: regenerable via tools/hr2_diagnostic.py extract (~2 min)
+outputs/hr2/windows/

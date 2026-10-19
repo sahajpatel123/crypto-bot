@@ -1,0 +1,75 @@
+{
+ "attempt_budget": "6 strategy configs + CASH + frozen baselines; no extras, no reruns for selection. Mechanical reruns preserve identical configuration and are disclosed.",
+ "configs": [
+  {
+   "arm": "S1",
+   "config_id": "REL-S1",
+   "family": "S1",
+   "mechanism": "UNCHANGED CONTROL: price expansion continues after an executable entry (ROUND-01 baseline params, frozen)",
+   "role": "control"
+  },
+  {
+   "arm": "S1-V",
+   "config_id": "REL-S1-V",
+   "family": "S1",
+   "mechanism": "volatility-conditioned continuation: volume confirmation (vol_z>=1.0, 60-bar) requires an energy-backed break; filters thin-air breakouts",
+   "role": "variant"
+  },
+  {
+   "arm": "S1-F",
+   "config_id": "REL-S1-F",
+   "family": "S1",
+   "mechanism": "flow-regime continuation: directional-fraction confirmation (10-bar buy_frac>=0.58) filters adverse drift during entry latency",
+   "role": "variant"
+  },
+  {
+   "arm": "S2",
+   "config_id": "REL-S2",
+   "family": "S2",
+   "mechanism": "UNCHANGED CONTROL: resumption within an established trend offers sufficient net continuation (ROUND-01 baseline params, frozen)",
+   "role": "control"
+  },
+  {
+   "arm": "S2-V",
+   "config_id": "REL-S2-V",
+   "family": "S2",
+   "mechanism": "volatility-conditioned pullback/resumption: volume confirmation on the resumption leg; avoids dead-cat resumptions",
+   "role": "variant"
+  },
+  {
+   "arm": "S2-F",
+   "config_id": "REL-S2-F",
+   "family": "S2",
+   "mechanism": "flow-regime pullback/resumption: directional-fraction confirmation improves resumption entry economics",
+   "role": "variant"
+  },
+  {
+   "arm": "CASH",
+   "config_id": "REL-CASH",
+   "family": "CASH",
+   "mechanism": "no-position reference zero",
+   "role": "control"
+  }
+ ],
+ "controls": [
+  "REL-CASH (no positions; reference zero)",
+  "REL-S1 and REL-S2 are the unchanged ROUND-01 baseline controls"
+ ],
+ "costs": "Nautilus paper engine, taker 5bps/leg labeled (simulation-labeled schedule), IOC band from strategy entry tolerance, arrival fills at touch (spread implicit, never double-charged), funding excluded with stated bound (no funding channel in captures). Adverse sensitivity rerun required for any selected candidate (2x taker assumption).",
+ "data_designations": {
+  "development": "cap-30min (2026-10-11T21:43-22:13Z, BTCUSDT+ETHUSDT) via --splits mechanism; development knowledge (mechanism + H-R2 counterfactuals viewed; no arm backtest outcomes viewed by this round's author)",
+  "untouched_evaluation": "TBD from reports/suitability/table.md: exactly one causally-suitable capture whose outcomes no team member has used; scored ONCE for the single selected candidate. If none exists, the untouched leg is DATA BLOCKED (all available analysis still completed).",
+  "validation": "cap-2h (2026-10-11T22:17-10-12T00:17Z, BTCUSDT+ETHUSDT) via --splits mechanism; chronological after dev (4-min gap); fresh Session per cell (full purge); warmup causal per run"
+ },
+ "frozen_by": "manager/release (W4 reassigned-unresponsive per \u00a78)",
+ "frozen_utc": "2026-10-14T06:10:46Z",
+ "horizon_note": "All 6 configs use the frozen 120s holding limit. A 300s-horizon arm was considered and REJECTED for this round at design time because new arm IDs would break frozen ROUND-01/contract pins (test_research_allowlist, test_strategies_contract, EXP_001/EXP_002); recorded here as a predeclared design decision, not a post-hoc exclusion. The round therefore samples the volatility/regime dimension with horizon controlled.",
+ "hypothesis": "Frozen S1/S2 breakout/pullback arms with volatility (volume-z) or flow-regime confirmation show positive expected net outcome under full execution costs on development/validation captures; without confirmation they do not. Stops/targets are setup invalidation (swing/inval) and measured opportunity (take_r), never moved to satisfy the cost floor.",
+ "prior_use_disclosure": "S1/S1-V/S1-F/S2/S2-V/S2-F arms were defined and selected in prior rounds (ROUND-01) on overlapping captures. Any positive dev/validation result therefore carries a disclosed selection effect; only the untouched evaluation (or its DATA-BLOCKED declaration) is selectable evidence. The author of this round has viewed NO arm backtest outcomes on any capture.",
+ "qualification_screen": "Preserved unchanged: >=100 closed out-of-sample positions spanning >=10 days + positive net under realistic/adverse costs + acceptable risk. Minimum, not proof. If data cannot meet it, do not lower it; label DATA BLOCKED.",
+ "registry_version": "0.1.0",
+ "rejection_rule": "Reject the hypothesis unless a config shows positive net on BOTH dev and validation with full \u00a76 metrics; then the single selected candidate advances to untouched evaluation. Negative end = rejected hypothesis + measured reason, never relaxed gates.",
+ "round_id": "REL-R1",
+ "selection_rule": "Advance AT MOST ONE config: the highest validation net_bps among configs with dev_net > 0 AND validation_net > 0 (both net of full costs). Ties broken by higher dev net, then by config_id lexical order (predeclared). If none has both > 0, advance NONE and end the round REJECTED.",
+ "strategy_version": "0.1.0"
+}

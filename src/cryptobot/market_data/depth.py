@@ -23,6 +23,12 @@ class DepthState:
     resyncs: int
     applied: int
     dropped_stale: int
+    last_reason: str = ""  # why the book is currently unsynced ("" if synced).
+    chain_breaks: int = 0  # REL-W3: chain breaks observed (expected/got kept).
+    buffer_overflows: int = 0  # REL-W3: pre-sync buffer caps hit (resyncs).
+
+
+MAX_BUFFER = 10_000  # REL-W3: pre-sync diff buffer bound (loud resync past it).
 
 
 class DepthBook:
@@ -38,11 +44,58 @@ class DepthBook:
         self.resyncs = 0
         self.applied = 0
         self.dropped_stale = 0
+        self.chain_breaks = 0
+        self.buffer_overflows = 0
+        self._resync_reason = ""
+        self.pending_break: dict[str, Any] | None = None
 
     @property
     def state(self) -> DepthState:
         return DepthState(self._synced, self._last_update_id, len(self._buffer),
-                          self.resyncs, self.applied, self.dropped_stale)
+                          self.resyncs, self.applied, self.dropped_stale,
+                          self._resync_reason, self.chain_breaks,
+                          self.buffer_overflows)
+
+    def to_dict(self) -> dict[str, Any]:
+        """Full book state: levels, sync lifecycle, buffer, counters.
+
+        Level key/value types are preserved verbatim (the book mixes
+        str and float keys across snapshot/diff paths); sorting is by
+        numeric price so the output is deterministic.
+        """
+        return {"symbol": self.symbol,
+                "bids": [[p, q] for p, q in sorted(
+                    self.bids.items(), key=lambda kv: float(kv[0]))],
+                "asks": [[p, q] for p, q in sorted(
+                    self.asks.items(), key=lambda kv: float(kv[0]))],
+                "synced": self._synced,
+                "last_update_id": self._last_update_id,
+                "buffer": [dict(p) for p in self._buffer],
+                "resyncs": self.resyncs, "applied": self.applied,
+                "dropped_stale": self.dropped_stale,
+                "chain_breaks": self.chain_breaks,
+                "buffer_overflows": self.buffer_overflows,
+                "pending_break": self.pending_break,
+                "resync_reason": self._resync_reason}
+
+    @classmethod
+    def from_dict(cls, raw: dict[str, Any]) -> "DepthBook":
+        """Rebuild book state exactly (checkpoint restore)."""
+        book = cls(str(raw["symbol"]))
+        book.bids = {p: q for p, q in raw["bids"]}
+        book.asks = {p: q for p, q in raw["asks"]}
+        book._synced = bool(raw["synced"])
+        book._last_update_id = int(raw["last_update_id"])
+        book._buffer = [dict(p) for p in raw["buffer"]]
+        book.resyncs = int(raw["resyncs"])
+        book.applied = int(raw["applied"])
+        book.dropped_stale = int(raw["dropped_stale"])
+        book.chain_breaks = int(raw.get("chain_breaks", 0))
+        book.buffer_overflows = int(raw.get("buffer_overflows", 0))
+        pending = raw.get("pending_break")
+        book.pending_break = dict(pending) if pending else None
+        book._resync_reason = str(raw["resync_reason"])
+        return book
 
     def on_diff(self, payload: dict[str, Any]) -> str:
         """Handle one NORMALIZED depth payload (first/last/prev_last_update keys).
@@ -52,9 +105,23 @@ class DepthBook:
         REST strings and validates on install.
         """
         if not self._synced:
+            if len(self._buffer) >= MAX_BUFFER:
+                # Bounded ingest: an overgrown pre-sync buffer means the
+                # snapshot path is stuck; resync loudly instead of growing.
+                self.buffer_overflows += 1
+                return self._request_resync("buffer-overflow")
             self._buffer.append(payload)
             return "buffered"
         if int(payload["prev_last_update"]) != self._last_update_id:
+            # Chain break, recorded with expected/got IDs (never silent).
+            # Caller contract unchanged: returns "resync", caller must
+            # re-snapshot; the pending break stays visible until then.
+            self.chain_breaks += 1
+            self.pending_break = {
+                "expected_prev_last_update": self._last_update_id,
+                "got_prev_last_update": int(payload["prev_last_update"]),
+                "first_update": int(payload["first_update"]),
+                "last_update": int(payload["last_update"])}
             return "resync"
         self._apply(payload)
         return "applied"
@@ -79,6 +146,8 @@ class DepthBook:
                 return self._request_resync("buffer-chain")
             self._apply(payload)
         self._synced = True
+        self._resync_reason = ""
+        self.pending_break = None
         return "synced"
 
     def _request_resync(self, reason: str) -> str:

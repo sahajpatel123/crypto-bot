@@ -8,12 +8,21 @@ extensions, no client-offered subprotocols.
 
 Server messages arrive via ``recv_message()`` which returns complete
 application messages only; protocol frames are handled internally.
+
+``recv_message_nowait()`` assembles the same messages without ever
+blocking: it drains application-buffered bytes, TLS pending data and
+kernel-buffered datagrams opportunistically, returning ``None`` when no
+complete message is available right now. Multiplexing loops must poll it
+on every route (round-robin) instead of reading only select-ready
+sockets — a complete message can sit in ``_buf`` or TLS state while
+select reports nothing (E-009 transport fix).
 """
 from __future__ import annotations
 
 import base64
 import hashlib
 import os
+import select
 import socket
 import ssl
 import struct
@@ -175,44 +184,187 @@ class WsClient:
             payload = bytes(b ^ mask_key[i % 4] for i, b in enumerate(payload))
         return _DecodedFrame(fin, opcode, payload)
 
-    def recv_message(self, timeout_s: float | None = None) -> tuple[str, bytes]:
-        """Return the next complete (type, payload): type is 'text' or 'binary'.
+    @property
+    def buffered_bytes(self) -> int:
+        """Bytes held in the application buffer (parsed or partial frames)."""
+        return len(self._buf)
 
-        Answers pings, assembles fragments, and raises WsClosed on close frames,
-        timeouts, or transport errors. ``timeout_s`` overrides the socket timeout
-        for this call (None keeps the connection default).
+    @staticmethod
+    def _parse_frame_at(buf: bytes | bytearray, start: int
+                        ) -> tuple[_DecodedFrame, int] | None:
+        """Parse one frame at ``start`` without consuming; None if incomplete."""
+        if len(buf) - start < 2:
+            return None
+        fin = bool(buf[start] & 0x80)
+        opcode = buf[start] & 0x0F
+        masked = bool(buf[start + 1] & 0x80)
+        length = buf[start + 1] & 0x7F
+        offset = start + 2
+        if length == 126:
+            if len(buf) - start < 4:
+                return None
+            length = struct.unpack("!H", bytes(buf[start + 2:start + 4]))[0]
+            offset = start + 4
+        elif length == 127:
+            if len(buf) - start < 10:
+                return None
+            length = struct.unpack("!Q", bytes(buf[start + 2:start + 10]))[0]
+            offset = start + 10
+        if length > MAX_FRAME_BYTES:
+            raise WsClosed(f"frame of {length} bytes exceeds the {MAX_FRAME_BYTES} cap")
+        if masked:
+            if len(buf) < offset + 4:
+                return None
+            mask_key = bytes(buf[offset:offset + 4])
+            offset += 4
+        else:
+            mask_key = b""
+        if len(buf) < offset + length:
+            return None
+        payload = bytes(buf[offset:offset + length])
+        if masked:
+            payload = bytes(b ^ mask_key[i % 4] for i, b in enumerate(payload))
+        return _DecodedFrame(fin, opcode, payload), offset + length - start
+
+    def _parse_frame_from_buf(self) -> tuple[_DecodedFrame, int] | None:
+        """Parse one frame from ``_buf`` start without consuming; None if incomplete."""
+        return self._parse_frame_at(self._buf, 0)
+
+    def _recv_available(self) -> bool:
+        """One opportunistic non-blocking recv; False when nothing is ready now.
+
+        Picks up kernel-buffered and TLS-pending bytes alike. Genuine EOF
+        and transport errors still raise WsClosed; mere absence returns False.
         """
-        if self._closed:
-            raise WsClosed("client is closed")
-        if timeout_s is not None:
-            self._sock.settimeout(timeout_s)
-        chunks: list[bytes] = []
-        kind = ""
+        previous = self._sock.gettimeout()
+        try:
+            self._sock.settimeout(0.0)
+            try:
+                chunk = self._sock.recv(65536)
+            except (BlockingIOError, ssl.SSLWantReadError, ssl.SSLWantWriteError):
+                return False
+            except OSError as exc:
+                raise WsClosed(f"socket error: {exc}") from exc
+        finally:
+            try:
+                self._sock.settimeout(previous)
+            except OSError:
+                pass
+        if not chunk:
+            raise WsClosed("peer closed the TCP connection")
+        self._buf += chunk
+        return True
+
+    def _consume_control_frames(self) -> None:
+        """Answer/consume leading ping/pong frames; close frames raise."""
         while True:
-            frame = self._read_frame()
+            parsed = self._parse_frame_from_buf()
+            if parsed is None:
+                return
+            frame, consumed = parsed
             if frame.opcode == _OP_PING:
+                del self._buf[:consumed]
                 self.pings_received += 1
                 self._send_raw(_OP_PONG, frame.payload)
                 self.pongs_sent += 1
-                continue
-            if frame.opcode == _OP_PONG:
-                continue
-            if frame.opcode == _OP_CLOSE:
+            elif frame.opcode == _OP_PONG:
+                del self._buf[:consumed]
+            elif frame.opcode == _OP_CLOSE:
+                del self._buf[:consumed]
                 self._closed = True
                 try:
                     self._send_raw(_OP_CLOSE, frame.payload)
                 except OSError:
                     pass
                 raise WsClosed(f"peer sent close (code/payload: {frame.payload!r})")
-            if frame.opcode in (_OP_TEXT, _OP_BINARY):
-                kind = "text" if frame.opcode == _OP_TEXT else "binary"
-                chunks = [frame.payload]
-            elif frame.opcode == _OP_CONT and chunks:
-                chunks.append(frame.payload)
             else:
-                raise WsClosed(f"unexpected opcode: {frame.opcode}")
-            if frame.fin:
+                return
+
+    def recv_message_nowait(self) -> tuple[str, bytes] | None:
+        """Next complete (type, payload) without blocking, or None if none ready.
+
+        Drains application-buffered bytes, TLS pending data and
+        kernel-buffered datagrams. Answers pings, assembles fragments, and
+        raises WsClosed on close frames, protocol faults, EOF, or transport
+        errors — but never for mere absence of data. Partial fragments stay
+        buffered for the next call.
+        """
+        if self._closed:
+            raise WsClosed("client is closed")
+        while True:
+            self._consume_control_frames()
+            # Walk data frames to fin WITHOUT consuming data bytes: a partial
+            # message must stay buffered (byte-identical) for the next call.
+            # Interleaved control frames are complete by themselves, so they
+            # are answered/consumed inline (same as the blocking path).
+            chunks: list[bytes] = []
+            kind = ""
+            offset = 0
+            complete = False
+            while True:
+                parsed = self._parse_frame_at(self._buf, offset)
+                if parsed is None:
+                    break  # incomplete: need more bytes before deciding.
+                frame, consumed = parsed
+                if frame.opcode in (_OP_TEXT, _OP_BINARY):
+                    # New data frame restarts assembly (blocking-path parity:
+                    # an abandoned partial is discarded, never merged).
+                    kind = "text" if frame.opcode == _OP_TEXT else "binary"
+                    chunks = [frame.payload]
+                elif frame.opcode == _OP_CONT and chunks:
+                    chunks.append(frame.payload)
+                elif frame.opcode == _OP_PING:
+                    self.pings_received += 1
+                    self._send_raw(_OP_PONG, frame.payload)
+                    self.pongs_sent += 1
+                    del self._buf[offset:offset + consumed]
+                    continue  # bytes shifted; re-walk at the same offset.
+                elif frame.opcode == _OP_PONG:
+                    del self._buf[offset:offset + consumed]
+                    continue
+                elif frame.opcode == _OP_CLOSE:
+                    del self._buf[offset:offset + consumed]
+                    self._closed = True
+                    try:
+                        self._send_raw(_OP_CLOSE, frame.payload)
+                    except OSError:
+                        pass
+                    raise WsClosed(f"peer sent close (code/payload: {frame.payload!r})")
+                else:
+                    raise WsClosed(f"unexpected opcode: {frame.opcode}")
+                offset += consumed
+                if frame.fin:
+                    complete = True
+                    break
+            if complete:
+                del self._buf[:offset]
                 return kind, b"".join(chunks)
+            if not self._recv_available():
+                return None
+
+    def recv_message(self, timeout_s: float | None = None) -> tuple[str, bytes]:
+        """Return the next complete (type, payload): type is 'text' or 'binary'.
+
+        Answers pings, assembles fragments, and raises WsClosed on close frames,
+        timeouts, or transport errors. ``timeout_s`` bounds the total wait
+        (None keeps the connection default). Buffered and TLS-pending data
+        is always drained before waiting on the kernel socket.
+        """
+        if self._closed:
+            raise WsClosed("client is closed")
+        budget = self._sock.gettimeout() if timeout_s is None else timeout_s
+        deadline = None if budget is None else time.monotonic() + budget
+        while True:
+            message = self.recv_message_nowait()
+            if message is not None:
+                return message
+            remaining = None if deadline is None else deadline - time.monotonic()
+            if remaining is not None and remaining <= 0:
+                raise WsClosed(f"read timeout after {budget} s with no message")
+            try:
+                select.select([self._sock], [], [], remaining)
+            except (OSError, ValueError) as exc:
+                raise WsClosed(f"socket error while waiting: {exc}") from exc
 
     # -- sending -----------------------------------------------------------
     def _send_raw(self, opcode: int, payload: bytes) -> None:

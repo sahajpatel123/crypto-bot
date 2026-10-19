@@ -83,6 +83,173 @@
    "role": "Worker 2 \u2014 Market Data and Execution Engineer",
    "state": "accepted"
   },
+  "E-006": {
+   "branch": "worker2/e-006 from origin/main at d1dff76",
+   "contract_version": "v0.2.0",
+   "dispatch_utc": "2026-10-11T21:32:00Z",
+   "inbox": "coord/inbox/E-006.json",
+   "note": "Dispatched: sustained capture + replay + latency per CEO directive Sec 4. Ack pending. Ack received (scope understood, base d1dff76); NOT STARTED, worker-side go-ahead pending. STARTED 2026-10-11T21:55:00Z (worker2/e-006 @d1dff76; WS docs recheck first). CAPTURE RUNNING 2026-10-11T21:47:00Z: run cap-30min PID 78565 (tools/capture_stream.py --top-n 2 --duration-s 1800 --chaos-disconnect-after-s 900); 8 routed channels BTC/ETH; prior smoke-60s + agreement-30s runs observed. Manager review PASSED 2026-10-11T23:00:00Z (281 reproduced, hashes 3/3, replay SHA + bar agreement reproduced, methodology + Nautilus smoke verified, full code read). ACCEPTED + merged 7dc90ea. V-005 independent verification OPEN (dispatched, session route containment-limited, unacknowledged).",
+   "owner_session": "cloud-vega",
+   "role": "Worker 2 \u2014 Market Data and Execution Engineer",
+   "state": "accepted"
+  },
+  "E-007": {
+   "acceptance": [
+    "nautilus 1.231.0 reproducible runtime; BacktestEngine + live TradingNode/Sandbox proven",
+    "data bridge, no creds",
+    "depth snapshot+diff persistence",
+    "PaperEngine seam per S3",
+    "protection semantics",
+    "e2e fee-bearing example",
+    "depth_flow_availability.md early"
+   ],
+   "allowed_paths": [
+    "src/cryptobot/adapters/",
+    "src/cryptobot/execution/runtime_*",
+    "src/cryptobot/market_data/",
+    "tests/unit/test_execution_*",
+    "tests/unit/test_market_data_*",
+    "tests/unit/test_adapters_*",
+    "coord/outbox/E-007.json"
+   ],
+   "contract_version": "v0.2.0+app_runtime_interfaces.md S3",
+   "dependencies": [
+    "specs/app_runtime_interfaces.md S3",
+    "V-006 fee signatures via manager"
+   ],
+   "evidence_required": [
+    "env fingerprint",
+    "proof commands",
+    "e2e record",
+    "assumptions log",
+    "base/branch IDs"
+   ],
+   "owner_session": "cloud-vega",
+   "role": "Worker 2 \u2014 Market Data and Execution Engineer",
+   "state": "accepted"
+  },
+  "E-008": {
+   "acceptance": [
+    "native execution both modes",
+    "valuation-only marks",
+    "virtual clock + strict replay",
+    "1s heartbeat timers",
+    "book/flow views + funding",
+    "margin accessor + protected IOC",
+    "ingestion profiled",
+    "30d dataset frozen"
+   ],
+   "accepted": {
+    "note": "repro 426 branch + 471 overlay, 5 manager probes green, replay fill at trade cross, dataset shas match, M1 exit 0; replay-offline + funding-doc fixups; datasets promoted",
+    "sha": "e1a45b8",
+    "suite": "624/624"
+   },
+   "allowed_paths": [
+    "src/cryptobot/adapters/",
+    "src/cryptobot/market_data/",
+    "src/cryptobot/execution/runtime_*",
+    "datasets/manifests/",
+    "tests/unit/test_adapters_*",
+    "tests/unit/test_market_data_*",
+    "tests/unit/test_execution_*",
+    "coord/outbox/E-008.json"
+   ],
+   "contract_version": "v0.2.0+backtest_interfaces.md",
+   "dependencies": [
+    "specs/backtest_interfaces.md"
+   ],
+   "evidence_required": [
+    "repro + counts",
+    "manifest + coverage",
+    "profile",
+    "base/branch IDs"
+   ],
+   "owner_session": "cloud-vega",
+   "role": "Worker 2 \u2014 Data and Execution",
+   "state": "accepted"
+  },
+  "E-009": {
+   "acceptance": [
+    "WS transport drains app-buffered + TLS-pending messages (coalesced/frag/ping/burst tests)",
+    "Causal marks/funding conversion (availability times preserved), derived data versioned + rebuilt",
+    "Live books synchronized on the normal CLI path; streaming readers (no day tables)"
+   ],
+   "allowed_paths": [
+    "src/cryptobot/adapters/",
+    "src/cryptobot/execution/",
+    "src/cryptobot/market_data/",
+    "datasets/*.py",
+    "tests/unit/test_adapters_*",
+    "tests/unit/test_execution_*",
+    "tests/unit/test_market_data_*"
+   ],
+   "contract_version": "six-agent-48h",
+   "dependencies": [
+    "01487ac integrated"
+   ],
+   "evidence_required": [
+    "suite",
+    "repro"
+   ],
+   "owner_session": "cloud-vega",
+   "role": "execution",
+   "state": "accepted"
+  },
+  "EV-001": {
+   "acceptance": [
+    "Event store with ID/source/schedule-TZ/first-seen/fetch/revisions/horizon/expiry",
+    "FOMC+CPI fixtures from official calendars, TZ/DST correct, IST display",
+    "Entry-gate API + stale-source-explicit behavior, tested"
+   ],
+   "accepted": {
+    "note": "repro 49 + 713, FOMC 8/8 vs Fed page, no fixups",
+    "sha": "d27e2a1",
+    "suite": "713/713"
+   },
+   "allowed_paths": [
+    "src/cryptobot/events/",
+    "tests/unit/test_events_*.py",
+    "specs/events.md"
+   ],
+   "contract_version": "six-agent-48h",
+   "dependencies": [
+    "01487ac integrated"
+   ],
+   "evidence_required": [
+    "suite",
+    "repro"
+   ],
+   "owner_session": "white-aldebaran",
+   "role": "events",
+   "state": "accepted"
+  },
+  "OP-001": {
+   "acceptance": [
+    "5 review findings reproduced as executable probes (fail on 01487ac)",
+    "Measured replay profile (memory/throughput, bottleneck named)",
+    "No src/ edits in this task"
+   ],
+   "accepted": {
+    "note": "14F/1P + 5x exit-1 verified; strict-xfail conftest added; profile preserved",
+    "sha": "fdacf09",
+    "suite": "714 passed + 14 xfailed"
+   },
+   "allowed_paths": [
+    "tests/audit/",
+    "tools/audit/"
+   ],
+   "contract_version": "six-agent-48h",
+   "dependencies": [
+    "01487ac integrated"
+   ],
+   "evidence_required": [
+    "suite",
+    "repro"
+   ],
+   "owner_session": "crystal-parallax",
+   "role": "verification",
+   "state": "accepted"
+  },
   "Q-001": {
    "acceptance": [
     "Exact deterministic S1 breakout-momentum rules (setup, trigger, reject, invalidation, exit) with causal windows/thresholds",
@@ -150,10 +317,193 @@
    "contract_version": "v0.1.1 black-box",
    "dispatch_utc": "2026-10-11T20:44:02Z",
    "inbox": "coord/inbox/Q-003.json",
-   "note": "Dispatched: independent repro + executable EXP-001/002 per CEO directive Sec 3. Ack pending. Ack+START received 2026-10-11T20:52:00Z (worker1/q-003 @027cc6e, /tmp/cryto-bot-w1q3, baseline 167/167). Phase 1 COMPLETE 2026-10-11T21:05:00Z: 16 tests (11F/5P identical on 871d104+ec7dd62, symptom-cross-checked); 170/170 untouched. Phase 2 started; fix-after runs await integration. Build VERIFIED 2026-10-11T21:15:00Z (12/12 hashes, 176 green, 15F/5P, EXP 150/150 reproduced; 90/60 counts confirmed correct grain). One assertion reword requested (unresolved observables). Fix-after runs await V-004 fixup + E-005. Fix-after pre-check 2026-10-11T21:30:00Z: 19/20 on integrated main; one assertion correction outstanding (consumed-vs-unresolved ruling); EXP 150/150 stands.",
+   "note": "Dispatched: independent repro + executable EXP-001/002 per CEO directive Sec 3. Ack pending. Ack+START received 2026-10-11T20:52:00Z (worker1/q-003 @027cc6e, /tmp/cryto-bot-w1q3, baseline 167/167). Phase 1 COMPLETE 2026-10-11T21:05:00Z: 16 tests (11F/5P identical on 871d104+ec7dd62, symptom-cross-checked); 170/170 untouched. Phase 2 started; fix-after runs await integration. Build VERIFIED 2026-10-11T21:15:00Z (12/12 hashes, 176 green, 15F/5P, EXP 150/150 reproduced; 90/60 counts confirmed correct grain). One assertion reword requested (unresolved observables). Fix-after runs await V-004 fixup + E-005. Fix-after pre-check 2026-10-11T21:30:00Z: 19/20 on integrated main; one assertion correction outstanding (consumed-vs-unresolved ruling); EXP 150/150 stands. Fix-after 20/20 CONFIRMED 2026-10-11T21:45:00Z (correction per consumed-vs-unresolved ruling). ACCEPTED + integrated via provenance copy (12 files). Manager integration fix: tests/ceo_review/conftest.py renamed to helpers.py (top-level conftest collision broke 4 V-004 tests in full runs). Merged-tree 264/264, M1 exit 0, gate PASS. Rider integrated 2026-10-11T21:55:00Z (EXP-001/002 status -> 90/60 executed).",
    "owner_session": "whisper-redshift",
    "role": "Worker 1 \u2014 Quant Research and Strategy Engineer",
-   "state": "running"
+   "state": "accepted"
+  },
+  "Q-004": {
+   "branch": "worker1/q-004 from origin/main at 6915858",
+   "contract_version": "v0.2.0",
+   "dispatch_utc": "2026-10-11T22:05:00Z",
+   "inbox": "coord/inbox/Q-004.json",
+   "note": "Dispatched: S3/S4 implementation + S5 ruling per directive Sec 5, parallel with E-006. Ack pending. Ack+START 2026-10-11T22:10:00Z (worker1/q-004 @ea4fa9d, 264/264 baseline). VERIFIED + ACCEPTED 2026-10-11T22:20:00Z (25/25 hashes on corrected filing, 297/297 reproduced, S3/S4 spec-exact + causal, S5 unavailable-ruled, EXP-003/004 at 0/NONE). Integrated via provenance copy.",
+   "owner_session": "whisper-redshift",
+   "role": "Worker 1 \u2014 Quant Research and Strategy Engineer",
+   "state": "accepted"
+  },
+  "Q-005": {
+   "acceptance": [
+    "S1-S4 runtime boundary + typed exits",
+    "causal time, pure evaluate",
+    "S5 recheck + baseline or precise ineligible reason",
+    "frozen S5 params",
+    "suite green"
+   ],
+   "allowed_paths": [
+    "src/cryptobot/strategies/",
+    "src/cryptobot/features/",
+    "specs/strategies/",
+    "tests/unit/test_strategies_*",
+    "coord/outbox/Q-005.json"
+   ],
+   "contract_version": "v0.2.0+app_runtime_interfaces.md S1/S2",
+   "dependencies": [
+    "specs/app_runtime_interfaces.md S1/S2",
+    "specs/depth_flow_availability.md (E-007 via manager)"
+   ],
+   "evidence_required": [
+    "repro + counts",
+    "boundary trace",
+    "S5 verdict",
+    "base/branch IDs"
+   ],
+   "owner_session": "whisper-redshift",
+   "role": "Worker 1 \u2014 Quant Research and Strategy Engineer",
+   "state": "accepted"
+  },
+  "Q-005-F1": {
+   "acceptance": [
+    "MarketView.bars carries aligned None slots (tuple[Bar|None,...]); adapters pass through without compressing time",
+    "gate handles trailing/leading Nones (last non-None staleness; all-None -> quality:empty-window)",
+    "S5 view path same alignment; suite green"
+   ],
+   "allowed_paths": [
+    "src/cryptobot/strategies/runtime.py",
+    "src/cryptobot/strategies/s5.py",
+    "tests/unit/test_strategies_runtime.py",
+    "tests/unit/test_strategies_s5.py",
+    "coord/outbox/Q-005-F1.json"
+   ],
+   "contract_version": "v0.2.0+app_runtime_interfaces.md S1",
+   "dependencies": [
+    "Q-005 runtime.py on main"
+   ],
+   "evidence_required": [
+    "repro + counts",
+    "base/branch IDs"
+   ],
+   "owner_session": "whisper-redshift",
+   "role": "Worker 1 \u2014 Quant Research and Strategy Engineer",
+   "state": "accepted"
+  },
+  "Q-006": {
+   "acceptance": [
+    "EXP-003 60 + EXP-004 40 trials, totals reconciled, NONE",
+    "observed return eval, embargo + holdout",
+    "closed-trade gross/net with costs",
+    "suite green"
+   ],
+   "allowed_paths": [
+    "src/cryptobot/research/",
+    "tests/unit/test_research_*",
+    "specs/exp-*",
+    "specs/EXP-*",
+    "coord/outbox/Q-006.json"
+   ],
+   "contract_version": "v0.2.0+app_runtime_interfaces.md",
+   "dependencies": [
+    "EXP-003/004 manifests",
+    "runtime policy via integration"
+   ],
+   "evidence_required": [
+    "trial totals",
+    "method + holdout record",
+    "return tables",
+    "base/branch IDs"
+   ],
+   "owner_session": "whisper-redshift",
+   "role": "Worker 1 \u2014 Quant Research and Strategy Engineer",
+   "state": "accepted"
+  },
+  "Q-007": {
+   "acceptance": [
+    "5 strategy cards",
+    "S5 on views",
+    "portfolio runner via Session",
+    "frozen comparisons + splits",
+    "spread assumption profile",
+    "determinism proof"
+   ],
+   "accepted": {
+    "note": "repro 659, synth headlines match, determinism 6-fill identical, captured 0/0/0; data-note: benchmark-30d bulk IS present in main workspace (datasets/cache), W1 fallback unnecessary post-merge",
+    "sha": "b784013",
+    "suite": "659/659"
+   },
+   "allowed_paths": [
+    "src/cryptobot/strategies/",
+    "src/cryptobot/features/",
+    "src/cryptobot/research/",
+    "specs/cards/",
+    "tests/unit/test_strategies_*",
+    "tests/unit/test_research_*",
+    "coord/outbox/Q-007.json"
+   ],
+   "contract_version": "v0.2.0+backtest_interfaces.md",
+   "dependencies": [
+    "specs/backtest_interfaces.md",
+    "E-008 reader/views via manager"
+   ],
+   "evidence_required": [
+    "repro + counts",
+    "comparison tables",
+    "two-run diff",
+    "base/branch IDs"
+   ],
+   "owner_session": "whisper-redshift",
+   "role": "Worker 1 \u2014 Strategies and Backtesting",
+   "state": "accepted"
+  },
+  "Q-008": {
+   "acceptance": [
+    "Causal spread quotes (no future VWAP); future-data invariance proof",
+    "Symbol-scoped dedup + conflicting-duplicate detection",
+    "Streaming orchestration: bounded prep/replay/report, BTC+ETH frozen comparisons"
+   ],
+   "allowed_paths": [
+    "src/cryptobot/research/",
+    "src/cryptobot/strategies/",
+    "specs/cards/",
+    "tests/unit/test_research_*",
+    "tests/unit/test_strategies_*"
+   ],
+   "contract_version": "six-agent-48h",
+   "dependencies": [
+    "01487ac integrated"
+   ],
+   "evidence_required": [
+    "suite",
+    "repro"
+   ],
+   "owner_session": "whisper-redshift",
+   "role": "quant",
+   "state": "accepted"
+  },
+  "R2": {
+   "acceptance": [
+    "1h supervised paper",
+    "controlled interruption + recovery",
+    "reconciled flat"
+   ],
+   "allowed_paths": [],
+   "evidence_required": [
+    "run report"
+   ],
+   "owner_session": "young-polaris",
+   "role": "Manager",
+   "state": "complete"
+  },
+  "R3": {
+   "acceptance": [
+    "24h paper per R3_LAUNCH.md"
+   ],
+   "allowed_paths": [],
+   "evidence_required": [
+    "run report"
+   ],
+   "owner_session": "owner",
+   "role": "Owner launch",
+   "state": "ready-to-launch"
   },
   "V-001": {
    "acceptance": [
@@ -273,8 +623,156 @@
    "owner_session": "cool-amalthea",
    "role": "Worker 3 \u2014 Risk, Verification and Reliability Engineer",
    "state": "accepted"
+  },
+  "V-005": {
+   "branch": "none required (read-only verify)",
+   "contract_version": "v0.2.0",
+   "dispatch_utc": "2026-10-11T22:50:00Z",
+   "inbox": "coord/inbox/V-005.json",
+   "note": "Dispatched: independent E-006 verification (both-confirm rule). Ack pending; first two session sends returned containment-limited, inbox is the durable record. No ack as of 2026-10-11T23:00:00Z (5 session sends containment-limited). Durable inbox on main; stays open with fixup authority; retry activation when route recovers.",
+   "owner_session": "cool-amalthea",
+   "role": "Worker 3 \u2014 Risk, Verification and Reliability Engineer",
+   "state": "assigned"
+  },
+  "V-006": {
+   "acceptance": [
+    "V-005 continuation: capture + cap-2h + numeric replay + S5 inventory",
+    "strict metadata enforcement",
+    "margin-aware sizing",
+    "real commission/funding ingestion",
+    "accounting agreement",
+    "timer monitor_tick",
+    "idempotent recovery",
+    "runtime regressions + early fee signatures"
+   ],
+   "allowed_paths": [
+    "src/cryptobot/risk/",
+    "src/cryptobot/accounting/",
+    "tests/acceptance/",
+    "tests/ceo_review/test_runtime_*",
+    "specs/acceptance-*",
+    "coord/outbox/V-006.json"
+   ],
+   "contract_version": "v0.2.0+app_runtime_interfaces.md S4",
+   "dependencies": [
+    "specs/app_runtime_interfaces.md S4",
+    "integrated main SHA (manager announces)"
+   ],
+   "evidence_required": [
+    "files/hashes checked",
+    "repro + counts",
+    "verdict table",
+    "base/branch IDs"
+   ],
+   "owner_session": "cool-amalthea",
+   "role": "Worker 3 \u2014 Risk, Verification and Reliability Engineer",
+   "state": "accepted"
+  },
+  "V-006-F1": {
+   "acceptance": [
+    "complete() venue-satisfiable; max-notional optional cap",
+    "MARKET_LOT_SIZE handling noted",
+    "suite green"
+   ],
+   "allowed_paths": [
+    "src/cryptobot/risk/types.py",
+    "src/cryptobot/risk/sizing.py",
+    "tests/acceptance/test_risk_v006.py",
+    "coord/outbox/V-006-F1.json"
+   ],
+   "contract_version": "v0.2.0+app_runtime_interfaces.md S4",
+   "dependencies": [
+    "V-006 integration on main"
+   ],
+   "evidence_required": [
+    "exchangeInfo evidence",
+    "repro + counts",
+    "base/branch IDs"
+   ],
+   "owner_session": "cool-amalthea",
+   "role": "Worker 3 \u2014 Risk, Verification and Reliability Engineer",
+   "state": "accepted"
+  },
+  "V-007": {
+   "acceptance": [
+    "protection/margin/funding invariants",
+    "independent reconciliation",
+    "reporting package + HTML",
+    "charts + splits",
+    "episodes",
+    "daily evidence + reliability"
+   ],
+   "accepted": {
+    "note": "repro read-only 585 green, report build byte-identical x2, 7-check agree, corrupt-fill loud",
+    "sha": "c770aa7",
+    "suite": "585/585"
+   },
+   "allowed_paths": [
+    "src/cryptobot/risk/",
+    "src/cryptobot/accounting/",
+    "src/cryptobot/reporting/",
+    "tests/acceptance/",
+    "tests/unit/test_reporting_*",
+    "coord/outbox/V-007.json"
+   ],
+   "contract_version": "v0.2.0+backtest_interfaces.md",
+   "dependencies": [
+    "specs/backtest_interfaces.md",
+    "manager run-file format B9"
+   ],
+   "evidence_required": [
+    "repro + counts",
+    "sample report",
+    "reconciliation proof",
+    "base/branch IDs"
+   ],
+   "owner_session": "cool-amalthea",
+   "role": "Worker 3 \u2014 Risk and Reporting",
+   "state": "accepted"
+  },
+  "V-008": {
+   "acceptance": [
+    "Margin/entry/protection invariants incl. available margin + fee buffers + commitments to admission",
+    "Funding reconciliation ledger/engine; mark-age/close-cost semantics shared with reports",
+    "Disabled real-venue adapter contract + recorded tests (no production funds)"
+   ],
+   "allowed_paths": [
+    "src/cryptobot/risk/",
+    "src/cryptobot/accounting/",
+    "src/cryptobot/venues/",
+    "tests/unit/test_risk*",
+    "tests/unit/test_accounting*",
+    "tests/acceptance/test_risk_v008.py",
+    "tests/acceptance/test_venue_*"
+   ],
+   "contract_version": "six-agent-48h",
+   "dependencies": [
+    "01487ac integrated"
+   ],
+   "evidence_required": [
+    "suite",
+    "repro"
+   ],
+   "owner_session": "cool-amalthea",
+   "role": "risk",
+   "state": "accepted"
+  },
+  "W1-24H": {
+   "state": "running"
+  },
+  "W2-24H": {
+   "state": "running"
+  },
+  "W3-24H": {
+   "state": "running"
+  },
+  "W4-24H": {
+   "state": "running"
+  },
+  "W5-24H": {
+   "state": "running"
   }
  },
- "updated_utc": "2026-10-11T15:10:35Z",
+ "updated_utc": "2026-10-12T08:30:00Z",
  "version": 1
 }

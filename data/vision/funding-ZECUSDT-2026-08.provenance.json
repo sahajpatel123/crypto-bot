@@ -1,0 +1,10 @@
+{
+ "name": "funding-ZECUSDT-2026-08",
+ "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ZECUSDT/ZECUSDT-fundingRate-2026-08.zip",
+ "fetched_utc": "2026-10-16T14:14:50.428942+00:00",
+ "status": "present",
+ "http_status": 200,
+ "sha256": "a50255aac77009fdf7f9328cf185471c862fd8b2a5b7940394c9216a9515cacd",
+ "bytes": 848,
+ "csv_rows": 93
+}

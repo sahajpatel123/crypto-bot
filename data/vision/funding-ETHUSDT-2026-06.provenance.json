@@ -1,0 +1,10 @@
+{
+ "name": "funding-ETHUSDT-2026-06",
+ "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/ETHUSDT/ETHUSDT-fundingRate-2026-06.zip",
+ "fetched_utc": "2026-10-16T14:13:59.043597+00:00",
+ "status": "present",
+ "http_status": 200,
+ "sha256": "cc6fb028a811bc423b711f6b89de067bf92a2eda61303e1ce0b219b5d3210e47",
+ "bytes": 967,
+ "csv_rows": 90
+}

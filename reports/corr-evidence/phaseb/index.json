@@ -1,0 +1,62 @@
+{
+  "R01-S1-cap30min": {
+    "status": "SCORED",
+    "closed": 0,
+    "net": 0,
+    "panel": "/tmp/w4-phaseb/panels/R01-S1-cap30min.json"
+  },
+  "R01-S2-cap30min": {
+    "status": "SCORED",
+    "closed": 0,
+    "net": 0,
+    "panel": "/tmp/w4-phaseb/panels/R01-S2-cap30min.json"
+  },
+  "R01-S3-cap30min": {
+    "status": "SCORED",
+    "closed": 0,
+    "net": 0,
+    "panel": "/tmp/w4-phaseb/panels/R01-S3-cap30min.json"
+  },
+  "R01-S4-cap30min": {
+    "status": "SCORED",
+    "closed": 0,
+    "net": 0,
+    "panel": "/tmp/w4-phaseb/panels/R01-S4-cap30min.json"
+  },
+  "R01-CASH-cap30min": {
+    "status": "SCORED",
+    "closed": 0,
+    "net": 0,
+    "panel": "/tmp/w4-phaseb/panels/R01-CASH-cap30min.json"
+  },
+  "R01-S1-cap2h": {
+    "status": "SCORED",
+    "closed": 0,
+    "net": 0,
+    "panel": "/tmp/w4-phaseb/panels/R01-S1-cap2h.json"
+  },
+  "R01-S2-cap2h": {
+    "status": "SCORED",
+    "closed": 0,
+    "net": 0,
+    "panel": "/tmp/w4-phaseb/panels/R01-S2-cap2h.json"
+  },
+  "R01-S3-cap2h": {
+    "status": "SCORED",
+    "closed": 0,
+    "net": 0,
+    "panel": "/tmp/w4-phaseb/panels/R01-S3-cap2h.json"
+  },
+  "R01-S4-cap2h": {
+    "status": "SCORED",
+    "closed": 0,
+    "net": 0,
+    "panel": "/tmp/w4-phaseb/panels/R01-S4-cap2h.json"
+  },
+  "R01-CASH-cap2h": {
+    "status": "SCORED",
+    "closed": 0,
+    "net": 0,
+    "panel": "/tmp/w4-phaseb/panels/R01-CASH-cap2h.json"
+  }
+}

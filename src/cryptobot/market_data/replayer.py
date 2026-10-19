@@ -162,3 +162,125 @@ def events_hash(records: Iterable[dict[str, Any]], *, order: str = "arrival") ->
     for event in replay_events(records, order=order):
         digest.update(json.dumps(event, sort_keys=True).encode("utf-8"))
     return digest.hexdigest()
+
+
+def iter_events(path: str | Path) -> Iterator[dict[str, Any]]:
+    """Stream a normalized event file line by line (O(1) memory).
+
+    Same per-record contract as load_events (input_class presence
+    enforced); yields dicts in file order without materializing.
+    """
+    with open(path, encoding="utf-8") as fh:
+        for line in fh:
+            if not line.strip():
+                continue
+            record = json.loads(line)
+            if "input_class" not in record:
+                raise ValueError(
+                    "event record missing mandatory input_class label")
+            yield record
+
+
+def stream_events(path: str | Path, *,
+                  order: str = "arrival") -> Iterator[dict[str, Any]]:
+    """Yield capture events in deterministic order without sorting.
+
+    Captures are seq-ordered by construction, so ``order="arrival"``
+    enforces non-decreasing seq (ValueError naming the regressing
+    record) instead of buffering a full-list sort. ``order="exchange_ts"``
+    additionally enforces non-decreasing (exchange_ts_ms, seq). Output
+    on a compliant file is identical to replay_events(load_events(path));
+    non-compliant files raise rather than reorder — use replay_events on
+    a loaded list when reordering foreign files is required.
+    """
+    if order == "arrival":
+        def key(record: dict[str, Any]):
+            return int(record["seq"])
+    elif order == "exchange_ts":
+        def key(record: dict[str, Any]):
+            return (int(record["exchange_ts_ms"]), int(record["seq"]))
+    else:
+        raise ValueError(f"unknown replay order: {order!r}")
+    prev = None
+    for record in iter_events(path):
+        cur = key(record)
+        if prev is not None and cur < prev:
+            raise ValueError(
+                f"capture not {order}-ordered: seq {record.get('seq')} "
+                f"regresses after {prev!r}")
+        prev = cur
+        yield record
+
+
+class RollingEventHash:
+    """Incremental events_hash over a streamed replay (O(1) memory).
+
+    update() applies the exact events_hash step per event, so the final
+    hexdigest equals events_hash() over the same ordered stream.
+    """
+
+    def __init__(self) -> None:
+        self._digest = hashlib.sha256()
+        self.count = 0
+
+    def update(self, event: dict[str, Any]) -> None:
+        self._digest.update(json.dumps(event, sort_keys=True).encode("utf-8"))
+        self.count += 1
+
+    def hexdigest(self) -> str:
+        return self._digest.hexdigest()
+
+
+_LEGACY_SNAPSHOT_SKEW_MS = 1000
+
+
+def replay_with_snapshots(
+    records: Iterable[dict[str, Any]],
+    snaps: Iterable[dict[str, Any]],
+    *,
+    order: str = "arrival",
+    assume_ordered: bool = False,
+) -> Iterator[tuple[str, dict[str, Any]]]:
+    """Yield ("event"|"snapshot", payload) in causal replay order.
+
+    Snapshots install when the replay clock (monotonic max of event
+    ``exchange_ts_ms``) reaches them — never all-upfront, so a future
+    snapshot cannot leak into earlier queries. Each snapshot is yielded
+    BEFORE the first event at/after its time. The event subsequence is
+    identical to :func:`replay_events` (parity); only snapshot items are
+    added, at causal positions.
+
+    Snapshots key on the exchange clock (``snapshot_ms``); records with a
+    venue transaction time merge exactly. Legacy records (receipt clock
+    only) get a 1000 ms install tolerance for host skew — installing
+    slightly early is safe because views still refuse queries older than
+    the applied state (``book:future-data``). Snapshots newer than every
+    event are NEVER yielded: no clock reached them, so no install.
+
+    Consumer contract: install yielded snapshots unconditionally (no
+    ``as_of_ms``) — the iterator already enforced clock >= snapshot time
+    at yield. Queries between install and clock catch-up are still safe:
+    views refuse anything older than the applied state (``book:future-data``).
+
+    ``assume_ordered`` skips the :func:`replay_events` sort for callers
+    holding an already-ordered stream (Session streaming replay): the
+    merge stays O(snapshots) memory. Ordering enforcement is then the
+    caller's stream contract (manager integration adaptation).
+    """
+    from .bridge import snapshot_ms
+
+    ordered_snaps = sorted(snaps, key=snapshot_ms)
+    clock: int | None = None
+    idx = 0
+    stream = records if assume_ordered else replay_events(records, order=order)
+    for event in stream:
+        ts = int(event["exchange_ts_ms"])
+        clock = ts if clock is None else max(clock, ts)
+        while idx < len(ordered_snaps):
+            snap = ordered_snaps[idx]
+            tol = 0 if snap.get("exchange_ts_ms") else _LEGACY_SNAPSHOT_SKEW_MS
+            if snapshot_ms(snap) - tol > clock:
+                break
+            idx += 1
+            yield "snapshot", snap
+        yield "event", event

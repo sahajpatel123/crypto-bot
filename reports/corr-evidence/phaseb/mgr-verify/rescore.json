@@ -1,0 +1,16 @@
+{
+ "status": "CHILD_EXIT",
+ "child_rc": 0,
+ "elapsed_s": 147.288,
+ "budget_s": 600.0,
+ "command": [
+  "uv",
+  "run",
+  "--locked",
+  "--extra",
+  "dev",
+  "python",
+  "tools/score_phaseb.py"
+ ],
+ "subreaper": false
+}

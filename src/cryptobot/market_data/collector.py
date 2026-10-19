@@ -27,6 +27,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from .bars import BarAggregator, BarMissing
+from .bridge import snapshot_record
 from .depth import DepthBook
 from .discovery import FAPI_BASE_URL, discover_usdt_perps, fetch_exchange_info, urllib_json_get
 from .events import EVENT_FORMAT, parse_message, raw_envelope
@@ -41,6 +42,7 @@ __all__ = [
 MARKET_ROUTE = "wss://fstream.binance.com/market/stream?streams="
 PUBLIC_ROUTE = "wss://fstream.binance.com/public/stream?streams="
 REST_BASE = FAPI_BASE_URL
+_STALE_PARTIAL_S = 5.0  # incomplete buffered bytes this old mean a sick connection.
 
 
 @dataclass(frozen=True)
@@ -147,6 +149,8 @@ class Collector:
         self._chaos_done = False
         self._snapshot_due: dict[str, float] = {}  # symbol -> mono deadline for buffer-fill window.
         self._conns: dict[str, WsClient] = {}
+        self._turn: list[str] = ["market", "public"]  # rotated each pump: fair service.
+        self._route_last_msg: dict[str, int] = {}
         self._started_mono = 0
         self._deadline_mono: int | None = None
         self._clock_start: dict[str, float] = {}
@@ -163,34 +167,47 @@ class Collector:
     def _open(self, route: str) -> None:
         self._conns[route] = self._connect(self._stream_url(route))
         self._conns[route].native_socket.settimeout(0.2)
+        self._route_last_msg[route] = self._mono_ns()
 
-    def _snapshot_symbol(self, symbol: str, raw_fh, events_fh, bars_fh) -> None:
+    def _snapshot_symbol(self, symbol: str, raw_fh, events_fh, bars_fh, snaps_fh) -> None:
         """Fetch a depth snapshot, drain in-flight diffs into the buffer, then install.
 
         The post-REST drain is load-bearing: diffs generated while the snapshot
         request was in flight sit in the kernel queue, and the event spanning
         lastUpdateId + 1 is typically among them. Installing without draining
         strands the book (every subsequent diff looks like a chain break).
+
+        Every fetched snapshot is persisted (E-007) so book-feature replay can
+        rebuild from snapshot + chained diffs; the outcome field marks the
+        sync boundary (synced | resync).
         """
         payload, _ = self._rest_get(
             f"{REST_BASE}/fapi/v1/depth?symbol={symbol}&limit={self.config.depth_snapshot_limit}", 15.0)
+        rest_wall, rest_mono = self._wall_ms(), self._mono_ns()
         deadline = time.monotonic() + 1.5
         while time.monotonic() < deadline:
             if self._pump_once(raw_fh, events_fh, bars_fh) == 0:
                 break
         book = self._books[symbol]
         outcome = book.on_snapshot(payload["bids"], payload["asks"], payload["lastUpdateId"])
+        self._write_json(snaps_fh, snapshot_record(
+            run_id=self.config.run_id, symbol=symbol,
+            last_update_id=payload["lastUpdateId"],
+            bids=payload["bids"], asks=payload["asks"],
+            rest_recv_ms=rest_wall, rest_mono_ns=rest_mono,
+            limit=self.config.depth_snapshot_limit, outcome=outcome,
+            exchange_ts_ms=int(payload["T"]) if payload.get("T") else None))
         if outcome == "resync":
             self.stats.depth_resyncs += 1
             self._snapshot_due[symbol] = time.monotonic() + 2.5  # genuine gap; re-buffer, retry.
 
-    def _snapshot_due_check(self, raw_fh, events_fh, bars_fh) -> None:
+    def _snapshot_due_check(self, raw_fh, events_fh, bars_fh, snaps_fh) -> None:
         now = time.monotonic()
         for symbol in list(self._snapshot_due):
             if now >= self._snapshot_due[symbol]:
                 del self._snapshot_due[symbol]
                 try:
-                    self._snapshot_symbol(symbol, raw_fh, events_fh, bars_fh)
+                    self._snapshot_symbol(symbol, raw_fh, events_fh, bars_fh, snaps_fh)
                 except (OSError, ValueError, KeyError):
                     # REST failed or answered garbage (rate limit, error page):
                     # re-buffer and retry shortly; never kill a capture over it.
@@ -242,8 +259,10 @@ class Collector:
         raw_fh = (self.run_dir / "raw.jsonl").open("w", encoding="utf-8")
         events_fh = (self.run_dir / "events.jsonl").open("w", encoding="utf-8")
         bars_fh = (self.run_dir / "bars.jsonl").open("w", encoding="utf-8")
+        snaps_fh = (self.run_dir / "depth_snapshots.jsonl").open("w", encoding="utf-8")
         files = {"raw": self.run_dir / "raw.jsonl", "events": self.run_dir / "events.jsonl",
-                 "bars": self.run_dir / "bars.jsonl"}
+                 "bars": self.run_dir / "bars.jsonl",
+                 "depth_snapshots": self.run_dir / "depth_snapshots.jsonl"}
         last_heartbeat = 0.0
         last_flush = time.monotonic()
         if duration_s is not None:
@@ -271,7 +290,7 @@ class Collector:
                     self._drop_connection("public", injected=True)
                     self._chaos_done = True
                 self._pump_once(raw_fh, events_fh, bars_fh)
-                self._snapshot_due_check(raw_fh, events_fh, bars_fh)
+                self._snapshot_due_check(raw_fh, events_fh, bars_fh, snaps_fh)
                 now = time.monotonic()
                 if now - last_heartbeat >= self.config.heartbeat_every_s:
                     self._heartbeat()
@@ -280,13 +299,14 @@ class Collector:
                     raw_fh.flush()
                     events_fh.flush()
                     bars_fh.flush()
+                    snaps_fh.flush()
                     last_flush = now
         except KeyboardInterrupt:
             self.stats.stop_reason = "interrupted"
         finally:
             for bar in self._drain_bars():
                 self._write_json(bars_fh, bar)
-            for fh in (raw_fh, events_fh, bars_fh):
+            for fh in (raw_fh, events_fh, bars_fh, snaps_fh):
                 fh.flush()
                 os.fsync(fh.fileno())
                 fh.close()
@@ -311,49 +331,90 @@ class Collector:
 
     # -- per-iteration -------------------------------------------------------
     def _pump_once(self, raw_fh, events_fh, bars_fh) -> int:
-        """Process at most one message per readable connection. Returns messages read."""
+        """Process at most one message per route (round-robin). Returns messages read.
+
+        Routes are polled via ``recv_message_nowait`` so complete
+        application-buffered messages and TLS pending data drain without
+        awaiting new kernel readability (E-009); ``select`` is only an idle
+        sleep. A route holding incomplete bytes past the stale threshold is
+        dropped as sick and reconnected with a natural gap.
+        """
         if not self._conns:
             time.sleep(0.2)
             return 0
-        readable, _, _ = select.select(
-            [c.native_socket for c in self._conns.values()], [], [], 0.2)
-        routes = {id(c.native_socket): r for r, c in self._conns.items()}
         processed = 0
-        for sock in readable:
-            route = routes[id(sock)]
+        for route in list(self._turn):
+            conn = self._conns.get(route)
+            if conn is None:
+                continue
+            drain = getattr(conn, "recv_message_nowait", None)
+            if drain is None:
+                # Legacy/foreign conn: honor has_pending() without select.
+                if not getattr(conn, "has_pending", lambda: False)():
+                    continue
+                try:
+                    message = conn.recv_message(timeout_s=0)
+                except WsClosed:
+                    self._drop_connection(route, injected=False)
+                    continue
+            else:
+                try:
+                    message = drain()
+                except WsClosed:
+                    self._drop_connection(route, injected=False)
+                    continue
+            if message is None:
+                continue
+            if self._handle_message(route, *message, raw_fh, events_fh, bars_fh):
+                processed += 1
+        self._turn = self._turn[1:] + self._turn[:1]
+        if processed:
+            return processed
+        now_mono = self._mono_ns()
+        for route, conn in list(self._conns.items()):
+            buffered = getattr(conn, "buffered_bytes", 0)
+            last = self._route_last_msg.get(route, now_mono)
+            if buffered and (now_mono - last) / 1e9 > _STALE_PARTIAL_S:
+                self._drop_connection(route, injected=False)  # sick: never assembles.
+                break
+        else:
             try:
-                # select() already bounds the idle wait; allow slow frame assembly.
-                kind, payload = self._conns[route].recv_message(timeout_s=10.0)
-            except WsClosed:
-                self._drop_connection(route, injected=False)
-                continue
-            if kind != "text":
-                continue
-            processed += 1
-            recv_wall = self._wall_ms()
-            recv_mono = self._mono_ns()
-            try:
-                message = json.loads(payload.decode("utf-8"))
-            except (UnicodeDecodeError, ValueError):
-                self.stats.malformed += 1
-                continue
-            self._seq += 1
-            self._write_json(raw_fh, raw_envelope(message, route=route, local_recv_ms=recv_wall,
-                                                  local_mono_ns=recv_mono, seq=self._seq,
-                                                  run_id=self.config.run_id))
-            try:
-                event = parse_message(message, route=route, local_recv_ms=recv_wall,
-                                      local_mono_ns=recv_mono, seq=self._seq,
-                                      run_id=self.config.run_id)
-                self._ingest(event, bars_fh)
-            except (ValueError, KeyError, TypeError):
-                # One bad message must never kill a capture: raw is preserved,
-                # the failure is counted, and the loop continues.
-                self.stats.malformed += 1
-                continue
-            self._write_json(events_fh, event)
-            self._proc_samples.add((self._mono_ns() - event["local_mono_ns"]) / 1e6)
-        return processed
+                select.select([c.native_socket for c in self._conns.values()],
+                              [], [], 0.2)
+            except (OSError, ValueError):
+                time.sleep(0.2)  # dead socket set: never busy-spin.
+        return 0
+
+    def _handle_message(self, route: str, kind: str, payload: bytes,
+                        raw_fh, events_fh, bars_fh) -> bool:
+        """Normalize + persist one message; True when it became an event."""
+        if kind != "text":
+            return False
+        recv_wall = self._wall_ms()
+        recv_mono = self._mono_ns()
+        try:
+            message = json.loads(payload.decode("utf-8"))
+        except (UnicodeDecodeError, ValueError):
+            self.stats.malformed += 1
+            return False
+        self._seq += 1
+        self._write_json(raw_fh, raw_envelope(message, route=route, local_recv_ms=recv_wall,
+                                              local_mono_ns=recv_mono, seq=self._seq,
+                                              run_id=self.config.run_id))
+        try:
+            event = parse_message(message, route=route, local_recv_ms=recv_wall,
+                                  local_mono_ns=recv_mono, seq=self._seq,
+                                  run_id=self.config.run_id)
+            self._ingest(event, bars_fh)
+        except (ValueError, KeyError, TypeError):
+            # One bad message must never kill a capture: raw is preserved,
+            # the failure is counted, and the loop continues.
+            self.stats.malformed += 1
+            return False
+        self._write_json(events_fh, event)
+        self._route_last_msg[route] = recv_mono
+        self._proc_samples.add((self._mono_ns() - event["local_mono_ns"]) / 1e6)
+        return True
 
     def _ingest(self, event: dict[str, Any], bars_fh) -> None:
         self.stats.events_total += 1

@@ -1,0 +1,10 @@
+{
+ "status": "CHILD_EXIT",
+ "child_rc": 0,
+ "elapsed_s": 3.208,
+ "budget_s": 1500.0,
+ "command": [
+  ".venv/bin/python",
+  "/tmp/w1-corr/Crypto_Bot_cdcd10c_Review_Probes.py"
+ ]
+}

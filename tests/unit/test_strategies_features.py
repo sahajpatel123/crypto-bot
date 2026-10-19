@@ -26,6 +26,7 @@ from cryptobot.features.pullback import (
     swing_high_before,
     swing_low_before,
 )
+from cryptobot.features.range import edge_touches, vwap_typical
 
 
 def test_ref_windows_exclude_trigger_bar():
@@ -103,6 +104,36 @@ def test_pullback_primitives_windows_and_indices():
     assert (level, idx) == (9.0, 145)
     with pytest.raises(InsufficientHistory):
         resume_max(closes, 3, 5)
+
+
+def test_vwap_typical_math_and_zero_volume():
+    highs = [11.0] * 100
+    lows = [9.0] * 100
+    closes = [10.0] * 100
+    vols = [100.0] * 100
+    assert vwap_typical(highs, lows, closes, vols, 90, 60) == pytest.approx(10.0)
+    vols[89] = 300.0
+    closes[89] = 13.0
+    highs[89] = 13.0
+    lows[89] = 13.0
+    assert vwap_typical(highs, lows, closes, vols, 90, 60) == pytest.approx(
+        (59 * 10.0 * 100.0 + 13.0 * 300.0) / (59 * 100.0 + 300.0))
+    assert vwap_typical(highs, lows, closes, [0.0] * 100, 90, 60) is None
+    with pytest.raises(ValueError):
+        vwap_typical(highs, lows, closes, [-1.0] * 100, 90, 60)
+
+
+def test_edge_touches_counts_and_guards():
+    lows = [100.0] * 100
+    lows[80] = 99.6
+    assert edge_touches(lows, 99.0, 90, 60, 4.0, edge="low") == 0
+    assert edge_touches(lows, 100.0, 90, 60, 4.0, edge="low") == 60
+    highs = [100.0] * 100
+    assert edge_touches(highs, 100.0, 90, 60, 4.0, edge="high") == 60
+    with pytest.raises(ValueError):
+        edge_touches(lows, 0.0, 90, 60, 4.0, edge="low")
+    with pytest.raises(ValueError):
+        edge_touches(lows, 100.0, 90, 60, 4.0, edge="sideways")
 
 
 def test_features_causal_future_perturbation_invariant():

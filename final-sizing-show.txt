@@ -1,0 +1,800 @@
+############ cryptobot.risk.sizing.xǁSizeRejectedǁ__init____mutmut_1
+-    super().__init__(reason)
++    super().__init__(None)
+############ cryptobot.risk.sizing.xǁSizeRejectedǁ__init____mutmut_2
+-    self.reason = reason
++    self.reason = None
+############ cryptobot.risk.sizing.x__finite__mutmut_1
+-    return isinstance(value, (int, float)) and math.isfinite(value)
++    return isinstance(value, (int, float)) or math.isfinite(value)
+############ cryptobot.risk.sizing.x__finite__mutmut_2
+-    return isinstance(value, (int, float)) and math.isfinite(value)
++    return isinstance(value, (int, float)) and math.isfinite(None)
+############ cryptobot.risk.sizing.x_plan_size__mutmut_1
+-    fee_buffer_usdt: float = 0.0,
++    fee_buffer_usdt: float = 1.0,
+############ cryptobot.risk.sizing.x_plan_size__mutmut_2
+-    inflight_exposure_usdt: float = 0.0,
++    inflight_exposure_usdt: float = 1.0,
+############ cryptobot.risk.sizing.x_plan_size__mutmut_3
+-    if intent.side == Side.LONG:
++    if intent.side != Side.LONG:
+############ cryptobot.risk.sizing.x_plan_size__mutmut_4
+-        adverse = intent.entry_high
++        adverse = None
+############ cryptobot.risk.sizing.x_plan_size__mutmut_5
+-    elif intent.side == Side.SHORT:
++    elif intent.side != Side.SHORT:
+############ cryptobot.risk.sizing.x_plan_size__mutmut_6
+-        adverse = intent.entry_low
++        adverse = None
+############ cryptobot.risk.sizing.x_plan_size__mutmut_7
+-        raise SizeRejected("health:invalid-enum")
++        raise SizeRejected(None)
+############ cryptobot.risk.sizing.x_plan_size__mutmut_8
+-        raise SizeRejected("health:invalid-enum")
++        raise SizeRejected("XXhealth:invalid-enumXX")
+############ cryptobot.risk.sizing.x_plan_size__mutmut_9
+-        raise SizeRejected("health:invalid-enum")
++        raise SizeRejected("HEALTH:INVALID-ENUM")
+############ cryptobot.risk.sizing.x_plan_size__mutmut_10
+-    for name in ("entry_low", "entry_high", "invalidation_price"):
++    for name in ("XXentry_lowXX", "entry_high", "invalidation_price"):
+############ cryptobot.risk.sizing.x_plan_size__mutmut_11
+-    for name in ("entry_low", "entry_high", "invalidation_price"):
++    for name in ("ENTRY_LOW", "entry_high", "invalidation_price"):
+############ cryptobot.risk.sizing.x_plan_size__mutmut_12
+-    for name in ("entry_low", "entry_high", "invalidation_price"):
++    for name in ("entry_low", "XXentry_highXX", "invalidation_price"):
+############ cryptobot.risk.sizing.x_plan_size__mutmut_13
+-    for name in ("entry_low", "entry_high", "invalidation_price"):
++    for name in ("entry_low", "ENTRY_HIGH", "invalidation_price"):
+############ cryptobot.risk.sizing.x_plan_size__mutmut_14
+-    for name in ("entry_low", "entry_high", "invalidation_price"):
++    for name in ("entry_low", "entry_high", "XXinvalidation_priceXX"):
+############ cryptobot.risk.sizing.x_plan_size__mutmut_15
+-    for name in ("entry_low", "entry_high", "invalidation_price"):
++    for name in ("entry_low", "entry_high", "INVALIDATION_PRICE"):
+############ cryptobot.risk.sizing.x_plan_size__mutmut_16
+-        if not _finite(getattr(intent, name)):
++        if _finite(getattr(intent, name)):
+############ cryptobot.risk.sizing.x_plan_size__mutmut_17
+-        if not _finite(getattr(intent, name)):
++        if not _finite(None):
+############ cryptobot.risk.sizing.x_plan_size__mutmut_18
+-        if not _finite(getattr(intent, name)):
++        if not _finite(getattr(None, name)):
+############ cryptobot.risk.sizing.x_plan_size__mutmut_19
+-        if not _finite(getattr(intent, name)):
++        if not _finite(getattr(intent, None)):
+############ cryptobot.risk.sizing.x_plan_size__mutmut_20
+-        if not _finite(getattr(intent, name)):
++        if not _finite(getattr(name)):
+############ cryptobot.risk.sizing.x_plan_size__mutmut_21
+-        if not _finite(getattr(intent, name)):
++        if not _finite(getattr(intent, )):
+############ cryptobot.risk.sizing.x_plan_size__mutmut_22
+-            raise SizeRejected("health:nonfinite-price")
++            raise SizeRejected(None)
+############ cryptobot.risk.sizing.x_plan_size__mutmut_23
+-            raise SizeRejected("health:nonfinite-price")
++            raise SizeRejected("XXhealth:nonfinite-priceXX")
+############ cryptobot.risk.sizing.x_plan_size__mutmut_24
+-            raise SizeRejected("health:nonfinite-price")
++            raise SizeRejected("HEALTH:NONFINITE-PRICE")
+############ cryptobot.risk.sizing.x_plan_size__mutmut_25
+-    if intent.entry_low <= 0 or intent.entry_high <= 0 or intent.invalidation_price <= 0:
++    if intent.entry_low <= 0 or intent.entry_high <= 0 and intent.invalidation_price <= 0:
+############ cryptobot.risk.sizing.x_plan_size__mutmut_26
+-    if intent.entry_low <= 0 or intent.entry_high <= 0 or intent.invalidation_price <= 0:
++    if intent.entry_low <= 0 and intent.entry_high <= 0 or intent.invalidation_price <= 0:
+############ cryptobot.risk.sizing.x_plan_size__mutmut_27
+-    if intent.entry_low <= 0 or intent.entry_high <= 0 or intent.invalidation_price <= 0:
++    if intent.entry_low < 0 or intent.entry_high <= 0 or intent.invalidation_price <= 0:
+############ cryptobot.risk.sizing.x_plan_size__mutmut_28
+-    if intent.entry_low <= 0 or intent.entry_high <= 0 or intent.invalidation_price <= 0:
++    if intent.entry_low <= 1 or intent.entry_high <= 0 or intent.invalidation_price <= 0:
+############ cryptobot.risk.sizing.x_plan_size__mutmut_29
+-    if intent.entry_low <= 0 or intent.entry_high <= 0 or intent.invalidation_price <= 0:
++    if intent.entry_low <= 0 or intent.entry_high < 0 or intent.invalidation_price <= 0:
+############ cryptobot.risk.sizing.x_plan_size__mutmut_30
+-    if intent.entry_low <= 0 or intent.entry_high <= 0 or intent.invalidation_price <= 0:
++    if intent.entry_low <= 0 or intent.entry_high <= 1 or intent.invalidation_price <= 0:
+############ cryptobot.risk.sizing.x_plan_size__mutmut_31
+-    if intent.entry_low <= 0 or intent.entry_high <= 0 or intent.invalidation_price <= 0:
++    if intent.entry_low <= 0 or intent.entry_high <= 0 or intent.invalidation_price < 0:
+############ cryptobot.risk.sizing.x_plan_size__mutmut_32
+-    if intent.entry_low <= 0 or intent.entry_high <= 0 or intent.invalidation_price <= 0:
++    if intent.entry_low <= 0 or intent.entry_high <= 0 or intent.invalidation_price <= 1:
+############ cryptobot.risk.sizing.x_plan_size__mutmut_33
+-        raise SizeRejected("health:nonpositive-price")
++        raise SizeRejected(None)
+############ cryptobot.risk.sizing.x_plan_size__mutmut_34
+-        raise SizeRejected("health:nonpositive-price")
++        raise SizeRejected("XXhealth:nonpositive-priceXX")
+############ cryptobot.risk.sizing.x_plan_size__mutmut_35
+-        raise SizeRejected("health:nonpositive-price")
++        raise SizeRejected("HEALTH:NONPOSITIVE-PRICE")
+############ cryptobot.risk.sizing.x_plan_size__mutmut_36
+-    if adverse <= 0:
++    if adverse < 0:
+############ cryptobot.risk.sizing.x_plan_size__mutmut_37
+-    if adverse <= 0:
++    if adverse <= 1:
+############ cryptobot.risk.sizing.x_plan_size__mutmut_38
+-        raise SizeRejected("sizing:bad-reference")
++        raise SizeRejected(None)
+############ cryptobot.risk.sizing.x_plan_size__mutmut_39
+-        raise SizeRejected("sizing:bad-reference")
++        raise SizeRejected("XXsizing:bad-referenceXX")
+############ cryptobot.risk.sizing.x_plan_size__mutmut_40
+-        raise SizeRejected("sizing:bad-reference")
++        raise SizeRejected("SIZING:BAD-REFERENCE")
+############ cryptobot.risk.sizing.x_plan_size__mutmut_41
+-    fc = intent.forecast_cost
++    fc = None
+############ cryptobot.risk.sizing.x_plan_size__mutmut_42
+-    legs = (fc.fee_bps, fc.spread_bps, fc.slippage_bps, fc.funding_bps)
++    legs = None
+############ cryptobot.risk.sizing.x_plan_size__mutmut_43
+-    if not all(_finite(v) for v in legs):
++    if all(_finite(v) for v in legs):
+############ cryptobot.risk.sizing.x_plan_size__mutmut_44
+-    if not all(_finite(v) for v in legs):
++    if not all(None):
+############ cryptobot.risk.sizing.x_plan_size__mutmut_45
+-    if not all(_finite(v) for v in legs):
++    if not all(_finite(None) for v in legs):
+############ cryptobot.risk.sizing.x_plan_size__mutmut_46
+-        raise SizeRejected("health:nonfinite-cost")
++        raise SizeRejected(None)
+############ cryptobot.risk.sizing.x_plan_size__mutmut_47
+-        raise SizeRejected("health:nonfinite-cost")
++        raise SizeRejected("XXhealth:nonfinite-costXX")
+############ cryptobot.risk.sizing.x_plan_size__mutmut_48
+-        raise SizeRejected("health:nonfinite-cost")
++        raise SizeRejected("HEALTH:NONFINITE-COST")
+############ cryptobot.risk.sizing.x_plan_size__mutmut_49
+-    if not _finite(reconciled_equity) or reconciled_equity <= 0:
++    if not _finite(reconciled_equity) and reconciled_equity <= 0:
+############ cryptobot.risk.sizing.x_plan_size__mutmut_50
+-    if not _finite(reconciled_equity) or reconciled_equity <= 0:
++    if _finite(reconciled_equity) or reconciled_equity <= 0:
+############ cryptobot.risk.sizing.x_plan_size__mutmut_51
+-    if not _finite(reconciled_equity) or reconciled_equity <= 0:
++    if not _finite(None) or reconciled_equity <= 0:
+############ cryptobot.risk.sizing.x_plan_size__mutmut_52
+-    if not _finite(reconciled_equity) or reconciled_equity <= 0:
++    if not _finite(reconciled_equity) or reconciled_equity < 0:
+############ cryptobot.risk.sizing.x_plan_size__mutmut_53
+-    if not _finite(reconciled_equity) or reconciled_equity <= 0:
++    if not _finite(reconciled_equity) or reconciled_equity <= 1:
+############ cryptobot.risk.sizing.x_plan_size__mutmut_54
+-        raise SizeRejected("health:nonfinite-account")
++        raise SizeRejected(None)
+############ cryptobot.risk.sizing.x_plan_size__mutmut_55
+-        raise SizeRejected("health:nonfinite-account")
++        raise SizeRejected("XXhealth:nonfinite-accountXX")
+############ cryptobot.risk.sizing.x_plan_size__mutmut_56
+-        raise SizeRejected("health:nonfinite-account")
++        raise SizeRejected("HEALTH:NONFINITE-ACCOUNT")
+############ cryptobot.risk.sizing.x_plan_size__mutmut_57
+-    if available_margin_usdt is not None and (
++    if available_margin_usdt is not None or (
+############ cryptobot.risk.sizing.x_plan_size__mutmut_58
+-    if available_margin_usdt is not None and (
++    if available_margin_usdt is None and (
+############ cryptobot.risk.sizing.x_plan_size__mutmut_59
+-        not _finite(available_margin_usdt) or available_margin_usdt < 0
++        not _finite(available_margin_usdt) and available_margin_usdt < 0
+############ cryptobot.risk.sizing.x_plan_size__mutmut_60
+-        not _finite(available_margin_usdt) or available_margin_usdt < 0
++        _finite(available_margin_usdt) or available_margin_usdt < 0
+############ cryptobot.risk.sizing.x_plan_size__mutmut_61
+-        not _finite(available_margin_usdt) or available_margin_usdt < 0
++        not _finite(None) or available_margin_usdt < 0
+############ cryptobot.risk.sizing.x_plan_size__mutmut_62
+-        not _finite(available_margin_usdt) or available_margin_usdt < 0
++        not _finite(available_margin_usdt) or available_margin_usdt <= 0
+############ cryptobot.risk.sizing.x_plan_size__mutmut_63
+-        not _finite(available_margin_usdt) or available_margin_usdt < 0
++        not _finite(available_margin_usdt) or available_margin_usdt < 1
+############ cryptobot.risk.sizing.x_plan_size__mutmut_64
+-        raise SizeRejected("health:nonfinite-account")
++        raise SizeRejected(None)
+############ cryptobot.risk.sizing.x_plan_size__mutmut_65
+-        raise SizeRejected("health:nonfinite-account")
++        raise SizeRejected("XXhealth:nonfinite-accountXX")
+############ cryptobot.risk.sizing.x_plan_size__mutmut_66
+-        raise SizeRejected("health:nonfinite-account")
++        raise SizeRejected("HEALTH:NONFINITE-ACCOUNT")
+############ cryptobot.risk.sizing.x_plan_size__mutmut_67
+-    if not _finite(fee_buffer_usdt) or fee_buffer_usdt < 0:
++    if not _finite(fee_buffer_usdt) and fee_buffer_usdt < 0:
+############ cryptobot.risk.sizing.x_plan_size__mutmut_68
+-    if not _finite(fee_buffer_usdt) or fee_buffer_usdt < 0:
++    if _finite(fee_buffer_usdt) or fee_buffer_usdt < 0:
+############ cryptobot.risk.sizing.x_plan_size__mutmut_69
+-    if not _finite(fee_buffer_usdt) or fee_buffer_usdt < 0:
++    if not _finite(None) or fee_buffer_usdt < 0:
+############ cryptobot.risk.sizing.x_plan_size__mutmut_70
+-    if not _finite(fee_buffer_usdt) or fee_buffer_usdt < 0:
++    if not _finite(fee_buffer_usdt) or fee_buffer_usdt <= 0:
+############ cryptobot.risk.sizing.x_plan_size__mutmut_71
+-    if not _finite(fee_buffer_usdt) or fee_buffer_usdt < 0:
++    if not _finite(fee_buffer_usdt) or fee_buffer_usdt < 1:
+############ cryptobot.risk.sizing.x_plan_size__mutmut_72
+-        raise SizeRejected("health:nonfinite-account")
++        raise SizeRejected(None)
+############ cryptobot.risk.sizing.x_plan_size__mutmut_73
+-        raise SizeRejected("health:nonfinite-account")
++        raise SizeRejected("XXhealth:nonfinite-accountXX")
+############ cryptobot.risk.sizing.x_plan_size__mutmut_74
+-        raise SizeRejected("health:nonfinite-account")
++        raise SizeRejected("HEALTH:NONFINITE-ACCOUNT")
+############ cryptobot.risk.sizing.x_plan_size__mutmut_75
+-    if not _finite(inflight_exposure_usdt) or inflight_exposure_usdt < 0:
++    if not _finite(inflight_exposure_usdt) and inflight_exposure_usdt < 0:
+############ cryptobot.risk.sizing.x_plan_size__mutmut_76
+-    if not _finite(inflight_exposure_usdt) or inflight_exposure_usdt < 0:
++    if _finite(inflight_exposure_usdt) or inflight_exposure_usdt < 0:
+############ cryptobot.risk.sizing.x_plan_size__mutmut_77
+-    if not _finite(inflight_exposure_usdt) or inflight_exposure_usdt < 0:
++    if not _finite(None) or inflight_exposure_usdt < 0:
+############ cryptobot.risk.sizing.x_plan_size__mutmut_78
+-    if not _finite(inflight_exposure_usdt) or inflight_exposure_usdt < 0:
++    if not _finite(inflight_exposure_usdt) or inflight_exposure_usdt <= 0:
+############ cryptobot.risk.sizing.x_plan_size__mutmut_79
+-    if not _finite(inflight_exposure_usdt) or inflight_exposure_usdt < 0:
++    if not _finite(inflight_exposure_usdt) or inflight_exposure_usdt < 1:
+############ cryptobot.risk.sizing.x_plan_size__mutmut_80
+-        raise SizeRejected("health:nonfinite-account")
++        raise SizeRejected(None)
+############ cryptobot.risk.sizing.x_plan_size__mutmut_81
+-        raise SizeRejected("health:nonfinite-account")
++        raise SizeRejected("XXhealth:nonfinite-accountXX")
+############ cryptobot.risk.sizing.x_plan_size__mutmut_82
+-        raise SizeRejected("health:nonfinite-account")
++        raise SizeRejected("HEALTH:NONFINITE-ACCOUNT")
+############ cryptobot.risk.sizing.x_plan_size__mutmut_83
+-    stop_dist = abs(adverse - intent.invalidation_price)
++    stop_dist = None
+############ cryptobot.risk.sizing.x_plan_size__mutmut_84
+-    stop_dist = abs(adverse - intent.invalidation_price)
++    stop_dist = abs(None)
+############ cryptobot.risk.sizing.x_plan_size__mutmut_85
+-    stop_dist = abs(adverse - intent.invalidation_price)
++    stop_dist = abs(adverse + intent.invalidation_price)
+############ cryptobot.risk.sizing.x_plan_size__mutmut_86
+-    if stop_dist <= 0:
++    if stop_dist < 0:
+############ cryptobot.risk.sizing.x_plan_size__mutmut_87
+-    if stop_dist <= 0:
++    if stop_dist <= 1:
+############ cryptobot.risk.sizing.x_plan_size__mutmut_88
+-        raise SizeRejected("sizing:undefined-risk")
++        raise SizeRejected(None)
+############ cryptobot.risk.sizing.x_plan_size__mutmut_89
+-        raise SizeRejected("sizing:undefined-risk")
++        raise SizeRejected("XXsizing:undefined-riskXX")
+############ cryptobot.risk.sizing.x_plan_size__mutmut_90
+-        raise SizeRejected("sizing:undefined-risk")
++        raise SizeRejected("SIZING:UNDEFINED-RISK")
+############ cryptobot.risk.sizing.x_plan_size__mutmut_91
+-    stressed = max(sum(legs), 0.0) / 10000 * config.stress_multiplier
++    stressed = None
+############ cryptobot.risk.sizing.x_plan_size__mutmut_92
+-    stressed = max(sum(legs), 0.0) / 10000 * config.stress_multiplier
++    stressed = max(sum(legs), 0.0) / 10000 / config.stress_multiplier
+############ cryptobot.risk.sizing.x_plan_size__mutmut_93
+-    stressed = max(sum(legs), 0.0) / 10000 * config.stress_multiplier
++    stressed = max(sum(legs), 0.0) * 10000 * config.stress_multiplier
+############ cryptobot.risk.sizing.x_plan_size__mutmut_94
+-    stressed = max(sum(legs), 0.0) / 10000 * config.stress_multiplier
++    stressed = max(None, 0.0) / 10000 * config.stress_multiplier
+############ cryptobot.risk.sizing.x_plan_size__mutmut_95
+-    stressed = max(sum(legs), 0.0) / 10000 * config.stress_multiplier
++    stressed = max(sum(legs), None) / 10000 * config.stress_multiplier
+############ cryptobot.risk.sizing.x_plan_size__mutmut_96
+-    stressed = max(sum(legs), 0.0) / 10000 * config.stress_multiplier
++    stressed = max(0.0) / 10000 * config.stress_multiplier
+############ cryptobot.risk.sizing.x_plan_size__mutmut_97
+-    stressed = max(sum(legs), 0.0) / 10000 * config.stress_multiplier
++    stressed = max(sum(legs), ) / 10000 * config.stress_multiplier
+############ cryptobot.risk.sizing.x_plan_size__mutmut_98
+-    stressed = max(sum(legs), 0.0) / 10000 * config.stress_multiplier
++    stressed = max(sum(None), 0.0) / 10000 * config.stress_multiplier
+############ cryptobot.risk.sizing.x_plan_size__mutmut_99
+-    stressed = max(sum(legs), 0.0) / 10000 * config.stress_multiplier
++    stressed = max(sum(legs), 1.0) / 10000 * config.stress_multiplier
+############ cryptobot.risk.sizing.x_plan_size__mutmut_100
+-    stressed = max(sum(legs), 0.0) / 10000 * config.stress_multiplier
++    stressed = max(sum(legs), 0.0) / 10001 * config.stress_multiplier
+############ cryptobot.risk.sizing.x_plan_size__mutmut_101
+-    budget = config.max_loss_budget_pct * reconciled_equity
++    budget = None
+############ cryptobot.risk.sizing.x_plan_size__mutmut_102
+-    budget = config.max_loss_budget_pct * reconciled_equity
++    budget = config.max_loss_budget_pct / reconciled_equity
+############ cryptobot.risk.sizing.x_plan_size__mutmut_103
+-    if risk_budget_cap_usdt is not None:
++    if risk_budget_cap_usdt is None:
+############ cryptobot.risk.sizing.x_plan_size__mutmut_104
+-        if not _finite(risk_budget_cap_usdt):
++        if _finite(risk_budget_cap_usdt):
+############ cryptobot.risk.sizing.x_plan_size__mutmut_105
+-        if not _finite(risk_budget_cap_usdt):
++        if not _finite(None):
+############ cryptobot.risk.sizing.x_plan_size__mutmut_106
+-            raise SizeRejected("health:nonfinite-account")
++            raise SizeRejected(None)
+############ cryptobot.risk.sizing.x_plan_size__mutmut_107
+-            raise SizeRejected("health:nonfinite-account")
++            raise SizeRejected("XXhealth:nonfinite-accountXX")
+############ cryptobot.risk.sizing.x_plan_size__mutmut_108
+-            raise SizeRejected("health:nonfinite-account")
++            raise SizeRejected("HEALTH:NONFINITE-ACCOUNT")
+############ cryptobot.risk.sizing.x_plan_size__mutmut_109
+-        if risk_budget_cap_usdt <= 0:
++        if risk_budget_cap_usdt < 0:
+############ cryptobot.risk.sizing.x_plan_size__mutmut_110
+-        if risk_budget_cap_usdt <= 0:
++        if risk_budget_cap_usdt <= 1:
+############ cryptobot.risk.sizing.x_plan_size__mutmut_111
+-            raise SizeRejected("skip:remaining-budget")
++            raise SizeRejected(None)
+############ cryptobot.risk.sizing.x_plan_size__mutmut_112
+-            raise SizeRejected("skip:remaining-budget")
++            raise SizeRejected("XXskip:remaining-budgetXX")
+############ cryptobot.risk.sizing.x_plan_size__mutmut_113
+-            raise SizeRejected("skip:remaining-budget")
++            raise SizeRejected("SKIP:REMAINING-BUDGET")
+############ cryptobot.risk.sizing.x_plan_size__mutmut_114
+-        budget = min(budget, risk_budget_cap_usdt)
++        budget = None
+############ cryptobot.risk.sizing.x_plan_size__mutmut_115
+-        budget = min(budget, risk_budget_cap_usdt)
++        budget = min(None, risk_budget_cap_usdt)
+############ cryptobot.risk.sizing.x_plan_size__mutmut_116
+-        budget = min(budget, risk_budget_cap_usdt)
++        budget = min(budget, None)
+############ cryptobot.risk.sizing.x_plan_size__mutmut_117
+-        budget = min(budget, risk_budget_cap_usdt)
++        budget = min(risk_budget_cap_usdt)
+############ cryptobot.risk.sizing.x_plan_size__mutmut_118
+-        budget = min(budget, risk_budget_cap_usdt)
++        budget = min(budget, )
+############ cryptobot.risk.sizing.x_plan_size__mutmut_119
+-    qty_raw = budget / (stop_dist + adverse * stressed)
++    qty_raw = None
+############ cryptobot.risk.sizing.x_plan_size__mutmut_120
+-    qty_raw = budget / (stop_dist + adverse * stressed)
++    qty_raw = budget * (stop_dist + adverse * stressed)
+############ cryptobot.risk.sizing.x_plan_size__mutmut_121
+-    qty_raw = budget / (stop_dist + adverse * stressed)
++    qty_raw = budget / (stop_dist - adverse * stressed)
+############ cryptobot.risk.sizing.x_plan_size__mutmut_122
+-    qty_raw = budget / (stop_dist + adverse * stressed)
++    qty_raw = budget / (stop_dist + adverse / stressed)
+############ cryptobot.risk.sizing.x_plan_size__mutmut_123
+-    filt = config.instrument_filters.get(intent.instrument)
++    filt = None
+############ cryptobot.risk.sizing.x_plan_size__mutmut_124
+-    filt = config.instrument_filters.get(intent.instrument)
++    filt = config.instrument_filters.get(None)
+############ cryptobot.risk.sizing.x_plan_size__mutmut_125
+-    step = filt.qty_step if filt is not None else 1e-8
++    step = None
+############ cryptobot.risk.sizing.x_plan_size__mutmut_126
+-    step = filt.qty_step if filt is not None else 1e-8
++    step = filt.qty_step if (filt is not None) and False else 1e-8
+############ cryptobot.risk.sizing.x_plan_size__mutmut_127
+-    step = filt.qty_step if filt is not None else 1e-8
++    step = filt.qty_step if (filt is not None) or True else 1e-8
+############ cryptobot.risk.sizing.x_plan_size__mutmut_128
+-    step = filt.qty_step if filt is not None else 1e-8
++    step = filt.qty_step if filt is None else 1e-8
+############ cryptobot.risk.sizing.x_plan_size__mutmut_129
+-    step = filt.qty_step if filt is not None else 1e-8
++    step = filt.qty_step if filt is not None else 1.00000001
+############ cryptobot.risk.sizing.x_plan_size__mutmut_130
+-    min_qty = filt.min_qty if filt is not None else 0.0
++    min_qty = None
+############ cryptobot.risk.sizing.x_plan_size__mutmut_131
+-    min_qty = filt.min_qty if filt is not None else 0.0
++    min_qty = filt.min_qty if (filt is not None) and False else 0.0
+############ cryptobot.risk.sizing.x_plan_size__mutmut_132
+-    min_qty = filt.min_qty if filt is not None else 0.0
++    min_qty = filt.min_qty if (filt is not None) or True else 0.0
+############ cryptobot.risk.sizing.x_plan_size__mutmut_133
+-    min_qty = filt.min_qty if filt is not None else 0.0
++    min_qty = filt.min_qty if filt is None else 0.0
+############ cryptobot.risk.sizing.x_plan_size__mutmut_134
+-    min_qty = filt.min_qty if filt is not None else 0.0
++    min_qty = filt.min_qty if filt is not None else 1.0
+############ cryptobot.risk.sizing.x_plan_size__mutmut_135
+-    max_qty = filt.max_qty if filt is not None else None
++    max_qty = None
+############ cryptobot.risk.sizing.x_plan_size__mutmut_136
+-    max_qty = filt.max_qty if filt is not None else None
++    max_qty = filt.max_qty if (filt is not None) and False else None
+############ cryptobot.risk.sizing.x_plan_size__mutmut_137
+-    max_qty = filt.max_qty if filt is not None else None
++    max_qty = filt.max_qty if (filt is not None) or True else None
+############ cryptobot.risk.sizing.x_plan_size__mutmut_138
+-    max_qty = filt.max_qty if filt is not None else None
++    max_qty = filt.max_qty if filt is None else None
+############ cryptobot.risk.sizing.x_plan_size__mutmut_139
+-    if filt is not None:
++    if filt is None:
+############ cryptobot.risk.sizing.x_plan_size__mutmut_140
+-        if filt.market_min_qty is not None:
++        if filt.market_min_qty is None:
+############ cryptobot.risk.sizing.x_plan_size__mutmut_141
+-            min_qty = max(min_qty, filt.market_min_qty)
++            min_qty = None
+############ cryptobot.risk.sizing.x_plan_size__mutmut_142
+-            min_qty = max(min_qty, filt.market_min_qty)
++            min_qty = max(None, filt.market_min_qty)
+############ cryptobot.risk.sizing.x_plan_size__mutmut_143
+-            min_qty = max(min_qty, filt.market_min_qty)
++            min_qty = max(min_qty, None)
+############ cryptobot.risk.sizing.x_plan_size__mutmut_144
+-            min_qty = max(min_qty, filt.market_min_qty)
++            min_qty = max(filt.market_min_qty)
+############ cryptobot.risk.sizing.x_plan_size__mutmut_145
+-            min_qty = max(min_qty, filt.market_min_qty)
++            min_qty = max(min_qty, )
+############ cryptobot.risk.sizing.x_plan_size__mutmut_146
+-        if filt.market_max_qty is not None:
++        if filt.market_max_qty is None:
+############ cryptobot.risk.sizing.x_plan_size__mutmut_147
+-            max_qty = filt.market_max_qty if max_qty is None else min(max_qty, filt.market_max_qty)
++            max_qty = None
+############ cryptobot.risk.sizing.x_plan_size__mutmut_148
+-            max_qty = filt.market_max_qty if max_qty is None else min(max_qty, filt.market_max_qty)
++            max_qty = filt.market_max_qty if (max_qty is None) and False else min(max_qty, filt.market_max_qty)
+############ cryptobot.risk.sizing.x_plan_size__mutmut_149
+-            max_qty = filt.market_max_qty if max_qty is None else min(max_qty, filt.market_max_qty)
++            max_qty = filt.market_max_qty if (max_qty is None) or True else min(max_qty, filt.market_max_qty)
+############ cryptobot.risk.sizing.x_plan_size__mutmut_150
+-            max_qty = filt.market_max_qty if max_qty is None else min(max_qty, filt.market_max_qty)
++            max_qty = filt.market_max_qty if max_qty is not None else min(max_qty, filt.market_max_qty)
+############ cryptobot.risk.sizing.x_plan_size__mutmut_151
+-            max_qty = filt.market_max_qty if max_qty is None else min(max_qty, filt.market_max_qty)
++            max_qty = filt.market_max_qty if max_qty is None else min(None, filt.market_max_qty)
+############ cryptobot.risk.sizing.x_plan_size__mutmut_152
+-            max_qty = filt.market_max_qty if max_qty is None else min(max_qty, filt.market_max_qty)
++            max_qty = filt.market_max_qty if max_qty is None else min(max_qty, None)
+############ cryptobot.risk.sizing.x_plan_size__mutmut_153
+-            max_qty = filt.market_max_qty if max_qty is None else min(max_qty, filt.market_max_qty)
++            max_qty = filt.market_max_qty if max_qty is None else min(filt.market_max_qty)
+############ cryptobot.risk.sizing.x_plan_size__mutmut_154
+-            max_qty = filt.market_max_qty if max_qty is None else min(max_qty, filt.market_max_qty)
++            max_qty = filt.market_max_qty if max_qty is None else min(max_qty, )
+############ cryptobot.risk.sizing.x_plan_size__mutmut_155
+-    min_notional = filt.min_notional_usdt if filt is not None else config.min_notional_usdt
++    min_notional = None
+############ cryptobot.risk.sizing.x_plan_size__mutmut_156
+-    min_notional = filt.min_notional_usdt if filt is not None else config.min_notional_usdt
++    min_notional = filt.min_notional_usdt if (filt is not None) and False else config.min_notional_usdt
+############ cryptobot.risk.sizing.x_plan_size__mutmut_157
+-    min_notional = filt.min_notional_usdt if filt is not None else config.min_notional_usdt
++    min_notional = filt.min_notional_usdt if (filt is not None) or True else config.min_notional_usdt
+############ cryptobot.risk.sizing.x_plan_size__mutmut_158
+-    min_notional = filt.min_notional_usdt if filt is not None else config.min_notional_usdt
++    min_notional = filt.min_notional_usdt if filt is None else config.min_notional_usdt
+############ cryptobot.risk.sizing.x_plan_size__mutmut_159
+-    max_notional = filt.max_notional_usdt if filt is not None else None
++    max_notional = None
+############ cryptobot.risk.sizing.x_plan_size__mutmut_160
+-    max_notional = filt.max_notional_usdt if filt is not None else None
++    max_notional = filt.max_notional_usdt if (filt is not None) and False else None
+############ cryptobot.risk.sizing.x_plan_size__mutmut_161
+-    max_notional = filt.max_notional_usdt if filt is not None else None
++    max_notional = filt.max_notional_usdt if (filt is not None) or True else None
+############ cryptobot.risk.sizing.x_plan_size__mutmut_162
+-    max_notional = filt.max_notional_usdt if filt is not None else None
++    max_notional = filt.max_notional_usdt if filt is None else None
+############ cryptobot.risk.sizing.x_plan_size__mutmut_163
+-        return floor_to_step(qty, step)
++        return floor_to_step(None, step)
+############ cryptobot.risk.sizing.x_plan_size__mutmut_164
+-        return floor_to_step(qty, step)
++        return floor_to_step(qty, None)
+############ cryptobot.risk.sizing.x_plan_size__mutmut_165
+-        return floor_to_step(qty, step)
++        return floor_to_step(step)
+############ cryptobot.risk.sizing.x_plan_size__mutmut_166
+-        return floor_to_step(qty, step)
++        return floor_to_step(qty, )
+############ cryptobot.risk.sizing.x_plan_size__mutmut_167
+-        return qty * stop_dist + qty * adverse * stressed <= budget * (1 + 1e-9)
++        return qty * stop_dist - qty * adverse * stressed <= budget * (1 + 1e-9)
+############ cryptobot.risk.sizing.x_plan_size__mutmut_168
+-        return qty * stop_dist + qty * adverse * stressed <= budget * (1 + 1e-9)
++        return qty / stop_dist + qty * adverse * stressed <= budget * (1 + 1e-9)
+############ cryptobot.risk.sizing.x_plan_size__mutmut_169
+-        return qty * stop_dist + qty * adverse * stressed <= budget * (1 + 1e-9)
++        return qty * stop_dist + qty * adverse / stressed <= budget * (1 + 1e-9)
+############ cryptobot.risk.sizing.x_plan_size__mutmut_170
+-        return qty * stop_dist + qty * adverse * stressed <= budget * (1 + 1e-9)
++        return qty * stop_dist + qty / adverse * stressed <= budget * (1 + 1e-9)
+############ cryptobot.risk.sizing.x_plan_size__mutmut_171
+-        return qty * stop_dist + qty * adverse * stressed <= budget * (1 + 1e-9)
++        return qty * stop_dist + qty * adverse * stressed < budget * (1 + 1e-9)
+############ cryptobot.risk.sizing.x_plan_size__mutmut_172
+-        return qty * stop_dist + qty * adverse * stressed <= budget * (1 + 1e-9)
++        return qty * stop_dist + qty * adverse * stressed <= budget / (1 + 1e-9)
+############ cryptobot.risk.sizing.x_plan_size__mutmut_173
+-        return qty * stop_dist + qty * adverse * stressed <= budget * (1 + 1e-9)
++        return qty * stop_dist + qty * adverse * stressed <= budget * (1 - 1e-9)
+############ cryptobot.risk.sizing.x_plan_size__mutmut_174
+-        return qty * stop_dist + qty * adverse * stressed <= budget * (1 + 1e-9)
++        return qty * stop_dist + qty * adverse * stressed <= budget * (2 + 1e-9)
+############ cryptobot.risk.sizing.x_plan_size__mutmut_175
+-        return qty * stop_dist + qty * adverse * stressed <= budget * (1 + 1e-9)
++        return qty * stop_dist + qty * adverse * stressed <= budget * (1 + 1.000000001)
+############ cryptobot.risk.sizing.x_plan_size__mutmut_176
+-    qty = floored(qty_raw)
++    qty = None
+############ cryptobot.risk.sizing.x_plan_size__mutmut_177
+-    qty = floored(qty_raw)
++    qty = floored(None)
+############ cryptobot.risk.sizing.x_plan_size__mutmut_178
+-    if max_qty is not None:
++    if max_qty is None:
+############ cryptobot.risk.sizing.x_plan_size__mutmut_179
+-        qty = floored(min(qty, max_qty))
++        qty = None
+############ cryptobot.risk.sizing.x_plan_size__mutmut_180
+-        qty = floored(min(qty, max_qty))
++        qty = floored(None)
+############ cryptobot.risk.sizing.x_plan_size__mutmut_181
+-        qty = floored(min(qty, max_qty))
++        qty = floored(min(None, max_qty))
+############ cryptobot.risk.sizing.x_plan_size__mutmut_182
+-        qty = floored(min(qty, max_qty))
++        qty = floored(min(qty, None))
+############ cryptobot.risk.sizing.x_plan_size__mutmut_183
+-        qty = floored(min(qty, max_qty))
++        qty = floored(min(max_qty))
+############ cryptobot.risk.sizing.x_plan_size__mutmut_184
+-        qty = floored(min(qty, max_qty))
++        qty = floored(min(qty, ))
+############ cryptobot.risk.sizing.x_plan_size__mutmut_185
+-    if qty <= 0 or qty < min_qty:
++    if qty <= 0 and qty < min_qty:
+############ cryptobot.risk.sizing.x_plan_size__mutmut_186
+-    if qty <= 0 or qty < min_qty:
++    if qty < 0 or qty < min_qty:
+############ cryptobot.risk.sizing.x_plan_size__mutmut_187
+-    if qty <= 0 or qty < min_qty:
++    if qty <= 1 or qty < min_qty:
+############ cryptobot.risk.sizing.x_plan_size__mutmut_188
+-    if qty <= 0 or qty < min_qty:
++    if qty <= 0 or qty <= min_qty:
+############ cryptobot.risk.sizing.x_plan_size__mutmut_189
+-        raise SizeRejected("skip:min-notional")
++        raise SizeRejected(None)
+############ cryptobot.risk.sizing.x_plan_size__mutmut_190
+-        raise SizeRejected("skip:min-notional")
++        raise SizeRejected("XXskip:min-notionalXX")
+############ cryptobot.risk.sizing.x_plan_size__mutmut_191
+-        raise SizeRejected("skip:min-notional")
++        raise SizeRejected("SKIP:MIN-NOTIONAL")
+############ cryptobot.risk.sizing.x_plan_size__mutmut_192
+-    if not within_budget(qty):
++    if within_budget(qty):
+############ cryptobot.risk.sizing.x_plan_size__mutmut_193
+-    if not within_budget(qty):
++    if not within_budget(None):
+############ cryptobot.risk.sizing.x_plan_size__mutmut_194
+-        raise SizeRejected("sizing:budget-exceeded")
++        raise SizeRejected(None)
+############ cryptobot.risk.sizing.x_plan_size__mutmut_195
+-        raise SizeRejected("sizing:budget-exceeded")
++        raise SizeRejected("XXsizing:budget-exceededXX")
+############ cryptobot.risk.sizing.x_plan_size__mutmut_196
+-        raise SizeRejected("sizing:budget-exceeded")
++        raise SizeRejected("SIZING:BUDGET-EXCEEDED")
+############ cryptobot.risk.sizing.x_plan_size__mutmut_197
+-    notional = qty * adverse
++    notional = None
+############ cryptobot.risk.sizing.x_plan_size__mutmut_198
+-    notional = qty * adverse
++    notional = qty / adverse
+############ cryptobot.risk.sizing.x_plan_size__mutmut_199
+-    if available_margin_usdt is not None:
++    if available_margin_usdt is None:
+############ cryptobot.risk.sizing.x_plan_size__mutmut_200
+-        affordable = (available_margin_usdt - fee_buffer_usdt) * config.leverage_cap
++        affordable = None
+############ cryptobot.risk.sizing.x_plan_size__mutmut_201
+-        affordable = (available_margin_usdt - fee_buffer_usdt) * config.leverage_cap
++        affordable = (available_margin_usdt - fee_buffer_usdt) / config.leverage_cap
+############ cryptobot.risk.sizing.x_plan_size__mutmut_202
+-        affordable = (available_margin_usdt - fee_buffer_usdt) * config.leverage_cap
++        affordable = (available_margin_usdt + fee_buffer_usdt) * config.leverage_cap
+############ cryptobot.risk.sizing.x_plan_size__mutmut_203
+-        affordable -= inflight_exposure_usdt
++        affordable = inflight_exposure_usdt
+############ cryptobot.risk.sizing.x_plan_size__mutmut_204
+-        affordable -= inflight_exposure_usdt
++        affordable += inflight_exposure_usdt
+############ cryptobot.risk.sizing.x_plan_size__mutmut_205
+-        if affordable < min_notional:
++        if affordable <= min_notional:
+############ cryptobot.risk.sizing.x_plan_size__mutmut_206
+-            raise SizeRejected("margin:insufficient")
++            raise SizeRejected(None)
+############ cryptobot.risk.sizing.x_plan_size__mutmut_207
+-            raise SizeRejected("margin:insufficient")
++            raise SizeRejected("XXmargin:insufficientXX")
+############ cryptobot.risk.sizing.x_plan_size__mutmut_208
+-            raise SizeRejected("margin:insufficient")
++            raise SizeRejected("MARGIN:INSUFFICIENT")
+############ cryptobot.risk.sizing.x_plan_size__mutmut_209
+-        if notional > affordable:
++        if notional >= affordable:
+############ cryptobot.risk.sizing.x_plan_size__mutmut_210
+-            qty = floored(affordable / adverse)
++            qty = None
+############ cryptobot.risk.sizing.x_plan_size__mutmut_211
+-            qty = floored(affordable / adverse)
++            qty = floored(None)
+############ cryptobot.risk.sizing.x_plan_size__mutmut_212
+-            qty = floored(affordable / adverse)
++            qty = floored(affordable * adverse)
+############ cryptobot.risk.sizing.x_plan_size__mutmut_213
+-            if qty <= 0 or qty < min_qty or not within_budget(qty):
++            if qty <= 0 or qty < min_qty and not within_budget(qty):
+############ cryptobot.risk.sizing.x_plan_size__mutmut_214
+-            if qty <= 0 or qty < min_qty or not within_budget(qty):
++            if qty <= 0 and qty < min_qty or not within_budget(qty):
+############ cryptobot.risk.sizing.x_plan_size__mutmut_215
+-            if qty <= 0 or qty < min_qty or not within_budget(qty):
++            if qty < 0 or qty < min_qty or not within_budget(qty):
+############ cryptobot.risk.sizing.x_plan_size__mutmut_216
+-            if qty <= 0 or qty < min_qty or not within_budget(qty):
++            if qty <= 1 or qty < min_qty or not within_budget(qty):
+############ cryptobot.risk.sizing.x_plan_size__mutmut_217
+-            if qty <= 0 or qty < min_qty or not within_budget(qty):
++            if qty <= 0 or qty <= min_qty or not within_budget(qty):
+############ cryptobot.risk.sizing.x_plan_size__mutmut_218
+-            if qty <= 0 or qty < min_qty or not within_budget(qty):
++            if qty <= 0 or qty < min_qty or within_budget(qty):
+############ cryptobot.risk.sizing.x_plan_size__mutmut_219
+-            if qty <= 0 or qty < min_qty or not within_budget(qty):
++            if qty <= 0 or qty < min_qty or not within_budget(None):
+############ cryptobot.risk.sizing.x_plan_size__mutmut_220
+-                raise SizeRejected("margin:insufficient")
++                raise SizeRejected(None)
+############ cryptobot.risk.sizing.x_plan_size__mutmut_221
+-                raise SizeRejected("margin:insufficient")
++                raise SizeRejected("XXmargin:insufficientXX")
+############ cryptobot.risk.sizing.x_plan_size__mutmut_222
+-                raise SizeRejected("margin:insufficient")
++                raise SizeRejected("MARGIN:INSUFFICIENT")
+############ cryptobot.risk.sizing.x_plan_size__mutmut_223
+-            notional = qty * adverse
++            notional = None
+############ cryptobot.risk.sizing.x_plan_size__mutmut_224
+-            notional = qty * adverse
++            notional = qty / adverse
+############ cryptobot.risk.sizing.x_plan_size__mutmut_225
+-    if notional > config.leverage_cap * reconciled_equity:
++    if notional >= config.leverage_cap * reconciled_equity:
+############ cryptobot.risk.sizing.x_plan_size__mutmut_226
+-    if notional > config.leverage_cap * reconciled_equity:
++    if notional > config.leverage_cap / reconciled_equity:
+############ cryptobot.risk.sizing.x_plan_size__mutmut_227
+-        raise SizeRejected("leverage:cap-exceeded")
++        raise SizeRejected(None)
+############ cryptobot.risk.sizing.x_plan_size__mutmut_228
+-        raise SizeRejected("leverage:cap-exceeded")
++        raise SizeRejected("XXleverage:cap-exceededXX")
+############ cryptobot.risk.sizing.x_plan_size__mutmut_229
+-        raise SizeRejected("leverage:cap-exceeded")
++        raise SizeRejected("LEVERAGE:CAP-EXCEEDED")
+############ cryptobot.risk.sizing.x_plan_size__mutmut_230
+-    if max_notional is not None and notional > max_notional:
++    if max_notional is not None or notional > max_notional:
+############ cryptobot.risk.sizing.x_plan_size__mutmut_231
+-    if max_notional is not None and notional > max_notional:
++    if max_notional is None and notional > max_notional:
+############ cryptobot.risk.sizing.x_plan_size__mutmut_232
+-    if max_notional is not None and notional > max_notional:
++    if max_notional is not None and notional >= max_notional:
+############ cryptobot.risk.sizing.x_plan_size__mutmut_233
+-        qty = floored(max_notional / adverse)
++        qty = None
+############ cryptobot.risk.sizing.x_plan_size__mutmut_234
+-        qty = floored(max_notional / adverse)
++        qty = floored(None)
+############ cryptobot.risk.sizing.x_plan_size__mutmut_235
+-        qty = floored(max_notional / adverse)
++        qty = floored(max_notional * adverse)
+############ cryptobot.risk.sizing.x_plan_size__mutmut_236
+-        if qty <= 0 or qty < min_qty or not within_budget(qty):
++        if qty <= 0 or qty < min_qty and not within_budget(qty):
+############ cryptobot.risk.sizing.x_plan_size__mutmut_237
+-        if qty <= 0 or qty < min_qty or not within_budget(qty):
++        if qty <= 0 and qty < min_qty or not within_budget(qty):
+############ cryptobot.risk.sizing.x_plan_size__mutmut_238
+-        if qty <= 0 or qty < min_qty or not within_budget(qty):
++        if qty < 0 or qty < min_qty or not within_budget(qty):
+############ cryptobot.risk.sizing.x_plan_size__mutmut_239
+-        if qty <= 0 or qty < min_qty or not within_budget(qty):
++        if qty <= 1 or qty < min_qty or not within_budget(qty):
+############ cryptobot.risk.sizing.x_plan_size__mutmut_240
+-        if qty <= 0 or qty < min_qty or not within_budget(qty):
++        if qty <= 0 or qty <= min_qty or not within_budget(qty):
+############ cryptobot.risk.sizing.x_plan_size__mutmut_241
+-        if qty <= 0 or qty < min_qty or not within_budget(qty):
++        if qty <= 0 or qty < min_qty or within_budget(qty):
+############ cryptobot.risk.sizing.x_plan_size__mutmut_242
+-        if qty <= 0 or qty < min_qty or not within_budget(qty):
++        if qty <= 0 or qty < min_qty or not within_budget(None):
+############ cryptobot.risk.sizing.x_plan_size__mutmut_243
+-            raise SizeRejected("filters:notional-cap")
++            raise SizeRejected(None)
+############ cryptobot.risk.sizing.x_plan_size__mutmut_244
+-            raise SizeRejected("filters:notional-cap")
++            raise SizeRejected("XXfilters:notional-capXX")
+############ cryptobot.risk.sizing.x_plan_size__mutmut_245
+-            raise SizeRejected("filters:notional-cap")
++            raise SizeRejected("FILTERS:NOTIONAL-CAP")
+############ cryptobot.risk.sizing.x_plan_size__mutmut_246
+-        notional = qty * adverse
++        notional = None
+############ cryptobot.risk.sizing.x_plan_size__mutmut_247
+-        notional = qty * adverse
++        notional = qty / adverse
+############ cryptobot.risk.sizing.x_plan_size__mutmut_248
+-    if notional < min_notional:
++    if notional <= min_notional:
+############ cryptobot.risk.sizing.x_plan_size__mutmut_249
+-        raise SizeRejected("skip:min-notional")
++        raise SizeRejected(None)
+############ cryptobot.risk.sizing.x_plan_size__mutmut_250
+-        raise SizeRejected("skip:min-notional")
++        raise SizeRejected("XXskip:min-notionalXX")
+############ cryptobot.risk.sizing.x_plan_size__mutmut_251
+-        raise SizeRejected("skip:min-notional")
++        raise SizeRejected("SKIP:MIN-NOTIONAL")
+############ cryptobot.risk.sizing.x_plan_size__mutmut_252
+-        notional_usdt=notional,
++        notional_usdt=None,
+############ cryptobot.risk.sizing.x_plan_size__mutmut_253
+-        qty=qty,
++        qty=None,
+############ cryptobot.risk.sizing.x_plan_size__mutmut_254
+-        reserved_risk=budget,
++        reserved_risk=None,
+############ cryptobot.risk.sizing.x_plan_size__mutmut_255
+-        stop_pct=stop_dist / adverse,
++        stop_pct=None,
+############ cryptobot.risk.sizing.x_plan_size__mutmut_256
+-        stressed_cost_pct=stressed,
++        stressed_cost_pct=None,
+############ cryptobot.risk.sizing.x_plan_size__mutmut_257
+-        adverse_price=adverse,
++        adverse_price=None,
+############ cryptobot.risk.sizing.x_plan_size__mutmut_258
+-        notional_usdt=notional,
+############ cryptobot.risk.sizing.x_plan_size__mutmut_259
+-        qty=qty,
+############ cryptobot.risk.sizing.x_plan_size__mutmut_260
+-        reserved_risk=budget,
+############ cryptobot.risk.sizing.x_plan_size__mutmut_261
+-        stop_pct=stop_dist / adverse,
+############ cryptobot.risk.sizing.x_plan_size__mutmut_262
+-        stressed_cost_pct=stressed,
+############ cryptobot.risk.sizing.x_plan_size__mutmut_263
+-        adverse_price=adverse,
+-    )
++        )
+############ cryptobot.risk.sizing.x_plan_size__mutmut_264
+-        stop_pct=stop_dist / adverse,
++        stop_pct=stop_dist * adverse,

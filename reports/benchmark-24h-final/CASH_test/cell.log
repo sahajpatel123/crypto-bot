@@ -1,0 +1,35 @@
+{
+  "armset": "CASH",
+  "split": "test",
+  "days": [
+    "2026-10-04",
+    "2026-10-05",
+    "2026-10-06",
+    "2026-10-07",
+    "2026-10-08",
+    "2026-10-09",
+    "2026-10-10",
+    "2026-10-11"
+  ],
+  "closing_equity": 120.0,
+  "net_return_pct": 0.0,
+  "paid_costs": 0.0,
+  "funding_net": 0.0,
+  "realised": 0.0,
+  "intents_admitted": 0,
+  "events_seen": 14754381,
+  "reject_counts": {},
+  "replay_stream": {
+    "mode": "streaming-v1",
+    "events_hashed": 14754381,
+    "events_hash": "c398a752192835583c4df7260273ebdbc82740e2aa13390c9a823d98d7668335",
+    "skipped_prefix": 0,
+    "first_ms": 1791052200476,
+    "last_ms": 1791743399999,
+    "snapshots_installed": 0,
+    "snapshots_unreached": 0
+  },
+  "wall_s": 6118.7,
+  "ev_per_s": 2411.3,
+  "run_dir": "/tmp/w1bench/matrix/CASH_test/run"
+}

@@ -1,0 +1,85 @@
+{
+  "run_dir": "/tmp/w4-phaseb/R01-S2-cap2h/runs/mechanism/S2",
+  "closed_trades": 0,
+  "fill_rate": null,
+  "expectancy": {
+    "n": 0,
+    "mean": null,
+    "sd": null,
+    "ci95_lo": null,
+    "ci95_hi": null,
+    "method": "n/a (need >=2 closed trades)"
+  },
+  "booked": {
+    "gross": 0,
+    "fees": 0,
+    "funding": 0,
+    "funding_entries": 0,
+    "net": 0,
+    "slippage_note": "slippage is implicit in booked fill prices vs arrival; no separate booked slippage leg exists. Estimated adverse costs live in the estimates section only."
+  },
+  "estimates": {
+    "note": "cost-contract-v1 estimates computed at report time from entry notionals; recorded separately, never booked, spread charged once (half per leg)."
+  },
+  "drawdown": {
+    "max_drawdown": 0.0,
+    "max_drawdown_pct": 0.0
+  },
+  "worst_trade": null,
+  "worst_day": 0.0,
+  "daily_net": {
+    "2026-10-11": 0.0,
+    "2026-10-12": 0.0
+  },
+  "exposure_max_notional": 0.0,
+  "holding_s": {
+    "min": null,
+    "median": null,
+    "max": null
+  },
+  "funnel_stages": {
+    "usable_data_seconds": 6462,
+    "strategy_eligible_seconds": {
+      "S2": 1129
+    },
+    "setup_unique_intents": 0,
+    "cost_pass_unique_intents": 0,
+    "portfolio_risk_pass_unique": 0,
+    "submitted_entries": 0,
+    "filled_entries": 0,
+    "closed_reservations": 0
+  },
+  "funnel_buckets": {
+    "unavailable_data": 12896,
+    "missing_sequence": 453,
+    "healthy_no_trade": 1129,
+    "no_setup": 789,
+    "below_cost": 0,
+    "below_minimum": 0,
+    "stale_expired": 0,
+    "nonmarketable": 0,
+    "ioc_cancelled": 0,
+    "exposure_cooldown": 0,
+    "startup_seconds": 1,
+    "stale_input": 0,
+    "missing_depth": 0,
+    "other_hold": 0
+  },
+  "trades": [],
+  "watch": {
+    "unresolved_mentions": {},
+    "qty_short_wipe_mentions": 0,
+    "orphan_exit_reservations": []
+  },
+  "symbol_time": {
+    "events_scanned": 2824463,
+    "usable_symbol_seconds": {
+      "BTCUSDT": 7200,
+      "ETHUSDT": 7200
+    },
+    "usable_symbol_seconds_total": 14400
+  },
+  "cell": "R01-S2-cap2h",
+  "arm": "S2",
+  "slice": "cap2h"
+}

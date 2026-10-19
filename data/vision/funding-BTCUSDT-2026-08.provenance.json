@@ -1,0 +1,10 @@
+{
+ "name": "funding-BTCUSDT-2026-08",
+ "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/BTCUSDT/BTCUSDT-fundingRate-2026-08.zip",
+ "fetched_utc": "2026-10-16T14:14:44.282469+00:00",
+ "status": "present",
+ "http_status": 200,
+ "sha256": "7c108b3a02bd6dc7345ca7323e3a49664edcea0afdcf780ffb3b44762c45a964",
+ "bytes": 896,
+ "csv_rows": 93
+}

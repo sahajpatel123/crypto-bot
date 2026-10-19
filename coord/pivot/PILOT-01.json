@@ -1,0 +1,27 @@
+{
+  "id": "PILOT-01",
+  "owner": "manager (this session)",
+  "date": "2026-10-17",
+  "status": "PREREGISTERED (frozen before any strategy scoring on this data)",
+  "supersedes": null,
+  "note": "PIVOT-01 (10-day qualification) is NOT replaced. PILOT-01 is a 1-day descriptive pilot per owner direction (10GB cap, past data allowed). Nothing here can qualify a strategy for capital.",
+  "selection_rule": {
+    "rule": "From BTCUSDT USD-M daily klines for the 30 days ending 2026-10-16 (public GET /fapi/v1/klines), rank days by (high-low)/open in bps; take days IN RANK ORDER until adding the next day would exceed the 10GB cap (measured below). Mechanical, strategy-blind, executed once; amended before any strategy scoring (no scores exist yet).",
+    "sideways_omitted": "By construction: only the top-range days are taken, quiet days never enter. Generality caveat: any result describes volatile-regime behavior ONLY and must never be presented as all-market expectancy.",
+    "forbidden": ["re-picking days after seeing strategy results", "scoring then re-selecting", "pooling extra days post-hoc", "dropping a selected day for its results (only for proven data corruption)"]
+  },
+  "dataset": {
+    "span": "N top-ranked days (each 00:00-24:00 UTC) until the 10GB cap",
+    "symbol": "BTCUSDT",
+    "required_channels": ["aggTrades (archive)", "markPrice@1s or 1s klines-derived marks (labeled)", "funding settlements (REST history, provenance)"],
+    "optional": ["bookTicker/depth snapshots (archive has bookTicker daily; depth daily is large — include only if under budget)"],
+    "provenance": "data.binance.vision URLs + SHA256 checksums recorded per file; REST responses with endpoint + timestamp",
+    "memory_cap": "10GB total for the pilot dataset (raw + working)",
+    "audit": "tools/pivot_enroll.py --pilot (1-day floor: same channel/cadence/provenance checks, span>=0.95d, verdict PILOT-READY / DEVELOPMENT-ONLY, never ENROLLED)"
+  },
+  "scoring": {
+    "allowed": "ONE descriptive replay per preregistered family config on the pilot day, realistic costs (contract v1) + adverse 2x, results filed with the regime caveat",
+    "verdicts": ["PILOT-SIGNAL (net>0 both costs, descriptive only)", "PILOT-NONE", "PILOT-BLOCKED (data/ops failure)"],
+    "not_allowed": ["advancing any config to TEST/live", "claiming expectancy or profit rates", "tuning thresholds on this day"]
+  }
+}

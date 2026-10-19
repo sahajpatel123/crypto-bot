@@ -1,0 +1,147 @@
+{
+ "source": "employment",
+ "source_url": "https://www.bls.gov/schedule/news_release/empsit.htm",
+ "format": "cryptobot-event-fixture/1",
+ "revision": 0,
+ "fetched_utc": "2026-10-14T04:02:00+00:00",
+ "first_seen_utc": "2026-10-14T04:02:00+00:00",
+ "horizon_end_utc": "2027-12-03T13:30:00+00:00",
+ "last_verified_utc": "2026-10-14T04:02:00+00:00",
+ "last_verified_page_sha256": "939d7d01d2d4e136e54f7fec49ea3108e73dfcf9f50dba383fc7c723e21a556e",
+ "tz_name": "America/New_York",
+ "release_local_time": "08:30",
+ "notes": [
+  "Release dates follow the official BLS Employment Situation schedule (source_url): 8:30 AM ET, first Friday pattern with holiday exceptions. Fetched live 2026-10-14 (HTTP 200); all 14 rows transcribed from the release-list table.",
+  "US DST: EST Nov 2026-Mar 2027 (UTC-5) except Mar-Apr boundary; EDT Apr-Oct 2027 (UTC-4). Nov 2027 back to EST. Each scheduled_utc verified against wall-time + zone at load.",
+  "Fixture covers through 2027-12-03; re-freeze required after horizon (refresh verifies overlap, never extends).",
+  "scheduled_utc values are verified against wall-time + zone at load; any mismatch fails loudly."
+ ],
+ "events": [
+  {
+   "event_id": "EMP-2026-11-06",
+   "kind": "release",
+   "note": "Employment Situation (2026-10 data)",
+   "reference_month": "2026-10",
+   "scheduled_local_iso": "2026-11-06T08:30:00",
+   "scheduled_utc": "2026-11-06T13:30:00+00:00",
+   "title": "Employment Situation (Oct 2026 data)"
+  },
+  {
+   "event_id": "EMP-2026-12-04",
+   "kind": "release",
+   "note": "Employment Situation (2026-11 data)",
+   "reference_month": "2026-11",
+   "scheduled_local_iso": "2026-12-04T08:30:00",
+   "scheduled_utc": "2026-12-04T13:30:00+00:00",
+   "title": "Employment Situation (Nov 2026 data)"
+  },
+  {
+   "event_id": "EMP-2027-01-08",
+   "kind": "release",
+   "note": "Employment Situation (2026-12 data)",
+   "reference_month": "2026-12",
+   "scheduled_local_iso": "2027-01-08T08:30:00",
+   "scheduled_utc": "2027-01-08T13:30:00+00:00",
+   "title": "Employment Situation (Dec 2026 data)"
+  },
+  {
+   "event_id": "EMP-2027-02-05",
+   "kind": "release",
+   "note": "Employment Situation (2027-01 data)",
+   "reference_month": "2027-01",
+   "scheduled_local_iso": "2027-02-05T08:30:00",
+   "scheduled_utc": "2027-02-05T13:30:00+00:00",
+   "title": "Employment Situation (Jan 2027 data)"
+  },
+  {
+   "event_id": "EMP-2027-03-05",
+   "kind": "release",
+   "note": "Employment Situation (2027-02 data)",
+   "reference_month": "2027-02",
+   "scheduled_local_iso": "2027-03-05T08:30:00",
+   "scheduled_utc": "2027-03-05T13:30:00+00:00",
+   "title": "Employment Situation (Feb 2027 data)"
+  },
+  {
+   "event_id": "EMP-2027-04-02",
+   "kind": "release",
+   "note": "Employment Situation (2027-03 data)",
+   "reference_month": "2027-03",
+   "scheduled_local_iso": "2027-04-02T08:30:00",
+   "scheduled_utc": "2027-04-02T12:30:00+00:00",
+   "title": "Employment Situation (Mar 2027 data)"
+  },
+  {
+   "event_id": "EMP-2027-05-07",
+   "kind": "release",
+   "note": "Employment Situation (2027-04 data)",
+   "reference_month": "2027-04",
+   "scheduled_local_iso": "2027-05-07T08:30:00",
+   "scheduled_utc": "2027-05-07T12:30:00+00:00",
+   "title": "Employment Situation (Apr 2027 data)"
+  },
+  {
+   "event_id": "EMP-2027-06-04",
+   "kind": "release",
+   "note": "Employment Situation (2027-05 data)",
+   "reference_month": "2027-05",
+   "scheduled_local_iso": "2027-06-04T08:30:00",
+   "scheduled_utc": "2027-06-04T12:30:00+00:00",
+   "title": "Employment Situation (May 2027 data)"
+  },
+  {
+   "event_id": "EMP-2027-07-02",
+   "kind": "release",
+   "note": "Employment Situation (2027-06 data)",
+   "reference_month": "2027-06",
+   "scheduled_local_iso": "2027-07-02T08:30:00",
+   "scheduled_utc": "2027-07-02T12:30:00+00:00",
+   "title": "Employment Situation (Jun 2027 data)"
+  },
+  {
+   "event_id": "EMP-2027-08-06",
+   "kind": "release",
+   "note": "Employment Situation (2027-07 data)",
+   "reference_month": "2027-07",
+   "scheduled_local_iso": "2027-08-06T08:30:00",
+   "scheduled_utc": "2027-08-06T12:30:00+00:00",
+   "title": "Employment Situation (Jul 2027 data)"
+  },
+  {
+   "event_id": "EMP-2027-09-03",
+   "kind": "release",
+   "note": "Employment Situation (2027-08 data)",
+   "reference_month": "2027-08",
+   "scheduled_local_iso": "2027-09-03T08:30:00",
+   "scheduled_utc": "2027-09-03T12:30:00+00:00",
+   "title": "Employment Situation (Aug 2027 data)"
+  },
+  {
+   "event_id": "EMP-2027-10-08",
+   "kind": "release",
+   "note": "Employment Situation (2027-09 data)",
+   "reference_month": "2027-09",
+   "scheduled_local_iso": "2027-10-08T08:30:00",
+   "scheduled_utc": "2027-10-08T12:30:00+00:00",
+   "title": "Employment Situation (Sep 2027 data)"
+  },
+  {
+   "event_id": "EMP-2027-11-05",
+   "kind": "release",
+   "note": "Employment Situation (2027-10 data)",
+   "reference_month": "2027-10",
+   "scheduled_local_iso": "2027-11-05T08:30:00",
+   "scheduled_utc": "2027-11-05T12:30:00+00:00",
+   "title": "Employment Situation (Oct 2027 data)"
+  },
+  {
+   "event_id": "EMP-2027-12-03",
+   "kind": "release",
+   "note": "Employment Situation (2027-11 data)",
+   "reference_month": "2027-11",
+   "scheduled_local_iso": "2027-12-03T08:30:00",
+   "scheduled_utc": "2027-12-03T13:30:00+00:00",
+   "title": "Employment Situation (Nov 2027 data)"
+  }
+ ]
+}

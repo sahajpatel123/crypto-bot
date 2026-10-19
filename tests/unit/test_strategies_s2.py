@@ -92,7 +92,12 @@ def test_long_intent_fields_exact():
     assert intent.entry_high == bar.close * 1.0002
     assert intent.entry_expiry_utc == bar.ts_utc + timedelta(seconds=15)
     assert intent.holding_limit_s == 120
-    assert intent.exit_rule == "S2_EXIT_V1:take_r=1.5,stop_r=1.0"
+    from cryptobot.coordination import decode_exit_rule
+    xp = decode_exit_rule(intent.exit_rule)
+    assert xp.stop_price == intent.invalidation_price
+    assert xp.target_price == bar.close + 1.5 * (bar.close - intent.invalidation_price)
+    assert xp.time_exit_utc == bar.ts_utc + timedelta(seconds=120)
+    assert xp.policy_id == "S2:stop+target+time"
     assert intent.forecast_cost == S2_FORECAST_COST
     assert intent.data_quality == DataQuality.CLEAN
     assert intent.data_quality_reason == "no-gaps-N=120"

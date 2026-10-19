@@ -1,0 +1,66 @@
+# Bot v0.1 CREDENTIALED DEMO configuration (manager-owned).
+# This is the ONLY paper path that needs API keys: engine.kind = "live"
+# with demo = true routes orders to Binance demo hosts. Credential-free
+# public-data paper trading uses configs/r2.toml (engine.kind = "nautilus").
+#
+# Credentials come ONLY from BINANCE_DEMO_KEY / BINANCE_DEMO_SECRET in the
+# process environment. Never put keys in this file, chat, or reports.
+# Ledger currency is USDT. Asia/Kolkata accounting day.
+#
+# NOTE: demo verifies exchange mechanics only; demo profits do not validate
+# a real-money edge. Production submissions stay disabled (see prod.toml).
+
+[run]
+mode = "paper"              # paper + live/demo engine = credentialed demo
+paper_capital_usdt = 120.0   # synthetic label; risk reconciles from venue
+accounting_tz = "Asia/Kolkata"
+duration = "30m"            # bounded demo drill (run_budget outer cap 30min)
+
+[risk]
+max_loss_budget_pct = 0.00125
+leverage_cap = 3.0
+min_notional_usdt = 5.0
+stress_multiplier = 1.5
+operating_stop_pct = 0.005
+emergency_stop_pct = 0.01
+profile_version = "24h-1"
+max_mark_age_ms = 1000
+daily_target_pct = 0.02
+profit_arm_pct = 0.01
+profit_retain_pct = 0.70
+max_evidence_age_s = 120.0
+max_clock_skew_s = 5.0
+filters_max_age_s = 3600.0
+max_notional_cap_usdt = 500.0
+
+[fees]
+# Labeled SIMULATION rates until the venue's actual rates are read at
+# readiness time. Not the owner's actual account rates.
+label = "simulation-labeled"
+taker_bps = 5.0
+funding_bps_per_8h = 1.0
+
+[engine]
+kind = "live"               # demo only: config rejects live without demo=true outside prod
+demo = true
+base_url = "https://demo-fapi.binance.com"
+submit_delay_ms = 0
+fill_delay_ms = 0
+allow_live_submission = false  # demo drill: observe/sign-in only unless explicitly enabled
+
+[data]
+symbols = ["BTCUSDT"]
+max_symbols = 8
+max_hf_subscriptions = 2  # REL-W3: prior data did not support eight.
+warmup_bars = 130
+
+[storage]
+dir = "runs"
+budget_mb = 2048
+
+[strategies]
+enabled = ["S1", "S2", "S3", "S4", "S5"]
+arms = "base"
+cooldown_s = 300
+min_reward_multiple = 1.0
+allow_legacy_exit_rules = false

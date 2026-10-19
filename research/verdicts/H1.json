@@ -1,0 +1,14 @@
+{
+ "document_sha256": "1a0d030580c01b6e4281c0705dae9cb3858fb15a1ed2b96bdbfb9b8b89de2c0a",
+ "expectancy_bps": null,
+ "family_size": 6,
+ "hashes": {
+  "code_commit": "9d05ff63a3de0965bdb1f713c38855cdce80a004",
+  "config_sha256_16": "bb30d503496c0046",
+  "data_manifest": "research/verdicts/trades/H1.jsonl"
+ },
+ "hypothesis": "H1-maker-ofi-scalp",
+ "n_trades": 0,
+ "reason": "n=0 < min_trades=300",
+ "verdict": "UNDERPOWERED"
+}

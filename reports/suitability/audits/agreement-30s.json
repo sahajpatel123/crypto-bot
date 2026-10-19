@@ -1,0 +1,221 @@
+{
+  "capture": "/Users/sahajpatel/Code/cryto-bot/data/captures/agreement-30s",
+  "coverage": {
+    "end_utc": "2026-10-11T21:43:36.124000+00:00",
+    "span_s": 28.478,
+    "start_utc": "2026-10-11T21:43:07.646000+00:00",
+    "ts_max_ms": 1791755016124,
+    "ts_min_ms": 1791754987646
+  },
+  "files": {
+    "events.jsonl": {
+      "bad_rows": 0,
+      "bytes": 7594007,
+      "rows": 13842,
+      "seq": {
+        "first": 1,
+        "jumps": 0,
+        "last": 13842
+      },
+      "sha256": "7bd80da656344f0e28a584895356c61b1febb605cab0d1ece3ef9b2ab6a3a722"
+    }
+  },
+  "filters": {
+    "BTCUSDT": {
+      "known": true,
+      "source": "frozen-labeled-assumption"
+    },
+    "ETHUSDT": {
+      "known": true,
+      "source": "frozen-labeled-assumption"
+    }
+  },
+  "funding": {
+    "BTCUSDT": {
+      "rows_missing_rate": 0,
+      "rows_with_rate": 29
+    },
+    "ETHUSDT": {
+      "rows_missing_rate": 0,
+      "rows_with_rate": 29
+    }
+  },
+  "manifest": {
+    "config": {
+      "chaos_disconnect_after_s": null,
+      "depth_snapshot_limit": 1000,
+      "lateness_ms": 500,
+      "market_streams": [
+        "aggTrade",
+        "markPrice@1s"
+      ],
+      "max_bytes": 2000000000,
+      "public_streams": [
+        "bookTicker",
+        "depth@100ms"
+      ]
+    },
+    "ended_utc": "2026-10-11T21:43:36.715489+00:00",
+    "input_class": "observed-public",
+    "run_id": "agreement-30s",
+    "started_utc": "2026-10-11T21:43:06.194283+00:00",
+    "symbols": [
+      "BTCUSDT",
+      "ETHUSDT"
+    ]
+  },
+  "marks": {
+    "BTCUSDT": {
+      "rows": 29,
+      "valuation_path": "exchange-mark"
+    },
+    "ETHUSDT": {
+      "rows": 29,
+      "valuation_path": "exchange-mark"
+    }
+  },
+  "profile": {
+    "diagnostic_only": false,
+    "fingerprint": "443da19b4e4e2a55",
+    "max_mark_age_ms": 1000.0,
+    "mode": "replay",
+    "path": "/private/tmp/cryto-bot-w3-suit/configs/paper.toml",
+    "profile_version": "24h-1",
+    "quote_max_age_s": 1.0,
+    "warmup_bars": 130
+  },
+  "reasons": [],
+  "snapshots": {
+    "count": 0,
+    "present": false,
+    "symbols": []
+  },
+  "streams": {
+    "aggTrade/BTCUSDT": {
+      "count": 186,
+      "disordered_rows": 0,
+      "executable_seconds": 24,
+      "max_gap_ms": 2753,
+      "mean_gap_ms": 148.48648648648648,
+      "missing_exchange_ts": 0,
+      "recv_before_exchange": 0,
+      "recv_skew_max_ms": 241,
+      "recv_skew_mean_ms": 102.45161290322581,
+      "ts_max_ms": 1791755015222,
+      "ts_min_ms": 1791754987752
+    },
+    "aggTrade/ETHUSDT": {
+      "count": 203,
+      "disordered_rows": 0,
+      "executable_seconds": 26,
+      "max_gap_ms": 2994,
+      "mean_gap_ms": 139.17821782178217,
+      "missing_exchange_ts": 0,
+      "recv_before_exchange": 0,
+      "recv_skew_max_ms": 481,
+      "recv_skew_mean_ms": 100.00985221674877,
+      "ts_max_ms": 1791755016075,
+      "ts_min_ms": 1791754987961
+    },
+    "bookTicker/BTCUSDT": {
+      "count": 5509,
+      "disordered_rows": 0,
+      "executable_seconds": 29,
+      "max_gap_ms": 926,
+      "mean_gap_ms": 5.074437182280319,
+      "missing_exchange_ts": 0,
+      "recv_before_exchange": 0,
+      "recv_skew_max_ms": 536,
+      "recv_skew_mean_ms": 101.51225267743692,
+      "ts_max_ms": 1791755015596,
+      "ts_min_ms": 1791754987646
+    },
+    "bookTicker/ETHUSDT": {
+      "count": 7329,
+      "disordered_rows": 0,
+      "executable_seconds": 30,
+      "max_gap_ms": 427,
+      "mean_gap_ms": 3.873362445414847,
+      "missing_exchange_ts": 0,
+      "recv_before_exchange": 0,
+      "recv_skew_max_ms": 536,
+      "recv_skew_mean_ms": 85.4232501023332,
+      "ts_max_ms": 1791755016124,
+      "ts_min_ms": 1791754987740
+    },
+    "depth/BTCUSDT": {
+      "count": 279,
+      "disordered_rows": 0,
+      "executable_seconds": 0,
+      "max_gap_ms": 126,
+      "mean_gap_ms": 102.0863309352518,
+      "missing_exchange_ts": 0,
+      "recv_before_exchange": 0,
+      "recv_skew_max_ms": 527,
+      "recv_skew_mean_ms": 77.98924731182795,
+      "ts_max_ms": 1791755016065,
+      "ts_min_ms": 1791754987685
+    },
+    "depth/ETHUSDT": {
+      "count": 278,
+      "disordered_rows": 0,
+      "executable_seconds": 0,
+      "max_gap_ms": 108,
+      "mean_gap_ms": 102.48375451263539,
+      "missing_exchange_ts": 0,
+      "recv_before_exchange": 0,
+      "recv_skew_max_ms": 521,
+      "recv_skew_mean_ms": 77.76258992805755,
+      "ts_max_ms": 1791755016073,
+      "ts_min_ms": 1791754987685
+    },
+    "markPrice/BTCUSDT": {
+      "count": 29,
+      "disordered_rows": 0,
+      "executable_seconds": 0,
+      "max_gap_ms": 1006,
+      "mean_gap_ms": 1000.0714285714286,
+      "missing_exchange_ts": 0,
+      "recv_before_exchange": 0,
+      "recv_skew_max_ms": 178,
+      "recv_skew_mean_ms": 115.0,
+      "ts_max_ms": 1791755016004,
+      "ts_min_ms": 1791754988002
+    },
+    "markPrice/ETHUSDT": {
+      "count": 29,
+      "disordered_rows": 0,
+      "executable_seconds": 0,
+      "max_gap_ms": 1006,
+      "mean_gap_ms": 1000.0714285714286,
+      "missing_exchange_ts": 0,
+      "recv_before_exchange": 0,
+      "recv_skew_max_ms": 994,
+      "recv_skew_mean_ms": 159.06896551724137,
+      "ts_max_ms": 1791755016004,
+      "ts_min_ms": 1791754988002
+    }
+  },
+  "symbols": {
+    "BTCUSDT": {
+      "executable_rows_usable": 5695,
+      "executable_seconds": 29,
+      "warmup_bars": 130,
+      "warmup_coverable": false
+    },
+    "ETHUSDT": {
+      "executable_rows_usable": 7532,
+      "executable_seconds": 30,
+      "warmup_bars": 130,
+      "warmup_coverable": false
+    }
+  },
+  "verdict": "SCORABLE",
+  "warnings": [
+    "aggTrade/BTCUSDT: max executable gap 2753ms exceeds quote_max_age_s=1.0 (admission starves across the gap)",
+    "aggTrade/ETHUSDT: max executable gap 2994ms exceeds quote_max_age_s=1.0 (admission starves across the gap)",
+    "BTCUSDT: only 29 executable seconds for 130 warmup bars",
+    "ETHUSDT: only 30 executable seconds for 130 warmup bars",
+    "depth_snapshots.jsonl absent: books stay unsynced in replay; depth-dependent strategy views degrade"
+  ]
+}

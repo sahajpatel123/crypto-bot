@@ -1,0 +1,490 @@
+{
+  "dataset_id": "synth_quotes",
+  "dataset_manifest_sha": "01450adc481061e9ea32f74d4d2aae995c8ccb2bb3bc4ac2cb11d1c828f1bcad",
+  "symbols": [
+    "XRPUSDT"
+  ],
+  "splits": [
+    "dev",
+    "validation",
+    "test"
+  ],
+  "armsets": [
+    "S1",
+    "S2",
+    "S3",
+    "S4",
+    "S5",
+    "COMBINED",
+    "CASH"
+  ],
+  "filter_profile": "frozen-assumed",
+  "engine_delays_ms": {
+    "note": "base config values (production parity); E-008 GTC/valuation-only marks verified healthy by this harness"
+  },
+  "promotion_rule": "NONE - descriptive baseline; no tuning on any split",
+  "cells": {
+    "S1|dev": {
+      "closing_equity": 119.82480208,
+      "net_return_pct": -0.14599826666666926,
+      "paid_costs": 0.10063791999999999,
+      "funding_net": 0.0,
+      "realised": -0.17519791999999101,
+      "intents_admitted": 2,
+      "events_seen": 18000,
+      "reject_counts": {
+        "selection:position-busy": 220,
+        "selection:reward-below-cost": 6,
+        "strategy:breakout:fail|breakout:fail": 8090,
+        "strategy:breakout:fail|momentum:fail": 275,
+        "strategy:momentum:fail|breakout:fail": 276
+      },
+      "n_fills": 6,
+      "run_dir": "/tmp/q7verify/quotes/runs/dev/S1"
+    },
+    "S2|dev": {
+      "closing_equity": 119.86942899000002,
+      "net_return_pct": -0.10880917499999088,
+      "paid_costs": 0.11879101,
+      "funding_net": 0.0,
+      "realised": -0.13057101000000843,
+      "intents_admitted": 2,
+      "events_seen": 18000,
+      "reject_counts": {
+        "selection:position-busy": 1,
+        "selection:reward-below-cost": 3,
+        "strategy:pullback:fail|pullback:fail": 9,
+        "strategy:pullback:fail|trend:fail": 227,
+        "strategy:resume:fail|sequence:fail": 5,
+        "strategy:resume:fail|trend:fail": 57,
+        "strategy:sequence:fail|resume:fail": 5,
+        "strategy:sequence:fail|sequence:fail": 7,
+        "strategy:sequence:fail|trend:fail": 729,
+        "strategy:trend:fail|pullback:fail": 191,
+        "strategy:trend:fail|resume:fail": 64,
+        "strategy:trend:fail|sequence:fail": 692,
+        "strategy:trend:fail|trend:fail": 6877
+      },
+      "n_fills": 6,
+      "run_dir": "/tmp/q7verify/quotes/runs/dev/S2"
+    },
+    "S3|dev": {
+      "closing_equity": 119.93338903999998,
+      "net_return_pct": -0.0555091333333535,
+      "paid_costs": 0.22211096000000002,
+      "funding_net": 0.0,
+      "realised": -0.06661096000000716,
+      "intents_admitted": 2,
+      "events_seen": 18000,
+      "reject_counts": {
+        "selection:position-busy": 13,
+        "strategy:range:fail|range:fail": 7020,
+        "strategy:regime:na(S3)|regime:na(S3)": 1834
+      },
+      "n_fills": 6,
+      "run_dir": "/tmp/q7verify/quotes/runs/dev/S3"
+    },
+    "S4|dev": {
+      "closing_equity": 119.63109552,
+      "net_return_pct": -0.3074204000000025,
+      "paid_costs": 0.17623448000000003,
+      "funding_net": 0.0,
+      "realised": -0.36890448000000975,
+      "intents_admitted": 3,
+      "events_seen": 18000,
+      "reject_counts": {
+        "selection:position-busy": 4,
+        "selection:reward-below-cost": 7,
+        "strategy:momentum:fail|pierce:fail": 19,
+        "strategy:pierce:fail|momentum:fail": 19,
+        "strategy:pierce:fail|pierce:fail": 8051,
+        "strategy:pierce:fail|reclaim:fail": 383,
+        "strategy:reclaim:fail|pierce:fail": 383
+      },
+      "n_fills": 9,
+      "run_dir": "/tmp/q7verify/quotes/runs/dev/S4"
+    },
+    "S5|dev": {
+      "closing_equity": 120.0,
+      "net_return_pct": 0.0,
+      "paid_costs": 0.0,
+      "funding_net": 0.0,
+      "realised": 0.0,
+      "intents_admitted": 0,
+      "events_seen": 18000,
+      "reject_counts": {
+        "strategy:depth:unsynced-no-snapshot|depth:unsynced-no-snapshot": 8869
+      },
+      "n_fills": 0,
+      "run_dir": "/tmp/q7verify/quotes/runs/dev/S5"
+    },
+    "COMBINED|dev": {
+      "closing_equity": 119.82480208,
+      "net_return_pct": -0.14599826666666926,
+      "paid_costs": 0.10063791999999999,
+      "funding_net": 0.0,
+      "realised": -0.17519791999999101,
+      "intents_admitted": 2,
+      "events_seen": 18000,
+      "reject_counts": {
+        "selection:position-busy": 255,
+        "selection:reward-below-cost": 6,
+        "strategy:breakout:fail|breakout:fail": 8090,
+        "strategy:breakout:fail|momentum:fail": 275,
+        "strategy:depth:unsynced-no-snapshot|depth:unsynced-no-snapshot": 8869,
+        "strategy:momentum:fail|breakout:fail": 276,
+        "strategy:momentum:fail|pierce:fail": 19,
+        "strategy:pierce:fail|momentum:fail": 19,
+        "strategy:pierce:fail|pierce:fail": 8051,
+        "strategy:pierce:fail|reclaim:fail": 383,
+        "strategy:pullback:fail|pullback:fail": 9,
+        "strategy:pullback:fail|trend:fail": 227,
+        "strategy:range:fail|range:fail": 7020,
+        "strategy:reclaim:fail|pierce:fail": 383,
+        "strategy:regime:na(S3)|regime:na(S3)": 1834,
+        "strategy:resume:fail|sequence:fail": 5,
+        "strategy:resume:fail|trend:fail": 57,
+        "strategy:sequence:fail|resume:fail": 5,
+        "strategy:sequence:fail|sequence:fail": 7,
+        "strategy:sequence:fail|trend:fail": 729,
+        "strategy:trend:fail|pullback:fail": 191,
+        "strategy:trend:fail|resume:fail": 64,
+        "strategy:trend:fail|sequence:fail": 692,
+        "strategy:trend:fail|trend:fail": 6877
+      },
+      "n_fills": 6,
+      "run_dir": "/tmp/q7verify/quotes/runs/dev/COMBINED"
+    },
+    "CASH|dev": {
+      "closing_equity": 120.0,
+      "net_return_pct": 0.0,
+      "paid_costs": 0.0,
+      "funding_net": 0.0,
+      "realised": 0.0,
+      "intents_admitted": 0,
+      "events_seen": 18000,
+      "reject_counts": {},
+      "n_fills": 0,
+      "run_dir": "/tmp/q7verify/quotes/runs/dev/CASH"
+    },
+    "S1|validation": {
+      "closing_equity": 119.93409062,
+      "net_return_pct": -0.054924483333329555,
+      "paid_costs": 0.05997938,
+      "funding_net": 0.0,
+      "realised": -0.06590937999999803,
+      "intents_admitted": 1,
+      "events_seen": 8400,
+      "reject_counts": {
+        "selection:position-busy": 106,
+        "selection:reward-below-cost": 6,
+        "strategy:breakout:fail|breakout:fail": 3680,
+        "strategy:breakout:fail|momentum:fail": 137,
+        "strategy:momentum:fail|breakout:fail": 139
+      },
+      "n_fills": 3,
+      "run_dir": "/tmp/q7verify/quotes/runs/validation/S1"
+    },
+    "S2|validation": {
+      "closing_equity": 119.93792542,
+      "net_return_pct": -0.05172881666666296,
+      "paid_costs": 0.056484580000000006,
+      "funding_net": 0.0,
+      "realised": -0.06207458000000119,
+      "intents_admitted": 1,
+      "events_seen": 8400,
+      "reject_counts": {
+        "selection:reward-below-cost": 2,
+        "strategy:pullback:fail|pullback:fail": 3,
+        "strategy:pullback:fail|trend:fail": 47,
+        "strategy:resume:fail|sequence:fail": 5,
+        "strategy:resume:fail|trend:fail": 10,
+        "strategy:sequence:fail|sequence:fail": 4,
+        "strategy:sequence:fail|trend:fail": 343,
+        "strategy:trend:fail|pullback:fail": 136,
+        "strategy:trend:fail|resume:fail": 45,
+        "strategy:trend:fail|sequence:fail": 356,
+        "strategy:trend:fail|trend:fail": 3117
+      },
+      "n_fills": 3,
+      "run_dir": "/tmp/q7verify/quotes/runs/validation/S2"
+    },
+    "S3|validation": {
+      "closing_equity": 119.96908167,
+      "net_return_pct": -0.025765275000000365,
+      "paid_costs": 0.10334832999999999,
+      "funding_net": 0.0,
+      "realised": -0.030918329999998287,
+      "intents_admitted": 1,
+      "events_seen": 8400,
+      "reject_counts": {
+        "selection:position-busy": 4,
+        "strategy:range:fail|range:fail": 3272,
+        "strategy:regime:na(S3)|regime:na(S3)": 792
+      },
+      "n_fills": 3,
+      "run_dir": "/tmp/q7verify/quotes/runs/validation/S3"
+    },
+    "S4|validation": {
+      "closing_equity": 119.82520997,
+      "net_return_pct": -0.14565835833333374,
+      "paid_costs": 0.056400030000000004,
+      "funding_net": 0.0,
+      "realised": -0.17479002999999502,
+      "intents_admitted": 1,
+      "events_seen": 8400,
+      "reject_counts": {
+        "selection:position-busy": 1,
+        "selection:reward-below-cost": 3,
+        "strategy:momentum:fail|pierce:fail": 9,
+        "strategy:pierce:fail|momentum:fail": 10,
+        "strategy:pierce:fail|pierce:fail": 3664,
+        "strategy:pierce:fail|reclaim:fail": 191,
+        "strategy:reclaim:fail|pierce:fail": 190
+      },
+      "n_fills": 3,
+      "run_dir": "/tmp/q7verify/quotes/runs/validation/S4"
+    },
+    "S5|validation": {
+      "closing_equity": 120.0,
+      "net_return_pct": 0.0,
+      "paid_costs": 0.0,
+      "funding_net": 0.0,
+      "realised": 0.0,
+      "intents_admitted": 0,
+      "events_seen": 8400,
+      "reject_counts": {
+        "strategy:depth:unsynced-no-snapshot|depth:unsynced-no-snapshot": 4069
+      },
+      "n_fills": 0,
+      "run_dir": "/tmp/q7verify/quotes/runs/validation/S5"
+    },
+    "COMBINED|validation": {
+      "closing_equity": 119.93409062,
+      "net_return_pct": -0.054924483333329555,
+      "paid_costs": 0.05997938,
+      "funding_net": 0.0,
+      "realised": -0.06590937999999803,
+      "intents_admitted": 1,
+      "events_seen": 8400,
+      "reject_counts": {
+        "selection:position-busy": 119,
+        "selection:reward-below-cost": 6,
+        "strategy:breakout:fail|breakout:fail": 3680,
+        "strategy:breakout:fail|momentum:fail": 137,
+        "strategy:depth:unsynced-no-snapshot|depth:unsynced-no-snapshot": 4069,
+        "strategy:momentum:fail|breakout:fail": 139,
+        "strategy:momentum:fail|pierce:fail": 9,
+        "strategy:pierce:fail|momentum:fail": 10,
+        "strategy:pierce:fail|pierce:fail": 3664,
+        "strategy:pierce:fail|reclaim:fail": 191,
+        "strategy:pullback:fail|pullback:fail": 3,
+        "strategy:pullback:fail|trend:fail": 47,
+        "strategy:range:fail|range:fail": 3272,
+        "strategy:reclaim:fail|pierce:fail": 190,
+        "strategy:regime:na(S3)|regime:na(S3)": 792,
+        "strategy:resume:fail|sequence:fail": 5,
+        "strategy:resume:fail|trend:fail": 10,
+        "strategy:sequence:fail|sequence:fail": 4,
+        "strategy:sequence:fail|trend:fail": 343,
+        "strategy:trend:fail|pullback:fail": 136,
+        "strategy:trend:fail|resume:fail": 45,
+        "strategy:trend:fail|sequence:fail": 356,
+        "strategy:trend:fail|trend:fail": 3117
+      },
+      "n_fills": 3,
+      "run_dir": "/tmp/q7verify/quotes/runs/validation/COMBINED"
+    },
+    "CASH|validation": {
+      "closing_equity": 120.0,
+      "net_return_pct": 0.0,
+      "paid_costs": 0.0,
+      "funding_net": 0.0,
+      "realised": 0.0,
+      "intents_admitted": 0,
+      "events_seen": 8400,
+      "reject_counts": {},
+      "n_fills": 0,
+      "run_dir": "/tmp/q7verify/quotes/runs/validation/CASH"
+    },
+    "S1|test": {
+      "closing_equity": 119.84954246000001,
+      "net_return_pct": -0.12538128333332565,
+      "paid_costs": 0.16643754,
+      "funding_net": 0.0,
+      "realised": -0.15045754000001538,
+      "intents_admitted": 3,
+      "events_seen": 9600,
+      "reject_counts": {
+        "selection:position-busy": 82,
+        "selection:reward-below-cost": 66,
+        "strategy:breakout:fail|breakout:fail": 4237,
+        "strategy:breakout:fail|momentum:fail": 136,
+        "strategy:momentum:fail|breakout:fail": 145
+      },
+      "n_fills": 10,
+      "run_dir": "/tmp/q7verify/quotes/runs/test/S1"
+    },
+    "S2|test": {
+      "closing_equity": 119.93792542,
+      "net_return_pct": -0.05172881666666296,
+      "paid_costs": 0.056484580000000006,
+      "funding_net": 0.0,
+      "realised": -0.06207458000000119,
+      "intents_admitted": 1,
+      "events_seen": 9600,
+      "reject_counts": {
+        "selection:reward-below-cost": 2,
+        "strategy:pullback:fail|pullback:fail": 6,
+        "strategy:pullback:fail|trend:fail": 91,
+        "strategy:resume:fail|sequence:fail": 5,
+        "strategy:resume:fail|trend:fail": 28,
+        "strategy:sequence:fail|sequence:fail": 4,
+        "strategy:sequence:fail|trend:fail": 420,
+        "strategy:trend:fail|pullback:fail": 98,
+        "strategy:trend:fail|resume:fail": 54,
+        "strategy:trend:fail|sequence:fail": 347,
+        "strategy:trend:fail|trend:fail": 3613
+      },
+      "n_fills": 3,
+      "run_dir": "/tmp/q7verify/quotes/runs/test/S2"
+    },
+    "S3|test": {
+      "closing_equity": 119.96669451999999,
+      "net_return_pct": -0.0277545666666712,
+      "paid_costs": 0.11105548000000001,
+      "funding_net": 0.0,
+      "realised": -0.03330548000000358,
+      "intents_admitted": 1,
+      "events_seen": 9600,
+      "reject_counts": {
+        "selection:position-busy": 9,
+        "strategy:range:fail|range:fail": 3707,
+        "strategy:regime:na(S3)|regime:na(S3)": 952
+      },
+      "n_fills": 3,
+      "run_dir": "/tmp/q7verify/quotes/runs/test/S3"
+    },
+    "S4|test": {
+      "closing_equity": 119.76208550000001,
+      "net_return_pct": -0.19826208333332263,
+      "paid_costs": 0.1138345,
+      "funding_net": 0.0,
+      "realised": -0.23791449999999553,
+      "intents_admitted": 2,
+      "events_seen": 9600,
+      "reject_counts": {
+        "selection:position-busy": 2,
+        "selection:reward-below-cost": 5,
+        "strategy:momentum:fail|pierce:fail": 9,
+        "strategy:pierce:fail|momentum:fail": 10,
+        "strategy:pierce:fail|pierce:fail": 4214,
+        "strategy:pierce:fail|reclaim:fail": 239,
+        "strategy:reclaim:fail|pierce:fail": 188
+      },
+      "n_fills": 6,
+      "run_dir": "/tmp/q7verify/quotes/runs/test/S4"
+    },
+    "S5|test": {
+      "closing_equity": 120.0,
+      "net_return_pct": 0.0,
+      "paid_costs": 0.0,
+      "funding_net": 0.0,
+      "realised": 0.0,
+      "intents_admitted": 0,
+      "events_seen": 9600,
+      "reject_counts": {
+        "strategy:depth:unsynced-no-snapshot|depth:unsynced-no-snapshot": 4669
+      },
+      "n_fills": 0,
+      "run_dir": "/tmp/q7verify/quotes/runs/test/S5"
+    },
+    "COMBINED|test": {
+      "closing_equity": 119.52925582999998,
+      "net_return_pct": -0.39228680833335305,
+      "paid_costs": 0.15329417,
+      "funding_net": 0.0,
+      "realised": -0.4707441699999968,
+      "intents_admitted": 3,
+      "events_seen": 9600,
+      "reject_counts": {
+        "selection:position-busy": 124,
+        "selection:reward-below-cost": 46,
+        "strategy:breakout:fail|breakout:fail": 4237,
+        "strategy:breakout:fail|momentum:fail": 136,
+        "strategy:depth:unsynced-no-snapshot|depth:unsynced-no-snapshot": 4669,
+        "strategy:momentum:fail|breakout:fail": 145,
+        "strategy:momentum:fail|pierce:fail": 9,
+        "strategy:pierce:fail|momentum:fail": 10,
+        "strategy:pierce:fail|pierce:fail": 4214,
+        "strategy:pierce:fail|reclaim:fail": 239,
+        "strategy:pullback:fail|pullback:fail": 6,
+        "strategy:pullback:fail|trend:fail": 91,
+        "strategy:range:fail|range:fail": 3707,
+        "strategy:reclaim:fail|pierce:fail": 188,
+        "strategy:regime:na(S3)|regime:na(S3)": 952,
+        "strategy:resume:fail|sequence:fail": 5,
+        "strategy:resume:fail|trend:fail": 28,
+        "strategy:sequence:fail|sequence:fail": 4,
+        "strategy:sequence:fail|trend:fail": 420,
+        "strategy:trend:fail|pullback:fail": 98,
+        "strategy:trend:fail|resume:fail": 54,
+        "strategy:trend:fail|sequence:fail": 347,
+        "strategy:trend:fail|trend:fail": 3613
+      },
+      "n_fills": 9,
+      "run_dir": "/tmp/q7verify/quotes/runs/test/COMBINED"
+    },
+    "CASH|test": {
+      "closing_equity": 120.0,
+      "net_return_pct": 0.0,
+      "paid_costs": 0.0,
+      "funding_net": 0.0,
+      "realised": 0.0,
+      "intents_admitted": 0,
+      "events_seen": 9600,
+      "reject_counts": {},
+      "n_fills": 0,
+      "run_dir": "/tmp/q7verify/quotes/runs/test/CASH"
+    }
+  },
+  "s5_ineligibility": {
+    "S5|dev": {
+      "windows": 8869,
+      "reasons": {
+        "strategy:depth:unsynced-no-snapshot|depth:unsynced-no-snapshot": 8869
+      }
+    },
+    "COMBINED|dev": {
+      "windows": 8869,
+      "reasons": {
+        "strategy:depth:unsynced-no-snapshot|depth:unsynced-no-snapshot": 8869
+      }
+    },
+    "S5|validation": {
+      "windows": 4069,
+      "reasons": {
+        "strategy:depth:unsynced-no-snapshot|depth:unsynced-no-snapshot": 4069
+      }
+    },
+    "COMBINED|validation": {
+      "windows": 4069,
+      "reasons": {
+        "strategy:depth:unsynced-no-snapshot|depth:unsynced-no-snapshot": 4069
+      }
+    },
+    "S5|test": {
+      "windows": 4669,
+      "reasons": {
+        "strategy:depth:unsynced-no-snapshot|depth:unsynced-no-snapshot": 4669
+      }
+    },
+    "COMBINED|test": {
+      "windows": 4669,
+      "reasons": {
+        "strategy:depth:unsynced-no-snapshot|depth:unsynced-no-snapshot": 4669
+      }
+    }
+  },
+  "sensitivity": {}
+}

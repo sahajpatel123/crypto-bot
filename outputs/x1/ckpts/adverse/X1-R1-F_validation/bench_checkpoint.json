@@ -1,0 +1,7274 @@
+{
+ "runner_version": "bench-run-v3",
+ "cursor": {
+  "day": "2026-09-30",
+  "seqs": {
+   "ETHUSDT": 489425,
+   "BTCUSDT": 524984
+  }
+ },
+ "ledger": {
+  "version": 1,
+  "pilot_equity": 120.0,
+  "seq": 0,
+  "journal": [],
+  "snapshot": {
+   "cash": 120.0,
+   "qty": 0.0,
+   "avg_entry": 0.0,
+   "realised": 0.0,
+   "paid_costs": 0.0,
+   "funding_net": 0.0,
+   "seq": 0
+  }
+ },
+ "risk_state_json": "{\n  \"booked\": {},\n  \"current_day\": \"2026-09-30\",\n  \"day_start_equity\": 120.0,\n  \"emergency_latched\": false,\n  \"emergency_since_utc\": null,\n  \"flow_baseline_day\": 0.0,\n  \"flow_baseline_inception\": 0.0,\n  \"last_tick_utc\": \"2026-09-30T12:35:09.498000+00:00\",\n  \"needs_reconciliation\": false,\n  \"open_position\": false,\n  \"operating_stop_days\": {},\n  \"original_equity\": 120.0,\n  \"pause_days\": {},\n  \"peak_realised\": 0.0,\n  \"profit_floor\": null,\n  \"reservations\": {},\n  \"seq\": 0,\n  \"unresolved\": {},\n  \"version\": 2\n}\n",
+ "cooldowns": {},
+ "clock_ms": 1790771709498,
+ "day": "2026-09-30",
+ "warmed": true,
+ "saw_marks": true,
+ "feeds": {
+  "BTCUSDT": {
+   "bars": [
+    {
+     "ts_utc": "2026-09-30T12:32:53+00:00",
+     "open": 84420.8,
+     "high": 84420.8,
+     "low": 84420.7,
+     "close": 84420.7,
+     "volume": 1.141,
+     "trades": 13,
+     "buy_frac": 0.07099035933391762,
+     "spread_bps": 1.9999999999984457,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:32:54+00:00",
+     "open": 84420.8,
+     "high": 84430.3,
+     "low": 84405.8,
+     "close": 84418.3,
+     "volume": 61.33300000000002,
+     "trades": 239,
+     "buy_frac": 0.9379942282295015,
+     "spread_bps": 1.9999999999984457,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:32:55+00:00",
+     "open": 84418.4,
+     "high": 84435.2,
+     "low": 84418.4,
+     "close": 84426.0,
+     "volume": 8.428999999999993,
+     "trades": 89,
+     "buy_frac": 0.7877565547514532,
+     "spread_bps": 1.999999999999882,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:32:56+00:00",
+     "open": 84425.9,
+     "high": 84430.5,
+     "low": 84418.4,
+     "close": 84423.1,
+     "volume": 13.076999999999993,
+     "trades": 110,
+     "buy_frac": 0.7895541790930646,
+     "spread_bps": 2.0000000000014264,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:32:57+00:00",
+     "open": 84423.0,
+     "high": 84423.1,
+     "low": 84420.7,
+     "close": 84420.7,
+     "volume": 3.4019999999999992,
+     "trades": 24,
+     "buy_frac": 0.30834803057025284,
+     "spread_bps": 1.9999999999988527,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:32:58+00:00",
+     "open": 84420.6,
+     "high": 84420.6,
+     "low": 84400.0,
+     "close": 84400.0,
+     "volume": 5.800999999999998,
+     "trades": 92,
+     "buy_frac": 0.21117048784692302,
+     "spread_bps": 2.0000000000002887,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:32:59+00:00",
+     "open": 84400.1,
+     "high": 84400.1,
+     "low": 84391.5,
+     "close": 84391.6,
+     "volume": 4.277999999999998,
+     "trades": 58,
+     "buy_frac": 0.09467040673211786,
+     "spread_bps": 2.0000000000013536,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:00+00:00",
+     "open": 84391.5,
+     "high": 84391.6,
+     "low": 84377.2,
+     "close": 84377.2,
+     "volume": 4.934000000000001,
+     "trades": 87,
+     "buy_frac": 0.06445074989866234,
+     "spread_bps": 2.00000000000133,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:01+00:00",
+     "open": 84377.1,
+     "high": 84377.1,
+     "low": 84357.7,
+     "close": 84357.8,
+     "volume": 13.996000000000002,
+     "trades": 129,
+     "buy_frac": 0.27079165475850236,
+     "spread_bps": 1.9999999999996045,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:02+00:00",
+     "open": 84357.7,
+     "high": 84370.5,
+     "low": 84350.2,
+     "close": 84350.2,
+     "volume": 19.479,
+     "trades": 177,
+     "buy_frac": 0.6119410647363822,
+     "spread_bps": 1.999999999999149,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:03+00:00",
+     "open": 84350.3,
+     "high": 84376.4,
+     "low": 84350.2,
+     "close": 84376.3,
+     "volume": 11.826999999999998,
+     "trades": 127,
+     "buy_frac": 0.716580705166145,
+     "spread_bps": 1.9999999999984055,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:04+00:00",
+     "open": 84376.3,
+     "high": 84376.4,
+     "low": 84372.3,
+     "close": 84372.3,
+     "volume": 8.906999999999998,
+     "trades": 22,
+     "buy_frac": 0.017963399573369263,
+     "spread_bps": 2.000000000000084,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:05+00:00",
+     "open": 84372.3,
+     "high": 84375.9,
+     "low": 84363.3,
+     "close": 84363.3,
+     "volume": 14.492999999999988,
+     "trades": 106,
+     "buy_frac": 0.6902642655074871,
+     "spread_bps": 1.9999999999990297,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:06+00:00",
+     "open": 84363.2,
+     "high": 84364.5,
+     "low": 84352.7,
+     "close": 84364.4,
+     "volume": 26.35100000000001,
+     "trades": 125,
+     "buy_frac": 0.7975788395127322,
+     "spread_bps": 1.9999999999984424,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:07+00:00",
+     "open": 84364.5,
+     "high": 84381.3,
+     "low": 84364.5,
+     "close": 84376.8,
+     "volume": 10.332999999999997,
+     "trades": 95,
+     "buy_frac": 0.4716926352462984,
+     "spread_bps": 1.999999999998526,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:08+00:00",
+     "open": 84376.5,
+     "high": 84382.4,
+     "low": 84364.4,
+     "close": 84376.0,
+     "volume": 16.136999999999997,
+     "trades": 139,
+     "buy_frac": 0.2965854867695357,
+     "spread_bps": 2.000000000001689,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:09+00:00",
+     "open": 84376.0,
+     "high": 84376.0,
+     "low": 84357.2,
+     "close": 84357.3,
+     "volume": 4.126999999999998,
+     "trades": 98,
+     "buy_frac": 0.10491882723527993,
+     "spread_bps": 2.0000000000011258,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:10+00:00",
+     "open": 84357.2,
+     "high": 84357.2,
+     "low": 84351.5,
+     "close": 84351.5,
+     "volume": 1.634,
+     "trades": 35,
+     "buy_frac": 0.07099143206854346,
+     "spread_bps": 1.9999999999985858,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:11+00:00",
+     "open": 84351.6,
+     "high": 84351.6,
+     "low": 84335.8,
+     "close": 84335.8,
+     "volume": 6.163000000000002,
+     "trades": 121,
+     "buy_frac": 0.20428362810319636,
+     "spread_bps": 1.9999999999984894,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:12+00:00",
+     "open": 84335.9,
+     "high": 84335.9,
+     "low": 84327.7,
+     "close": 84327.8,
+     "volume": 11.866,
+     "trades": 73,
+     "buy_frac": 0.03286701500084275,
+     "spread_bps": 2.0000000000001306,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:13+00:00",
+     "open": 84327.7,
+     "high": 84327.8,
+     "low": 84315.9,
+     "close": 84315.9,
+     "volume": 17.025,
+     "trades": 103,
+     "buy_frac": 0.03624082232011748,
+     "spread_bps": 1.9999999999998666,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:14+00:00",
+     "open": 84315.9,
+     "high": 84319.7,
+     "low": 84315.9,
+     "close": 84319.6,
+     "volume": 17.379999999999995,
+     "trades": 37,
+     "buy_frac": 0.6024165707710012,
+     "spread_bps": 1.999999999998308,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:15+00:00",
+     "open": 84319.7,
+     "high": 84319.7,
+     "low": 84311.6,
+     "close": 84311.6,
+     "volume": 4.0959999999999965,
+     "trades": 56,
+     "buy_frac": 0.016845703125000017,
+     "spread_bps": 2.0000000000012084,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:16+00:00",
+     "open": 84311.7,
+     "high": 84311.7,
+     "low": 84305.3,
+     "close": 84305.4,
+     "volume": 5.156,
+     "trades": 67,
+     "buy_frac": 0.06361520558572538,
+     "spread_bps": 1.9999999999990985,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:17+00:00",
+     "open": 84305.4,
+     "high": 84306.1,
+     "low": 84305.3,
+     "close": 84306.0,
+     "volume": 24.098000000000003,
+     "trades": 34,
+     "buy_frac": 0.7960411652419288,
+     "spread_bps": 2.000000000000285,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:18+00:00",
+     "open": 84306.0,
+     "high": 84306.1,
+     "low": 84306.0,
+     "close": 84306.0,
+     "volume": 6.628,
+     "trades": 16,
+     "buy_frac": 0.08705491852745927,
+     "spread_bps": 2.0000000000016516,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:19+00:00",
+     "open": 84306.0,
+     "high": 84306.0,
+     "low": 84305.3,
+     "close": 84305.4,
+     "volume": 12.226,
+     "trades": 26,
+     "buy_frac": 0.7946180271552429,
+     "spread_bps": 2.0000000000016516,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:20+00:00",
+     "open": 84305.3,
+     "high": 84305.4,
+     "low": 84305.3,
+     "close": 84305.3,
+     "volume": 24.661,
+     "trades": 16,
+     "buy_frac": 0.02230242082640607,
+     "spread_bps": 1.9999999999994817,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:21+00:00",
+     "open": 84305.4,
+     "high": 84305.4,
+     "low": 84305.3,
+     "close": 84305.3,
+     "volume": 6.797,
+     "trades": 21,
+     "buy_frac": 0.39370310431072536,
+     "spread_bps": 2.000000000000285,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:22+00:00",
+     "open": 84305.4,
+     "high": 84316.0,
+     "low": 84305.3,
+     "close": 84315.9,
+     "volume": 7.954000000000002,
+     "trades": 73,
+     "buy_frac": 0.8620819713351772,
+     "spread_bps": 2.000000000000285,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:23+00:00",
+     "open": 84316.0,
+     "high": 84316.0,
+     "low": 84305.3,
+     "close": 84309.8,
+     "volume": 7.591000000000002,
+     "trades": 79,
+     "buy_frac": 0.6080885258859178,
+     "spread_bps": 1.9999999999991107,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:24+00:00",
+     "open": 84309.8,
+     "high": 84309.9,
+     "low": 84309.8,
+     "close": 84309.9,
+     "volume": 8.418,
+     "trades": 12,
+     "buy_frac": 0.44986932763126636,
+     "spread_bps": 2.0000000000011005,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:25+00:00",
+     "open": 84309.8,
+     "high": 84337.7,
+     "low": 84309.8,
+     "close": 84334.4,
+     "volume": 21.077000000000005,
+     "trades": 194,
+     "buy_frac": 0.7951795796365706,
+     "spread_bps": 2.0000000000011005,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:26+00:00",
+     "open": 84334.4,
+     "high": 84339.3,
+     "low": 84325.5,
+     "close": 84325.5,
+     "volume": 12.005999999999991,
+     "trades": 103,
+     "buy_frac": 0.277944361152757,
+     "spread_bps": 1.9999999999984408,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:27+00:00",
+     "open": 84325.6,
+     "high": 84325.6,
+     "low": 84310.9,
+     "close": 84319.4,
+     "volume": 13.622000000000005,
+     "trades": 135,
+     "buy_frac": 0.05960945529290852,
+     "spread_bps": 2.0000000000002616,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:28+00:00",
+     "open": 84319.4,
+     "high": 84319.5,
+     "low": 84319.4,
+     "close": 84319.4,
+     "volume": 2.341,
+     "trades": 12,
+     "buy_frac": 0.17855617257582226,
+     "spread_bps": 1.9999999999987996,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:29+00:00",
+     "open": 84319.5,
+     "high": 84319.5,
+     "low": 84319.4,
+     "close": 84319.4,
+     "volume": 2.329999999999999,
+     "trades": 13,
+     "buy_frac": 0.33948497854077264,
+     "spread_bps": 1.9999999999996025,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:30+00:00",
+     "open": 84319.5,
+     "high": 84319.5,
+     "low": 84311.3,
+     "close": 84311.3,
+     "volume": 4.719000000000002,
+     "trades": 40,
+     "buy_frac": 0.10065691883873697,
+     "spread_bps": 1.9999999999996025,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:31+00:00",
+     "open": 84311.3,
+     "high": 84311.3,
+     "low": 84286.0,
+     "close": 84286.0,
+     "volume": 62.69599999999999,
+     "trades": 289,
+     "buy_frac": 0.3749681000382802,
+     "spread_bps": 1.999999999999338,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:32+00:00",
+     "open": 84285.9,
+     "high": 84285.9,
+     "low": 84272.0,
+     "close": 84272.1,
+     "volume": 16.206,
+     "trades": 106,
+     "buy_frac": 0.3910280143156855,
+     "spread_bps": 1.9999999999990257,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:33+00:00",
+     "open": 84272.0,
+     "high": 84272.1,
+     "low": 84272.0,
+     "close": 84272.0,
+     "volume": 2.9459999999999997,
+     "trades": 14,
+     "buy_frac": 0.04209097080787509,
+     "spread_bps": 2.0000000000013154,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:34+00:00",
+     "open": 84272.1,
+     "high": 84272.1,
+     "low": 84255.9,
+     "close": 84262.8,
+     "volume": 15.045999999999998,
+     "trades": 142,
+     "buy_frac": 0.09630466569187826,
+     "spread_bps": 1.9999999999986648,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:35+00:00",
+     "open": 84262.8,
+     "high": 84262.9,
+     "low": 84262.8,
+     "close": 84262.8,
+     "volume": 3.8769999999999993,
+     "trades": 21,
+     "buy_frac": 0.41655919525406243,
+     "spread_bps": 1.9999999999999236,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:36+00:00",
+     "open": 84262.9,
+     "high": 84275.3,
+     "low": 84257.9,
+     "close": 84262.5,
+     "volume": 35.01700000000003,
+     "trades": 216,
+     "buy_frac": 0.16800411228831694,
+     "spread_bps": 2.0000000000007274,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:37+00:00",
+     "open": 84262.5,
+     "high": 84262.6,
+     "low": 84259.7,
+     "close": 84259.7,
+     "volume": 2.694999999999999,
+     "trades": 24,
+     "buy_frac": 0.26345083487940646,
+     "spread_bps": 2.0000000000009672,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:38+00:00",
+     "open": 84259.7,
+     "high": 84272.0,
+     "low": 84259.7,
+     "close": 84265.4,
+     "volume": 20.56100000000005,
+     "trades": 101,
+     "buy_frac": 0.8672243567919843,
+     "spread_bps": 1.9999999999991922,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:39+00:00",
+     "open": 84265.4,
+     "high": 84265.5,
+     "low": 84265.4,
+     "close": 84265.4,
+     "volume": 4.453999999999999,
+     "trades": 17,
+     "buy_frac": 0.009878760664571176,
+     "spread_bps": 2.000000000000092,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:40+00:00",
+     "open": 84265.2,
+     "high": 84265.2,
+     "low": 84260.8,
+     "close": 84260.8,
+     "volume": 2.95,
+     "trades": 28,
+     "buy_frac": 0.04813559322033899,
+     "spread_bps": 1.999999999998485,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:41+00:00",
+     "open": 84260.9,
+     "high": 84269.7,
+     "low": 84260.8,
+     "close": 84269.6,
+     "volume": 12.430999999999989,
+     "trades": 52,
+     "buy_frac": 0.8521438339634786,
+     "spread_bps": 1.9999999999984728,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:42+00:00",
+     "open": 84269.6,
+     "high": 84269.7,
+     "low": 84269.5,
+     "close": 84269.5,
+     "volume": 2.334,
+     "trades": 10,
+     "buy_frac": 0.005141388174807198,
+     "spread_bps": 1.9999999999993003,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:43+00:00",
+     "open": 84269.5,
+     "high": 84272.0,
+     "low": 84262.1,
+     "close": 84271.9,
+     "volume": 25.479999999999993,
+     "trades": 82,
+     "buy_frac": 0.8269623233908948,
+     "spread_bps": 1.9999999999984968,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:44+00:00",
+     "open": 84271.9,
+     "high": 84272.0,
+     "low": 84271.9,
+     "close": 84271.9,
+     "volume": 0.40700000000000003,
+     "trades": 11,
+     "buy_frac": 0.45700245700245695,
+     "spread_bps": 2.000000000000512,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:45+00:00",
+     "open": 84271.9,
+     "high": 84279.8,
+     "low": 84271.9,
+     "close": 84275.5,
+     "volume": 2.9009999999999962,
+     "trades": 57,
+     "buy_frac": 0.6732161323681487,
+     "spread_bps": 2.000000000000512,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:46+00:00",
+     "open": 84275.5,
+     "high": 84280.0,
+     "low": 84275.5,
+     "close": 84279.9,
+     "volume": 1.5530000000000002,
+     "trades": 23,
+     "buy_frac": 0.46812620734063104,
+     "spread_bps": 1.9999999999983535,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:47+00:00",
+     "open": 84280.0,
+     "high": 84289.0,
+     "low": 84279.9,
+     "close": 84289.0,
+     "volume": 3.120999999999997,
+     "trades": 59,
+     "buy_frac": 0.7071451457866067,
+     "spread_bps": 1.9999999999999725,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:48+00:00",
+     "open": 84288.9,
+     "high": 84289.0,
+     "low": 84283.9,
+     "close": 84284.0,
+     "volume": 4.474000000000002,
+     "trades": 34,
+     "buy_frac": 0.4175234689316046,
+     "spread_bps": 1.999999999998954,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:49+00:00",
+     "open": 84283.9,
+     "high": 84283.9,
+     "low": 84275.9,
+     "close": 84276.6,
+     "volume": 10.566,
+     "trades": 52,
+     "buy_frac": 0.21294718909710386,
+     "spread_bps": 2.0000000000002247,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:50+00:00",
+     "open": 84276.6,
+     "high": 84276.6,
+     "low": 84276.5,
+     "close": 84276.5,
+     "volume": 3.410999999999999,
+     "trades": 13,
+     "buy_frac": 0.5493990032248609,
+     "spread_bps": 2.0000000000002838,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:51+00:00",
+     "open": 84276.5,
+     "high": 84276.5,
+     "low": 84272.0,
+     "close": 84272.1,
+     "volume": 4.274999999999998,
+     "trades": 32,
+     "buy_frac": 0.06549707602339186,
+     "spread_bps": 1.9999999999994804,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:52+00:00",
+     "open": 84272.0,
+     "high": 84272.1,
+     "low": 84272.0,
+     "close": 84272.1,
+     "volume": 1.1880000000000002,
+     "trades": 8,
+     "buy_frac": 0.46885521885521875,
+     "spread_bps": 2.0000000000013154,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:53+00:00",
+     "open": 84272.0,
+     "high": 84280.4,
+     "low": 84272.0,
+     "close": 84280.3,
+     "volume": 28.561000000000014,
+     "trades": 45,
+     "buy_frac": 0.990721613388887,
+     "spread_bps": 2.0000000000013154,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:54+00:00",
+     "open": 84280.3,
+     "high": 84280.4,
+     "low": 84280.3,
+     "close": 84280.3,
+     "volume": 1.161,
+     "trades": 16,
+     "buy_frac": 0.21705426356589147,
+     "spread_bps": 1.999999999998929,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:55+00:00",
+     "open": 84280.3,
+     "high": 84280.4,
+     "low": 84272.8,
+     "close": 84272.9,
+     "volume": 3.684999999999998,
+     "trades": 35,
+     "buy_frac": 0.3856173677069201,
+     "spread_bps": 1.999999999998929,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:56+00:00",
+     "open": 84272.8,
+     "high": 84272.9,
+     "low": 84264.0,
+     "close": 84264.1,
+     "volume": 4.562999999999996,
+     "trades": 59,
+     "buy_frac": 0.16502301117685747,
+     "spread_bps": 2.0000000000008353,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:57+00:00",
+     "open": 84264.0,
+     "high": 84264.1,
+     "low": 84258.0,
+     "close": 84258.3,
+     "volume": 5.726000000000004,
+     "trades": 55,
+     "buy_frac": 0.0490743974851554,
+     "spread_bps": 1.9999999999992042,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:58+00:00",
+     "open": 84258.2,
+     "high": 84258.3,
+     "low": 84248.0,
+     "close": 84258.1,
+     "volume": 9.274000000000003,
+     "trades": 125,
+     "buy_frac": 0.14362734526633597,
+     "spread_bps": 2.000000000000955,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:59+00:00",
+     "open": 84258.1,
+     "high": 84264.1,
+     "low": 84258.1,
+     "close": 84264.0,
+     "volume": 2.441999999999998,
+     "trades": 33,
+     "buy_frac": 0.671990171990172,
+     "spread_bps": 2.0000000000001514,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:00+00:00",
+     "open": 84264.1,
+     "high": 84279.1,
+     "low": 84264.0,
+     "close": 84279.0,
+     "volume": 2.487999999999994,
+     "trades": 90,
+     "buy_frac": 0.7946141479099673,
+     "spread_bps": 2.0000000000000075,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:01+00:00",
+     "open": 84279.1,
+     "high": 84292.9,
+     "low": 84279.1,
+     "close": 84292.9,
+     "volume": 10.441999999999998,
+     "trades": 100,
+     "buy_frac": 0.8734916682627849,
+     "spread_bps": 1.9999999999996485,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:02+00:00",
+     "open": 84292.9,
+     "high": 84293.0,
+     "low": 84272.8,
+     "close": 84273.2,
+     "volume": 14.936,
+     "trades": 118,
+     "buy_frac": 0.33429298339582214,
+     "spread_bps": 2.000000000000009,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:03+00:00",
+     "open": 84273.1,
+     "high": 84284.2,
+     "low": 84273.1,
+     "close": 84277.2,
+     "volume": 2.104999999999994,
+     "trades": 80,
+     "buy_frac": 0.502137767220904,
+     "spread_bps": 1.9999999999997922,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:04+00:00",
+     "open": 84277.2,
+     "high": 84277.3,
+     "low": 84277.2,
+     "close": 84277.2,
+     "volume": 4.263,
+     "trades": 13,
+     "buy_frac": 0.15787004456955198,
+     "spread_bps": 2.000000000001651,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:05+00:00",
+     "open": 84277.3,
+     "high": 84277.3,
+     "low": 84273.1,
+     "close": 84273.1,
+     "volume": 6.173999999999998,
+     "trades": 37,
+     "buy_frac": 0.454486556527373,
+     "spread_bps": 1.999999999999001,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:06+00:00",
+     "open": 84273.2,
+     "high": 84273.2,
+     "low": 84273.1,
+     "close": 84273.1,
+     "volume": 1.0430000000000001,
+     "trades": 7,
+     "buy_frac": 0.5426653883029721,
+     "spread_bps": 2.000000000000596,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:07+00:00",
+     "open": 84273.1,
+     "high": 84273.2,
+     "low": 84273.0,
+     "close": 84273.0,
+     "volume": 0.9709999999999999,
+     "trades": 11,
+     "buy_frac": 0.13800205973223484,
+     "spread_bps": 1.9999999999997922,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:08+00:00",
+     "open": 84273.0,
+     "high": 84273.0,
+     "low": 84265.4,
+     "close": 84265.5,
+     "volume": 10.479999999999999,
+     "trades": 53,
+     "buy_frac": 0.7854007633587787,
+     "spread_bps": 1.9999999999989888,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:09+00:00",
+     "open": 84265.4,
+     "high": 84265.5,
+     "low": 84259.0,
+     "close": 84259.0,
+     "volume": 3.275999999999997,
+     "trades": 49,
+     "buy_frac": 0.10683760683760693,
+     "spread_bps": 2.000000000000092,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:10+00:00",
+     "open": 84259.1,
+     "high": 84259.1,
+     "low": 84240.0,
+     "close": 84240.0,
+     "volume": 6.560000000000001,
+     "trades": 121,
+     "buy_frac": 0.10411585365853657,
+     "spread_bps": 2.0000000000012785,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:11+00:00",
+     "open": 84240.0,
+     "high": 84240.1,
+     "low": 84240.0,
+     "close": 84240.0,
+     "volume": 1.2930000000000001,
+     "trades": 13,
+     "buy_frac": 0.13766434648105183,
+     "spread_bps": 1.9999999999997788,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:12+00:00",
+     "open": 84240.0,
+     "high": 84265.4,
+     "low": 84233.7,
+     "close": 84265.4,
+     "volume": 31.35500000000002,
+     "trades": 225,
+     "buy_frac": 0.8864614893956305,
+     "spread_bps": 1.9999999999997788,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:13+00:00",
+     "open": 84265.3,
+     "high": 84283.3,
+     "low": 84265.3,
+     "close": 84283.3,
+     "volume": 17.70000000000001,
+     "trades": 91,
+     "buy_frac": 0.8632768361581916,
+     "spread_bps": 1.9999999999992881,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:14+00:00",
+     "open": 84283.5,
+     "high": 84283.5,
+     "low": 84283.4,
+     "close": 84283.5,
+     "volume": 4.930999999999999,
+     "trades": 20,
+     "buy_frac": 0.6556479415939972,
+     "spread_bps": 2.000000000000464,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:15+00:00",
+     "open": 84283.4,
+     "high": 84283.4,
+     "low": 84276.8,
+     "close": 84276.9,
+     "volume": 2.6829999999999954,
+     "trades": 38,
+     "buy_frac": 0.014163250093179302,
+     "spread_bps": 1.999999999999661,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:16+00:00",
+     "open": 84276.8,
+     "high": 84276.9,
+     "low": 84276.8,
+     "close": 84276.9,
+     "volume": 6.373,
+     "trades": 14,
+     "buy_frac": 0.9136984151890789,
+     "spread_bps": 1.9999999999984373,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:17+00:00",
+     "open": 84276.8,
+     "high": 84283.1,
+     "low": 84276.8,
+     "close": 84283.0,
+     "volume": 2.219999999999998,
+     "trades": 39,
+     "buy_frac": 0.5018018018018015,
+     "spread_bps": 1.9999999999984373,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:18+00:00",
+     "open": 84283.1,
+     "high": 84283.1,
+     "low": 84283.0,
+     "close": 84283.0,
+     "volume": 5.544000000000001,
+     "trades": 14,
+     "buy_frac": 0.5793650793650792,
+     "spread_bps": 2.000000000000704,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:19+00:00",
+     "open": 84283.0,
+     "high": 84310.5,
+     "low": 84283.0,
+     "close": 84310.4,
+     "volume": 25.08400000000004,
+     "trades": 176,
+     "buy_frac": 0.9421144952958062,
+     "spread_bps": 1.9999999999999005,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:20+00:00",
+     "open": 84310.5,
+     "high": 84315.0,
+     "low": 84304.1,
+     "close": 84315.0,
+     "volume": 21.043000000000013,
+     "trades": 125,
+     "buy_frac": 0.4914698474552107,
+     "spread_bps": 1.9999999999998177,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:21+00:00",
+     "open": 84315.0,
+     "high": 84320.0,
+     "low": 84314.9,
+     "close": 84319.9,
+     "volume": 1.824999999999998,
+     "trades": 42,
+     "buy_frac": 0.6673972602739731,
+     "spread_bps": 2.0000000000014357,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:22+00:00",
+     "open": 84320.0,
+     "high": 84320.0,
+     "low": 84312.5,
+     "close": 84312.6,
+     "volume": 5.539999999999996,
+     "trades": 52,
+     "buy_frac": 0.18267148014440449,
+     "spread_bps": 2.0000000000001656,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:23+00:00",
+     "open": 84312.6,
+     "high": 84323.1,
+     "low": 84312.5,
+     "close": 84323.0,
+     "volume": 7.193000000000002,
+     "trades": 73,
+     "buy_frac": 0.9165855693034896,
+     "spread_bps": 1.9999999999994222,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:24+00:00",
+     "open": 84323.1,
+     "high": 84330.4,
+     "low": 84318.0,
+     "close": 84330.4,
+     "volume": 29.124000000000006,
+     "trades": 141,
+     "buy_frac": 0.9211646751819806,
+     "spread_bps": 2.0000000000008966,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:25+00:00",
+     "open": 84330.3,
+     "high": 84338.7,
+     "low": 84330.3,
+     "close": 84338.7,
+     "volume": 3.0389999999999953,
+     "trades": 66,
+     "buy_frac": 0.5465613688713394,
+     "spread_bps": 2.000000000000034,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:26+00:00",
+     "open": 84338.7,
+     "high": 84338.7,
+     "low": 84338.6,
+     "close": 84338.6,
+     "volume": 1.4869999999999999,
+     "trades": 12,
+     "buy_frac": 0.2885003362474782,
+     "spread_bps": 1.999999999998453,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:27+00:00",
+     "open": 84338.7,
+     "high": 84360.1,
+     "low": 84338.6,
+     "close": 84360.1,
+     "volume": 11.24899999999999,
+     "trades": 142,
+     "buy_frac": 0.8419415059116365,
+     "spread_bps": 1.999999999998453,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:28+00:00",
+     "open": 84360.1,
+     "high": 84360.1,
+     "low": 84360.0,
+     "close": 84360.1,
+     "volume": 2.7239999999999998,
+     "trades": 10,
+     "buy_frac": 0.4049192364170337,
+     "spread_bps": 2.0000000000011613,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:29+00:00",
+     "open": 84360.1,
+     "high": 84360.1,
+     "low": 84360.0,
+     "close": 84360.1,
+     "volume": 0.762,
+     "trades": 12,
+     "buy_frac": 0.6771653543307087,
+     "spread_bps": 2.0000000000011613,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:30+00:00",
+     "open": 84360.0,
+     "high": 84373.6,
+     "low": 84360.0,
+     "close": 84373.6,
+     "volume": 8.409999999999998,
+     "trades": 90,
+     "buy_frac": 0.9604042806183117,
+     "spread_bps": 2.000000000000359,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:31+00:00",
+     "open": 84373.5,
+     "high": 84407.6,
+     "low": 84373.5,
+     "close": 84406.6,
+     "volume": 71.97699999999995,
+     "trades": 303,
+     "buy_frac": 0.9495811161898943,
+     "spread_bps": 1.9999999999983111,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:32+00:00",
+     "open": 84406.5,
+     "high": 84406.6,
+     "low": 84406.5,
+     "close": 84406.5,
+     "volume": 1.3219999999999998,
+     "trades": 14,
+     "buy_frac": 0.7738275340393344,
+     "spread_bps": 2.000000000000971,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:33+00:00",
+     "open": 84406.6,
+     "high": 84406.6,
+     "low": 84389.0,
+     "close": 84389.1,
+     "volume": 8.786000000000008,
+     "trades": 111,
+     "buy_frac": 0.44878215342590433,
+     "spread_bps": 1.999999999998325,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:34+00:00",
+     "open": 84389.1,
+     "high": 84389.1,
+     "low": 84386.2,
+     "close": 84386.3,
+     "volume": 6.18,
+     "trades": 30,
+     "buy_frac": 0.2766990291262135,
+     "spread_bps": 1.9999999999993179,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:35+00:00",
+     "open": 84386.2,
+     "high": 84386.3,
+     "low": 84366.3,
+     "close": 84366.4,
+     "volume": 9.548999999999994,
+     "trades": 122,
+     "buy_frac": 0.73180437742172,
+     "spread_bps": 2.000000000000192,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:36+00:00",
+     "open": 84366.3,
+     "high": 84366.3,
+     "low": 84360.0,
+     "close": 84360.1,
+     "volume": 3.807999999999999,
+     "trades": 37,
+     "buy_frac": 0.384716386554622,
+     "spread_bps": 1.999999999999173,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:37+00:00",
+     "open": 84360.0,
+     "high": 84368.8,
+     "low": 84360.0,
+     "close": 84368.8,
+     "volume": 4.996000000000005,
+     "trades": 57,
+     "buy_frac": 0.8915132105684543,
+     "spread_bps": 2.000000000000359,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:38+00:00",
+     "open": 84368.7,
+     "high": 84368.8,
+     "low": 84368.7,
+     "close": 84368.8,
+     "volume": 0.5139999999999999,
+     "trades": 9,
+     "buy_frac": 0.28015564202334636,
+     "spread_bps": 2.0000000000011857,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:39+00:00",
+     "open": 84368.7,
+     "high": 84368.8,
+     "low": 84368.7,
+     "close": 84368.8,
+     "volume": 0.975,
+     "trades": 13,
+     "buy_frac": 0.5035897435897436,
+     "spread_bps": 2.0000000000011857,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:40+00:00",
+     "open": 84368.7,
+     "high": 84380.0,
+     "low": 84368.7,
+     "close": 84380.0,
+     "volume": 5.9570000000000025,
+     "trades": 73,
+     "buy_frac": 0.8232331710592573,
+     "spread_bps": 2.0000000000011857,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:41+00:00",
+     "open": 84379.9,
+     "high": 84380.0,
+     "low": 84379.9,
+     "close": 84380.0,
+     "volume": 2.688,
+     "trades": 8,
+     "buy_frac": 0.9754464285714286,
+     "spread_bps": 2.0000000000013776,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:42+00:00",
+     "open": 84379.9,
+     "high": 84380.0,
+     "low": 84379.9,
+     "close": 84380.0,
+     "volume": 0.557,
+     "trades": 11,
+     "buy_frac": 0.8168761220825852,
+     "spread_bps": 2.0000000000013776,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:43+00:00",
+     "open": 84380.0,
+     "high": 84389.1,
+     "low": 84379.9,
+     "close": 84389.1,
+     "volume": 7.5160000000000045,
+     "trades": 61,
+     "buy_frac": 0.9405268759978712,
+     "spread_bps": 1.9999999999987308,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:44+00:00",
+     "open": 84389.2,
+     "high": 84399.0,
+     "low": 84374.3,
+     "close": 84388.6,
+     "volume": 45.885999999999974,
+     "trades": 255,
+     "buy_frac": 0.1493701782678814,
+     "spread_bps": 2.0000000000001203,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:45+00:00",
+     "open": 84389.0,
+     "high": 84425.0,
+     "low": 84389.0,
+     "close": 84424.9,
+     "volume": 23.616000000000028,
+     "trades": 224,
+     "buy_frac": 0.9668868563685625,
+     "spread_bps": 1.9999999999985156,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:46+00:00",
+     "open": 84425.0,
+     "high": 84434.9,
+     "low": 84424.5,
+     "close": 84427.9,
+     "volume": 14.28499999999999,
+     "trades": 130,
+     "buy_frac": 0.3541477073853691,
+     "spread_bps": 2.000000000001103,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:47+00:00",
+     "open": 84428.0,
+     "high": 84442.0,
+     "low": 84427.9,
+     "close": 84437.2,
+     "volume": 11.448999999999998,
+     "trades": 92,
+     "buy_frac": 0.9288147436457332,
+     "spread_bps": 2.0000000000010316,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:48+00:00",
+     "open": 84437.1,
+     "high": 84450.0,
+     "low": 84437.1,
+     "close": 84450.0,
+     "volume": 16.328000000000003,
+     "trades": 83,
+     "buy_frac": 0.9650293973542382,
+     "spread_bps": 2.000000000001618,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:49+00:00",
+     "open": 84450.0,
+     "high": 84466.3,
+     "low": 84450.0,
+     "close": 84466.3,
+     "volume": 15.852000000000002,
+     "trades": 129,
+     "buy_frac": 0.9721801665404995,
+     "spread_bps": 2.0000000000016542,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:50+00:00",
+     "open": 84466.4,
+     "high": 84476.9,
+     "low": 84466.3,
+     "close": 84474.1,
+     "volume": 10.865999999999994,
+     "trades": 94,
+     "buy_frac": 0.8289158844100865,
+     "spread_bps": 1.9999999999987355,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:51+00:00",
+     "open": 84474.1,
+     "high": 84474.2,
+     "low": 84474.1,
+     "close": 84474.2,
+     "volume": 5.762999999999998,
+     "trades": 13,
+     "buy_frac": 0.9410029498525075,
+     "spread_bps": 1.9999999999984364,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:52+00:00",
+     "open": 84474.1,
+     "high": 84474.2,
+     "low": 84474.1,
+     "close": 84474.2,
+     "volume": 2.0669999999999997,
+     "trades": 18,
+     "buy_frac": 0.7363328495403968,
+     "spread_bps": 1.9999999999984364,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:53+00:00",
+     "open": 84474.2,
+     "high": 84474.2,
+     "low": 84474.1,
+     "close": 84474.2,
+     "volume": 1.515,
+     "trades": 17,
+     "buy_frac": 0.5148514851485149,
+     "spread_bps": 1.9999999999992382,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:54+00:00",
+     "open": 84474.1,
+     "high": 84474.1,
+     "low": 84455.1,
+     "close": 84455.2,
+     "volume": 19.775000000000027,
+     "trades": 181,
+     "buy_frac": 0.7025537294563833,
+     "spread_bps": 1.9999999999984364,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:55+00:00",
+     "open": 84455.2,
+     "high": 84455.2,
+     "low": 84451.7,
+     "close": 84451.7,
+     "volume": 9.446000000000002,
+     "trades": 29,
+     "buy_frac": 0.5092102477239042,
+     "spread_bps": 1.9999999999985434,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:56+00:00",
+     "open": 84451.8,
+     "high": 84465.2,
+     "low": 84451.7,
+     "close": 84465.2,
+     "volume": 27.391000000000016,
+     "trades": 121,
+     "buy_frac": 0.9419882443138258,
+     "spread_bps": 1.999999999998854,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:57+00:00",
+     "open": 84465.1,
+     "high": 84465.2,
+     "low": 84460.9,
+     "close": 84461.0,
+     "volume": 0.49800000000000005,
+     "trades": 20,
+     "buy_frac": 0.251004016064257,
+     "spread_bps": 1.9999999999986513,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:58+00:00",
+     "open": 84460.9,
+     "high": 84471.9,
+     "low": 84460.9,
+     "close": 84467.2,
+     "volume": 11.489000000000006,
+     "trades": 74,
+     "buy_frac": 0.9873792323091654,
+     "spread_bps": 1.9999999999994411,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:59+00:00",
+     "open": 84467.2,
+     "high": 84467.3,
+     "low": 84467.2,
+     "close": 84467.3,
+     "volume": 3.485999999999999,
+     "trades": 17,
+     "buy_frac": 0.40935169248422276,
+     "spread_bps": 2.0000000000017026,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:35:00+00:00",
+     "open": 84467.2,
+     "high": 84467.3,
+     "low": 84465.1,
+     "close": 84465.2,
+     "volume": 5.033999999999999,
+     "trades": 35,
+     "buy_frac": 0.47477155343663097,
+     "spread_bps": 2.0000000000017026,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:35:01+00:00",
+     "open": 84465.1,
+     "high": 84465.2,
+     "low": 84465.1,
+     "close": 84465.1,
+     "volume": 2.855999999999999,
+     "trades": 23,
+     "buy_frac": 0.7755602240896359,
+     "spread_bps": 1.9999999999986513,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:35:02+00:00",
+     "open": 84465.2,
+     "high": 84469.6,
+     "low": 84450.0,
+     "close": 84469.5,
+     "volume": 43.450000000000045,
+     "trades": 194,
+     "buy_frac": 0.7238204833141544,
+     "spread_bps": 1.999999999999453,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:35:03+00:00",
+     "open": 84469.6,
+     "high": 84480.0,
+     "low": 84469.5,
+     "close": 84480.0,
+     "volume": 14.009999999999998,
+     "trades": 91,
+     "buy_frac": 0.7710920770877945,
+     "spread_bps": 2.000000000000267,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:35:04+00:00",
+     "open": 84479.9,
+     "high": 84479.9,
+     "low": 84479.8,
+     "close": 84479.9,
+     "volume": 31.858999999999995,
+     "trades": 24,
+     "buy_frac": 0.8831413415361439,
+     "spread_bps": 2.0000000000001354,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:35:05+00:00",
+     "open": 84480.0,
+     "high": 84498.6,
+     "low": 84480.0,
+     "close": 84497.7,
+     "volume": 35.22300000000001,
+     "trades": 178,
+     "buy_frac": 0.92019419129546,
+     "spread_bps": 2.000000000000937,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:35:06+00:00",
+     "open": 84497.6,
+     "high": 84515.3,
+     "low": 84497.6,
+     "close": 84508.4,
+     "volume": 241.90900000000022,
+     "trades": 476,
+     "buy_frac": 0.7301588613900266,
+     "spread_bps": 2.000000000000746,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:35:07+00:00",
+     "open": 84508.3,
+     "high": 84508.4,
+     "low": 84503.1,
+     "close": 84503.2,
+     "volume": 11.360000000000001,
+     "trades": 54,
+     "buy_frac": 0.4347711267605633,
+     "spread_bps": 2.0000000000003757,
+     "source": "observed-public"
+    }
+   ],
+   "agg": {
+    "symbol": "BTCUSDT",
+    "lateness_ms": 500,
+    "windows": {
+     "1790771708000": {
+      "o": 84503.1,
+      "h": 84648.1,
+      "low": 84497.7,
+      "c": 84614.3,
+      "volume": 765.7829999999877,
+      "trades": 2243,
+      "buy_volume": 529.7499999999942,
+      "first_id": 3470136896,
+      "last_id": 3470139138,
+      "spread_bps": 2.000000000000041,
+      "has_trades": true
+     },
+     "1790771709000": {
+      "o": 84614.2,
+      "h": 84653.4,
+      "low": 84610.9,
+      "c": 84653.4,
+      "volume": 85.09900000000002,
+      "trades": 284,
+      "buy_volume": 69.25000000000003,
+      "first_id": 3470139139,
+      "last_id": 3470139422,
+      "spread_bps": 2.0000000000016334,
+      "has_trades": true
+     }
+    },
+    "max_ts_ms": 1790771709498,
+    "last_id": 3470139422,
+    "last_ts_ms": 1790771709498,
+    "gap_flag_windows": [],
+    "closed_through_ms": 1790771708000,
+    "late_dropped": 0,
+    "empty_windows": 27290,
+    "gap_jumps": 0,
+    "spreads_seen": 297020
+   },
+   "mark": 84653.4,
+   "mark_ts": "2026-09-30T12:35:09.498000+00:00",
+   "missing": 27290,
+   "warmup": 130
+  },
+  "ETHUSDT": {
+   "bars": [
+    {
+     "ts_utc": "2026-09-30T12:32:53+00:00",
+     "open": 2718.35,
+     "high": 2718.42,
+     "low": 2718.35,
+     "close": 2718.41,
+     "volume": 143.812,
+     "trades": 15,
+     "buy_frac": 0.6962631769254304,
+     "spread_bps": 2.0000000000000737,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:32:54+00:00",
+     "open": 2718.39,
+     "high": 2718.39,
+     "low": 2717.9,
+     "close": 2718.17,
+     "volume": 217.88400000000001,
+     "trades": 70,
+     "buy_frac": 0.712429549668631,
+     "spread_bps": 1.9999999999999996,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:32:55+00:00",
+     "open": 2718.16,
+     "high": 2718.16,
+     "low": 2718.1,
+     "close": 2718.1,
+     "volume": 30.525999999999996,
+     "trades": 15,
+     "buy_frac": 0.11416497412042194,
+     "spread_bps": 1.9999999999995905,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:32:56+00:00",
+     "open": 2718.11,
+     "high": 2718.27,
+     "low": 2718.1,
+     "close": 2718.26,
+     "volume": 138.02500000000003,
+     "trades": 30,
+     "buy_frac": 0.8463973917768519,
+     "spread_bps": 2.0000000000005196,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:32:57+00:00",
+     "open": 2718.26,
+     "high": 2718.27,
+     "low": 2718.26,
+     "close": 2718.27,
+     "volume": 20.564000000000004,
+     "trades": 10,
+     "buy_frac": 0.05222719315308305,
+     "spread_bps": 2.0000000000010774,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:32:58+00:00",
+     "open": 2718.26,
+     "high": 2718.27,
+     "low": 2717.58,
+     "close": 2717.58,
+     "volume": 126.993,
+     "trades": 60,
+     "buy_frac": 0.01438661973494602,
+     "spread_bps": 2.0000000000010774,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:32:59+00:00",
+     "open": 2717.58,
+     "high": 2717.59,
+     "low": 2717.57,
+     "close": 2717.57,
+     "volume": 124.61699999999999,
+     "trades": 17,
+     "buy_frac": 0.1622651805130921,
+     "spread_bps": 1.9999999999989948,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:00+00:00",
+     "open": 2717.57,
+     "high": 2717.57,
+     "low": 2716.62,
+     "close": 2716.62,
+     "volume": 205.00199999999984,
+     "trades": 96,
+     "buy_frac": 0.07244807367733003,
+     "spread_bps": 1.9999999999998497,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:01+00:00",
+     "open": 2716.61,
+     "high": 2716.61,
+     "low": 2715.79,
+     "close": 2715.79,
+     "volume": 661.462,
+     "trades": 93,
+     "buy_frac": 0.006632278195875198,
+     "spread_bps": 2.000000000001634,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:02+00:00",
+     "open": 2715.79,
+     "high": 2716.92,
+     "low": 2715.6,
+     "close": 2715.61,
+     "volume": 1390.0030000000004,
+     "trades": 240,
+     "buy_frac": 0.40900703092007695,
+     "spread_bps": 2.000000000001485,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:03+00:00",
+     "open": 2715.6,
+     "high": 2716.33,
+     "low": 2715.6,
+     "close": 2716.33,
+     "volume": 231.114,
+     "trades": 81,
+     "buy_frac": 0.7367186756319389,
+     "spread_bps": 2.000000000001001,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:04+00:00",
+     "open": 2716.32,
+     "high": 2716.33,
+     "low": 2716.32,
+     "close": 2716.33,
+     "volume": 160.48800000000006,
+     "trades": 16,
+     "buy_frac": 0.09308484123423555,
+     "spread_bps": 1.999999999999662,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:05+00:00",
+     "open": 2716.32,
+     "high": 2716.44,
+     "low": 2715.86,
+     "close": 2715.86,
+     "volume": 272.4449999999998,
+     "trades": 67,
+     "buy_frac": 0.27943988694965977,
+     "spread_bps": 1.999999999999662,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:06+00:00",
+     "open": 2715.85,
+     "high": 2716.74,
+     "low": 2715.6,
+     "close": 2716.74,
+     "volume": 729.8370000000004,
+     "trades": 169,
+     "buy_frac": 0.8874515816545336,
+     "spread_bps": 1.999999999999699,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:07+00:00",
+     "open": 2716.75,
+     "high": 2717.7,
+     "low": 2716.75,
+     "close": 2717.26,
+     "volume": 530.5360000000001,
+     "trades": 152,
+     "buy_frac": 0.501206327186091,
+     "spread_bps": 1.9999999999997,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:08+00:00",
+     "open": 2717.26,
+     "high": 2717.64,
+     "low": 2717.26,
+     "close": 2717.4,
+     "volume": 215.64000000000001,
+     "trades": 52,
+     "buy_frac": 0.546257651641625,
+     "spread_bps": 1.999999999999589,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:09+00:00",
+     "open": 2717.4,
+     "high": 2717.4,
+     "low": 2716.64,
+     "close": 2716.65,
+     "volume": 218.72499999999994,
+     "trades": 91,
+     "buy_frac": 0.030654931992227692,
+     "spread_bps": 2.0000000000010023,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:10+00:00",
+     "open": 2716.64,
+     "high": 2716.64,
+     "low": 2716.15,
+     "close": 2716.15,
+     "volume": 115.182,
+     "trades": 54,
+     "buy_frac": 0.09332187320935562,
+     "spread_bps": 1.9999999999990676,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:11+00:00",
+     "open": 2716.15,
+     "high": 2716.45,
+     "low": 2716.15,
+     "close": 2716.16,
+     "volume": 430.60400000000004,
+     "trades": 67,
+     "buy_frac": 0.8158261418844228,
+     "spread_bps": 2.0000000000008153,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:12+00:00",
+     "open": 2716.14,
+     "high": 2716.17,
+     "low": 2716.14,
+     "close": 2716.16,
+     "volume": 149.44000000000003,
+     "trades": 14,
+     "buy_frac": 0.6660398822269807,
+     "spread_bps": 2.000000000001671,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:13+00:00",
+     "open": 2716.16,
+     "high": 2716.17,
+     "low": 2716.16,
+     "close": 2716.17,
+     "volume": 63.454,
+     "trades": 9,
+     "buy_frac": 0.8386390140889463,
+     "spread_bps": 1.9999999999999598,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:14+00:00",
+     "open": 2716.16,
+     "high": 2716.17,
+     "low": 2716.14,
+     "close": 2716.14,
+     "volume": 70.99099999999999,
+     "trades": 14,
+     "buy_frac": 0.024763702441154518,
+     "spread_bps": 1.9999999999999598,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:15+00:00",
+     "open": 2716.14,
+     "high": 2716.15,
+     "low": 2714.43,
+     "close": 2714.43,
+     "volume": 450.4700000000002,
+     "trades": 187,
+     "buy_frac": 0.07856905010322549,
+     "spread_bps": 2.000000000001671,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:16+00:00",
+     "open": 2714.42,
+     "high": 2714.43,
+     "low": 2714.42,
+     "close": 2714.43,
+     "volume": 100.55199999999999,
+     "trades": 20,
+     "buy_frac": 0.6860629326119818,
+     "spread_bps": 2.0000000000015214,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:17+00:00",
+     "open": 2714.42,
+     "high": 2714.43,
+     "low": 2714.42,
+     "close": 2714.42,
+     "volume": 170.97299999999996,
+     "trades": 20,
+     "buy_frac": 0.6236774227509608,
+     "spread_bps": 2.0000000000015214,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:18+00:00",
+     "open": 2714.41,
+     "high": 2714.41,
+     "low": 2713.46,
+     "close": 2713.83,
+     "volume": 745.6870000000007,
+     "trades": 157,
+     "buy_frac": 0.42490616035950673,
+     "spread_bps": 1.999999999999027,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:19+00:00",
+     "open": 2713.82,
+     "high": 2713.83,
+     "low": 2713.44,
+     "close": 2713.44,
+     "volume": 136.789,
+     "trades": 51,
+     "buy_frac": 0.13974076862905643,
+     "spread_bps": 1.9999999999992863,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:20+00:00",
+     "open": 2713.45,
+     "high": 2713.45,
+     "low": 2712.64,
+     "close": 2712.64,
+     "volume": 675.416,
+     "trades": 104,
+     "buy_frac": 0.03280940931218685,
+     "spread_bps": 2.000000000000813,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:21+00:00",
+     "open": 2712.63,
+     "high": 2712.63,
+     "low": 2712.36,
+     "close": 2712.36,
+     "volume": 392.946,
+     "trades": 47,
+     "buy_frac": 0.012029642749894385,
+     "spread_bps": 2.000000000000663,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:22+00:00",
+     "open": 2712.37,
+     "high": 2712.94,
+     "low": 2712.36,
+     "close": 2712.93,
+     "volume": 313.69999999999993,
+     "trades": 74,
+     "buy_frac": 0.6478833280204016,
+     "spread_bps": 1.999999999999471,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:23+00:00",
+     "open": 2712.94,
+     "high": 2712.94,
+     "low": 2711.53,
+     "close": 2712.12,
+     "volume": 999.8980000000008,
+     "trades": 272,
+     "buy_frac": 0.42354520161056386,
+     "spread_bps": 2.0000000000009246,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:24+00:00",
+     "open": 2712.13,
+     "high": 2712.36,
+     "low": 2712.12,
+     "close": 2712.35,
+     "volume": 206.088,
+     "trades": 45,
+     "buy_frac": 0.31977116571561665,
+     "spread_bps": 1.9999999999999174,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:25+00:00",
+     "open": 2712.34,
+     "high": 2712.96,
+     "low": 2712.04,
+     "close": 2712.96,
+     "volume": 187.31900000000002,
+     "trades": 102,
+     "buy_frac": 0.6359525728836904,
+     "spread_bps": 1.9999999999986882,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:26+00:00",
+     "open": 2712.95,
+     "high": 2713.15,
+     "low": 2712.7,
+     "close": 2712.7,
+     "volume": 58.43100000000003,
+     "trades": 66,
+     "buy_frac": 0.13691362461706966,
+     "spread_bps": 2.0000000000000675,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:27+00:00",
+     "open": 2712.71,
+     "high": 2712.71,
+     "low": 2712.7,
+     "close": 2712.7,
+     "volume": 70.974,
+     "trades": 13,
+     "buy_frac": 0.041973116916053765,
+     "spread_bps": 2.0000000000005143,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:28+00:00",
+     "open": 2712.71,
+     "high": 2712.95,
+     "low": 2712.7,
+     "close": 2712.95,
+     "volume": 209.79199999999997,
+     "trades": 28,
+     "buy_frac": 0.7547761592434411,
+     "spread_bps": 2.0000000000005143,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:29+00:00",
+     "open": 2712.94,
+     "high": 2712.95,
+     "low": 2712.94,
+     "close": 2712.94,
+     "volume": 38.479,
+     "trades": 14,
+     "buy_frac": 0.3035162036435458,
+     "spread_bps": 2.0000000000009246,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:30+00:00",
+     "open": 2712.95,
+     "high": 2712.95,
+     "low": 2712.03,
+     "close": 2712.03,
+     "volume": 262.00400000000013,
+     "trades": 89,
+     "buy_frac": 0.017564617334086496,
+     "spread_bps": 2.0000000000000675,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:31+00:00",
+     "open": 2712.02,
+     "high": 2712.03,
+     "low": 2711.54,
+     "close": 2711.54,
+     "volume": 226.52700000000004,
+     "trades": 76,
+     "buy_frac": 0.6387009054108339,
+     "spread_bps": 1.999999999999284,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:32+00:00",
+     "open": 2711.53,
+     "high": 2711.71,
+     "low": 2711.52,
+     "close": 2711.53,
+     "volume": 59.783000000000015,
+     "trades": 40,
+     "buy_frac": 0.2839937774952745,
+     "spread_bps": 2.0000000000010347,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:33+00:00",
+     "open": 2711.52,
+     "high": 2711.53,
+     "low": 2711.52,
+     "close": 2711.53,
+     "volume": 95.858,
+     "trades": 16,
+     "buy_frac": 0.812827307058357,
+     "spread_bps": 1.9999999999985378,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:34+00:00",
+     "open": 2711.52,
+     "high": 2711.75,
+     "low": 2711.42,
+     "close": 2711.42,
+     "volume": 229.21600000000004,
+     "trades": 57,
+     "buy_frac": 0.7604661105681976,
+     "spread_bps": 1.9999999999985378,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:35+00:00",
+     "open": 2711.43,
+     "high": 2711.75,
+     "low": 2711.42,
+     "close": 2711.74,
+     "volume": 202.29700000000003,
+     "trades": 44,
+     "buy_frac": 0.8934685141153849,
+     "spread_bps": 1.9999999999995441,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:36+00:00",
+     "open": 2711.75,
+     "high": 2712.22,
+     "low": 2711.75,
+     "close": 2711.94,
+     "volume": 211.63499999999996,
+     "trades": 136,
+     "buy_frac": 0.41825312448319024,
+     "spread_bps": 1.9999999999989482,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:37+00:00",
+     "open": 2711.95,
+     "high": 2712.15,
+     "low": 2711.94,
+     "close": 2711.95,
+     "volume": 71.90800000000002,
+     "trades": 36,
+     "buy_frac": 0.4575290649162818,
+     "spread_bps": 1.999999999998576,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:38+00:00",
+     "open": 2711.94,
+     "high": 2712.05,
+     "low": 2711.45,
+     "close": 2711.97,
+     "volume": 332.9449999999999,
+     "trades": 108,
+     "buy_frac": 0.45395185390980497,
+     "spread_bps": 1.999999999999433,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:39+00:00",
+     "open": 2711.97,
+     "high": 2711.98,
+     "low": 2711.95,
+     "close": 2711.95,
+     "volume": 24.455999999999996,
+     "trades": 10,
+     "buy_frac": 0.005315668956493295,
+     "spread_bps": 2.0000000000002154,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:40+00:00",
+     "open": 2711.96,
+     "high": 2712.04,
+     "low": 2711.77,
+     "close": 2711.77,
+     "volume": 296.83500000000004,
+     "trades": 46,
+     "buy_frac": 0.7753768928866206,
+     "spread_bps": 2.0000000000010725,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:41+00:00",
+     "open": 2711.78,
+     "high": 2712.05,
+     "low": 2711.77,
+     "close": 2712.05,
+     "volume": 141.676,
+     "trades": 35,
+     "buy_frac": 0.8734718653829866,
+     "spread_bps": 1.9999999999997307,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:42+00:00",
+     "open": 2712.04,
+     "high": 2712.43,
+     "low": 2712.04,
+     "close": 2712.32,
+     "volume": 52.388,
+     "trades": 50,
+     "buy_frac": 0.5874055127128349,
+     "spread_bps": 2.0000000000009237,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:43+00:00",
+     "open": 2712.32,
+     "high": 2712.69,
+     "low": 2712.26,
+     "close": 2712.49,
+     "volume": 59.740000000000045,
+     "trades": 59,
+     "buy_frac": 0.7443588885169066,
+     "spread_bps": 2.000000000000402,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:44+00:00",
+     "open": 2712.49,
+     "high": 2712.5,
+     "low": 2712.49,
+     "close": 2712.49,
+     "volume": 36.150999999999996,
+     "trades": 12,
+     "buy_frac": 0.01720560980332495,
+     "spread_bps": 1.9999999999992477,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:45+00:00",
+     "open": 2712.49,
+     "high": 2712.9,
+     "low": 2712.49,
+     "close": 2712.67,
+     "volume": 55.781000000000006,
+     "trades": 67,
+     "buy_frac": 0.6325989136085763,
+     "spread_bps": 1.9999999999992477,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:46+00:00",
+     "open": 2712.68,
+     "high": 2712.93,
+     "low": 2712.67,
+     "close": 2712.93,
+     "volume": 141.70099999999994,
+     "trades": 33,
+     "buy_frac": 0.6099321811419823,
+     "spread_bps": 1.999999999999732,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:47+00:00",
+     "open": 2712.93,
+     "high": 2713.23,
+     "low": 2712.67,
+     "close": 2713.08,
+     "volume": 433.30200000000013,
+     "trades": 93,
+     "buy_frac": 0.10578764926079263,
+     "spread_bps": 1.9999999999984288,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:48+00:00",
+     "open": 2713.0,
+     "high": 2713.0,
+     "low": 2712.7,
+     "close": 2712.95,
+     "volume": 150.91799999999998,
+     "trades": 45,
+     "buy_frac": 0.6202838627599095,
+     "spread_bps": 1.9999999999991365,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:49+00:00",
+     "open": 2712.96,
+     "high": 2712.97,
+     "low": 2712.96,
+     "close": 2712.97,
+     "volume": 108.055,
+     "trades": 10,
+     "buy_frac": 0.7583452871222988,
+     "spread_bps": 1.9999999999992109,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:50+00:00",
+     "open": 2712.96,
+     "high": 2713.08,
+     "low": 2712.96,
+     "close": 2713.08,
+     "volume": 136.491,
+     "trades": 19,
+     "buy_frac": 0.17764541251804145,
+     "spread_bps": 1.9999999999992109,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:51+00:00",
+     "open": 2713.07,
+     "high": 2713.08,
+     "low": 2712.72,
+     "close": 2712.96,
+     "volume": 320.01299999999975,
+     "trades": 46,
+     "buy_frac": 0.3861718117701471,
+     "spread_bps": 1.9999999999998443,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:52+00:00",
+     "open": 2712.97,
+     "high": 2712.97,
+     "low": 2712.96,
+     "close": 2712.96,
+     "volume": 24.262000000000004,
+     "trades": 10,
+     "buy_frac": 0.8207072788723105,
+     "spread_bps": 1.9999999999983542,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:53+00:00",
+     "open": 2712.97,
+     "high": 2713.54,
+     "low": 2712.96,
+     "close": 2713.53,
+     "volume": 51.089,
+     "trades": 52,
+     "buy_frac": 0.8240129969269314,
+     "spread_bps": 1.9999999999983542,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:54+00:00",
+     "open": 2713.53,
+     "high": 2713.85,
+     "low": 2713.53,
+     "close": 2713.84,
+     "volume": 65.52199999999999,
+     "trades": 37,
+     "buy_frac": 0.5895882299075118,
+     "spread_bps": 2.000000000000664,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:55+00:00",
+     "open": 2713.84,
+     "high": 2713.85,
+     "low": 2713.56,
+     "close": 2713.68,
+     "volume": 55.176000000000016,
+     "trades": 35,
+     "buy_frac": 0.20855081919675217,
+     "spread_bps": 2.000000000000925,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:56+00:00",
+     "open": 2713.67,
+     "high": 2713.67,
+     "low": 2713.1,
+     "close": 2713.11,
+     "volume": 91.60799999999999,
+     "trades": 60,
+     "buy_frac": 0.6061042703694002,
+     "spread_bps": 1.9999999999987277,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:57+00:00",
+     "open": 2713.1,
+     "high": 2713.11,
+     "low": 2713.1,
+     "close": 2713.1,
+     "volume": 27.689,
+     "trades": 8,
+     "buy_frac": 0.1486149734551627,
+     "spread_bps": 2.0000000000006266,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:58+00:00",
+     "open": 2713.1,
+     "high": 2713.11,
+     "low": 2712.72,
+     "close": 2713.07,
+     "volume": 94.391,
+     "trades": 60,
+     "buy_frac": 0.5184074752889577,
+     "spread_bps": 2.0000000000006266,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:33:59+00:00",
+     "open": 2713.08,
+     "high": 2713.55,
+     "low": 2713.08,
+     "close": 2713.54,
+     "volume": 21.432000000000002,
+     "trades": 49,
+     "buy_frac": 0.6592945128779396,
+     "spread_bps": 1.9999999999989877,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:00+00:00",
+     "open": 2713.55,
+     "high": 2714.0,
+     "low": 2713.54,
+     "close": 2713.99,
+     "volume": 140.738,
+     "trades": 54,
+     "buy_frac": 0.8785615825150279,
+     "spread_bps": 1.9999999999989508,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:01+00:00",
+     "open": 2714.0,
+     "high": 2714.4,
+     "low": 2714.0,
+     "close": 2714.28,
+     "volume": 200.6119999999999,
+     "trades": 62,
+     "buy_frac": 0.19742587681694024,
+     "spread_bps": 2.0000000000006275,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:02+00:00",
+     "open": 2714.28,
+     "high": 2714.28,
+     "low": 2713.63,
+     "close": 2713.99,
+     "volume": 204.60200000000012,
+     "trades": 99,
+     "buy_frac": 0.36767480278785136,
+     "spread_bps": 2.000000000000106,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:03+00:00",
+     "open": 2713.98,
+     "high": 2713.98,
+     "low": 2713.63,
+     "close": 2713.85,
+     "volume": 63.04900000000001,
+     "trades": 42,
+     "buy_frac": 0.5577249440911037,
+     "spread_bps": 1.999999999998989,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:04+00:00",
+     "open": 2713.85,
+     "high": 2713.85,
+     "low": 2713.34,
+     "close": 2713.34,
+     "volume": 59.689000000000014,
+     "trades": 49,
+     "buy_frac": 0.09908023253865869,
+     "spread_bps": 2.000000000000069,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:05+00:00",
+     "open": 2713.33,
+     "high": 2713.34,
+     "low": 2713.0,
+     "close": 2713.01,
+     "volume": 78.721,
+     "trades": 45,
+     "buy_frac": 0.2768257517053899,
+     "spread_bps": 2.0000000000010365,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:06+00:00",
+     "open": 2713.01,
+     "high": 2713.4,
+     "low": 2713.0,
+     "close": 2713.31,
+     "volume": 119.23199999999999,
+     "trades": 43,
+     "buy_frac": 0.7798661433172303,
+     "spread_bps": 2.000000000001632,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:07+00:00",
+     "open": 2713.3,
+     "high": 2713.31,
+     "low": 2713.02,
+     "close": 2713.02,
+     "volume": 12.575999999999995,
+     "trades": 26,
+     "buy_frac": 0.016062340966921124,
+     "spread_bps": 2.000000000000254,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:08+00:00",
+     "open": 2713.03,
+     "high": 2713.03,
+     "low": 2712.72,
+     "close": 2712.72,
+     "volume": 122.67600000000002,
+     "trades": 36,
+     "buy_frac": 0.49405751736280923,
+     "spread_bps": 1.9999999999999185,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:09+00:00",
+     "open": 2712.73,
+     "high": 2712.73,
+     "low": 2712.72,
+     "close": 2712.72,
+     "volume": 15.183,
+     "trades": 8,
+     "buy_frac": 0.7925311203319503,
+     "spread_bps": 1.9999999999988007,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:10+00:00",
+     "open": 2712.73,
+     "high": 2713.0,
+     "low": 2711.97,
+     "close": 2711.97,
+     "volume": 358.684,
+     "trades": 122,
+     "buy_frac": 0.6209198068494831,
+     "spread_bps": 1.9999999999988007,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:11+00:00",
+     "open": 2711.98,
+     "high": 2711.98,
+     "low": 2711.81,
+     "close": 2711.81,
+     "volume": 55.41500000000001,
+     "trades": 23,
+     "buy_frac": 0.18182802490300456,
+     "spread_bps": 1.9999999999993585,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:12+00:00",
+     "open": 2711.82,
+     "high": 2716.35,
+     "low": 2711.82,
+     "close": 2714.64,
+     "volume": 6255.455999999988,
+     "trades": 667,
+     "buy_frac": 0.9163394323291536,
+     "spread_bps": 1.999999999999656,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:13+00:00",
+     "open": 2714.63,
+     "high": 2714.98,
+     "low": 2714.63,
+     "close": 2714.98,
+     "volume": 117.94800000000002,
+     "trades": 42,
+     "buy_frac": 0.6060467324583716,
+     "spread_bps": 2.0000000000002927,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:14+00:00",
+     "open": 2714.97,
+     "high": 2715.07,
+     "low": 2714.97,
+     "close": 2715.07,
+     "volume": 90.55299999999998,
+     "trades": 18,
+     "buy_frac": 0.7437633209280754,
+     "spread_bps": 2.0000000000013354,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:15+00:00",
+     "open": 2715.08,
+     "high": 2715.09,
+     "low": 2714.98,
+     "close": 2714.99,
+     "volume": 257.945,
+     "trades": 21,
+     "buy_frac": 0.36885770222334224,
+     "spread_bps": 1.9999999999986187,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:16+00:00",
+     "open": 2715.0,
+     "high": 2715.47,
+     "low": 2715.0,
+     "close": 2715.1,
+     "volume": 524.2460000000001,
+     "trades": 100,
+     "buy_frac": 0.11184443944255178,
+     "spread_bps": 1.9999999999987674,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:17+00:00",
+     "open": 2715.11,
+     "high": 2715.86,
+     "low": 2715.1,
+     "close": 2715.74,
+     "volume": 551.9119999999999,
+     "trades": 111,
+     "buy_frac": 0.5342337184188783,
+     "spread_bps": 1.9999999999994,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:18+00:00",
+     "open": 2715.75,
+     "high": 2716.07,
+     "low": 2715.74,
+     "close": 2716.07,
+     "volume": 53.61200000000001,
+     "trades": 35,
+     "buy_frac": 0.9551033350742372,
+     "spread_bps": 2.000000000001559,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:19+00:00",
+     "open": 2716.07,
+     "high": 2718.27,
+     "low": 2716.07,
+     "close": 2718.26,
+     "volume": 1312.819,
+     "trades": 243,
+     "buy_frac": 0.8376737387255977,
+     "spread_bps": 2.000000000000964,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:20+00:00",
+     "open": 2718.27,
+     "high": 2718.33,
+     "low": 2718.26,
+     "close": 2718.32,
+     "volume": 44.118,
+     "trades": 16,
+     "buy_frac": 0.9440364477084183,
+     "spread_bps": 2.0000000000002225,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:21+00:00",
+     "open": 2718.31,
+     "high": 2718.97,
+     "low": 2718.31,
+     "close": 2718.74,
+     "volume": 228.91400000000004,
+     "trades": 79,
+     "buy_frac": 0.8895349345168927,
+     "spread_bps": 2.000000000000148,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:22+00:00",
+     "open": 2718.73,
+     "high": 2718.74,
+     "low": 2718.73,
+     "close": 2718.74,
+     "volume": 68.45500000000001,
+     "trades": 13,
+     "buy_frac": 0.07794901760280475,
+     "spread_bps": 2.0000000000010405,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:23+00:00",
+     "open": 2718.73,
+     "high": 2718.74,
+     "low": 2718.73,
+     "close": 2718.74,
+     "volume": 130.147,
+     "trades": 13,
+     "buy_frac": 0.6423736236716943,
+     "spread_bps": 2.0000000000010405,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:24+00:00",
+     "open": 2718.74,
+     "high": 2718.74,
+     "low": 2717.81,
+     "close": 2718.2,
+     "volume": 393.14300000000003,
+     "trades": 139,
+     "buy_frac": 0.3815634514667691,
+     "spread_bps": 2.000000000000186,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:25+00:00",
+     "open": 2718.2,
+     "high": 2718.63,
+     "low": 2718.19,
+     "close": 2718.63,
+     "volume": 195.69599999999997,
+     "trades": 56,
+     "buy_frac": 0.30093103589240466,
+     "spread_bps": 1.9999999999995162,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:26+00:00",
+     "open": 2718.62,
+     "high": 2718.63,
+     "low": 2718.45,
+     "close": 2718.46,
+     "volume": 96.14,
+     "trades": 34,
+     "buy_frac": 0.23182858331599746,
+     "spread_bps": 2.000000000000409,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:27+00:00",
+     "open": 2718.45,
+     "high": 2719.21,
+     "low": 2718.45,
+     "close": 2719.2,
+     "volume": 221.40299999999988,
+     "trades": 81,
+     "buy_frac": 0.7593754375505302,
+     "spread_bps": 2.000000000001561,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:28+00:00",
+     "open": 2719.21,
+     "high": 2719.5,
+     "low": 2719.2,
+     "close": 2719.49,
+     "volume": 66.85799999999999,
+     "trades": 40,
+     "buy_frac": 0.8205450357474051,
+     "spread_bps": 2.000000000000149,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:29+00:00",
+     "open": 2719.49,
+     "high": 2719.5,
+     "low": 2719.49,
+     "close": 2719.49,
+     "volume": 24.602999999999998,
+     "trades": 15,
+     "buy_frac": 0.13315449335446897,
+     "spread_bps": 1.9999999999996296,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:30+00:00",
+     "open": 2719.49,
+     "high": 2719.94,
+     "low": 2719.49,
+     "close": 2719.94,
+     "volume": 109.71600000000001,
+     "trades": 63,
+     "buy_frac": 0.5994112071165558,
+     "spread_bps": 1.9999999999996296,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:31+00:00",
+     "open": 2719.93,
+     "high": 2720.68,
+     "low": 2719.93,
+     "close": 2720.67,
+     "volume": 587.8430000000002,
+     "trades": 98,
+     "buy_frac": 0.8399521640982366,
+     "spread_bps": 1.9999999999988127,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:32+00:00",
+     "open": 2720.68,
+     "high": 2720.81,
+     "low": 2720.67,
+     "close": 2720.8,
+     "volume": 79.556,
+     "trades": 34,
+     "buy_frac": 0.4328271909095481,
+     "spread_bps": 2.0000000000015996,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:33+00:00",
+     "open": 2720.81,
+     "high": 2720.81,
+     "low": 2720.19,
+     "close": 2720.2,
+     "volume": 113.58899999999997,
+     "trades": 59,
+     "buy_frac": 0.13584942203910594,
+     "spread_bps": 2.0000000000005222,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:34+00:00",
+     "open": 2720.2,
+     "high": 2720.2,
+     "low": 2719.53,
+     "close": 2719.64,
+     "volume": 454.07799999999986,
+     "trades": 98,
+     "buy_frac": 0.8234532393113076,
+     "spread_bps": 1.9999999999991473,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:35+00:00",
+     "open": 2719.63,
+     "high": 2719.63,
+     "low": 2718.62,
+     "close": 2718.96,
+     "volume": 354.66899999999987,
+     "trades": 127,
+     "buy_frac": 0.7162734831631749,
+     "spread_bps": 2.0000000000010414,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:36+00:00",
+     "open": 2718.96,
+     "high": 2718.96,
+     "low": 2718.27,
+     "close": 2718.36,
+     "volume": 91.38800000000003,
+     "trades": 72,
+     "buy_frac": 0.02886593425832712,
+     "spread_bps": 2.0000000000014495,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:37+00:00",
+     "open": 2718.37,
+     "high": 2719.1,
+     "low": 2718.36,
+     "close": 2718.49,
+     "volume": 431.2180000000001,
+     "trades": 141,
+     "buy_frac": 0.477394264617896,
+     "spread_bps": 1.999999999998364,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:38+00:00",
+     "open": 2718.49,
+     "high": 2718.83,
+     "low": 2718.49,
+     "close": 2718.83,
+     "volume": 183.15100000000004,
+     "trades": 35,
+     "buy_frac": 0.6210613100665568,
+     "spread_bps": 2.000000000001487,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:39+00:00",
+     "open": 2718.82,
+     "high": 2719.11,
+     "low": 2718.82,
+     "close": 2719.1,
+     "volume": 162.969,
+     "trades": 34,
+     "buy_frac": 0.7848854690155797,
+     "spread_bps": 2.0000000000000373,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:40+00:00",
+     "open": 2719.11,
+     "high": 2720.0,
+     "low": 2719.11,
+     "close": 2719.99,
+     "volume": 62.89900000000002,
+     "trades": 85,
+     "buy_frac": 0.5352390340068999,
+     "spread_bps": 1.9999999999986624,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:41+00:00",
+     "open": 2719.99,
+     "high": 2719.99,
+     "low": 2719.48,
+     "close": 2719.48,
+     "volume": 102.27800000000003,
+     "trades": 53,
+     "buy_frac": 0.0046637595572850445,
+     "spread_bps": 2.000000000000373,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:42+00:00",
+     "open": 2719.49,
+     "high": 2719.49,
+     "low": 2719.48,
+     "close": 2719.48,
+     "volume": 47.351000000000006,
+     "trades": 8,
+     "buy_frac": 0.6110536208316613,
+     "spread_bps": 1.9999999999996296,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:43+00:00",
+     "open": 2719.49,
+     "high": 2720.5,
+     "low": 2719.49,
+     "close": 2720.49,
+     "volume": 475.19700000000006,
+     "trades": 104,
+     "buy_frac": 0.9390905245613924,
+     "spread_bps": 1.9999999999996296,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:44+00:00",
+     "open": 2720.5,
+     "high": 2723.11,
+     "low": 2720.49,
+     "close": 2723.11,
+     "volume": 2671.1870000000004,
+     "trades": 308,
+     "buy_frac": 0.9262496410771688,
+     "spread_bps": 2.000000000000262,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:45+00:00",
+     "open": 2723.0,
+     "high": 2723.39,
+     "low": 2723.0,
+     "close": 2723.39,
+     "volume": 1209.201000000001,
+     "trades": 106,
+     "buy_frac": 0.3811119904796635,
+     "spread_bps": 2.000000000000636,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:46+00:00",
+     "open": 2723.38,
+     "high": 2723.39,
+     "low": 2723.21,
+     "close": 2723.22,
+     "volume": 306.455,
+     "trades": 38,
+     "buy_frac": 0.3104697263872347,
+     "spread_bps": 2.000000000001601,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:47+00:00",
+     "open": 2723.22,
+     "high": 2723.72,
+     "low": 2723.22,
+     "close": 2723.35,
+     "volume": 358.36899999999986,
+     "trades": 87,
+     "buy_frac": 0.7146265441486291,
+     "spread_bps": 1.999999999998558,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:48+00:00",
+     "open": 2723.34,
+     "high": 2723.34,
+     "low": 2723.22,
+     "close": 2723.22,
+     "volume": 188.95900000000003,
+     "trades": 24,
+     "buy_frac": 0.10766885938219402,
+     "spread_bps": 1.9999999999983356,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:49+00:00",
+     "open": 2723.22,
+     "high": 2723.38,
+     "low": 2723.22,
+     "close": 2723.38,
+     "volume": 194.56099999999998,
+     "trades": 34,
+     "buy_frac": 0.6549462636396811,
+     "spread_bps": 1.999999999998558,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:50+00:00",
+     "open": 2723.4,
+     "high": 2723.4,
+     "low": 2723.39,
+     "close": 2723.4,
+     "volume": 192.22299999999996,
+     "trades": 14,
+     "buy_frac": 0.5805808878229974,
+     "spread_bps": 1.999999999999894,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:51+00:00",
+     "open": 2723.39,
+     "high": 2723.75,
+     "low": 2723.23,
+     "close": 2723.54,
+     "volume": 458.93499999999966,
+     "trades": 90,
+     "buy_frac": 0.8570211467854926,
+     "spread_bps": 2.000000000000748,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:52+00:00",
+     "open": 2723.53,
+     "high": 2724.93,
+     "low": 2723.38,
+     "close": 2723.82,
+     "volume": 1163.3250000000003,
+     "trades": 255,
+     "buy_frac": 0.6916089656802695,
+     "spread_bps": 1.9999999999988183,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:53+00:00",
+     "open": 2723.83,
+     "high": 2723.83,
+     "low": 2723.56,
+     "close": 2723.56,
+     "volume": 281.55800000000005,
+     "trades": 41,
+     "buy_frac": 0.7056734314066728,
+     "spread_bps": 1.9999999999999318,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:54+00:00",
+     "open": 2723.54,
+     "high": 2723.54,
+     "low": 2723.26,
+     "close": 2723.27,
+     "volume": 106.719,
+     "trades": 38,
+     "buy_frac": 0.5651477243977174,
+     "spread_bps": 2.0000000000013043,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:55+00:00",
+     "open": 2723.26,
+     "high": 2723.27,
+     "low": 2722.28,
+     "close": 2722.29,
+     "volume": 3069.0019999999954,
+     "trades": 121,
+     "buy_frac": 0.07320718591907087,
+     "spread_bps": 1.9999999999984839,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:56+00:00",
+     "open": 2722.29,
+     "high": 2723.38,
+     "low": 2722.28,
+     "close": 2723.37,
+     "volume": 1007.5120000000004,
+     "trades": 229,
+     "buy_frac": 0.4773600711455544,
+     "spread_bps": 2.0000000000011178,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:57+00:00",
+     "open": 2723.38,
+     "high": 2723.38,
+     "low": 2723.37,
+     "close": 2723.37,
+     "volume": 120.21400000000003,
+     "trades": 15,
+     "buy_frac": 0.23882409702696852,
+     "spread_bps": 2.000000000001601,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:58+00:00",
+     "open": 2723.38,
+     "high": 2723.38,
+     "low": 2723.37,
+     "close": 2723.38,
+     "volume": 64.32600000000001,
+     "trades": 15,
+     "buy_frac": 0.488962472406181,
+     "spread_bps": 2.000000000001601,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:34:59+00:00",
+     "open": 2723.38,
+     "high": 2723.38,
+     "low": 2723.37,
+     "close": 2723.37,
+     "volume": 83.101,
+     "trades": 10,
+     "buy_frac": 0.0447768378238529,
+     "spread_bps": 2.000000000001601,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:35:00+00:00",
+     "open": 2723.38,
+     "high": 2723.38,
+     "low": 2722.85,
+     "close": 2723.25,
+     "volume": 394.514,
+     "trades": 94,
+     "buy_frac": 0.7073842753362364,
+     "spread_bps": 2.000000000001601,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:35:01+00:00",
+     "open": 2723.24,
+     "high": 2723.3,
+     "low": 2722.85,
+     "close": 2723.29,
+     "volume": 313.309,
+     "trades": 91,
+     "buy_frac": 0.8061306888726465,
+     "spread_bps": 2.000000000000191,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:35:02+00:00",
+     "open": 2723.3,
+     "high": 2723.3,
+     "low": 2721.75,
+     "close": 2722.84,
+     "volume": 1094.5280000000007,
+     "trades": 369,
+     "buy_frac": 0.7033378771488712,
+     "spread_bps": 1.9999999999984095,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:35:03+00:00",
+     "open": 2722.84,
+     "high": 2723.25,
+     "low": 2722.83,
+     "close": 2723.24,
+     "volume": 114.38600000000002,
+     "trades": 55,
+     "buy_frac": 0.7616578951969645,
+     "spread_bps": 2.0000000000009326,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:35:04+00:00",
+     "open": 2723.25,
+     "high": 2723.37,
+     "low": 2723.19,
+     "close": 2723.19,
+     "volume": 343.633,
+     "trades": 45,
+     "buy_frac": 0.20209060247415128,
+     "spread_bps": 1.9999999999993374,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:35:05+00:00",
+     "open": 2723.2,
+     "high": 2723.37,
+     "low": 2722.92,
+     "close": 2722.92,
+     "volume": 335.7529999999998,
+     "trades": 51,
+     "buy_frac": 0.6662248736422313,
+     "spread_bps": 2.000000000000265,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:35:06+00:00",
+     "open": 2722.92,
+     "high": 2723.3,
+     "low": 2722.92,
+     "close": 2723.17,
+     "volume": 206.96900000000005,
+     "trades": 57,
+     "buy_frac": 0.8165860587817501,
+     "spread_bps": 2.0000000000007843,
+     "source": "observed-public"
+    },
+    {
+     "ts_utc": "2026-09-30T12:35:07+00:00",
+     "open": 2723.17,
+     "high": 2724.37,
+     "low": 2723.17,
+     "close": 2723.79,
+     "volume": 899.3569999999997,
+     "trades": 188,
+     "buy_frac": 0.9439466196404771,
+     "spread_bps": 1.9999999999994857,
+     "source": "observed-public"
+    }
+   ],
+   "agg": {
+    "symbol": "ETHUSDT",
+    "lateness_ms": 500,
+    "windows": {
+     "1790771708000": {
+      "o": 2723.8,
+      "h": 2725.38,
+      "low": 2723.8,
+      "c": 2725.18,
+      "volume": 2463.83,
+      "trades": 360,
+      "buy_volume": 1357.1590000000008,
+      "first_id": 3104858626,
+      "last_id": 3104858985,
+      "spread_bps": 1.9999999999991525,
+      "has_trades": true
+     },
+     "1790771709000": {
+      "o": 2725.17,
+      "h": 2725.62,
+      "low": 2724.89,
+      "c": 2725.62,
+      "volume": 322.90199999999993,
+      "trades": 130,
+      "buy_volume": 259.22999999999996,
+      "first_id": 3104858986,
+      "last_id": 3104859115,
+      "spread_bps": 1.9999999999991176,
+      "has_trades": true
+     }
+    },
+    "max_ts_ms": 1790771709417,
+    "last_id": 3104859115,
+    "last_ts_ms": 1790771709417,
+    "gap_flag_windows": [],
+    "closed_through_ms": 1790771708000,
+    "late_dropped": 0,
+    "empty_windows": 20615,
+    "gap_jumps": 0,
+    "spreads_seen": 303693
+   },
+   "mark": 2725.62,
+   "mark_ts": "2026-09-30T12:35:09.417000+00:00",
+   "missing": 20615,
+   "warmup": 130
+  }
+ },
+ "depth_store": {
+  "levels": 10,
+  "stale_after_ms": 5000,
+  "books": {},
+  "applied_ms": {},
+  "ever_synced": [],
+  "flow": {
+   "BTCUSDT": {
+    "window": 1790771709000,
+    "trades": [
+     {
+      "agg_id": 3470139139,
+      "price": 84614.2,
+      "qty": 1.728,
+      "first_id": 8132628482,
+      "last_id": 8132628501,
+      "trade_ts_ms": 1790771709009,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3470139140,
+      "price": 84614.1,
+      "qty": 0.001,
+      "first_id": 8132628502,
+      "last_id": 8132628502,
+      "trade_ts_ms": 1790771709011,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3470139141,
+      "price": 84613.2,
+      "qty": 0.009,
+      "first_id": 8132628503,
+      "last_id": 8132628503,
+      "trade_ts_ms": 1790771709013,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3470139142,
+      "price": 84612.6,
+      "qty": 0.003,
+      "first_id": 8132628504,
+      "last_id": 8132628505,
+      "trade_ts_ms": 1790771709013,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3470139143,
+      "price": 84612.5,
+      "qty": 0.001,
+      "first_id": 8132628506,
+      "last_id": 8132628506,
+      "trade_ts_ms": 1790771709013,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3470139144,
+      "price": 84612.1,
+      "qty": 0.004,
+      "first_id": 8132628507,
+      "last_id": 8132628508,
+      "trade_ts_ms": 1790771709013,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3470139145,
+      "price": 84611.8,
+      "qty": 0.001,
+      "first_id": 8132628509,
+      "last_id": 8132628509,
+      "trade_ts_ms": 1790771709013,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3470139146,
+      "price": 84611.5,
+      "qty": 0.002,
+      "first_id": 8132628510,
+      "last_id": 8132628511,
+      "trade_ts_ms": 1790771709013,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3470139147,
+      "price": 84611.4,
+      "qty": 0.002,
+      "first_id": 8132628512,
+      "last_id": 8132628512,
+      "trade_ts_ms": 1790771709013,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3470139148,
+      "price": 84611.0,
+      "qty": 0.001,
+      "first_id": 8132628513,
+      "last_id": 8132628513,
+      "trade_ts_ms": 1790771709013,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3470139149,
+      "price": 84610.9,
+      "qty": 0.017,
+      "first_id": 8132628514,
+      "last_id": 8132628518,
+      "trade_ts_ms": 1790771709013,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3470139150,
+      "price": 84611.0,
+      "qty": 4.153,
+      "first_id": 8132628519,
+      "last_id": 8132628533,
+      "trade_ts_ms": 1790771709016,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139151,
+      "price": 84610.9,
+      "qty": 9.45,
+      "first_id": 8132628534,
+      "last_id": 8132628568,
+      "trade_ts_ms": 1790771709025,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3470139152,
+      "price": 84611.0,
+      "qty": 0.027,
+      "first_id": 8132628569,
+      "last_id": 8132628570,
+      "trade_ts_ms": 1790771709050,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139153,
+      "price": 84610.9,
+      "qty": 0.534,
+      "first_id": 8132628571,
+      "last_id": 8132628571,
+      "trade_ts_ms": 1790771709050,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3470139154,
+      "price": 84611.0,
+      "qty": 0.024,
+      "first_id": 8132628572,
+      "last_id": 8132628573,
+      "trade_ts_ms": 1790771709050,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139155,
+      "price": 84610.9,
+      "qty": 0.028,
+      "first_id": 8132628574,
+      "last_id": 8132628574,
+      "trade_ts_ms": 1790771709050,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3470139156,
+      "price": 84611.0,
+      "qty": 1.582,
+      "first_id": 8132628575,
+      "last_id": 8132628605,
+      "trade_ts_ms": 1790771709050,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139157,
+      "price": 84610.9,
+      "qty": 0.003,
+      "first_id": 8132628606,
+      "last_id": 8132628608,
+      "trade_ts_ms": 1790771709079,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3470139158,
+      "price": 84611.0,
+      "qty": 0.519,
+      "first_id": 8132628609,
+      "last_id": 8132628617,
+      "trade_ts_ms": 1790771709083,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139159,
+      "price": 84611.1,
+      "qty": 0.001,
+      "first_id": 8132628618,
+      "last_id": 8132628618,
+      "trade_ts_ms": 1790771709083,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139160,
+      "price": 84611.2,
+      "qty": 0.001,
+      "first_id": 8132628619,
+      "last_id": 8132628619,
+      "trade_ts_ms": 1790771709083,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139161,
+      "price": 84613.1,
+      "qty": 0.025,
+      "first_id": 8132628620,
+      "last_id": 8132628624,
+      "trade_ts_ms": 1790771709085,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139162,
+      "price": 84613.2,
+      "qty": 0.001,
+      "first_id": 8132628625,
+      "last_id": 8132628625,
+      "trade_ts_ms": 1790771709091,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139163,
+      "price": 84613.3,
+      "qty": 0.001,
+      "first_id": 8132628626,
+      "last_id": 8132628626,
+      "trade_ts_ms": 1790771709091,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139164,
+      "price": 84613.8,
+      "qty": 0.001,
+      "first_id": 8132628627,
+      "last_id": 8132628627,
+      "trade_ts_ms": 1790771709092,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139165,
+      "price": 84614.1,
+      "qty": 0.001,
+      "first_id": 8132628628,
+      "last_id": 8132628628,
+      "trade_ts_ms": 1790771709092,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139166,
+      "price": 84614.2,
+      "qty": 0.001,
+      "first_id": 8132628629,
+      "last_id": 8132628629,
+      "trade_ts_ms": 1790771709092,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139167,
+      "price": 84614.3,
+      "qty": 0.252,
+      "first_id": 8132628630,
+      "last_id": 8132628634,
+      "trade_ts_ms": 1790771709093,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139168,
+      "price": 84614.4,
+      "qty": 0.006,
+      "first_id": 8132628635,
+      "last_id": 8132628637,
+      "trade_ts_ms": 1790771709093,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139169,
+      "price": 84614.5,
+      "qty": 0.001,
+      "first_id": 8132628638,
+      "last_id": 8132628638,
+      "trade_ts_ms": 1790771709094,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139170,
+      "price": 84614.7,
+      "qty": 0.095,
+      "first_id": 8132628639,
+      "last_id": 8132628645,
+      "trade_ts_ms": 1790771709096,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139171,
+      "price": 84615.1,
+      "qty": 0.001,
+      "first_id": 8132628646,
+      "last_id": 8132628646,
+      "trade_ts_ms": 1790771709097,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139172,
+      "price": 84615.2,
+      "qty": 0.02,
+      "first_id": 8132628647,
+      "last_id": 8132628647,
+      "trade_ts_ms": 1790771709097,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139173,
+      "price": 84615.3,
+      "qty": 0.002,
+      "first_id": 8132628648,
+      "last_id": 8132628649,
+      "trade_ts_ms": 1790771709097,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139174,
+      "price": 84615.6,
+      "qty": 0.001,
+      "first_id": 8132628650,
+      "last_id": 8132628650,
+      "trade_ts_ms": 1790771709097,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139175,
+      "price": 84615.7,
+      "qty": 0.003,
+      "first_id": 8132628651,
+      "last_id": 8132628653,
+      "trade_ts_ms": 1790771709097,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139176,
+      "price": 84615.8,
+      "qty": 1.056,
+      "first_id": 8132628654,
+      "last_id": 8132628661,
+      "trade_ts_ms": 1790771709097,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139177,
+      "price": 84615.9,
+      "qty": 0.015,
+      "first_id": 8132628662,
+      "last_id": 8132628664,
+      "trade_ts_ms": 1790771709100,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139178,
+      "price": 84616.0,
+      "qty": 0.001,
+      "first_id": 8132628665,
+      "last_id": 8132628665,
+      "trade_ts_ms": 1790771709100,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139179,
+      "price": 84616.3,
+      "qty": 0.002,
+      "first_id": 8132628666,
+      "last_id": 8132628667,
+      "trade_ts_ms": 1790771709100,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139180,
+      "price": 84616.5,
+      "qty": 0.001,
+      "first_id": 8132628668,
+      "last_id": 8132628668,
+      "trade_ts_ms": 1790771709101,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139181,
+      "price": 84616.7,
+      "qty": 0.001,
+      "first_id": 8132628669,
+      "last_id": 8132628669,
+      "trade_ts_ms": 1790771709101,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139182,
+      "price": 84617.0,
+      "qty": 0.001,
+      "first_id": 8132628670,
+      "last_id": 8132628670,
+      "trade_ts_ms": 1790771709101,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139183,
+      "price": 84618.0,
+      "qty": 0.001,
+      "first_id": 8132628671,
+      "last_id": 8132628671,
+      "trade_ts_ms": 1790771709101,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139184,
+      "price": 84618.4,
+      "qty": 0.001,
+      "first_id": 8132628672,
+      "last_id": 8132628672,
+      "trade_ts_ms": 1790771709101,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139185,
+      "price": 84618.5,
+      "qty": 0.001,
+      "first_id": 8132628673,
+      "last_id": 8132628673,
+      "trade_ts_ms": 1790771709101,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139186,
+      "price": 84618.6,
+      "qty": 0.161,
+      "first_id": 8132628674,
+      "last_id": 8132628675,
+      "trade_ts_ms": 1790771709102,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139187,
+      "price": 84618.9,
+      "qty": 0.02,
+      "first_id": 8132628676,
+      "last_id": 8132628676,
+      "trade_ts_ms": 1790771709103,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3470139188,
+      "price": 84619.4,
+      "qty": 0.002,
+      "first_id": 8132628677,
+      "last_id": 8132628678,
+      "trade_ts_ms": 1790771709104,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139189,
+      "price": 84620.2,
+      "qty": 0.001,
+      "first_id": 8132628679,
+      "last_id": 8132628679,
+      "trade_ts_ms": 1790771709104,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139190,
+      "price": 84620.5,
+      "qty": 0.001,
+      "first_id": 8132628680,
+      "last_id": 8132628680,
+      "trade_ts_ms": 1790771709104,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139191,
+      "price": 84620.7,
+      "qty": 0.002,
+      "first_id": 8132628681,
+      "last_id": 8132628682,
+      "trade_ts_ms": 1790771709104,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139192,
+      "price": 84620.8,
+      "qty": 0.001,
+      "first_id": 8132628683,
+      "last_id": 8132628683,
+      "trade_ts_ms": 1790771709104,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139193,
+      "price": 84620.9,
+      "qty": 0.003,
+      "first_id": 8132628684,
+      "last_id": 8132628685,
+      "trade_ts_ms": 1790771709104,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139194,
+      "price": 84621.0,
+      "qty": 0.052,
+      "first_id": 8132628686,
+      "last_id": 8132628690,
+      "trade_ts_ms": 1790771709108,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139195,
+      "price": 84622.0,
+      "qty": 0.001,
+      "first_id": 8132628691,
+      "last_id": 8132628691,
+      "trade_ts_ms": 1790771709112,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139196,
+      "price": 84622.3,
+      "qty": 0.001,
+      "first_id": 8132628692,
+      "last_id": 8132628692,
+      "trade_ts_ms": 1790771709112,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139197,
+      "price": 84622.4,
+      "qty": 0.001,
+      "first_id": 8132628693,
+      "last_id": 8132628693,
+      "trade_ts_ms": 1790771709112,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139198,
+      "price": 84622.6,
+      "qty": 0.002,
+      "first_id": 8132628694,
+      "last_id": 8132628695,
+      "trade_ts_ms": 1790771709113,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139199,
+      "price": 84623.0,
+      "qty": 0.001,
+      "first_id": 8132628696,
+      "last_id": 8132628696,
+      "trade_ts_ms": 1790771709113,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139200,
+      "price": 84623.2,
+      "qty": 0.001,
+      "first_id": 8132628697,
+      "last_id": 8132628697,
+      "trade_ts_ms": 1790771709113,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139201,
+      "price": 84623.3,
+      "qty": 0.001,
+      "first_id": 8132628698,
+      "last_id": 8132628698,
+      "trade_ts_ms": 1790771709113,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139202,
+      "price": 84623.4,
+      "qty": 0.001,
+      "first_id": 8132628699,
+      "last_id": 8132628699,
+      "trade_ts_ms": 1790771709115,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139203,
+      "price": 84623.5,
+      "qty": 0.001,
+      "first_id": 8132628700,
+      "last_id": 8132628700,
+      "trade_ts_ms": 1790771709115,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139204,
+      "price": 84623.8,
+      "qty": 0.001,
+      "first_id": 8132628701,
+      "last_id": 8132628701,
+      "trade_ts_ms": 1790771709115,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139205,
+      "price": 84623.9,
+      "qty": 0.001,
+      "first_id": 8132628702,
+      "last_id": 8132628702,
+      "trade_ts_ms": 1790771709115,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139206,
+      "price": 84624.0,
+      "qty": 0.001,
+      "first_id": 8132628703,
+      "last_id": 8132628703,
+      "trade_ts_ms": 1790771709115,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139207,
+      "price": 84624.3,
+      "qty": 0.001,
+      "first_id": 8132628704,
+      "last_id": 8132628704,
+      "trade_ts_ms": 1790771709115,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139208,
+      "price": 84624.4,
+      "qty": 0.001,
+      "first_id": 8132628705,
+      "last_id": 8132628705,
+      "trade_ts_ms": 1790771709115,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139209,
+      "price": 84624.8,
+      "qty": 0.001,
+      "first_id": 8132628706,
+      "last_id": 8132628706,
+      "trade_ts_ms": 1790771709115,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139210,
+      "price": 84624.9,
+      "qty": 0.021,
+      "first_id": 8132628707,
+      "last_id": 8132628708,
+      "trade_ts_ms": 1790771709116,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139211,
+      "price": 84625.0,
+      "qty": 0.001,
+      "first_id": 8132628709,
+      "last_id": 8132628709,
+      "trade_ts_ms": 1790771709116,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139212,
+      "price": 84625.1,
+      "qty": 0.868,
+      "first_id": 8132628710,
+      "last_id": 8132628733,
+      "trade_ts_ms": 1790771709119,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139213,
+      "price": 84625.5,
+      "qty": 0.001,
+      "first_id": 8132628734,
+      "last_id": 8132628734,
+      "trade_ts_ms": 1790771709145,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139214,
+      "price": 84625.6,
+      "qty": 0.001,
+      "first_id": 8132628735,
+      "last_id": 8132628735,
+      "trade_ts_ms": 1790771709145,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139215,
+      "price": 84625.7,
+      "qty": 0.04,
+      "first_id": 8132628736,
+      "last_id": 8132628736,
+      "trade_ts_ms": 1790771709145,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139216,
+      "price": 84626.1,
+      "qty": 0.001,
+      "first_id": 8132628737,
+      "last_id": 8132628737,
+      "trade_ts_ms": 1790771709145,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139217,
+      "price": 84627.4,
+      "qty": 0.001,
+      "first_id": 8132628738,
+      "last_id": 8132628738,
+      "trade_ts_ms": 1790771709145,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139218,
+      "price": 84627.6,
+      "qty": 0.001,
+      "first_id": 8132628739,
+      "last_id": 8132628739,
+      "trade_ts_ms": 1790771709145,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139219,
+      "price": 84628.0,
+      "qty": 0.001,
+      "first_id": 8132628740,
+      "last_id": 8132628740,
+      "trade_ts_ms": 1790771709145,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139220,
+      "price": 84628.3,
+      "qty": 0.002,
+      "first_id": 8132628741,
+      "last_id": 8132628741,
+      "trade_ts_ms": 1790771709145,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139221,
+      "price": 84628.7,
+      "qty": 0.001,
+      "first_id": 8132628742,
+      "last_id": 8132628742,
+      "trade_ts_ms": 1790771709147,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139222,
+      "price": 84628.8,
+      "qty": 0.001,
+      "first_id": 8132628743,
+      "last_id": 8132628743,
+      "trade_ts_ms": 1790771709147,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139223,
+      "price": 84629.3,
+      "qty": 0.002,
+      "first_id": 8132628744,
+      "last_id": 8132628744,
+      "trade_ts_ms": 1790771709147,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139224,
+      "price": 84629.8,
+      "qty": 0.001,
+      "first_id": 8132628745,
+      "last_id": 8132628745,
+      "trade_ts_ms": 1790771709147,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139225,
+      "price": 84629.9,
+      "qty": 0.001,
+      "first_id": 8132628746,
+      "last_id": 8132628746,
+      "trade_ts_ms": 1790771709147,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139226,
+      "price": 84629.9,
+      "qty": 0.009,
+      "first_id": 8132628747,
+      "last_id": 8132628747,
+      "trade_ts_ms": 1790771709151,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3470139227,
+      "price": 84630.0,
+      "qty": 1.223,
+      "first_id": 8132628748,
+      "last_id": 8132628759,
+      "trade_ts_ms": 1790771709154,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139228,
+      "price": 84629.9,
+      "qty": 0.001,
+      "first_id": 8132628760,
+      "last_id": 8132628760,
+      "trade_ts_ms": 1790771709168,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3470139229,
+      "price": 84630.0,
+      "qty": 1.328,
+      "first_id": 8132628761,
+      "last_id": 8132628772,
+      "trade_ts_ms": 1790771709185,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139230,
+      "price": 84629.9,
+      "qty": 0.029,
+      "first_id": 8132628773,
+      "last_id": 8132628773,
+      "trade_ts_ms": 1790771709190,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3470139231,
+      "price": 84630.0,
+      "qty": 0.597,
+      "first_id": 8132628774,
+      "last_id": 8132628779,
+      "trade_ts_ms": 1790771709191,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139232,
+      "price": 84629.9,
+      "qty": 0.001,
+      "first_id": 8132628780,
+      "last_id": 8132628780,
+      "trade_ts_ms": 1790771709196,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3470139233,
+      "price": 84630.0,
+      "qty": 0.022,
+      "first_id": 8132628781,
+      "last_id": 8132628781,
+      "trade_ts_ms": 1790771709196,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139234,
+      "price": 84629.9,
+      "qty": 0.002,
+      "first_id": 8132628782,
+      "last_id": 8132628783,
+      "trade_ts_ms": 1790771709199,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3470139235,
+      "price": 84630.0,
+      "qty": 1.687,
+      "first_id": 8132628784,
+      "last_id": 8132628797,
+      "trade_ts_ms": 1790771709203,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139236,
+      "price": 84630.6,
+      "qty": 0.001,
+      "first_id": 8132628798,
+      "last_id": 8132628798,
+      "trade_ts_ms": 1790771709211,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139237,
+      "price": 84631.3,
+      "qty": 0.002,
+      "first_id": 8132628799,
+      "last_id": 8132628800,
+      "trade_ts_ms": 1790771709211,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139238,
+      "price": 84631.5,
+      "qty": 0.001,
+      "first_id": 8132628801,
+      "last_id": 8132628801,
+      "trade_ts_ms": 1790771709211,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139239,
+      "price": 84632.0,
+      "qty": 0.001,
+      "first_id": 8132628802,
+      "last_id": 8132628802,
+      "trade_ts_ms": 1790771709211,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139240,
+      "price": 84632.1,
+      "qty": 0.001,
+      "first_id": 8132628803,
+      "last_id": 8132628803,
+      "trade_ts_ms": 1790771709211,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139241,
+      "price": 84632.6,
+      "qty": 0.002,
+      "first_id": 8132628804,
+      "last_id": 8132628804,
+      "trade_ts_ms": 1790771709211,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139242,
+      "price": 84632.9,
+      "qty": 0.001,
+      "first_id": 8132628805,
+      "last_id": 8132628805,
+      "trade_ts_ms": 1790771709211,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139243,
+      "price": 84633.2,
+      "qty": 0.009,
+      "first_id": 8132628806,
+      "last_id": 8132628806,
+      "trade_ts_ms": 1790771709211,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139244,
+      "price": 84633.3,
+      "qty": 0.001,
+      "first_id": 8132628807,
+      "last_id": 8132628807,
+      "trade_ts_ms": 1790771709211,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139245,
+      "price": 84633.4,
+      "qty": 0.001,
+      "first_id": 8132628808,
+      "last_id": 8132628808,
+      "trade_ts_ms": 1790771709211,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139246,
+      "price": 84633.6,
+      "qty": 0.002,
+      "first_id": 8132628809,
+      "last_id": 8132628810,
+      "trade_ts_ms": 1790771709211,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139247,
+      "price": 84633.9,
+      "qty": 0.002,
+      "first_id": 8132628811,
+      "last_id": 8132628811,
+      "trade_ts_ms": 1790771709211,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139248,
+      "price": 84634.0,
+      "qty": 0.002,
+      "first_id": 8132628812,
+      "last_id": 8132628813,
+      "trade_ts_ms": 1790771709211,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139249,
+      "price": 84634.1,
+      "qty": 0.001,
+      "first_id": 8132628814,
+      "last_id": 8132628814,
+      "trade_ts_ms": 1790771709211,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139250,
+      "price": 84634.2,
+      "qty": 0.151,
+      "first_id": 8132628815,
+      "last_id": 8132628819,
+      "trade_ts_ms": 1790771709211,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139251,
+      "price": 84634.3,
+      "qty": 0.001,
+      "first_id": 8132628820,
+      "last_id": 8132628820,
+      "trade_ts_ms": 1790771709211,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139252,
+      "price": 84634.6,
+      "qty": 0.001,
+      "first_id": 8132628821,
+      "last_id": 8132628821,
+      "trade_ts_ms": 1790771709211,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139253,
+      "price": 84634.8,
+      "qty": 0.001,
+      "first_id": 8132628822,
+      "last_id": 8132628822,
+      "trade_ts_ms": 1790771709211,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139254,
+      "price": 84634.9,
+      "qty": 0.002,
+      "first_id": 8132628823,
+      "last_id": 8132628824,
+      "trade_ts_ms": 1790771709211,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139255,
+      "price": 84635.0,
+      "qty": 0.005,
+      "first_id": 8132628825,
+      "last_id": 8132628829,
+      "trade_ts_ms": 1790771709211,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139256,
+      "price": 84635.1,
+      "qty": 0.001,
+      "first_id": 8132628830,
+      "last_id": 8132628830,
+      "trade_ts_ms": 1790771709211,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139257,
+      "price": 84635.2,
+      "qty": 0.001,
+      "first_id": 8132628831,
+      "last_id": 8132628831,
+      "trade_ts_ms": 1790771709211,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139258,
+      "price": 84635.6,
+      "qty": 0.001,
+      "first_id": 8132628832,
+      "last_id": 8132628832,
+      "trade_ts_ms": 1790771709211,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139259,
+      "price": 84635.9,
+      "qty": 0.001,
+      "first_id": 8132628833,
+      "last_id": 8132628833,
+      "trade_ts_ms": 1790771709211,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139260,
+      "price": 84636.0,
+      "qty": 0.041,
+      "first_id": 8132628834,
+      "last_id": 8132628835,
+      "trade_ts_ms": 1790771709211,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139261,
+      "price": 84636.1,
+      "qty": 0.082,
+      "first_id": 8132628836,
+      "last_id": 8132628837,
+      "trade_ts_ms": 1790771709211,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139262,
+      "price": 84636.2,
+      "qty": 0.001,
+      "first_id": 8132628838,
+      "last_id": 8132628838,
+      "trade_ts_ms": 1790771709211,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139263,
+      "price": 84636.3,
+      "qty": 0.001,
+      "first_id": 8132628839,
+      "last_id": 8132628839,
+      "trade_ts_ms": 1790771709211,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139264,
+      "price": 84636.7,
+      "qty": 0.001,
+      "first_id": 8132628840,
+      "last_id": 8132628840,
+      "trade_ts_ms": 1790771709211,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139265,
+      "price": 84636.8,
+      "qty": 0.001,
+      "first_id": 8132628841,
+      "last_id": 8132628841,
+      "trade_ts_ms": 1790771709211,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139266,
+      "price": 84636.9,
+      "qty": 0.16,
+      "first_id": 8132628842,
+      "last_id": 8132628844,
+      "trade_ts_ms": 1790771709211,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139267,
+      "price": 84636.7,
+      "qty": 0.001,
+      "first_id": 8132628845,
+      "last_id": 8132628845,
+      "trade_ts_ms": 1790771709212,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139268,
+      "price": 84636.9,
+      "qty": 0.016,
+      "first_id": 8132628846,
+      "last_id": 8132628846,
+      "trade_ts_ms": 1790771709212,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139269,
+      "price": 84636.8,
+      "qty": 0.763,
+      "first_id": 8132628847,
+      "last_id": 8132628853,
+      "trade_ts_ms": 1790771709213,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3470139270,
+      "price": 84636.9,
+      "qty": 0.065,
+      "first_id": 8132628854,
+      "last_id": 8132628854,
+      "trade_ts_ms": 1790771709229,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139271,
+      "price": 84636.8,
+      "qty": 0.005,
+      "first_id": 8132628855,
+      "last_id": 8132628855,
+      "trade_ts_ms": 1790771709229,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3470139272,
+      "price": 84636.9,
+      "qty": 5.7,
+      "first_id": 8132628856,
+      "last_id": 8132628888,
+      "trade_ts_ms": 1790771709231,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139273,
+      "price": 84638.0,
+      "qty": 0.001,
+      "first_id": 8132628889,
+      "last_id": 8132628889,
+      "trade_ts_ms": 1790771709239,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139274,
+      "price": 84638.9,
+      "qty": 0.036,
+      "first_id": 8132628890,
+      "last_id": 8132628892,
+      "trade_ts_ms": 1790771709239,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139275,
+      "price": 84639.3,
+      "qty": 0.001,
+      "first_id": 8132628893,
+      "last_id": 8132628893,
+      "trade_ts_ms": 1790771709239,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139276,
+      "price": 84639.6,
+      "qty": 0.011,
+      "first_id": 8132628894,
+      "last_id": 8132628895,
+      "trade_ts_ms": 1790771709239,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139277,
+      "price": 84639.7,
+      "qty": 0.001,
+      "first_id": 8132628896,
+      "last_id": 8132628896,
+      "trade_ts_ms": 1790771709239,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139278,
+      "price": 84639.9,
+      "qty": 0.001,
+      "first_id": 8132628897,
+      "last_id": 8132628897,
+      "trade_ts_ms": 1790771709239,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139279,
+      "price": 84640.0,
+      "qty": 0.001,
+      "first_id": 8132628898,
+      "last_id": 8132628898,
+      "trade_ts_ms": 1790771709239,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139280,
+      "price": 84640.2,
+      "qty": 0.001,
+      "first_id": 8132628899,
+      "last_id": 8132628899,
+      "trade_ts_ms": 1790771709239,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139281,
+      "price": 84640.5,
+      "qty": 0.001,
+      "first_id": 8132628900,
+      "last_id": 8132628900,
+      "trade_ts_ms": 1790771709239,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139282,
+      "price": 84640.6,
+      "qty": 0.001,
+      "first_id": 8132628901,
+      "last_id": 8132628901,
+      "trade_ts_ms": 1790771709239,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139283,
+      "price": 84640.8,
+      "qty": 0.001,
+      "first_id": 8132628902,
+      "last_id": 8132628902,
+      "trade_ts_ms": 1790771709239,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139284,
+      "price": 84640.9,
+      "qty": 0.03,
+      "first_id": 8132628903,
+      "last_id": 8132628905,
+      "trade_ts_ms": 1790771709239,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139285,
+      "price": 84641.0,
+      "qty": 0.34,
+      "first_id": 8132628906,
+      "last_id": 8132628911,
+      "trade_ts_ms": 1790771709239,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139286,
+      "price": 84640.9,
+      "qty": 1.747,
+      "first_id": 8132628912,
+      "last_id": 8132628929,
+      "trade_ts_ms": 1790771709279,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3470139287,
+      "price": 84640.8,
+      "qty": 0.003,
+      "first_id": 8132628930,
+      "last_id": 8132628931,
+      "trade_ts_ms": 1790771709283,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3470139288,
+      "price": 84640.5,
+      "qty": 0.001,
+      "first_id": 8132628932,
+      "last_id": 8132628932,
+      "trade_ts_ms": 1790771709283,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3470139289,
+      "price": 84640.3,
+      "qty": 0.001,
+      "first_id": 8132628933,
+      "last_id": 8132628933,
+      "trade_ts_ms": 1790771709283,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3470139290,
+      "price": 84639.2,
+      "qty": 0.001,
+      "first_id": 8132628934,
+      "last_id": 8132628934,
+      "trade_ts_ms": 1790771709283,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3470139291,
+      "price": 84638.9,
+      "qty": 0.001,
+      "first_id": 8132628935,
+      "last_id": 8132628935,
+      "trade_ts_ms": 1790771709283,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3470139292,
+      "price": 84638.7,
+      "qty": 0.001,
+      "first_id": 8132628936,
+      "last_id": 8132628936,
+      "trade_ts_ms": 1790771709283,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3470139293,
+      "price": 84638.3,
+      "qty": 0.001,
+      "first_id": 8132628937,
+      "last_id": 8132628937,
+      "trade_ts_ms": 1790771709283,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3470139294,
+      "price": 84638.1,
+      "qty": 0.001,
+      "first_id": 8132628938,
+      "last_id": 8132628938,
+      "trade_ts_ms": 1790771709283,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3470139295,
+      "price": 84637.1,
+      "qty": 0.001,
+      "first_id": 8132628939,
+      "last_id": 8132628939,
+      "trade_ts_ms": 1790771709283,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3470139296,
+      "price": 84637.0,
+      "qty": 0.002,
+      "first_id": 8132628940,
+      "last_id": 8132628941,
+      "trade_ts_ms": 1790771709283,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3470139297,
+      "price": 84637.0,
+      "qty": 0.01,
+      "first_id": 8132628942,
+      "last_id": 8132628946,
+      "trade_ts_ms": 1790771709285,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139298,
+      "price": 84636.9,
+      "qty": 0.004,
+      "first_id": 8132628947,
+      "last_id": 8132628947,
+      "trade_ts_ms": 1790771709300,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3470139299,
+      "price": 84637.0,
+      "qty": 0.011,
+      "first_id": 8132628948,
+      "last_id": 8132628948,
+      "trade_ts_ms": 1790771709309,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139300,
+      "price": 84636.9,
+      "qty": 0.002,
+      "first_id": 8132628949,
+      "last_id": 8132628949,
+      "trade_ts_ms": 1790771709319,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3470139301,
+      "price": 84637.0,
+      "qty": 5.792,
+      "first_id": 8132628950,
+      "last_id": 8132629027,
+      "trade_ts_ms": 1790771709323,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139302,
+      "price": 84637.1,
+      "qty": 0.001,
+      "first_id": 8132629028,
+      "last_id": 8132629028,
+      "trade_ts_ms": 1790771709394,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139303,
+      "price": 84637.6,
+      "qty": 0.001,
+      "first_id": 8132629029,
+      "last_id": 8132629029,
+      "trade_ts_ms": 1790771709395,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139304,
+      "price": 84638.7,
+      "qty": 0.001,
+      "first_id": 8132629030,
+      "last_id": 8132629030,
+      "trade_ts_ms": 1790771709395,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139305,
+      "price": 84639.0,
+      "qty": 0.009,
+      "first_id": 8132629031,
+      "last_id": 8132629032,
+      "trade_ts_ms": 1790771709396,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139306,
+      "price": 84639.8,
+      "qty": 0.001,
+      "first_id": 8132629033,
+      "last_id": 8132629033,
+      "trade_ts_ms": 1790771709396,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139307,
+      "price": 84640.6,
+      "qty": 0.002,
+      "first_id": 8132629034,
+      "last_id": 8132629035,
+      "trade_ts_ms": 1790771709396,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139308,
+      "price": 84640.8,
+      "qty": 0.001,
+      "first_id": 8132629036,
+      "last_id": 8132629036,
+      "trade_ts_ms": 1790771709396,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139309,
+      "price": 84640.9,
+      "qty": 0.636,
+      "first_id": 8132629037,
+      "last_id": 8132629048,
+      "trade_ts_ms": 1790771709396,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139310,
+      "price": 84641.0,
+      "qty": 0.241,
+      "first_id": 8132629049,
+      "last_id": 8132629053,
+      "trade_ts_ms": 1790771709405,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139311,
+      "price": 84641.3,
+      "qty": 0.029,
+      "first_id": 8132629054,
+      "last_id": 8132629054,
+      "trade_ts_ms": 1790771709405,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139312,
+      "price": 84642.2,
+      "qty": 0.002,
+      "first_id": 8132629055,
+      "last_id": 8132629056,
+      "trade_ts_ms": 1790771709408,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139313,
+      "price": 84642.3,
+      "qty": 0.001,
+      "first_id": 8132629057,
+      "last_id": 8132629057,
+      "trade_ts_ms": 1790771709408,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139314,
+      "price": 84642.7,
+      "qty": 0.001,
+      "first_id": 8132629058,
+      "last_id": 8132629058,
+      "trade_ts_ms": 1790771709408,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139315,
+      "price": 84643.0,
+      "qty": 0.001,
+      "first_id": 8132629059,
+      "last_id": 8132629059,
+      "trade_ts_ms": 1790771709408,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139316,
+      "price": 84643.1,
+      "qty": 0.009,
+      "first_id": 8132629060,
+      "last_id": 8132629060,
+      "trade_ts_ms": 1790771709408,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139317,
+      "price": 84643.2,
+      "qty": 0.001,
+      "first_id": 8132629061,
+      "last_id": 8132629061,
+      "trade_ts_ms": 1790771709408,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139318,
+      "price": 84643.6,
+      "qty": 0.001,
+      "first_id": 8132629062,
+      "last_id": 8132629062,
+      "trade_ts_ms": 1790771709408,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139319,
+      "price": 84643.7,
+      "qty": 0.001,
+      "first_id": 8132629063,
+      "last_id": 8132629063,
+      "trade_ts_ms": 1790771709408,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139320,
+      "price": 84643.8,
+      "qty": 0.569,
+      "first_id": 8132629064,
+      "last_id": 8132629068,
+      "trade_ts_ms": 1790771709409,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139321,
+      "price": 84644.5,
+      "qty": 0.002,
+      "first_id": 8132629069,
+      "last_id": 8132629070,
+      "trade_ts_ms": 1790771709410,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139322,
+      "price": 84644.6,
+      "qty": 0.002,
+      "first_id": 8132629071,
+      "last_id": 8132629072,
+      "trade_ts_ms": 1790771709410,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139323,
+      "price": 84644.8,
+      "qty": 0.002,
+      "first_id": 8132629073,
+      "last_id": 8132629073,
+      "trade_ts_ms": 1790771709410,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139324,
+      "price": 84645.0,
+      "qty": 0.003,
+      "first_id": 8132629074,
+      "last_id": 8132629076,
+      "trade_ts_ms": 1790771709410,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139325,
+      "price": 84645.2,
+      "qty": 0.001,
+      "first_id": 8132629077,
+      "last_id": 8132629077,
+      "trade_ts_ms": 1790771709410,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139326,
+      "price": 84645.4,
+      "qty": 0.001,
+      "first_id": 8132629078,
+      "last_id": 8132629078,
+      "trade_ts_ms": 1790771709410,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139327,
+      "price": 84645.6,
+      "qty": 0.001,
+      "first_id": 8132629079,
+      "last_id": 8132629079,
+      "trade_ts_ms": 1790771709410,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139328,
+      "price": 84645.8,
+      "qty": 0.001,
+      "first_id": 8132629080,
+      "last_id": 8132629080,
+      "trade_ts_ms": 1790771709410,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139329,
+      "price": 84645.9,
+      "qty": 0.076,
+      "first_id": 8132629081,
+      "last_id": 8132629086,
+      "trade_ts_ms": 1790771709410,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139330,
+      "price": 84645.8,
+      "qty": 0.098,
+      "first_id": 8132629087,
+      "last_id": 8132629090,
+      "trade_ts_ms": 1790771709433,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3470139331,
+      "price": 84645.9,
+      "qty": 0.008,
+      "first_id": 8132629091,
+      "last_id": 8132629091,
+      "trade_ts_ms": 1790771709448,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139332,
+      "price": 84645.8,
+      "qty": 0.002,
+      "first_id": 8132629092,
+      "last_id": 8132629092,
+      "trade_ts_ms": 1790771709452,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3470139333,
+      "price": 84645.9,
+      "qty": 0.003,
+      "first_id": 8132629093,
+      "last_id": 8132629093,
+      "trade_ts_ms": 1790771709456,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139334,
+      "price": 84645.8,
+      "qty": 0.142,
+      "first_id": 8132629094,
+      "last_id": 8132629098,
+      "trade_ts_ms": 1790771709459,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3470139335,
+      "price": 84645.9,
+      "qty": 0.001,
+      "first_id": 8132629099,
+      "last_id": 8132629099,
+      "trade_ts_ms": 1790771709464,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139336,
+      "price": 84645.8,
+      "qty": 0.001,
+      "first_id": 8132629100,
+      "last_id": 8132629100,
+      "trade_ts_ms": 1790771709465,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3470139337,
+      "price": 84645.9,
+      "qty": 0.874,
+      "first_id": 8132629101,
+      "last_id": 8132629122,
+      "trade_ts_ms": 1790771709470,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139338,
+      "price": 84646.1,
+      "qty": 0.004,
+      "first_id": 8132629123,
+      "last_id": 8132629126,
+      "trade_ts_ms": 1790771709483,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139339,
+      "price": 84646.3,
+      "qty": 0.157,
+      "first_id": 8132629127,
+      "last_id": 8132629127,
+      "trade_ts_ms": 1790771709483,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139340,
+      "price": 84646.5,
+      "qty": 0.015,
+      "first_id": 8132629128,
+      "last_id": 8132629129,
+      "trade_ts_ms": 1790771709483,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139341,
+      "price": 84647.6,
+      "qty": 0.001,
+      "first_id": 8132629130,
+      "last_id": 8132629130,
+      "trade_ts_ms": 1790771709483,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139342,
+      "price": 84647.7,
+      "qty": 0.001,
+      "first_id": 8132629131,
+      "last_id": 8132629131,
+      "trade_ts_ms": 1790771709483,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139343,
+      "price": 84648.0,
+      "qty": 0.073,
+      "first_id": 8132629132,
+      "last_id": 8132629136,
+      "trade_ts_ms": 1790771709484,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139344,
+      "price": 84648.2,
+      "qty": 0.005,
+      "first_id": 8132629137,
+      "last_id": 8132629138,
+      "trade_ts_ms": 1790771709485,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139345,
+      "price": 84648.3,
+      "qty": 0.001,
+      "first_id": 8132629139,
+      "last_id": 8132629139,
+      "trade_ts_ms": 1790771709485,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139346,
+      "price": 84648.4,
+      "qty": 0.001,
+      "first_id": 8132629140,
+      "last_id": 8132629140,
+      "trade_ts_ms": 1790771709485,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139347,
+      "price": 84648.5,
+      "qty": 0.193,
+      "first_id": 8132629141,
+      "last_id": 8132629148,
+      "trade_ts_ms": 1790771709486,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139348,
+      "price": 84648.6,
+      "qty": 0.003,
+      "first_id": 8132629149,
+      "last_id": 8132629150,
+      "trade_ts_ms": 1790771709487,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139349,
+      "price": 84648.7,
+      "qty": 0.156,
+      "first_id": 8132629151,
+      "last_id": 8132629153,
+      "trade_ts_ms": 1790771709487,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139350,
+      "price": 84648.8,
+      "qty": 0.082,
+      "first_id": 8132629154,
+      "last_id": 8132629156,
+      "trade_ts_ms": 1790771709487,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139351,
+      "price": 84648.9,
+      "qty": 0.002,
+      "first_id": 8132629157,
+      "last_id": 8132629158,
+      "trade_ts_ms": 1790771709487,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139352,
+      "price": 84649.0,
+      "qty": 0.101,
+      "first_id": 8132629159,
+      "last_id": 8132629160,
+      "trade_ts_ms": 1790771709487,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139353,
+      "price": 84649.1,
+      "qty": 0.02,
+      "first_id": 8132629161,
+      "last_id": 8132629161,
+      "trade_ts_ms": 1790771709487,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139354,
+      "price": 84649.2,
+      "qty": 0.002,
+      "first_id": 8132629162,
+      "last_id": 8132629162,
+      "trade_ts_ms": 1790771709487,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139355,
+      "price": 84649.4,
+      "qty": 0.004,
+      "first_id": 8132629163,
+      "last_id": 8132629164,
+      "trade_ts_ms": 1790771709487,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139356,
+      "price": 84649.5,
+      "qty": 0.001,
+      "first_id": 8132629165,
+      "last_id": 8132629165,
+      "trade_ts_ms": 1790771709487,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139357,
+      "price": 84649.6,
+      "qty": 0.006,
+      "first_id": 8132629166,
+      "last_id": 8132629169,
+      "trade_ts_ms": 1790771709487,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139358,
+      "price": 84649.5,
+      "qty": 0.001,
+      "first_id": 8132629170,
+      "last_id": 8132629170,
+      "trade_ts_ms": 1790771709488,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3470139359,
+      "price": 84649.6,
+      "qty": 0.505,
+      "first_id": 8132629171,
+      "last_id": 8132629179,
+      "trade_ts_ms": 1790771709488,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139360,
+      "price": 84649.5,
+      "qty": 0.001,
+      "first_id": 8132629180,
+      "last_id": 8132629180,
+      "trade_ts_ms": 1790771709489,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3470139361,
+      "price": 84649.6,
+      "qty": 0.347,
+      "first_id": 8132629181,
+      "last_id": 8132629187,
+      "trade_ts_ms": 1790771709490,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139362,
+      "price": 84649.7,
+      "qty": 0.002,
+      "first_id": 8132629188,
+      "last_id": 8132629189,
+      "trade_ts_ms": 1790771709491,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139363,
+      "price": 84649.8,
+      "qty": 0.001,
+      "first_id": 8132629190,
+      "last_id": 8132629190,
+      "trade_ts_ms": 1790771709491,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139364,
+      "price": 84649.9,
+      "qty": 0.012,
+      "first_id": 8132629191,
+      "last_id": 8132629192,
+      "trade_ts_ms": 1790771709491,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139365,
+      "price": 84650.0,
+      "qty": 0.316,
+      "first_id": 8132629193,
+      "last_id": 8132629210,
+      "trade_ts_ms": 1790771709491,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139366,
+      "price": 84649.9,
+      "qty": 0.001,
+      "first_id": 8132629211,
+      "last_id": 8132629211,
+      "trade_ts_ms": 1790771709492,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3470139367,
+      "price": 84650.0,
+      "qty": 0.162,
+      "first_id": 8132629212,
+      "last_id": 8132629218,
+      "trade_ts_ms": 1790771709492,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139368,
+      "price": 84649.9,
+      "qty": 0.077,
+      "first_id": 8132629219,
+      "last_id": 8132629219,
+      "trade_ts_ms": 1790771709492,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3470139369,
+      "price": 84650.0,
+      "qty": 0.041,
+      "first_id": 8132629220,
+      "last_id": 8132629222,
+      "trade_ts_ms": 1790771709492,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139370,
+      "price": 84649.9,
+      "qty": 0.004,
+      "first_id": 8132629223,
+      "last_id": 8132629223,
+      "trade_ts_ms": 1790771709492,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3470139371,
+      "price": 84650.0,
+      "qty": 0.018,
+      "first_id": 8132629224,
+      "last_id": 8132629225,
+      "trade_ts_ms": 1790771709492,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139372,
+      "price": 84649.9,
+      "qty": 0.005,
+      "first_id": 8132629226,
+      "last_id": 8132629226,
+      "trade_ts_ms": 1790771709492,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3470139373,
+      "price": 84650.0,
+      "qty": 1.399,
+      "first_id": 8132629227,
+      "last_id": 8132629227,
+      "trade_ts_ms": 1790771709492,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139374,
+      "price": 84649.9,
+      "qty": 0.001,
+      "first_id": 8132629228,
+      "last_id": 8132629228,
+      "trade_ts_ms": 1790771709492,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3470139375,
+      "price": 84650.0,
+      "qty": 2.261,
+      "first_id": 8132629229,
+      "last_id": 8132629248,
+      "trade_ts_ms": 1790771709492,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139376,
+      "price": 84649.9,
+      "qty": 0.002,
+      "first_id": 8132629249,
+      "last_id": 8132629250,
+      "trade_ts_ms": 1790771709492,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3470139377,
+      "price": 84650.0,
+      "qty": 0.967,
+      "first_id": 8132629251,
+      "last_id": 8132629266,
+      "trade_ts_ms": 1790771709492,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139378,
+      "price": 84649.9,
+      "qty": 0.001,
+      "first_id": 8132629267,
+      "last_id": 8132629267,
+      "trade_ts_ms": 1790771709492,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3470139379,
+      "price": 84650.0,
+      "qty": 1.819,
+      "first_id": 8132629268,
+      "last_id": 8132629280,
+      "trade_ts_ms": 1790771709492,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139380,
+      "price": 84650.2,
+      "qty": 0.004,
+      "first_id": 8132629281,
+      "last_id": 8132629282,
+      "trade_ts_ms": 1790771709492,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139381,
+      "price": 84650.3,
+      "qty": 0.001,
+      "first_id": 8132629283,
+      "last_id": 8132629283,
+      "trade_ts_ms": 1790771709492,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139382,
+      "price": 84650.4,
+      "qty": 0.001,
+      "first_id": 8132629284,
+      "last_id": 8132629284,
+      "trade_ts_ms": 1790771709492,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139383,
+      "price": 84650.5,
+      "qty": 0.009,
+      "first_id": 8132629285,
+      "last_id": 8132629286,
+      "trade_ts_ms": 1790771709492,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139384,
+      "price": 84650.8,
+      "qty": 0.001,
+      "first_id": 8132629287,
+      "last_id": 8132629287,
+      "trade_ts_ms": 1790771709492,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139385,
+      "price": 84650.9,
+      "qty": 0.001,
+      "first_id": 8132629288,
+      "last_id": 8132629288,
+      "trade_ts_ms": 1790771709492,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139386,
+      "price": 84651.0,
+      "qty": 0.033,
+      "first_id": 8132629289,
+      "last_id": 8132629292,
+      "trade_ts_ms": 1790771709492,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139387,
+      "price": 84651.2,
+      "qty": 0.002,
+      "first_id": 8132629293,
+      "last_id": 8132629294,
+      "trade_ts_ms": 1790771709492,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139388,
+      "price": 84651.4,
+      "qty": 0.001,
+      "first_id": 8132629295,
+      "last_id": 8132629295,
+      "trade_ts_ms": 1790771709492,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139389,
+      "price": 84651.5,
+      "qty": 0.002,
+      "first_id": 8132629296,
+      "last_id": 8132629296,
+      "trade_ts_ms": 1790771709492,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139390,
+      "price": 84651.6,
+      "qty": 0.001,
+      "first_id": 8132629297,
+      "last_id": 8132629297,
+      "trade_ts_ms": 1790771709492,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139391,
+      "price": 84651.7,
+      "qty": 0.001,
+      "first_id": 8132629298,
+      "last_id": 8132629298,
+      "trade_ts_ms": 1790771709492,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139392,
+      "price": 84651.8,
+      "qty": 0.006,
+      "first_id": 8132629299,
+      "last_id": 8132629300,
+      "trade_ts_ms": 1790771709492,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139393,
+      "price": 84651.9,
+      "qty": 0.001,
+      "first_id": 8132629301,
+      "last_id": 8132629301,
+      "trade_ts_ms": 1790771709492,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139394,
+      "price": 84652.0,
+      "qty": 0.003,
+      "first_id": 8132629302,
+      "last_id": 8132629303,
+      "trade_ts_ms": 1790771709492,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139395,
+      "price": 84652.1,
+      "qty": 0.598,
+      "first_id": 8132629304,
+      "last_id": 8132629305,
+      "trade_ts_ms": 1790771709492,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139396,
+      "price": 84650.0,
+      "qty": 1.004,
+      "first_id": 8132629306,
+      "last_id": 8132629308,
+      "trade_ts_ms": 1790771709492,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139397,
+      "price": 84649.9,
+      "qty": 0.15,
+      "first_id": 8132629309,
+      "last_id": 8132629310,
+      "trade_ts_ms": 1790771709492,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3470139398,
+      "price": 84650.0,
+      "qty": 1.182,
+      "first_id": 8132629311,
+      "last_id": 8132629317,
+      "trade_ts_ms": 1790771709492,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139399,
+      "price": 84649.9,
+      "qty": 0.065,
+      "first_id": 8132629318,
+      "last_id": 8132629318,
+      "trade_ts_ms": 1790771709492,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3470139400,
+      "price": 84650.0,
+      "qty": 0.001,
+      "first_id": 8132629319,
+      "last_id": 8132629319,
+      "trade_ts_ms": 1790771709492,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139401,
+      "price": 84649.9,
+      "qty": 0.001,
+      "first_id": 8132629320,
+      "last_id": 8132629320,
+      "trade_ts_ms": 1790771709492,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3470139402,
+      "price": 84650.0,
+      "qty": 0.051,
+      "first_id": 8132629321,
+      "last_id": 8132629322,
+      "trade_ts_ms": 1790771709492,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139403,
+      "price": 84649.9,
+      "qty": 0.15,
+      "first_id": 8132629323,
+      "last_id": 8132629323,
+      "trade_ts_ms": 1790771709492,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3470139404,
+      "price": 84650.0,
+      "qty": 0.025,
+      "first_id": 8132629324,
+      "last_id": 8132629325,
+      "trade_ts_ms": 1790771709493,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139405,
+      "price": 84649.9,
+      "qty": 0.332,
+      "first_id": 8132629326,
+      "last_id": 8132629328,
+      "trade_ts_ms": 1790771709493,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3470139406,
+      "price": 84650.0,
+      "qty": 15.074,
+      "first_id": 8132629329,
+      "last_id": 8132629335,
+      "trade_ts_ms": 1790771709493,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139407,
+      "price": 84649.9,
+      "qty": 0.435,
+      "first_id": 8132629336,
+      "last_id": 8132629336,
+      "trade_ts_ms": 1790771709495,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3470139408,
+      "price": 84650.0,
+      "qty": 13.047,
+      "first_id": 8132629337,
+      "last_id": 8132629349,
+      "trade_ts_ms": 1790771709495,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139409,
+      "price": 84650.1,
+      "qty": 0.001,
+      "first_id": 8132629350,
+      "last_id": 8132629350,
+      "trade_ts_ms": 1790771709497,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139410,
+      "price": 84651.9,
+      "qty": 0.001,
+      "first_id": 8132629351,
+      "last_id": 8132629351,
+      "trade_ts_ms": 1790771709498,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139411,
+      "price": 84652.0,
+      "qty": 0.051,
+      "first_id": 8132629352,
+      "last_id": 8132629353,
+      "trade_ts_ms": 1790771709498,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139412,
+      "price": 84652.1,
+      "qty": 0.191,
+      "first_id": 8132629354,
+      "last_id": 8132629356,
+      "trade_ts_ms": 1790771709498,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139413,
+      "price": 84652.2,
+      "qty": 0.132,
+      "first_id": 8132629357,
+      "last_id": 8132629358,
+      "trade_ts_ms": 1790771709498,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139414,
+      "price": 84652.3,
+      "qty": 0.017,
+      "first_id": 8132629359,
+      "last_id": 8132629360,
+      "trade_ts_ms": 1790771709498,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139415,
+      "price": 84652.4,
+      "qty": 0.069,
+      "first_id": 8132629361,
+      "last_id": 8132629362,
+      "trade_ts_ms": 1790771709498,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139416,
+      "price": 84652.6,
+      "qty": 0.017,
+      "first_id": 8132629363,
+      "last_id": 8132629363,
+      "trade_ts_ms": 1790771709498,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139417,
+      "price": 84652.8,
+      "qty": 0.171,
+      "first_id": 8132629364,
+      "last_id": 8132629364,
+      "trade_ts_ms": 1790771709498,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139418,
+      "price": 84652.9,
+      "qty": 0.006,
+      "first_id": 8132629365,
+      "last_id": 8132629367,
+      "trade_ts_ms": 1790771709498,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139419,
+      "price": 84653.0,
+      "qty": 0.006,
+      "first_id": 8132629368,
+      "last_id": 8132629370,
+      "trade_ts_ms": 1790771709498,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139420,
+      "price": 84653.1,
+      "qty": 0.034,
+      "first_id": 8132629371,
+      "last_id": 8132629375,
+      "trade_ts_ms": 1790771709498,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139421,
+      "price": 84653.2,
+      "qty": 0.005,
+      "first_id": 8132629376,
+      "last_id": 8132629377,
+      "trade_ts_ms": 1790771709498,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3470139422,
+      "price": 84653.4,
+      "qty": 0.001,
+      "first_id": 8132629378,
+      "last_id": 8132629378,
+      "trade_ts_ms": 1790771709498,
+      "buyer_is_maker": false
+     }
+    ],
+    "prev_last_id": 8132628481,
+    "closed": [
+     {
+      "window_start_ms": 1790771708000,
+      "buy_notional": 44800071.573499955,
+      "sell_notional": 19958593.363399986,
+      "buy_count": 1734,
+      "sell_count": 509,
+      "total_qty": 765.7829999999877,
+      "vwap": 84565.2945245599,
+      "last_id": 8132628481
+     },
+     "",
+     "complete"
+    ],
+    "resync_pending": false
+   },
+   "ETHUSDT": {
+    "window": 1790771709000,
+    "trades": [
+     {
+      "agg_id": 3104858986,
+      "price": 2725.17,
+      "qty": 0.009,
+      "first_id": 8804044505,
+      "last_id": 8804044505,
+      "trade_ts_ms": 1790771709078,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3104858987,
+      "price": 2725.15,
+      "qty": 0.01,
+      "first_id": 8804044506,
+      "last_id": 8804044508,
+      "trade_ts_ms": 1790771709078,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3104858988,
+      "price": 2725.14,
+      "qty": 0.743,
+      "first_id": 8804044509,
+      "last_id": 8804044513,
+      "trade_ts_ms": 1790771709078,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3104858989,
+      "price": 2725.13,
+      "qty": 0.936,
+      "first_id": 8804044514,
+      "last_id": 8804044525,
+      "trade_ts_ms": 1790771709078,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3104858990,
+      "price": 2725.11,
+      "qty": 0.01,
+      "first_id": 8804044526,
+      "last_id": 8804044527,
+      "trade_ts_ms": 1790771709078,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3104858991,
+      "price": 2725.09,
+      "qty": 0.009,
+      "first_id": 8804044528,
+      "last_id": 8804044528,
+      "trade_ts_ms": 1790771709078,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3104858992,
+      "price": 2725.08,
+      "qty": 0.043,
+      "first_id": 8804044529,
+      "last_id": 8804044532,
+      "trade_ts_ms": 1790771709078,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3104858993,
+      "price": 2725.07,
+      "qty": 0.816,
+      "first_id": 8804044533,
+      "last_id": 8804044540,
+      "trade_ts_ms": 1790771709078,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3104858994,
+      "price": 2725.05,
+      "qty": 0.009,
+      "first_id": 8804044541,
+      "last_id": 8804044541,
+      "trade_ts_ms": 1790771709078,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3104858995,
+      "price": 2725.04,
+      "qty": 4.255,
+      "first_id": 8804044542,
+      "last_id": 8804044575,
+      "trade_ts_ms": 1790771709078,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3104858996,
+      "price": 2725.03,
+      "qty": 0.008,
+      "first_id": 8804044576,
+      "last_id": 8804044576,
+      "trade_ts_ms": 1790771709080,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3104858997,
+      "price": 2725.02,
+      "qty": 0.017,
+      "first_id": 8804044577,
+      "last_id": 8804044578,
+      "trade_ts_ms": 1790771709080,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3104858998,
+      "price": 2725.01,
+      "qty": 0.742,
+      "first_id": 8804044579,
+      "last_id": 8804044582,
+      "trade_ts_ms": 1790771709080,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3104858999,
+      "price": 2725.0,
+      "qty": 1.148,
+      "first_id": 8804044583,
+      "last_id": 8804044589,
+      "trade_ts_ms": 1790771709080,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3104859000,
+      "price": 2724.99,
+      "qty": 3.548,
+      "first_id": 8804044590,
+      "last_id": 8804044606,
+      "trade_ts_ms": 1790771709081,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3104859001,
+      "price": 2724.98,
+      "qty": 0.918,
+      "first_id": 8804044607,
+      "last_id": 8804044607,
+      "trade_ts_ms": 1790771709081,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3104859002,
+      "price": 2724.96,
+      "qty": 0.034,
+      "first_id": 8804044608,
+      "last_id": 8804044611,
+      "trade_ts_ms": 1790771709081,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3104859003,
+      "price": 2724.95,
+      "qty": 2.151,
+      "first_id": 8804044612,
+      "last_id": 8804044613,
+      "trade_ts_ms": 1790771709081,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3104859004,
+      "price": 2724.94,
+      "qty": 2.239,
+      "first_id": 8804044614,
+      "last_id": 8804044638,
+      "trade_ts_ms": 1790771709082,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3104859005,
+      "price": 2724.93,
+      "qty": 2.298,
+      "first_id": 8804044639,
+      "last_id": 8804044650,
+      "trade_ts_ms": 1790771709083,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3104859006,
+      "price": 2724.9,
+      "qty": 0.087,
+      "first_id": 8804044651,
+      "last_id": 8804044653,
+      "trade_ts_ms": 1790771709083,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3104859007,
+      "price": 2724.89,
+      "qty": 11.712,
+      "first_id": 8804044654,
+      "last_id": 8804044715,
+      "trade_ts_ms": 1790771709083,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3104859008,
+      "price": 2724.9,
+      "qty": 0.01,
+      "first_id": 8804044716,
+      "last_id": 8804044716,
+      "trade_ts_ms": 1790771709087,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859009,
+      "price": 2724.89,
+      "qty": 0.602,
+      "first_id": 8804044717,
+      "last_id": 8804044721,
+      "trade_ts_ms": 1790771709087,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3104859010,
+      "price": 2724.9,
+      "qty": 0.011,
+      "first_id": 8804044722,
+      "last_id": 8804044722,
+      "trade_ts_ms": 1790771709087,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859011,
+      "price": 2724.89,
+      "qty": 0.359,
+      "first_id": 8804044723,
+      "last_id": 8804044723,
+      "trade_ts_ms": 1790771709087,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3104859012,
+      "price": 2724.9,
+      "qty": 0.033,
+      "first_id": 8804044724,
+      "last_id": 8804044724,
+      "trade_ts_ms": 1790771709087,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859013,
+      "price": 2724.89,
+      "qty": 0.224,
+      "first_id": 8804044725,
+      "last_id": 8804044725,
+      "trade_ts_ms": 1790771709087,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3104859014,
+      "price": 2724.9,
+      "qty": 0.009,
+      "first_id": 8804044726,
+      "last_id": 8804044726,
+      "trade_ts_ms": 1790771709087,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859015,
+      "price": 2724.89,
+      "qty": 0.888,
+      "first_id": 8804044727,
+      "last_id": 8804044731,
+      "trade_ts_ms": 1790771709087,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3104859016,
+      "price": 2724.9,
+      "qty": 0.009,
+      "first_id": 8804044732,
+      "last_id": 8804044732,
+      "trade_ts_ms": 1790771709088,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859017,
+      "price": 2724.89,
+      "qty": 1.218,
+      "first_id": 8804044733,
+      "last_id": 8804044740,
+      "trade_ts_ms": 1790771709088,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3104859018,
+      "price": 2724.9,
+      "qty": 0.033,
+      "first_id": 8804044741,
+      "last_id": 8804044741,
+      "trade_ts_ms": 1790771709089,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859019,
+      "price": 2724.89,
+      "qty": 0.897,
+      "first_id": 8804044742,
+      "last_id": 8804044747,
+      "trade_ts_ms": 1790771709089,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3104859020,
+      "price": 2724.9,
+      "qty": 0.014,
+      "first_id": 8804044748,
+      "last_id": 8804044748,
+      "trade_ts_ms": 1790771709089,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859021,
+      "price": 2724.89,
+      "qty": 0.727,
+      "first_id": 8804044749,
+      "last_id": 8804044756,
+      "trade_ts_ms": 1790771709089,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3104859022,
+      "price": 2724.9,
+      "qty": 0.011,
+      "first_id": 8804044757,
+      "last_id": 8804044757,
+      "trade_ts_ms": 1790771709090,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859023,
+      "price": 2724.89,
+      "qty": 2.619,
+      "first_id": 8804044758,
+      "last_id": 8804044777,
+      "trade_ts_ms": 1790771709090,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3104859024,
+      "price": 2724.9,
+      "qty": 0.009,
+      "first_id": 8804044778,
+      "last_id": 8804044778,
+      "trade_ts_ms": 1790771709092,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859025,
+      "price": 2724.89,
+      "qty": 0.338,
+      "first_id": 8804044779,
+      "last_id": 8804044781,
+      "trade_ts_ms": 1790771709092,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3104859026,
+      "price": 2724.9,
+      "qty": 0.02,
+      "first_id": 8804044782,
+      "last_id": 8804044782,
+      "trade_ts_ms": 1790771709092,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859027,
+      "price": 2724.89,
+      "qty": 0.127,
+      "first_id": 8804044783,
+      "last_id": 8804044784,
+      "trade_ts_ms": 1790771709092,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3104859028,
+      "price": 2724.9,
+      "qty": 0.018,
+      "first_id": 8804044785,
+      "last_id": 8804044785,
+      "trade_ts_ms": 1790771709092,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859029,
+      "price": 2724.89,
+      "qty": 0.115,
+      "first_id": 8804044786,
+      "last_id": 8804044788,
+      "trade_ts_ms": 1790771709092,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3104859030,
+      "price": 2724.9,
+      "qty": 0.017,
+      "first_id": 8804044789,
+      "last_id": 8804044789,
+      "trade_ts_ms": 1790771709093,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859031,
+      "price": 2724.89,
+      "qty": 0.117,
+      "first_id": 8804044790,
+      "last_id": 8804044792,
+      "trade_ts_ms": 1790771709093,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3104859032,
+      "price": 2724.9,
+      "qty": 0.038,
+      "first_id": 8804044793,
+      "last_id": 8804044796,
+      "trade_ts_ms": 1790771709093,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859033,
+      "price": 2724.89,
+      "qty": 0.054,
+      "first_id": 8804044797,
+      "last_id": 8804044797,
+      "trade_ts_ms": 1790771709094,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3104859034,
+      "price": 2724.9,
+      "qty": 0.021,
+      "first_id": 8804044798,
+      "last_id": 8804044799,
+      "trade_ts_ms": 1790771709094,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859035,
+      "price": 2724.89,
+      "qty": 0.106,
+      "first_id": 8804044800,
+      "last_id": 8804044800,
+      "trade_ts_ms": 1790771709094,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3104859036,
+      "price": 2724.9,
+      "qty": 75.024,
+      "first_id": 8804044801,
+      "last_id": 8804044820,
+      "trade_ts_ms": 1790771709094,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859037,
+      "price": 2724.91,
+      "qty": 1.874,
+      "first_id": 8804044821,
+      "last_id": 8804044822,
+      "trade_ts_ms": 1790771709094,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859038,
+      "price": 2724.89,
+      "qty": 1.259,
+      "first_id": 8804044823,
+      "last_id": 8804044823,
+      "trade_ts_ms": 1790771709094,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3104859039,
+      "price": 2724.9,
+      "qty": 0.289,
+      "first_id": 8804044824,
+      "last_id": 8804044827,
+      "trade_ts_ms": 1790771709095,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3104859040,
+      "price": 2724.91,
+      "qty": 0.231,
+      "first_id": 8804044828,
+      "last_id": 8804044830,
+      "trade_ts_ms": 1790771709095,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3104859041,
+      "price": 2724.92,
+      "qty": 0.595,
+      "first_id": 8804044831,
+      "last_id": 8804044832,
+      "trade_ts_ms": 1790771709096,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859042,
+      "price": 2724.91,
+      "qty": 0.021,
+      "first_id": 8804044833,
+      "last_id": 8804044833,
+      "trade_ts_ms": 1790771709096,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3104859043,
+      "price": 2724.92,
+      "qty": 0.009,
+      "first_id": 8804044834,
+      "last_id": 8804044834,
+      "trade_ts_ms": 1790771709096,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859044,
+      "price": 2724.91,
+      "qty": 0.111,
+      "first_id": 8804044835,
+      "last_id": 8804044835,
+      "trade_ts_ms": 1790771709096,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3104859045,
+      "price": 2724.92,
+      "qty": 0.033,
+      "first_id": 8804044836,
+      "last_id": 8804044837,
+      "trade_ts_ms": 1790771709096,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859046,
+      "price": 2724.91,
+      "qty": 0.344,
+      "first_id": 8804044838,
+      "last_id": 8804044841,
+      "trade_ts_ms": 1790771709096,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3104859047,
+      "price": 2724.92,
+      "qty": 0.045,
+      "first_id": 8804044842,
+      "last_id": 8804044843,
+      "trade_ts_ms": 1790771709097,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859048,
+      "price": 2724.91,
+      "qty": 0.03,
+      "first_id": 8804044844,
+      "last_id": 8804044844,
+      "trade_ts_ms": 1790771709097,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3104859049,
+      "price": 2724.92,
+      "qty": 0.075,
+      "first_id": 8804044845,
+      "last_id": 8804044849,
+      "trade_ts_ms": 1790771709097,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859050,
+      "price": 2724.95,
+      "qty": 0.009,
+      "first_id": 8804044850,
+      "last_id": 8804044850,
+      "trade_ts_ms": 1790771709101,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859051,
+      "price": 2724.98,
+      "qty": 0.008,
+      "first_id": 8804044851,
+      "last_id": 8804044851,
+      "trade_ts_ms": 1790771709101,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859052,
+      "price": 2724.99,
+      "qty": 0.009,
+      "first_id": 8804044852,
+      "last_id": 8804044852,
+      "trade_ts_ms": 1790771709101,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859053,
+      "price": 2725.02,
+      "qty": 0.009,
+      "first_id": 8804044853,
+      "last_id": 8804044853,
+      "trade_ts_ms": 1790771709101,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859054,
+      "price": 2725.05,
+      "qty": 0.045,
+      "first_id": 8804044854,
+      "last_id": 8804044856,
+      "trade_ts_ms": 1790771709101,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859055,
+      "price": 2725.06,
+      "qty": 0.014,
+      "first_id": 8804044857,
+      "last_id": 8804044857,
+      "trade_ts_ms": 1790771709101,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859056,
+      "price": 2725.08,
+      "qty": 0.008,
+      "first_id": 8804044858,
+      "last_id": 8804044858,
+      "trade_ts_ms": 1790771709101,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859057,
+      "price": 2725.1,
+      "qty": 0.009,
+      "first_id": 8804044859,
+      "last_id": 8804044859,
+      "trade_ts_ms": 1790771709101,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859058,
+      "price": 2725.12,
+      "qty": 0.008,
+      "first_id": 8804044860,
+      "last_id": 8804044860,
+      "trade_ts_ms": 1790771709101,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859059,
+      "price": 2725.13,
+      "qty": 0.008,
+      "first_id": 8804044861,
+      "last_id": 8804044861,
+      "trade_ts_ms": 1790771709101,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859060,
+      "price": 2725.15,
+      "qty": 0.009,
+      "first_id": 8804044862,
+      "last_id": 8804044862,
+      "trade_ts_ms": 1790771709101,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859061,
+      "price": 2725.16,
+      "qty": 0.014,
+      "first_id": 8804044863,
+      "last_id": 8804044863,
+      "trade_ts_ms": 1790771709101,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859062,
+      "price": 2725.18,
+      "qty": 0.127,
+      "first_id": 8804044864,
+      "last_id": 8804044871,
+      "trade_ts_ms": 1790771709143,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859063,
+      "price": 2725.19,
+      "qty": 8.117,
+      "first_id": 8804044872,
+      "last_id": 8804044875,
+      "trade_ts_ms": 1790771709143,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859064,
+      "price": 2725.2,
+      "qty": 0.024,
+      "first_id": 8804044876,
+      "last_id": 8804044878,
+      "trade_ts_ms": 1790771709145,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859065,
+      "price": 2725.21,
+      "qty": 0.009,
+      "first_id": 8804044879,
+      "last_id": 8804044879,
+      "trade_ts_ms": 1790771709145,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859066,
+      "price": 2725.22,
+      "qty": 0.008,
+      "first_id": 8804044880,
+      "last_id": 8804044880,
+      "trade_ts_ms": 1790771709145,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859067,
+      "price": 2725.23,
+      "qty": 2.853,
+      "first_id": 8804044881,
+      "last_id": 8804044887,
+      "trade_ts_ms": 1790771709145,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859068,
+      "price": 2725.24,
+      "qty": 0.016,
+      "first_id": 8804044888,
+      "last_id": 8804044889,
+      "trade_ts_ms": 1790771709145,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859069,
+      "price": 2725.26,
+      "qty": 0.017,
+      "first_id": 8804044890,
+      "last_id": 8804044891,
+      "trade_ts_ms": 1790771709146,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859070,
+      "price": 2725.27,
+      "qty": 0.808,
+      "first_id": 8804044892,
+      "last_id": 8804044893,
+      "trade_ts_ms": 1790771709146,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859071,
+      "price": 2725.28,
+      "qty": 0.409,
+      "first_id": 8804044894,
+      "last_id": 8804044895,
+      "trade_ts_ms": 1790771709146,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859072,
+      "price": 2725.29,
+      "qty": 0.047,
+      "first_id": 8804044896,
+      "last_id": 8804044896,
+      "trade_ts_ms": 1790771709148,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859073,
+      "price": 2725.3,
+      "qty": 0.023,
+      "first_id": 8804044897,
+      "last_id": 8804044898,
+      "trade_ts_ms": 1790771709148,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859074,
+      "price": 2725.32,
+      "qty": 0.016,
+      "first_id": 8804044899,
+      "last_id": 8804044900,
+      "trade_ts_ms": 1790771709148,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859075,
+      "price": 2725.34,
+      "qty": 0.008,
+      "first_id": 8804044901,
+      "last_id": 8804044901,
+      "trade_ts_ms": 1790771709148,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859076,
+      "price": 2725.34,
+      "qty": 0.054,
+      "first_id": 8804044902,
+      "last_id": 8804044902,
+      "trade_ts_ms": 1790771709153,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3104859077,
+      "price": 2725.35,
+      "qty": 57.386,
+      "first_id": 8804044903,
+      "last_id": 8804044941,
+      "trade_ts_ms": 1790771709155,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859078,
+      "price": 2725.34,
+      "qty": 0.544,
+      "first_id": 8804044942,
+      "last_id": 8804044943,
+      "trade_ts_ms": 1790771709190,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3104859079,
+      "price": 2725.35,
+      "qty": 16.682,
+      "first_id": 8804044944,
+      "last_id": 8804044969,
+      "trade_ts_ms": 1790771709205,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859080,
+      "price": 2725.36,
+      "qty": 0.009,
+      "first_id": 8804044970,
+      "last_id": 8804044970,
+      "trade_ts_ms": 1790771709213,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859081,
+      "price": 2725.37,
+      "qty": 0.008,
+      "first_id": 8804044971,
+      "last_id": 8804044971,
+      "trade_ts_ms": 1790771709213,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859082,
+      "price": 2725.37,
+      "qty": 0.17,
+      "first_id": 8804044972,
+      "last_id": 8804044972,
+      "trade_ts_ms": 1790771709218,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3104859083,
+      "price": 2725.38,
+      "qty": 14.407,
+      "first_id": 8804044973,
+      "last_id": 8804044985,
+      "trade_ts_ms": 1790771709242,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859084,
+      "price": 2725.39,
+      "qty": 0.362,
+      "first_id": 8804044986,
+      "last_id": 8804044987,
+      "trade_ts_ms": 1790771709242,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859085,
+      "price": 2725.4,
+      "qty": 0.021,
+      "first_id": 8804044988,
+      "last_id": 8804044992,
+      "trade_ts_ms": 1790771709242,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859086,
+      "price": 2725.38,
+      "qty": 0.561,
+      "first_id": 8804044993,
+      "last_id": 8804044993,
+      "trade_ts_ms": 1790771709243,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3104859087,
+      "price": 2725.41,
+      "qty": 0.008,
+      "first_id": 8804044994,
+      "last_id": 8804044994,
+      "trade_ts_ms": 1790771709244,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859088,
+      "price": 2725.42,
+      "qty": 0.025,
+      "first_id": 8804044995,
+      "last_id": 8804044997,
+      "trade_ts_ms": 1790771709244,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859089,
+      "price": 2725.43,
+      "qty": 0.1,
+      "first_id": 8804044998,
+      "last_id": 8804044998,
+      "trade_ts_ms": 1790771709244,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859090,
+      "price": 2725.44,
+      "qty": 0.087,
+      "first_id": 8804044999,
+      "last_id": 8804045007,
+      "trade_ts_ms": 1790771709244,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859091,
+      "price": 2725.44,
+      "qty": 3.5,
+      "first_id": 8804045008,
+      "last_id": 8804045009,
+      "trade_ts_ms": 1790771709244,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3104859092,
+      "price": 2725.45,
+      "qty": 6.921,
+      "first_id": 8804045010,
+      "last_id": 8804045032,
+      "trade_ts_ms": 1790771709312,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859093,
+      "price": 2725.46,
+      "qty": 0.218,
+      "first_id": 8804045034,
+      "last_id": 8804045035,
+      "trade_ts_ms": 1790771709334,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3104859094,
+      "price": 2725.47,
+      "qty": 0.025,
+      "first_id": 8804045036,
+      "last_id": 8804045036,
+      "trade_ts_ms": 1790771709361,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859095,
+      "price": 2725.46,
+      "qty": 0.187,
+      "first_id": 8804045037,
+      "last_id": 8804045037,
+      "trade_ts_ms": 1790771709362,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3104859096,
+      "price": 2725.47,
+      "qty": 1.025,
+      "first_id": 8804045038,
+      "last_id": 8804045044,
+      "trade_ts_ms": 1790771709362,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859097,
+      "price": 2725.46,
+      "qty": 2.207,
+      "first_id": 8804045045,
+      "last_id": 8804045046,
+      "trade_ts_ms": 1790771709368,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3104859098,
+      "price": 2725.47,
+      "qty": 2.445,
+      "first_id": 8804045047,
+      "last_id": 8804045047,
+      "trade_ts_ms": 1790771709395,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859099,
+      "price": 2725.46,
+      "qty": 4.302,
+      "first_id": 8804045048,
+      "last_id": 8804045048,
+      "trade_ts_ms": 1790771709406,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3104859100,
+      "price": 2725.47,
+      "qty": 8.807,
+      "first_id": 8804045049,
+      "last_id": 8804045066,
+      "trade_ts_ms": 1790771709408,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859101,
+      "price": 2725.48,
+      "qty": 0.009,
+      "first_id": 8804045067,
+      "last_id": 8804045067,
+      "trade_ts_ms": 1790771709408,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859102,
+      "price": 2725.49,
+      "qty": 0.008,
+      "first_id": 8804045068,
+      "last_id": 8804045068,
+      "trade_ts_ms": 1790771709408,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859103,
+      "price": 2725.5,
+      "qty": 56.119,
+      "first_id": 8804045069,
+      "last_id": 8804045085,
+      "trade_ts_ms": 1790771709408,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859104,
+      "price": 2725.51,
+      "qty": 0.008,
+      "first_id": 8804045086,
+      "last_id": 8804045086,
+      "trade_ts_ms": 1790771709412,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859105,
+      "price": 2725.52,
+      "qty": 0.009,
+      "first_id": 8804045087,
+      "last_id": 8804045087,
+      "trade_ts_ms": 1790771709412,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859106,
+      "price": 2725.53,
+      "qty": 0.048,
+      "first_id": 8804045088,
+      "last_id": 8804045089,
+      "trade_ts_ms": 1790771709413,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859107,
+      "price": 2725.54,
+      "qty": 0.089,
+      "first_id": 8804045090,
+      "last_id": 8804045094,
+      "trade_ts_ms": 1790771709413,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859108,
+      "price": 2725.55,
+      "qty": 0.277,
+      "first_id": 8804045095,
+      "last_id": 8804045097,
+      "trade_ts_ms": 1790771709413,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859109,
+      "price": 2725.56,
+      "qty": 0.234,
+      "first_id": 8804045098,
+      "last_id": 8804045104,
+      "trade_ts_ms": 1790771709413,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859110,
+      "price": 2725.57,
+      "qty": 0.199,
+      "first_id": 8804045105,
+      "last_id": 8804045111,
+      "trade_ts_ms": 1790771709414,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859111,
+      "price": 2725.58,
+      "qty": 0.187,
+      "first_id": 8804045112,
+      "last_id": 8804045116,
+      "trade_ts_ms": 1790771709415,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859112,
+      "price": 2725.59,
+      "qty": 0.366,
+      "first_id": 8804045117,
+      "last_id": 8804045119,
+      "trade_ts_ms": 1790771709416,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859113,
+      "price": 2725.6,
+      "qty": 0.016,
+      "first_id": 8804045120,
+      "last_id": 8804045121,
+      "trade_ts_ms": 1790771709416,
+      "buyer_is_maker": false
+     },
+     {
+      "agg_id": 3104859114,
+      "price": 2725.61,
+      "qty": 9.511,
+      "first_id": 8804045122,
+      "last_id": 8804045122,
+      "trade_ts_ms": 1790771709417,
+      "buyer_is_maker": true
+     },
+     {
+      "agg_id": 3104859115,
+      "price": 2725.62,
+      "qty": 2.803,
+      "first_id": 8804045123,
+      "last_id": 8804045128,
+      "trade_ts_ms": 1790771709417,
+      "buyer_is_maker": false
+     }
+    ],
+    "prev_last_id": 8804044504,
+    "closed": [
+     null,
+     "flow:trade-id-gap",
+     "gap"
+    ],
+    "resync_pending": true
+   }
+  }
+ },
+ "engine": {
+  "marks": {
+   "BTCUSDT": 84460.9,
+   "ETHUSDT": 2723.23671318
+  },
+  "mark_ts": {
+   "BTCUSDT": "2026-09-30T12:34:59.999000+00:00",
+   "ETHUSDT": "2026-09-30T12:34:59.999000+00:00"
+  },
+  "funding_terms": {
+   "BTCUSDT": {
+    "rate": -2.44e-06,
+    "next_ms": 1790784000002,
+    "settled_ms": 1790755200000
+   },
+   "ETHUSDT": {
+    "rate": 5.437e-05,
+    "next_ms": 1790784000002,
+    "settled_ms": 1790755200000
+   }
+  },
+  "settled_funding": {},
+  "bbo": {
+   "BTCUSDT": [
+    84605.7,
+    84622.7,
+    10.0,
+    10.0
+   ],
+   "ETHUSDT": [
+    2724.9,
+    2725.4,
+    10.0,
+    10.0
+   ]
+  },
+  "last_print": {
+   "BTCUSDT": [
+    84653.40000000001,
+    0.001
+   ],
+   "ETHUSDT": [
+    2725.6,
+    2.803
+   ]
+  },
+  "op_seq": 8239190,
+  "journal_bytes": 1030099489,
+  "cash": [
+   120.0,
+   120.0
+  ]
+ },
+ "protection": null,
+ "store_cursors": {
+  "intents": 0,
+  "execution_events": 0,
+  "risk_transitions": 8048306,
+  "checkpoints": 9,
+  "commands": 0
+ },
+ "run_state": "halted",
+ "counts": {
+  "events_seen": 8250000,
+  "admitted": 0,
+  "reject_counts": {
+   "strategy:no-fire:not-laggard": 593836,
+   "strategy:no-fire:insufficient-history": 95650,
+   "strategy:no-fire:gap-2": 140378,
+   "strategy:no-fire:gap-4": 20288,
+   "strategy:no-fire:gap-3": 56084,
+   "strategy:no-fire:gap-1": 241570,
+   "strategy:no-fire:gap-7": 888,
+   "strategy:no-fire:gap-6": 2600,
+   "strategy:no-fire:gap-5": 7418,
+   "strategy:no-fire:gap-8": 596,
+   "strategy:no-fire:move-gate": 62921,
+   "strategy:no-fire:leader-missing-bar": 74372,
+   "strategy:no-fire:gapmove-gate": 21,
+   "strategy:no-fire:gap-9": 90
+  },
+  "dispatch_ms": 0
+ },
+ "run_files": {
+  "fills.jsonl": 0,
+  "equity.jsonl": 1154042,
+  "rejections.jsonl": 231188125,
+  "risk.jsonl": 1577383756
+ },
+ "identity": {
+  "config_fingerprint": "0e77eafcddf44f8c",
+  "config_file_sha16": "f65daec3c38db5d5",
+  "cooldown_s": 300,
+  "mode": "replay",
+  "strategy_version": "0.1.0",
+  "adapters": [],
+  "cost_contract": "cost-contract-v1",
+  "dataset": {
+   "manifest_sha": "9008ba92ef88a8cf8f446f77fbe27983de16d780148a11fe6fd6971b0e8f1e31",
+   "kind": null,
+   "symbols": [
+    "BTCUSDT",
+    "ETHUSDT"
+   ],
+   "days": [
+    "2026-09-26",
+    "2026-09-27",
+    "2026-09-28",
+    "2026-09-29",
+    "2026-09-30",
+    "2026-10-01",
+    "2026-10-02",
+    "2026-10-03"
+   ],
+   "window": [
+    1790447400000,
+    1791052200000
+   ],
+   "spread": {
+    "profile": "research-spread-profile",
+    "bps": {
+     "BTCUSDT": 2.0,
+     "ETHUSDT": 2.0
+    }
+   }
+  },
+  "engine_seed": 42,
+  "filters": "frozen:3424987b8023ba29"
+ },
+ "last_mark": {
+  "price": 84653.4,
+  "ts_ms": 1790771709498,
+  "source": "aggTrade"
+ },
+ "estimates": []
+}

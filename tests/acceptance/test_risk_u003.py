@@ -19,7 +19,7 @@ def test_stress_multiplier_scales_only_stressed_costs():
     assert plans[1].stressed_cost_pct == pytest.approx(plans[0].stressed_cost_pct * 1.5)
     assert plans[2].stressed_cost_pct == pytest.approx(plans[0].stressed_cost_pct * 3.0)
     assert plans[0].reserved_risk == plans[1].reserved_risk == plans[2].reserved_risk
-    assert plans[0].reserved_risk == pytest.approx(25.0)
+    assert plans[0].reserved_risk == pytest.approx(12.5)  # W3-24H 0.125%.
     assert plans[0].notional_usdt > plans[1].notional_usdt > plans[2].notional_usdt
 
 

@@ -1,0 +1,11 @@
+{
+ "status": "CHILD_EXIT",
+ "child_rc": 0,
+ "elapsed_s": 14.461,
+ "budget_s": 300.0,
+ "command": [
+  ".venv/bin/python",
+  "/tmp/w1-ready/Crypto_Bot_CORR_Independent_Probes.py"
+ ],
+ "subreaper": false
+}

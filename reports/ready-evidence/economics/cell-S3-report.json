@@ -1,0 +1,33 @@
+{
+ "status": "CHILD_EXIT",
+ "child_rc": 0,
+ "elapsed_s": 498.642,
+ "budget_s": 1500.0,
+ "command": [
+  "uv",
+  "run",
+  "--locked",
+  "--extra",
+  "dev",
+  "python",
+  "-m",
+  "cryptobot.research.backtest",
+  "--dataset",
+  "cap-30min",
+  "--splits",
+  "mechanism",
+  "--symbols",
+  "BTCUSDT,ETHUSDT",
+  "--armsets",
+  "S3",
+  "--config",
+  "configs/round01/R01-S3.toml",
+  "--require-round",
+  "trials/round-01.json",
+  "--require-config",
+  "R01-S3",
+  "--out",
+  "/tmp/ready-mgr/R01-S3-cap30min"
+ ],
+ "subreaper": false
+}

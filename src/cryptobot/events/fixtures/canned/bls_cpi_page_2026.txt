@@ -1,0 +1,25 @@
+CANNED TEST DOUBLE — SYNTHETIC representative BLS CPI schedule page body.
+The real BLS schedule page returned HTTP 403 on 2026-10-12, so this page
+is hand-built: marker + all twelve verified 2026 release dates in long
+form. It exercises the transport/parser/verification seam only. The FIRST
+successful live fetch MUST confirm the real page structure; any mismatch
+fails closed (unverified) by design, never silently verified.
+
+BLS Schedule of Selected Releases — Consumer Price Index
+
+The Consumer Price Index (CPI) release schedule for 2026:
+
+- January 13, 2026 — Consumer Price Index (December 2025)
+- February 13, 2026 — Consumer Price Index (January 2026)
+- March 11, 2026 — Consumer Price Index (February 2026)
+- April 10, 2026 — Consumer Price Index (March 2026)
+- May 12, 2026 — Consumer Price Index (April 2026)
+- June 10, 2026 — Consumer Price Index (May 2026)
+- July 14, 2026 — Consumer Price Index (June 2026)
+- August 12, 2026 — Consumer Price Index (July 2026)
+- September 11, 2026 — Consumer Price Index (August 2026)
+- October 14, 2026 — Consumer Price Index (September 2026)
+- November 10, 2026 — Consumer Price Index (October 2026)
+- December 10, 2026 — Consumer Price Index (November 2026)
+
+Release time 8:30 AM ET. Schedule source: U.S. Bureau of Labor Statistics.

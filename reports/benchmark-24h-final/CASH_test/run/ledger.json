@@ -1,0 +1,15 @@
+{
+  "journal": [],
+  "pilot_equity": 120.0,
+  "seq": 0,
+  "snapshot": {
+    "avg_entry": 0.0,
+    "cash": 120.0,
+    "funding_net": 0.0,
+    "paid_costs": 0.0,
+    "qty": 0.0,
+    "realised": 0.0,
+    "seq": 0
+  },
+  "version": 1
+}

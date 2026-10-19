@@ -1,0 +1,16 @@
+[Unit]
+Description=CryptoBot F3 data-engine recorder (BTC/ETH USD-M capture)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/cryptobot
+ExecStart=/opt/cryptobot/.venv/bin/cryptobot recorder start
+Restart=on-failure
+RestartSec=10
+StartLimitIntervalSec=3600
+StartLimitBurst=5
+
+[Install]
+WantedBy=multi-user.target

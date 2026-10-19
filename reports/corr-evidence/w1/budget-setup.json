@@ -1,0 +1,11 @@
+{
+ "status": "CHILD_EXIT",
+ "child_rc": 0,
+ "elapsed_s": 173.238,
+ "budget_s": 1500.0,
+ "command": [
+  "bash",
+  "-c",
+  "cd /tmp/cryto-bot-w1-corr && uv venv .venv -q && uv pip install -q -e '.[dev]' && .venv/bin/python -m pytest -q 2>&1 | tail -2"
+ ]
+}

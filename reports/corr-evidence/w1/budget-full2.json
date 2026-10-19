@@ -1,0 +1,14 @@
+{
+ "status": "CHILD_EXIT",
+ "child_rc": 0,
+ "elapsed_s": 162.645,
+ "budget_s": 1500.0,
+ "command": [
+  ".venv/bin/python",
+  "-m",
+  "pytest",
+  "-q",
+  "-p",
+  "no:cacheprovider"
+ ]
+}

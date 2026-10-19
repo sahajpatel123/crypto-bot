@@ -1,0 +1,12 @@
+{
+  "test": "scored-once",
+  "cells": [
+    "CASH|test",
+    "COMBINED|test",
+    "S1|test",
+    "S2|test",
+    "S3|test",
+    "S4|test",
+    "S5|test"
+  ]
+}

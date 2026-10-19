@@ -1,0 +1,26 @@
+{
+ "BTCUSDT": {
+  "spread_bps_samples": [
+   0.012,
+   0.012,
+   0.012,
+   0.012,
+   0.012,
+   0.012
+  ],
+  "mean_bps": 0.012,
+  "source": "GET /fapi/v1/ticker/bookTicker x6 @5s, public no auth, 2026-10-16"
+ },
+ "ETHUSDT": {
+  "spread_bps_samples": [
+   0.041,
+   0.041,
+   0.041,
+   0.041,
+   0.041,
+   0.041
+  ],
+  "mean_bps": 0.041,
+  "source": "GET /fapi/v1/ticker/bookTicker x6 @5s, public no auth, 2026-10-16"
+ }
+}
