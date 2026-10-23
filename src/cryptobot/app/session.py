@@ -242,6 +242,10 @@ class Session:
         self._submit_ts: dict[str, datetime] = {}
         self._events_seen = 0
         self._flatten_pending = False
+        # Live arming context (set by the prod route from armed.json):
+        # capital ceiling + canary trade count. Paper/replay leave unset.
+        self.armed_capital_usdt: float | None = None
+        self.armed_canary_trades: int = 0
         self._orphan_close_ids: list[str] = []  # pos-less flatten closes.
         # Contract v1 §3 (W1): idempotent booking state. Applied
         # execution ids (durable in execution_events; rebuilt on
@@ -1001,6 +1005,19 @@ class Session:
         """Hard admission holds: prod default-off, reconcile, unknowns."""
         if self.config.mode == "prod" and not self.config.allow_live_submission:
             return "config:prod-submission-disabled"
+        if self.config.mode == "prod" and self.armed_capital_usdt is None:
+            return "config:prod-not-armed"
+        # Stale venue account truth must never admit new risk: if the
+        # live engine's cached snapshot is older than 30s, entries hold
+        # until a fresh REST snapshot lands (refresher/TTL covers it).
+        age_fn = getattr(self.engine, "account_cache_age_s", None)
+        if callable(age_fn):
+            try:
+                age = age_fn()
+            except Exception:  # noqa: BLE001 — unreadable age holds.
+                age = None
+            if age is not None and age > 30.0:
+                return "account:stale-cache"
         if not self._reconciled or self._flatten_pending:
             return "reconcile:restart-pending"
         if self._booking_blocked is not None:
@@ -1145,6 +1162,18 @@ class Session:
         # Approved = risk-budgeted request; executable = submitted; fills =
         # booked. A snap that breaks minimums rejects loudly (hold freed).
         executable = self._snap_qty(intent.instrument, verdict.qty)
+        if self.config.mode == "prod" and self.armed_canary_trades > 0:
+            # Canary (T6.3): first N armed trades at minimum legal size.
+            from cryptobot.risk.ladder import canary_size
+
+            filt = self.policy.config.instrument_filters.get(
+                intent.instrument)
+            min_qty = float(getattr(filt, "min_qty", 0.0) or 0.0)
+            if min_qty > 0:
+                executable = canary_size(
+                    trade_index=self._admitted,
+                    canary_trades=self.armed_canary_trades,
+                    min_qty=min_qty, planned_qty=executable)
         recheck = self._recheck_executable(intent, snapshot, executable,
                                            verdict.reserved_risk)
         if recheck is not None:
@@ -1167,6 +1196,46 @@ class Session:
                 intent.instrument, intent.side.value, "rejected",
                 "selection:exit-undecodable", self.now_utc().isoformat())
             return
+        # Liquidation gate (T1.8): live engines exposing venue brackets
+        # must prove the stop fires well before liquidation. Engines
+        # without brackets (paper/replay) skip; a venue that returns no
+        # brackets fails closed for live admission.
+        brackets_fn = getattr(self.engine, "leverage_brackets", None)
+        if callable(brackets_fn) and self.config.mode == "prod":
+            from cryptobot.risk.margin import (
+                liquidation_ok,
+                liquidation_price_isolated,
+                maintenance_margin,
+            )
+
+            entry_ref = (intent.entry_high if intent.side.value == "LONG"
+                         else intent.entry_low)
+            try:
+                brackets = brackets_fn(intent.instrument)
+                notional = abs(executable * entry_ref)
+                maint = maintenance_margin(notional, brackets)
+                isolated = notional / max(1.0, float(
+                    self.config.leverage_cap))
+                signed_qty = (executable if intent.side.value == "LONG"
+                              else -executable)
+                liq = liquidation_price_isolated(
+                    entry=entry_ref, qty=signed_qty,
+                    isolated_margin=isolated, maint_margin=maint)
+                ok = liquidation_ok(
+                    entry=entry_ref, stop=stop, liq=liq,
+                    stressed_slippage_bps=50.0, side=intent.side.value)
+            except (ValueError, TypeError, KeyError):
+                ok = False
+            if not ok:
+                self.policy.release(verdict.reservation_id)
+                reason = "risk:liquidation-gate"
+                self._note_reject(reason, intent.strategy,
+                                  intent.instrument, intent.side.value)
+                self.store.record_intent(
+                    self.run_id, intent.evidence_ref, intent.strategy,
+                    intent.instrument, intent.side.value, "rejected",
+                    reason, self.now_utc().isoformat())
+                return
         side = "BUY" if intent.side.value == "LONG" else "SELL"
         # Directive L76: entries are price-protected marketable IOC, capped
         # at the intent's entry band (side-aware: LONG pays at most the
@@ -4037,6 +4106,14 @@ class Session:
             "paid_costs": self.ledger.paid_costs(),
             "funding_net": self.ledger.funding_net(),
             "realised": self.ledger.net_realised(),
+            # Stressed economics (T1.9): realised already nets 1x costs,
+            # so gross = realised + costs and pnl_2x charges costs twice.
+            "pnl_stress": {
+                "pnl_1x": self.ledger.net_realised(),
+                "pnl_2x": self.ledger.net_realised()
+                - self.ledger.paid_costs()},
+            "armed": {"capital_usdt": self.armed_capital_usdt,
+                      "canary_trades": self.armed_canary_trades},
             "open_position": self.ledger.has_position(),
             "position_qty": self.ledger.position_qty(),
             "events_seen": self._events_seen,

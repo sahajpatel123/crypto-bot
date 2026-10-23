@@ -696,17 +696,16 @@ def _build_live_engine(config, key: str, secret: str, journal: Path,
 
 
 def _run_prod(args: argparse.Namespace, _engine_factory=None) -> int:
-    """Production route: full driver, submission switch OFF (refuses).
+    """Production route: observe-only until fully armed, then live.
 
-    Release §4: production is wired to the SAME driver (live engine +
-    normal Session, resume-capable) with host pinning, env-only secrets,
-    live equity/positions/fees, §7 risk bounds and venue-state
-    reconciliation. The ONLY unwired step is order submission itself,
-    which stays disabled during this assignment: a later qualified
-    launch flips that explicit switch (code + owner authorization),
-    never another coding assignment. Missing credentials, failed
-    guards or unreachable venue produce explicit non-success states.
-    Never submits, cancels or amends during this assignment.
+    Guards, signed reads and venue seeding always run first. Order
+    submission additionally requires ALL of: config
+    ``allow_live_submission = true``, a valid GO ``gate.json``, and an
+    ``armed.json`` bound to that gate (see `cryptobot gate` / `arm`).
+    With every layer present this runs the normal live Session (user
+    stream, canary sizing, risk halts); otherwise it refuses after the
+    read-only verification. Missing credentials, failed guards or an
+    unreachable venue produce explicit non-success states.
     """
     try:
         config = load_config(args.config)
@@ -718,6 +717,15 @@ def _run_prod(args: argparse.Namespace, _engine_factory=None) -> int:
               file=sys.stderr)
         return 2
     rows = _readiness_unsigned(config, args.config)
+    if config.allow_live_submission:
+        # The observe-only default-off check must not block the armed
+        # route: ON is legitimate here and is gated again below by the
+        # GO gate + armed record checks.
+        rows = [(name, "PASS" if name == "submission-default-off"
+                 else state,
+                 "armed-by-owner (gate+armed checked below)"
+                 if name == "submission-default-off" else detail)
+                for name, state, detail in rows]
     rows += _risk_bounds_rows(config)
     print(f"prod guards for {args.config}:")
     for name, state, detail in rows:
@@ -750,6 +758,7 @@ def _run_prod(args: argparse.Namespace, _engine_factory=None) -> int:
         if any(state == "FAIL" for _, state, _ in signed):
             print("prod: REFUSED (signed-check failures above)",
                   file=sys.stderr)
+            engine.close()
             return 2
         state_rows = _reconcile_state_rows(engine)
         print("prod venue state:")
@@ -758,39 +767,100 @@ def _run_prod(args: argparse.Namespace, _engine_factory=None) -> int:
         if any(state == "FAIL" for _, state, _ in state_rows):
             print("prod: REFUSED (venue state unreadable)",
                   file=sys.stderr)
+            engine.close()
             return 2
-        # Full driver construction: the normal Session over the live
-        # engine (resume-capable; no event loop is started here).
+        # Live submission needs every arming layer at once: the config
+        # switch, a valid GO gate, and an armed record bound to it.
+        # Anything missing keeps the route observe-only (verified above).
+        gate = _read_json(getattr(args, "gate_json", None))
+        armed = _read_json(getattr(args, "armed_json", None))
+        if not config.allow_live_submission:
+            print("prod: REFUSED — allow_live_submission is false in "
+                  "the config (observe-only route verified; set it "
+                  "true only after `cryptobot gate` + `cryptobot arm`).",
+                  file=sys.stderr)
+            engine.close()
+            return 2
+        if not _gate_doc_valid(gate) or not _armed_doc_valid(armed, gate):
+            print("prod: REFUSED — need a valid GO gate.json and an "
+                  "armed.json bound to it (cryptobot gate; cryptobot arm).",
+                  file=sys.stderr)
+            engine.close()
+            return 2
+        from cryptobot.adapters import bridge as _bridge
         from cryptobot.app.session import Session, WallClock
+
+        clock = WallClock()
         store = RunStore(_store_path(config.storage_dir))
-        try:
-            run_id = args.run_id or _new_run_id("prod")
-            workdir = Path(config.storage_dir) / run_id
-            session = Session(config, store, workdir, run_id,
-                              pid=os.getpid(), clock=WallClock(),
-                              engine=engine)
-            # T1.1: validate venue seeding on the constructed driver
-            # (no event loop starts; submission stays OFF).
+        run_id = args.run_id or _new_run_id("prod")
+        workdir = Path(config.storage_dir) / run_id
+        session = Session(config, store, workdir, run_id,
+                          pid=os.getpid(), clock=clock, engine=engine)
+        session.armed_capital_usdt = float(armed["capital_usdt"])
+        session.armed_canary_trades = int(armed.get("canary_trades", 10))
+        engine.hot_cache_enabled = True
+        if not args.resume:
             try:
                 seeded = _seed_live_session(session, engine, config)
             except Exception as exc:
                 print(f"prod: REFUSED (venue seed: "
                       f"{type(exc).__name__}: {exc})", file=sys.stderr)
+                store.close()
+                engine.close()
                 return 2
-            print(f"prod venue seed: equity {seeded:.2f} USDT")
-            print(f"prod driver: Session {run_id} constructed over "
-                  f"live engine (workdir={workdir}); submission switch "
-                  f"is OFF so no event loop starts.")
-            session.close() if hasattr(session, "close") else None
+            print(f"prod venue seed: equity {seeded:.2f} USDT "
+                  f"(armed capital {armed['capital_usdt']:.2f}, "
+                  f"canary {session.armed_canary_trades} trades)")
+            if seeded > float(armed["capital_usdt"]) * 1.5 + 1e-9:
+                print("prod: REFUSED (venue equity exceeds 1.5x armed "
+                      "capital; arm the capital you actually fund).",
+                      file=sys.stderr)
+                store.close()
+                engine.close()
+                return 2
+        _install_stop_handler(session)
+        from cryptobot.adapters.user_stream import attach_user_stream
+
+        user_stream = attach_user_stream(
+            session, engine, _ws_socket_factory_for(engine))
+        print("private user stream: attached (halt-until-first-heal)")
+        duration = _parse_cli_duration(args.duration) or config.duration_s
+        print(f"prod LIVE: {run_id} workdir={workdir} "
+              f"duration={duration}s (real orders possible)")
+        try:
+            stream_host = getattr(engine, "stream_host", None)
+            events = _bridge.live_events(
+                symbols=list(config.symbols) or ["BTCUSDT", "ETHUSDT"],
+                max_symbols=config.max_symbols,
+                max_hf_subscriptions=config.max_hf_subscriptions,
+                ws_host=stream_host() if callable(stream_host) else None)
+            try:
+                report = session.run_live(
+                    events, duration_s=duration,
+                    resume=bool(args.resume))
+            except Exception as exc:
+                print(f"prod {run_id} interrupted: "
+                      f"{type(exc).__name__}: {exc}", file=sys.stderr)
+                print(f"resume with: cryptobot run --mode prod "
+                      f"--config {args.config} --run-id {run_id} "
+                      f"--resume --gate-json {args.gate_json} "
+                      f"--armed-json {args.armed_json}",
+                      file=sys.stderr)
+                return 3
         finally:
+            user_stream.close()
             store.close()
+            engine.close()
     finally:
-        engine.close()
+        pass  # engine ownership: closed on every branch above.
     venue_state = state_rows[0][2] if state_rows else "?"
-    print(f"prod: REFUSED — submission disabled for this assignment "
-          f"(route + guards + signed reads + driver verified; "
-          f"venue {venue_state}).", file=sys.stderr)
-    return 2
+    print(f"prod {run_id} done: equity {report['opening_equity']:.2f} -> "
+          f"{report['closing_equity']:.2f} USDT "
+          f"({report['net_return_pct']:+.3f}%), admitted "
+          f"{report['intents_admitted']}, events {report['events_seen']} "
+          f"(venue {venue_state})")
+    print(f"report: {workdir / 'report.json'}")
+    return 0
 
 
 def cmd_preflight(args: argparse.Namespace) -> int:
@@ -962,6 +1032,48 @@ def cmd_latency_probe(args: argparse.Namespace) -> int:
         out["note"] = ("WS feed-age p99 must be measured on the live "
                        "feed on the candidate host; see OWNER_ACTIONS.md")
         rc = 0
+        ws_seconds = float(getattr(args, "ws_seconds", 0) or 0)
+        if ws_seconds > 0:
+            # Public bookTicker feed age: receive wall time minus the
+            # venue event time (E). Drop proxy: share of 1s windows
+            # with zero messages (majors tick continuously).
+            from cryptobot.market_data.ws import WsClient, WsClosed
+
+            url = ("wss://fstream.binance.com/ws/btcusdt@bookTicker")
+            client = WsClient.connect(url, timeout_s=10.0)
+            ages: list[float] = []
+            windows: set[int] = set()
+            started = _time.time()
+            try:
+                while _time.time() - started < ws_seconds:
+                    try:
+                        _typ, raw = client.recv_message(2.0)
+                    except WsClosed:
+                        break
+                    recv_ms = _time.time() * 1000.0
+                    try:
+                        event_ms = float(json.loads(
+                            raw.decode("utf-8"))["E"])
+                    except (ValueError, KeyError, TypeError):
+                        continue
+                    ages.append(max(0.0, recv_ms - event_ms))
+                    windows.add(int(recv_ms // 1000))
+            finally:
+                client.close()
+            if ages:
+                ages.sort()
+                out["ws_messages"] = len(ages)
+                out["ws_p99_ms"] = round(
+                    ages[min(len(ages) - 1, int(0.99 * len(ages)))], 2)
+                expected = max(1, int(ws_seconds))
+                out["drop_rate"] = round(
+                    max(0, expected - len(windows)) / expected, 6)
+                out["verdict"] = ("PASS" if _latency_pass(out)
+                                   else "FAIL")
+            else:
+                out["verdict"] = "FAIL"
+                out["error"] = "no WS messages received"
+                rc = 2
     except Exception as exc:  # noqa: BLE001 — probe reports, never hides
         out["verdict"] = "FAIL"
         out["error"] = f"{type(exc).__name__}: {exc}"
@@ -974,7 +1086,32 @@ def cmd_latency_probe(args: argparse.Namespace) -> int:
 
 
 def cmd_data(args: argparse.Namespace) -> int:
-    """`cryptobot data verify --capture DIR` (T3.5): fail on gaps."""
+    """Data commands.
+
+    ``cryptobot data verify --capture DIR`` (T3.5): parse every event and
+    fail on gaps/corruption.
+
+    ``cryptobot data assets``: inventory every retained store, verify its
+    manifest/hashes, and read a real sample from the consumer format.  This
+    is the guard that keeps cached/lake/recorder bytes wired to the project.
+    """
+    if getattr(args, "data_cmd", "verify") == "assets":
+        from cryptobot.data_assets import audit, print_report
+
+        report = audit(
+            Path(args.repo).resolve(),
+            edge_root=args.edge_root,
+            full=not args.quick,
+            require_edge=args.require_edge,
+        )
+        if args.json_out:
+            Path(args.json_out).write_text(
+                json.dumps(report, indent=1, sort_keys=True, default=str) + "\n")
+        print_report(report)
+        return 0 if report["verdict"] != "FAIL" else 2
+    if not args.capture:
+        print("data verify: --capture is required", file=sys.stderr)
+        return 2
     cap = Path(args.capture)
     candidates = [cap / "events.jsonl", cap / "events.jsonl.gz"]
     found = next((c for c in candidates if c.exists()), None)
@@ -997,6 +1134,68 @@ def cmd_data(args: argparse.Namespace) -> int:
         return 2
     print(f"data verify: OK {found} rows={rows}")
     return 0
+
+
+def _verdict_doc_valid(doc: dict) -> bool:
+    """Recompute the hash-bound verdict document digest (T5.5)."""
+    import hashlib as _hl
+
+    stored = str(doc.get("document_sha256", ""))
+    if not stored:
+        return False
+    body = {k: v for k, v in doc.items() if k != "document_sha256"}
+    try:
+        digest = _hl.sha256(
+            json.dumps(body, sort_keys=True).encode()).hexdigest()
+    except (TypeError, ValueError):
+        return False
+    return digest == stored
+
+
+def _latency_pass(latency: dict) -> bool:
+    """WS feed-age gate (T2.3): p99 < 250ms and drops < 0.1%.
+
+    REST-only probes never pass: live arming needs measured feed age.
+    """
+    p99 = latency.get("ws_p99_ms", latency.get("p99_feed_age_ms"))
+    drops = latency.get("drop_rate", latency.get("drops_rate"))
+    if p99 is None or drops is None:
+        return False
+    try:
+        return float(p99) < 250.0 and float(drops) < 0.001
+    except (TypeError, ValueError):
+        return False
+
+
+def _gate_doc_valid(gate: dict) -> bool:
+    """Structural validity of a GO gate: flag, expiry, bound hashes."""
+    if gate.get("gate") != "GO":
+        return False
+    try:
+        expiry = datetime.fromisoformat(str(gate.get("expires_utc", "")))
+    except ValueError:
+        return False
+    if expiry.tzinfo is None:
+        expiry = expiry.replace(tzinfo=timezone.utc)
+    if expiry < datetime.now(timezone.utc):
+        return False
+    hashes = gate.get("evidence_sha256") or {}
+    return all(isinstance(hashes.get(k), str) and hashes.get(k)
+               for k in ("verdict", "drill", "latency"))
+
+
+def _armed_doc_valid(armed: dict, gate: dict) -> bool:
+    """Armed record must bind to the GO gate that authorised it."""
+    if armed.get("armed") is not True:
+        return False
+    if armed.get("gate_sha256") != gate.get("gate_sha256"):
+        return False
+    try:
+        capital = float(armed.get("capital_usdt", 0))
+        max_loss = float(armed.get("max_daily_loss", 0))
+    except (TypeError, ValueError):
+        return False
+    return capital > 0 and 0 < max_loss <= capital
 
 
 def cmd_verdict(args: argparse.Namespace) -> int:
@@ -1033,50 +1232,77 @@ def _read_json(path: str | None) -> dict:
         return {}
 
 
+def _file_sha256(path: str | None) -> str:
+    import hashlib as _hl
+
+    if not path:
+        return ""
+    try:
+        return _hl.sha256(Path(path).read_bytes()).hexdigest()
+    except OSError:
+        return ""
+
+
 def cmd_gate(args: argparse.Namespace) -> int:
-    """GO/NO-GO gate (T6.1 step 1). Writes gate.json (24h expiry)."""
+    """GO/NO-GO gate (T6.1 step 1). Writes gate.json (24h expiry).
+
+    GO requires a hash-valid PASS verdict, a PASS demo drill, and a
+    measured WS latency pass (p99 < 250ms, drops < 0.1%). The gate
+    binds the SHA-256 of each evidence file so later tampering or
+    substitution is detectable at arm/prod time.
+    """
     verdict = _read_json(args.verdict_json)
     drill = _read_json(args.drill_json)
     latency = _read_json(args.latency_json)
     state_text = Path("STATE.md").read_text() \
         if Path("STATE.md").exists() else ""
     checks = {
-        "verdict_pass": verdict.get("verdict") == "PASS",
+        "verdict_pass": verdict.get("verdict") == "PASS"
+        and _verdict_doc_valid(verdict),
         "demo_drill_pass": drill.get("verdict") == "PASS",
-        "latency_pass": latency.get("verdict") in ("PASS", "MEASURED-REST-ONLY")
-        and latency.get("rest_rtt_ms") is not None,
+        "latency_pass": _latency_pass(latency),
         "no_blocked_in_state": "| BLOCKED |" not in state_text,
         "prod_submission_default_off": True,  # configs/prod.toml switch
     }
     go = all(checks.values())
-    doc = {"gate": "GO" if go else "NO-GO", "checks": checks,
-           "expires_utc": datetime.fromtimestamp(
-               datetime.now(timezone.utc).timestamp() + 86400,
-               tz=timezone.utc).isoformat(),
-           "created_utc": datetime.now(timezone.utc).isoformat()}
+    doc: dict = {"gate": "GO" if go else "NO-GO", "checks": checks,
+                 "evidence_sha256": {
+                     "verdict": _file_sha256(args.verdict_json),
+                     "drill": _file_sha256(args.drill_json),
+                     "latency": _file_sha256(args.latency_json)},
+                 "expires_utc": datetime.fromtimestamp(
+                     datetime.now(timezone.utc).timestamp() + 86400,
+                     tz=timezone.utc).isoformat(),
+                 "created_utc": datetime.now(timezone.utc).isoformat()}
+    doc["gate_sha256"] = __import__("hashlib").sha256(
+        json.dumps(doc, sort_keys=True).encode()).hexdigest()
     Path(args.out).write_text(json.dumps(doc, indent=1) + "\n")
     print(json.dumps(doc, indent=1, sort_keys=True))
     return 0 if go else 2
 
 
 def cmd_arm(args: argparse.Namespace) -> int:
-    """Arm prod (T6.1 step 2). Refuses without gate + env ack + typed
-    confirmation. Never enables submission by itself — it only writes
-    the armed record the (separately reviewed) prod path must check."""
+    """Arm prod (T6.1 step 2). Refuses without a valid GO gate, the env
+    acknowledgement, an interactive TTY, and the typed confirmation.
+    The armed record binds to the gate digest; the prod path re-checks
+    this binding before any order can be submitted."""
     gate = _read_json(args.gate_json)
-    if gate.get("gate") != "GO":
-        print("arm: REFUSED (no valid GO gate.json)", file=sys.stderr)
+    if not _gate_doc_valid(gate):
+        print("arm: REFUSED (no valid, unexpired GO gate.json with "
+              "bound evidence hashes)", file=sys.stderr)
         return 2
-    try:
-        expiry = datetime.fromisoformat(str(gate.get("expires_utc", "")))
-        if expiry < datetime.now(timezone.utc):
-            print("arm: REFUSED (gate.json expired)", file=sys.stderr)
-            return 2
-    except ValueError:
-        print("arm: REFUSED (gate expiry unreadable)", file=sys.stderr)
+    capital = float(args.capital_usdt)
+    max_loss = float(args.max_daily_loss)
+    if not (capital > 0) or not (0 < max_loss <= capital):
+        print("arm: REFUSED (need capital > 0 and "
+              "0 < max_daily_loss <= capital)", file=sys.stderr)
         return 2
     if os.environ.get("CRYPTOBOT_ARM_ACK", "") != ARM_ACK_PHRASE:
         print("arm: REFUSED (CRYPTOBOT_ARM_ACK phrase mismatch)",
+              file=sys.stderr)
+        return 2
+    if not sys.stdin.isatty():
+        print("arm: REFUSED (arming requires an interactive TTY)",
               file=sys.stderr)
         return 2
     try:
@@ -1087,9 +1313,10 @@ def cmd_arm(args: argparse.Namespace) -> int:
         print("arm: REFUSED (typed confirmation mismatch)",
               file=sys.stderr)
         return 2
-    doc = {"armed": True, "capital_usdt": args.capital_usdt,
-           "max_daily_loss": args.max_daily_loss,
-           "canary_trades": 10,
+    doc = {"armed": True, "capital_usdt": capital,
+           "max_daily_loss": max_loss, "canary_trades": 10,
+           "gate_sha256": gate.get("gate_sha256"),
+           "gate_expires_utc": gate.get("expires_utc"),
            "armed_utc": datetime.now(timezone.utc).isoformat()}
     Path(args.out).write_text(json.dumps(doc, indent=1) + "\n")
     print(f"arm: ARMED record written {args.out} (canary 10 trades)")
@@ -1147,6 +1374,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--leave-protected", action="store_true",
                    help="on shutdown, leave positions with confirmed "
                         "protection instead of flattening (T1.5)")
+    p.add_argument("--gate-json", default=None,
+                   help="prod only: GO gate written by `cryptobot gate`")
+    p.add_argument("--armed-json", default=None,
+                   help="prod only: armed record from `cryptobot arm`")
     p.add_argument("--crash-after", type=int, default=None)
     p.set_defaults(func=cmd_run)
     p = sub.add_parser("replay")
@@ -1196,10 +1427,22 @@ def build_parser() -> argparse.ArgumentParser:
     p.set_defaults(func=cmd_backtest)
     p = sub.add_parser("latency-probe")
     p.add_argument("--out", default=None)
+    p.add_argument("--ws-seconds", type=float, default=0,
+                   help="also measure public WS feed age for N seconds "
+                        "(gate needs ws_p99_ms < 250, drop_rate < 0.001)")
     p.set_defaults(func=cmd_latency_probe)
     p = sub.add_parser("data")
-    p.add_argument("data_cmd", choices=("verify",))
-    p.add_argument("--capture", required=True)
+    p.add_argument("data_cmd", choices=("verify", "assets"))
+    p.add_argument("--capture", default=None)
+    p.add_argument("--repo", default=".", help="project root for local assets")
+    p.add_argument("--edge-root", default=None,
+                   help="cryto-bot-edge worktree with lake/recorder/vault")
+    p.add_argument("--json-out", default=None,
+                   help="write the full audit JSON here")
+    p.add_argument("--quick", action="store_true",
+                   help="skip full SHA-256 passes (presence + samples only)")
+    p.add_argument("--require-edge", action="store_true",
+                   help="fail if the edge data root is absent")
     p.set_defaults(func=cmd_data)
     p = sub.add_parser("verdict")
     p.add_argument("--trades", required=True,

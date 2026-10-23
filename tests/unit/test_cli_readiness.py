@@ -364,6 +364,10 @@ def test_prod_no_creds_blocked_before_build(monkeypatch, tmp_path, capsys):
 
 def test_prod_full_driver_refuses_only_at_submission(monkeypatch, tmp_path,
                                                      capsys):
+    # Contract changed with the live launch: prod now refuses at the
+    # arming layer (config switch + GO gate + armed record) instead of
+    # constructing a driver it would never run. Read-only verification
+    # (guards, signed reads, FLAT state) still happens first.
     monkeypatch.setenv("CRYPTOBOT_API_KEY", "k")
     monkeypatch.setenv("CRYPTOBOT_API_SECRET", "s")
     _StubLiveEngine.status = _stub_venue_status()
@@ -373,9 +377,8 @@ def test_prod_full_driver_refuses_only_at_submission(monkeypatch, tmp_path,
     captured = capsys.readouterr()
     out, err = captured.out, captured.err
     assert rc == 2, out
-    assert "prod driver: Session prod-probe-1 constructed" in out
     assert "FLAT" in out
-    assert "submission disabled" in err
+    assert "allow_live_submission is false" in err
 
 
 def test_prod_signed_failure_refuses(monkeypatch, tmp_path, capsys):
