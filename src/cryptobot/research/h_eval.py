@@ -149,6 +149,46 @@ def h2_trades(bars: list[Bar], model: CostModel | None = None) -> list[Trade]:
     return trades
 
 
+def h2_trades_fast(bars: list[Bar], model: CostModel | None = None) -> list[Trade]:
+    """Exactly ``h2_trades`` (same rules, same output) in O(n log n).
+
+    The ATR percentile gate keeps an incrementally sorted history
+    instead of re-sorting it every bar, so multi-year series score in
+    seconds. Equality with ``h2_trades`` is pinned by a unit test.
+    """
+    import bisect
+
+    model = model or CostModel()
+    closes = [b.close for b in bars]
+    fast, slow, atr = _ema(closes, 20), _ema(closes, 50), _atr(bars)
+    trades: list[Trade] = []
+    hist: list[float] = []
+    added = 0
+    i = 50
+    while i < len(bars) - 1:
+        while added <= i:
+            if atr[added] is not None:
+                bisect.insort(hist, atr[added])
+            added += 1
+        if fast[i] is None or slow[i] is None or atr[i] is None:
+            i += 1
+            continue
+        gate = len(hist) >= 20 and atr[i] >= hist[int(0.70 * (len(hist) - 1))]
+        direction = 1 if fast[i] > slow[i] else (-1 if fast[i] < slow[i] else 0)
+        if not gate or direction == 0:
+            i += 1
+            continue
+        entry = bars[i + 1].open
+        stop = 1.5 * atr[i] / entry * 10000
+        target = 3.0 * atr[i] / entry * 10000
+        gross, held = _exit_bps(bars, i + 1, direction, entry, stop, target, 24 * 7)
+        net, adv = _net(gross, maker=False, model=model)
+        trades.append(Trade(day=_day_of(bars[i + 1].ts_ms), gross_bps=gross,
+                            net_bps=net, adverse_bps=adv, stop_bps=stop))
+        i += 1 + held
+    return trades
+
+
 def h3_trades(bars: list[Bar], funding: list[tuple[int, float]],
               model: CostModel | None = None) -> list[Trade]:
     """H3: funding >90th pct (trailing 30d) -> fade crowd, hold 8h."""
