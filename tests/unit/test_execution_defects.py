@@ -285,3 +285,43 @@ def test_vacuous_cover_is_still_cancelled_for_a_dead_entry(tmp_path):
         assert engine.cancelled == ["stop-1"]
     finally:
         store.close()
+
+
+# -- 5. one leverage-brackets contract for both admission gates -------------
+
+
+def test_leverage_brackets_serve_the_tiered_contract(tmp_path):
+    """A duplicate definition shadowed the tiered contract the risk gate needs.
+
+    ``_bracket_admission`` requires the F0.4a document (``brackets`` +
+    ``observed_ms`` + ``stale``); a second ``leverage_brackets`` defined later
+    in the class returned a bare list, so every prod entry was refused with
+    ``margin:brackets-unavailable``.
+    """
+    engine, transport = _live(tmp_path, [
+        ("GET", "/fapi/v1/leverageBracket", {"symbol": "BTCUSDT"},
+         ("ok", [{"symbol": "BTCUSDT", "brackets": [
+             {"bracket": 1, "notionalCap": 50000,
+              "maintMarginRatio": 0.004, "cum": 0},
+             {"bracket": 2, "notionalCap": 100000,
+              "maintMarginRatio": 0.005, "cum": 50}]}])),
+    ])
+    data = engine.leverage_brackets("BTCUSDT")
+    assert isinstance(data, dict), "tiered contract shadowed by a bare list"
+    assert [b["notionalCap"] for b in data["brackets"]] == [50000.0, 100000.0]
+    assert data["observed_ms"] and data["stale"] is False
+    # Inside the TTL the cache answers: no second REST call.
+    assert engine.leverage_brackets("BTCUSDT")["brackets"] == data["brackets"]
+    transport.assert_empty()
+
+
+def test_liquidation_gate_unwraps_the_tiered_contract(tmp_path):
+    engine = _ContractEngine()
+    session, store = _session(tmp_path, engine)
+    try:
+        rows = [{"notionalCap": 1.0}]
+        assert session._bracket_rows({"brackets": rows}) == rows
+        assert session._bracket_rows(rows) == rows  # bare list still allowed
+        assert session._bracket_rows(None) is None
+    finally:
+        store.close()

@@ -1780,27 +1780,6 @@ class BinanceLiveEngine:
         """Venue taker rate in bps (cached at readiness)."""
         return self._fee_bps[symbol.upper()]
 
-    def leverage_brackets(self, symbol: str) -> list[dict[str, Any]]:
-        """Venue leverage brackets for the liquidation gate (T1.8).
-
-        Signed GET only. Returns raw bracket dicts (notionalCap,
-        maintMarginRatio, cum, ...); empty list when the venue shape is
-        unexpected so the caller fails closed.
-        """
-        self._guarded("leverage_brackets")
-        rows = self._signed("GET", "/fapi/v1/leverageBracket",
-                            {"symbol": symbol.upper()})
-        if isinstance(rows, dict):
-            rows = [rows]
-        if not isinstance(rows, list):
-            return []
-        for row in rows:
-            if isinstance(row, dict) and isinstance(
-                    row.get("brackets"), list):
-                return [dict(b) for b in row["brackets"]
-                        if isinstance(b, dict)]
-        return [dict(r) for r in rows if isinstance(r, dict)]
-
     def funding_income(self, symbol: str) -> list[dict[str, Any]]:
         """Raw FUNDING_FEE income rows (T1.7 booking/reconcile input)."""
         self._guarded("funding_income")

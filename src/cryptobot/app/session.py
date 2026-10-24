@@ -1379,7 +1379,7 @@ class Session:
             entry_ref = (intent.entry_high if intent.side.value == "LONG"
                          else intent.entry_low)
             try:
-                brackets = brackets_fn(intent.instrument)
+                brackets = self._bracket_rows(brackets_fn(intent.instrument))
                 notional = abs(executable * entry_ref)
                 maint = maintenance_margin(notional, brackets)
                 isolated = notional / max(1.0, float(
@@ -1680,6 +1680,19 @@ class Session:
         if notional > cfg.leverage_cap * snapshot.reconciled_equity:
             return "leverage:cap-exceeded"
         return None
+
+    @staticmethod
+    def _bracket_rows(data: Any) -> Any:
+        """Bracket rows from the tiered contract (dict) or a bare list.
+
+        ``leverage_brackets`` serves the tiered F0.4a document
+        (``{"brackets", "observed_ms", "now_ms", "stale"}``) that the
+        bracket admission gate needs; the liquidation gate only wants the
+        rows, so it unwraps here instead of assuming either shape.
+        """
+        if isinstance(data, dict):
+            return data.get("brackets")
+        return data
 
     def _bracket_admission(self, intent: Any, qty: float) -> str | None:
         """Reject live entries whose liquidation sits inside the stop.
@@ -2835,6 +2848,11 @@ class Session:
         """
         need = self._protection_need(pos, statuses)
         if need <= 1e-9:
+            entry = statuses.get(pos.get("entry_id") or "")
+            if entry is not None \
+                    and entry.state not in ("filled", "rejected",
+                                            "cancelled", "expired"):
+                return  # live entry: an unbooked fill is not a flat book.
             self._cancel_tracked(pos, statuses, "protection-vacuous")
             return
         stop = statuses.get((pos.get("legs") or [None])[0] or "")
