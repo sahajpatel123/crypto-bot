@@ -1,0 +1,61 @@
+{
+ "broken_chunks": [],
+ "chunks": 395,
+ "gap_rate": 0.0,
+ "gaps": 0,
+ "generated_utc": "2026-10-21T12:22:17.802110+00:00",
+ "manifest_problems": [],
+ "ok": true,
+ "records": 87727190,
+ "report": "recorder-integrity/1",
+ "streams": {
+  "btcusdt@bookTicker": {
+   "depth_breaks": 0,
+   "out_of_order": 382993,
+   "records": 45704330,
+   "trade_gaps": 0
+  },
+  "btcusdt@depth@100ms": {
+   "depth_breaks": 1050197,
+   "out_of_order": 15,
+   "records": 1052565,
+   "trade_gaps": 0
+  },
+  "depth_snapshot": {
+   "depth_breaks": 0,
+   "out_of_order": 3208,
+   "records": 3826,
+   "trade_gaps": 0
+  },
+  "ethusdt@bookTicker": {
+   "depth_breaks": 0,
+   "out_of_order": 51,
+   "records": 39908645,
+   "trade_gaps": 0
+  },
+  "ethusdt@depth@100ms": {
+   "depth_breaks": 1047789,
+   "out_of_order": 9,
+   "records": 1049777,
+   "trade_gaps": 0
+  },
+  "header": {
+   "depth_breaks": 0,
+   "out_of_order": 0,
+   "records": 395,
+   "trade_gaps": 0
+  },
+  "open_interest": {
+   "depth_breaks": 0,
+   "out_of_order": 3634,
+   "records": 3827,
+   "trade_gaps": 0
+  },
+  "premium_index": {
+   "depth_breaks": 0,
+   "out_of_order": 3429,
+   "records": 3825,
+   "trade_gaps": 0
+  }
+ }
+}

@@ -1,0 +1,37 @@
+{
+ "format": "cryptobot-family-b-reproduction/1",
+ "generated_utc": "2026-10-21T12:32:52.358937+00:00",
+ "lake": "data/lake/dev",
+ "command": "tools/run_family_b.py dev --hypothesis <H> --lake data/lake/dev --root /tmp/cryto-bot-data-use/family-b",
+ "artifacts": {
+  "B1": {
+   "checks": {
+    "best_cell": true,
+    "n_trials": true,
+    "promotes": true,
+    "config_sha256": true,
+    "cell_sharpes": true,
+    "cell_turnover": true,
+    "gates": true
+   },
+   "all_match": true,
+   "committed_evaluated_utc": "2026-10-18T13:50:46.250172+00:00",
+   "reproduced_evaluated_utc": "2026-10-21T12:29:59.467157+00:00"
+  },
+  "B6": {
+   "checks": {
+    "best_cell": true,
+    "n_trials": true,
+    "promotes": true,
+    "config_sha256": true,
+    "cell_sharpes": true,
+    "cell_turnover": true,
+    "gates": true
+   },
+   "all_match": true,
+   "committed_evaluated_utc": "2026-10-18T16:27:26.902363+00:00",
+   "reproduced_evaluated_utc": "2026-10-21T12:32:36.158757+00:00"
+  }
+ },
+ "all_match": true
+}

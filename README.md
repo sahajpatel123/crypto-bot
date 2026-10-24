@@ -1,8 +1,10 @@
 # Crypto scalping bot — Bot v0.1 application
 
-Status: implementation authorised for simulation and research only. No live orders.
+Status: engineering complete; live trading is possible only through the
+guarded arming route and is disabled by default. Follow
+[LIVE_RUNBOOK.md](/Users/sahajpatel/Code/cryto-bot/LIVE_RUNBOOK.md) end to end (keys last).
 Production submission is disabled by default (see `configs/prod.toml`:
-`allow_live_submission = false`, and the P6 arming path in STATE.md). The
+`allow_live_submission = false`, plus the `gate` + `arm` evidence chain). The
 E-007 Nautilus paper adapter IS integrated
 (`src/cryptobot/adapters/paper_engine.py` exists; an older revision of this
 README claimed it missing — corrected in T0.4); the reference engine still
@@ -19,6 +21,24 @@ uv sync --locked --extra dev
 uv run --locked cryptobot doctor --config configs/paper.toml
 uv run --locked pytest -q
 ```
+
+## Data use audit (retained stores)
+
+The project keeps large observed datasets outside git.  One read-only command
+proves every retained store is present, hash-verified, and actually readable
+by its consumer (benchmark, pilot, lake, holdout metadata, recorder, vault,
+and the reserved confirmation campaign):
+
+```sh
+uv run --locked cryptobot data assets --json-out reports/data-use/audit.json
+```
+
+`tools/eval_h123.py` and `tools/eval_h4.py` run the benchmark preflight
+before scoring, so a missing or hash-mismatched `datasets/cache` fails closed.
+`tools/recorder_book_scan.py` uses the recorder's full-depth snapshots for an
+H1 signal-frequency diagnostic (no fills; not a verdict).  Current evidence
+and gaps are recorded in [reports/DATA_USE.md](reports/DATA_USE.md).
+
 
 ## Application commands (manager-owned, current)
 

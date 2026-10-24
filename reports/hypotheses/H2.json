@@ -4,18 +4,18 @@
  "family_size": 3,
  "verdict": "UNDERPOWERED",
  "reason": "n=290 < min_trades=300",
- "expectancy_bps": 56.13403797796914,
- "max_dd_sized_bps": 322.9759972098646,
- "mean_equity_bps_per_day": 8.934457348451613,
- "gross_expectancy_bps": 74.13403797796914,
+ "expectancy_bps": 56.4230284321592,
+ "max_dd_sized_bps": 314.81274372098505,
+ "mean_equity_bps_per_day": 9.161214389809379,
+ "gross_expectancy_bps": 74.42302843215919,
  "trading_days": 36,
- "mean_net_bps_per_active_day": 452.19086148919587,
+ "mean_net_bps_per_active_day": 454.51884014794905,
  "best_day_bps": 4863.606485718442,
  "worst_day_bps": -4998.359819620935,
  "hashes": {
   "config_sha256_16": "d225c35fd277f743",
   "data_manifest": "benchmark_30d:9008ba92ef88a8cf",
-  "code_commit": "74a5ee7"
+  "code_commit": "760829a"
  },
- "document_sha256": "1e9234483c5a8c14284a8a9f535cb9b9692f3c42d17b1fcb81253ba2793e42df"
+ "document_sha256": "13d7a2f09a5d085ca443fc6a403ee954c4f83bd7f685cff9efd045f0116dcf3b"
 }

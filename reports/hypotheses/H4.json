@@ -1,0 +1,21 @@
+{
+ "hypothesis": "H4-vol-ranked-trend",
+ "n_trades": 0,
+ "family_size": 4,
+ "verdict": "UNDERPOWERED",
+ "reason": "n=0 < min_trades=300",
+ "expectancy_bps": null,
+ "max_dd_sized_bps": 0.0,
+ "mean_equity_bps_per_day": null,
+ "gross_expectancy_bps": null,
+ "trading_days": 0,
+ "mean_net_bps_per_active_day": null,
+ "best_day_bps": null,
+ "worst_day_bps": null,
+ "hashes": {
+  "config_sha256_16": "1ec132e2024cb551",
+  "data_manifest": "fresh>=2026-10-20:9008ba92ef88",
+  "code_commit": "760829a"
+ },
+ "document_sha256": "e0d06d5bb19b0ffbf80879d74cad5010bca7e0604720997d34e9a6b3dd2680d0"
+}

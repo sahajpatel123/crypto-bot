@@ -14,6 +14,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
+from cryptobot.data_assets import verify_benchmark_inputs  # noqa: E402
 from cryptobot.research.h_eval import (  # noqa: E402
     h1_result,
     h2_trades,
@@ -30,6 +31,13 @@ SYMBOLS = ("BTCUSDT", "ETHUSDT", "SOLUSDT", "ZECUSDT",
 
 
 def main() -> int:
+    pre = verify_benchmark_inputs(ROOT)
+    print(f"H1/H2/H3 data preflight: {pre['sources']} sources, "
+          f"manifest={pre.get('manifest_sha')} cache_through={pre.get('last_date')}")
+    if not pre["ok"]:
+        for problem in pre["problems"][:5]:
+            print(f"preflight: FAIL {problem}", file=sys.stderr)
+        return 2
     commit = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=ROOT,
                             capture_output=True, text=True).stdout.strip()
     manifest = hashlib.sha256(
