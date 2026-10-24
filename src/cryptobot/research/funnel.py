@@ -25,7 +25,7 @@ import argparse
 import json
 import sqlite3
 from collections import Counter
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -476,7 +476,7 @@ def analyze_symbol_time(capture_path: str | Path) -> dict[str, Any]:
                 # tz-independent, but evidence labels must not depend on
                 # the local zone).
                 sec = datetime.fromtimestamp(
-                    int(ts_ms) / 1000, tz=timezone.utc).replace(
+                    int(ts_ms) / 1000, tz=UTC).replace(
                         microsecond=0).isoformat()
             except (ValueError, TypeError, OSError):
                 continue

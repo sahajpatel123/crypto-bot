@@ -53,6 +53,7 @@ def test_round_to_tick_nearest():
 
 def test_round_to_tick_invalid_raises():
     import math
+
     from cryptobot.risk.rounding import round_to_tick
     for bad_tick in (0.0, -0.1, math.nan, math.inf):
         with pytest.raises(ValueError):

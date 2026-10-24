@@ -22,10 +22,11 @@ import os
 import re
 import tempfile
 import threading
+from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from .sources import COVERAGE_TTL
 from .store import EventStore, coverage_status
@@ -466,7 +467,7 @@ class FreshnessTracker:
         """Run refresh_once() on a daemon thread until stop()."""
         if self._thread is not None and self._thread.is_alive():
             raise RuntimeError("refresher already running")
-        clock = now_utc or (lambda: datetime.now(timezone.utc))
+        clock = now_utc or (lambda: datetime.now(UTC))
         stop = threading.Event()
         self._stop = stop
 

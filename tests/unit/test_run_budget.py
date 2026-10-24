@@ -3,7 +3,6 @@ import json
 import subprocess
 import sys
 import time
-from pathlib import Path
 
 # Enforce-or-refuse contract: strict (default) refuses on hosts without a
 # verified subreaper+scan (incl. macOS). These legacy-behavior tests opt

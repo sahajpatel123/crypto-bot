@@ -2,7 +2,7 @@
 
 Requires nautilus_trader (trial venv); skipped in the stdlib-only project env.
 """
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -12,7 +12,7 @@ from cryptobot.accounting.ledger import Ledger  # noqa: E402
 from cryptobot.adapters import NautilusPaperEngine  # noqa: E402
 from cryptobot.execution import RuntimeTrader  # noqa: E402
 
-T0 = datetime(2026, 10, 1, tzinfo=timezone.utc)
+T0 = datetime(2026, 10, 1, tzinfo=UTC)
 
 
 class _Sink:

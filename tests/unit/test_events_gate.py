@@ -1,13 +1,12 @@
 """Event gate tests (Worker 4, EV-001). Windows + fail-closed coverage."""
 import sys
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
 import cryptobot.events as _evpkg  # noqa: E402
-from cryptobot.events.freshness import (FreshnessTracker,  # noqa: E402
-                                        HttpResponse)
+from cryptobot.events.freshness import FreshnessTracker, HttpResponse  # noqa: E402
 from cryptobot.events.gate import EventGate, GateConfig  # noqa: E402
 from cryptobot.events.sources import (  # noqa: E402
     CpiSource,
@@ -21,7 +20,7 @@ CANNED = Path(_evpkg.__file__).parent / "fixtures" / "canned"
 
 
 def _utc(*args):
-    return datetime(*args, tzinfo=timezone.utc)
+    return datetime(*args, tzinfo=UTC)
 
 
 def _canned(http_url, timeout_s=20):

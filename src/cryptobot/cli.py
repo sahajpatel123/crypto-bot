@@ -20,7 +20,7 @@ import os
 import signal
 import subprocess
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from cryptobot.app.config import ConfigError, load_config
@@ -35,7 +35,7 @@ def _store_path(storage_dir: str) -> Path:
 
 
 def _new_run_id(prefix: str) -> str:
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     return f"{prefix}-{stamp}-{os.getpid()}"
 
 
@@ -242,8 +242,8 @@ def _run_paper(args: argparse.Namespace) -> int:
               file=sys.stderr)
         return 2
     try:
-        from cryptobot.adapters import paper_engine as _paper  # noqa: F401  (E-007)
         from cryptobot.adapters import bridge as _bridge  # noqa: F401  (E-007)
+        from cryptobot.adapters import paper_engine as _paper  # noqa: F401  (E-007)
     except ImportError:
         print("BLOCKED: E-007 Nautilus adapter not integrated "
               "(cryptobot.adapters.paper_engine/bridge missing).",
@@ -284,7 +284,10 @@ def _run_paper(args: argparse.Namespace) -> int:
         if not resumed:
             from cryptobot.market_data.collector import select_capture_set
             from cryptobot.market_data.discovery import (
-                FAPI_BASE_URL, fetch_exchange_info, urllib_json_get)
+                FAPI_BASE_URL,
+                fetch_exchange_info,
+                urllib_json_get,
+            )
             try:
                 payload, _, _ = fetch_exchange_info(
                     urllib_json_get, FAPI_BASE_URL)
@@ -415,7 +418,7 @@ def cmd_run(args: argparse.Namespace) -> int:
 def _readiness_unsigned(config, config_path: str,
                         ) -> list[tuple[str, str, str]]:
     """Credential-free checks: files and host pinning only."""
-    from cryptobot.adapters.binance_live import (DEMO_FAPI_URL, PROD_FAPI_URL)
+    from cryptobot.adapters.binance_live import DEMO_FAPI_URL, PROD_FAPI_URL
     rows: list[tuple[str, str, str]] = []
     rows.append(("config-loads", "PASS", f"mode={config.mode}"))
     if config.engine_kind != "live":
@@ -950,7 +953,7 @@ def cmd_status(args: argparse.Namespace) -> int:
         counts = store.counts(args.run_id)
         beat = run.get("heartbeat_utc") or "?"
         try:
-            age = (datetime.now(timezone.utc)
+            age = (datetime.now(UTC)
                    - datetime.fromisoformat(beat)).total_seconds()
             age_s = f"{age:.0f}s ago"
         except ValueError:
@@ -1014,8 +1017,8 @@ def cmd_backtest(args: argparse.Namespace) -> int:
 
 def cmd_report(args: argparse.Namespace) -> int:
     from cryptobot.reporting import build_report
-    from cryptobot.reporting.schemas import RunFileError
     from cryptobot.reporting.metrics import ReconciliationError
+    from cryptobot.reporting.schemas import RunFileError
     run_dir = Path(args.run_dir)
     out_dir = Path(args.out) if args.out else run_dir / "analysis"
     try:
@@ -1041,7 +1044,7 @@ def cmd_latency_probe(args: argparse.Namespace) -> int:
     import urllib.request as _rq
 
     out: dict = {"probe": "latency", "ts_utc": datetime.now(
-        timezone.utc).isoformat(), "gate": {"p99_feed_age_ms_max": 250.0,
+        UTC).isoformat(), "gate": {"p99_feed_age_ms_max": 250.0,
                                             "drop_rate_max": 0.001}}
     try:
         t0 = _time.time()
@@ -1200,8 +1203,8 @@ def _gate_doc_valid(gate: dict) -> bool:
     except ValueError:
         return False
     if expiry.tzinfo is None:
-        expiry = expiry.replace(tzinfo=timezone.utc)
-    if expiry < datetime.now(timezone.utc):
+        expiry = expiry.replace(tzinfo=UTC)
+    if expiry < datetime.now(UTC):
         return False
     hashes = gate.get("evidence_sha256") or {}
     return all(isinstance(hashes.get(k), str) and hashes.get(k)
@@ -1320,9 +1323,9 @@ def cmd_gate(args: argparse.Namespace) -> int:
                  "code_commit": (verdict.get("hashes") or {}).get(
                      "code_commit", ""),
                  "expires_utc": datetime.fromtimestamp(
-                     datetime.now(timezone.utc).timestamp() + 86400,
-                     tz=timezone.utc).isoformat(),
-                 "created_utc": datetime.now(timezone.utc).isoformat()}
+                     datetime.now(UTC).timestamp() + 86400,
+                     tz=UTC).isoformat(),
+                 "created_utc": datetime.now(UTC).isoformat()}
     doc["gate_sha256"] = __import__("hashlib").sha256(
         json.dumps(doc, sort_keys=True).encode()).hexdigest()
     Path(args.out).write_text(json.dumps(doc, indent=1) + "\n")
@@ -1366,7 +1369,7 @@ def cmd_arm(args: argparse.Namespace) -> int:
            "max_daily_loss": max_loss, "canary_trades": 10,
            "gate_sha256": gate.get("gate_sha256"),
            "gate_expires_utc": gate.get("expires_utc"),
-           "armed_utc": datetime.now(timezone.utc).isoformat()}
+           "armed_utc": datetime.now(UTC).isoformat()}
     Path(args.out).write_text(json.dumps(doc, indent=1) + "\n")
     print(f"arm: ARMED record written {args.out} (canary 10 trades)")
     return 0

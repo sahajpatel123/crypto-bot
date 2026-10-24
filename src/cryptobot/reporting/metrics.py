@@ -11,7 +11,7 @@ from __future__ import annotations
 import math
 from collections import Counter
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 IST = ZoneInfo("Asia/Kolkata")
@@ -59,7 +59,6 @@ class Metrics:
 
 def compute_metrics(run, episodes: list) -> Metrics:
     """Rebuild every metric from run files + episodes (pure function)."""
-    from cryptobot.reporting.episodes import Episode
     cfg = run.config.get("run", {})
     starting = float(cfg["starting_equity"])
     ledger = run.ledger

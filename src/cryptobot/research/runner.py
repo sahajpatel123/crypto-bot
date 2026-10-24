@@ -18,9 +18,7 @@ import argparse
 import hashlib
 import json
 import subprocess
-import sys
-import traceback
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from cryptobot.costs import COST_S1, roundtrip_bps
 from cryptobot.strategies.contract import (
@@ -73,7 +71,7 @@ __all__ = [
 
 
 def _utcnow() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def _git_sha() -> str:

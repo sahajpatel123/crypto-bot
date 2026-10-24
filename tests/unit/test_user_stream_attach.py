@@ -7,7 +7,6 @@ exit-only flag, reconnect heals and resumes.
 import copy
 import json
 import sys
-import threading
 import time
 from collections import deque
 from pathlib import Path

@@ -15,7 +15,7 @@ from __future__ import annotations
 import json
 import os
 import sqlite3
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -92,7 +92,7 @@ _DURABILITY_NOTE = (
 
 
 def _now() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 class RunStore:
@@ -242,7 +242,7 @@ class RunStore:
         store (refuse to clobber).
         """
         if dest is None:
-            stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+            stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
             dest = self.path.with_name(f"{self.path.name}.bak-{stamp}")
         dest = Path(dest)
         if dest.exists():

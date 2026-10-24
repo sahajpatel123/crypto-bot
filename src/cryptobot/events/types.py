@@ -1,7 +1,7 @@
 """Event and coverage record types (Worker 4, EV-001)."""
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
 from zoneinfo import ZoneInfo
 

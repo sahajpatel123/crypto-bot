@@ -115,7 +115,11 @@ def test_expired_gate_invalid(tmp_path):
 def test_prod_armed_layers_refuse_in_order(tmp_path, monkeypatch, capsys):
     """Switch ON but no gate/armed: prod still refuses (never trades)."""
     from tests.unit.test_cli_readiness import (
-        _StubLiveEngine, _prod_config, _stub_factory, _stub_venue_status)
+        _prod_config,
+        _stub_factory,
+        _stub_venue_status,
+        _StubLiveEngine,
+    )
 
     monkeypatch.setenv("CRYPTOBOT_API_KEY", "k")
     monkeypatch.setenv("CRYPTOBOT_API_SECRET", "s")
@@ -156,8 +160,7 @@ def test_gate_no_go_when_verdict_names_no_strategy(tmp_path):
 
 
 def _armed_prod(tmp_path, monkeypatch):
-    from tests.unit.test_cli_readiness import (
-        _StubLiveEngine, _prod_config, _stub_venue_status)
+    from tests.unit.test_cli_readiness import _prod_config, _stub_venue_status, _StubLiveEngine
 
     monkeypatch.setenv("CRYPTOBOT_API_KEY", "k")
     monkeypatch.setenv("CRYPTOBOT_API_SECRET", "s")

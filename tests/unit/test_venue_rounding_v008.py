@@ -4,7 +4,7 @@ Economic path (nautilus engine) + fault path (FakeVenue) both floor with
 the one shared rule; a risk-sized quantity submits, fills and protects
 at the identical value.
 """
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
@@ -13,14 +13,14 @@ from cryptobot.execution.fake_venue import FakeVenue
 from cryptobot.risk import InstrumentFilter, RiskConfig, plan_size
 from cryptobot.risk.rounding import floor_to_step
 
-T0 = datetime(2026, 10, 1, tzinfo=timezone.utc)
+T0 = datetime(2026, 10, 1, tzinfo=UTC)
 
 
 def _intent():
     return Intent(
         strategy="S1", version="v1", instrument="BTCUSDT", side=Side.LONG,
         evidence_ts_utc=T0, entry_low=59990.0, entry_high=60010.0,
-        entry_expiry_utc=datetime(2026, 10, 2, tzinfo=timezone.utc),
+        entry_expiry_utc=datetime(2026, 10, 2, tzinfo=UTC),
         invalidation_price=59800.0, exit_rule="tbd", holding_limit_s=3600,
         forecast_cost=ForecastCost(fee_bps=5.0, spread_bps=5.0,
                                    slippage_bps=5.0, funding_bps=1.0),

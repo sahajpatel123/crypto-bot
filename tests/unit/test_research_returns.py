@@ -1,7 +1,7 @@
 """Observed return evaluation tests (Worker 1, Q-006)."""
 import json
 import sys
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
@@ -20,7 +20,6 @@ from cryptobot.research.returns import (
 )
 from cryptobot.research.synthetic import (
     SCENARIO_S3_LONG,
-    SCENARIO_S4_SHORT,
     generate_fixture,
 )
 from cryptobot.strategies.contract import (
@@ -33,7 +32,7 @@ from cryptobot.strategies.contract import (
 from cryptobot.strategies.s1 import Bar
 from cryptobot.strategies.s3 import evaluate_bar as evaluate_s3
 
-T0 = datetime(2026, 1, 2, tzinfo=timezone.utc)
+T0 = datetime(2026, 1, 2, tzinfo=UTC)
 
 
 def _bar(i, close=100.0, high=None, low=None):

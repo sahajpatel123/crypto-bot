@@ -3,9 +3,9 @@ from __future__ import annotations
 
 import csv
 import json
+from pathlib import Path
 
 import pytest
-from pathlib import Path
 
 from cryptobot.reporting import charts
 from cryptobot.reporting.build import build_report

@@ -13,7 +13,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import pytest
 
-import net_guard
 from net_guard import ExternalNetworkBlocked, Guard, host_allowed
 
 TEST_NET = "192.0.2.1"  # RFC 5737 TEST-NET-1: never routed, needs no internet.

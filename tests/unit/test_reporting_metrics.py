@@ -11,7 +11,9 @@ import pytest
 from cryptobot.accounting import Ledger
 from cryptobot.reporting.episodes import build_episodes
 from cryptobot.reporting.metrics import (
-    ReconciliationError, compute_metrics, reconcile,
+    ReconciliationError,
+    compute_metrics,
+    reconcile,
 )
 from cryptobot.reporting.schemas import load_run
 

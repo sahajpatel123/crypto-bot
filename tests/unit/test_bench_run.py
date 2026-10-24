@@ -1,6 +1,6 @@
 """Bounded-runner tests (W2, 30MIN §6). Tiny synthetic manifests only."""
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from cryptobot.bench_run import main
@@ -8,8 +8,8 @@ from cryptobot.bench_run import main
 SYM = "BTCUSDT"
 DAY1 = "2026-10-11"
 DAY2 = "2026-10-12"
-T1 = int(datetime(2026, 10, 11, tzinfo=timezone.utc).timestamp() * 1000)
-T2 = int(datetime(2026, 10, 12, tzinfo=timezone.utc).timestamp() * 1000)
+T1 = int(datetime(2026, 10, 11, tzinfo=UTC).timestamp() * 1000)
+T2 = int(datetime(2026, 10, 12, tzinfo=UTC).timestamp() * 1000)
 
 
 def _trade(seq, ts, agg_id, price):
@@ -143,7 +143,7 @@ def test_checkpoint_preserves_position_economics(tmp_path):
     runner = BenchRunner(args)
     session = runner._build_session("mech")
     try:
-        now = datetime(2026, 10, 11, 1, tzinfo=timezone.utc)
+        now = datetime(2026, 10, 11, 1, tzinfo=UTC)
         session.clock.set_ms(int(now.timestamp() * 1000))
         session.policy.reconcile_day(120.0, 0.0)
         session._day = "2026-10-11"
@@ -244,13 +244,12 @@ def test_is_flat_terminal_orders_are_history_not_exposure(tmp_path):
 
 
 def test_is_flat_orphan_and_pending_and_reservations(tmp_path):
-    from types import SimpleNamespace
 
     runner = _corr_runner(tmp_path)
     session = runner._build_session("flatcases")
     try:
         assert runner._is_flat(session) is True
-        now = datetime(2026, 10, 11, 1, tzinfo=timezone.utc)
+        now = datetime(2026, 10, 11, 1, tzinfo=UTC)
         session.ledger.record_fill("BUY", 0.5, 100.0, 0.05, now, "o1")
         assert runner._is_flat(session) is False  # orphan exposure.
         session.ledger.record_fill("SELL", 0.5, 100.0, 0.05, now, "o2")
@@ -273,7 +272,7 @@ def test_feeds_and_warmed_restore_exactly(tmp_path):
     try:
         session.store.create_run("feeds", "bench", session.config.fingerprint,
                                  str(session.workdir), None)
-        t0 = int(datetime(2026, 10, 1, tzinfo=timezone.utc).timestamp() * 1000)
+        t0 = int(datetime(2026, 10, 1, tzinfo=UTC).timestamp() * 1000)
         seq = 0
         for second in range(141):
             ts = t0 + second * 1000
@@ -442,7 +441,7 @@ def test_closing_valuation_never_zero(tmp_path):
         close = runner._value_close(session)
         assert close["valuation"] == "cash-exact"
         assert close["equity_close"] == 120.0
-        now = datetime(2026, 10, 11, 1, tzinfo=timezone.utc)
+        now = datetime(2026, 10, 11, 1, tzinfo=UTC)
         session.ledger.record_fill("BUY", 0.5, 100.0, 0.05, now, "v1")
         runner._last_mark = {}
         close = runner._value_close(session)

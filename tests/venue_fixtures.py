@@ -14,7 +14,7 @@ import copy
 import json
 import sys
 from collections import deque
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
@@ -25,7 +25,7 @@ from cryptobot.adapters.binance_live import (  # noqa: E402
 )
 
 T0MS = 1728720000000
-NOW = datetime.fromtimestamp(T0MS / 1000, tz=timezone.utc)
+NOW = datetime.fromtimestamp(T0MS / 1000, tz=UTC)
 FIX = Path(__file__).resolve().parent / "fixtures" / "binance_live"
 
 
@@ -181,7 +181,7 @@ def patch_drill_offline(monkeypatch, drill, transport, orders, *,
             journal_path=drill.journal_path, expected_leverage=3,
             run_tag="demo30", live_enable=True, demo=True,
             base_url=None, transport=inner,
-            now_utc=lambda: datetime.now(timezone.utc))
+            now_utc=lambda: datetime.now(UTC))
         engines.append(eng)
         return eng
 

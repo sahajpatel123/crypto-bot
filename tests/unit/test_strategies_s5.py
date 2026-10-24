@@ -1,6 +1,6 @@
 """S5 microstructure baseline tests (Worker 1, Q-005)."""
 import sys
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
@@ -11,7 +11,7 @@ from cryptobot.strategies.runtime import DepthView, FlowView, MarketView
 from cryptobot.strategies.s1 import Bar
 from cryptobot.strategies.s5 import S5Params, evaluate_side, evaluate_view
 
-T0 = datetime(2026, 1, 2, tzinfo=timezone.utc)
+T0 = datetime(2026, 1, 2, tzinfo=UTC)
 
 
 def _bars(n=40, spread_bps=1.0, close=100.0):
@@ -278,16 +278,16 @@ def test_s5_runs_on_b4_synchronized_views():
             ask_notional=sum(p * q for p, q in book.asks),
             levels=book.levels, imbalance=book.imbalance_top1,
             ts_utc=datetime.fromtimestamp(book.ts_ms / 1000,
-                                          tz=timezone.utc))
+                                          tz=UTC))
         fl = FlowView(
             buy_notional=flow.buy_notional,
             sell_notional=flow.sell_notional, buy_count=flow.buy_count,
             sell_count=flow.sell_count, vwap=flow.vwap or 0.0,
             trade_count=flow.buy_count + flow.sell_count,
             window_start_utc=datetime.fromtimestamp(
-                flow.window_start_ms / 1000, tz=timezone.utc),
+                flow.window_start_ms / 1000, tz=UTC),
             window_end_utc=datetime.fromtimestamp(
-                flow.window_end_ms / 1000, tz=timezone.utc))
+                flow.window_end_ms / 1000, tz=UTC))
         return depth, fl, ""
 
     bars = _bars()

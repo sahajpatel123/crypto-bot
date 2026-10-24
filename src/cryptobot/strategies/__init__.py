@@ -1,4 +1,10 @@
 """Strategy signals (Worker 1, Q-001/Q-002)."""
+from . import runtime as runtime_module
+from . import s2 as s2_module
+from . import s3 as s3_module
+from . import s4 as s4_module
+from . import s5 as s5_module
+from . import x1 as x1_module
 from .contract import (
     ARM_BASE,
     ARM_FLOW,
@@ -12,21 +18,21 @@ from .contract import (
     ARM_VOLUME,
     CONTRACT_VERSION,
     COST_LABEL,
-    STRATEGY_VERSION,
     S1_FORECAST_COST,
     S2_BASE,
     S2_FLOW,
-    S2_VOLUME,
     S2_FORECAST_COST,
+    S2_VOLUME,
     S3_BASE,
     S3_COST,
-    S3_REGIME,
     S3_FORECAST_COST,
+    S3_REGIME,
     S4_BASE,
-    S4_SIMPLE,
     S4_FORECAST_COST,
+    S4_SIMPLE,
     S5_BASE,
     S5_FORECAST_COST,
+    STRATEGY_VERSION,
     X1_BASE,
     X1_FLOW,
     X1_FORECAST_COST,
@@ -50,12 +56,6 @@ from .s1 import (
     evaluate_bar,
     evaluate_side,
 )
-from . import s2 as s2_module
-from . import s3 as s3_module
-from . import s4 as s4_module
-from . import s5 as s5_module
-from . import x1 as x1_module
-from . import runtime as runtime_module
 
 __all__ = [
     "ARM_BASE",

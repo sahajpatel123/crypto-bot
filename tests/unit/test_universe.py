@@ -2,12 +2,15 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timedelta, timezone
-from pathlib import Path
+from datetime import UTC, datetime, timedelta
 
 from cryptobot.market_data.universe import (
-    enrich_top_k_depth, rank_symbols, scan_and_select, scan_universe,
-    select_subscriptions)
+    enrich_top_k_depth,
+    rank_symbols,
+    scan_and_select,
+    scan_universe,
+    select_subscriptions,
+)
 
 
 def _meta(symbol, tick="0.10", step="0.001", notional="5", px=2, qty=3,
@@ -71,7 +74,7 @@ def test_stale_or_corrupt_cache_refreshes(tmp_path):
     scan_universe(http_get, cache_path=cache)
     assert calls["n"] == 3
     stale = json.loads(cache.read_text())
-    stale["fetched_at_utc"] = (datetime.now(timezone.utc)
+    stale["fetched_at_utc"] = (datetime.now(UTC)
                                - timedelta(hours=2)).isoformat()
     cache.write_text(json.dumps(stale))
     scan_universe(http_get, cache_path=cache, cache_max_age_s=3600.0)

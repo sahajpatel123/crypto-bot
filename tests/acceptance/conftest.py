@@ -2,12 +2,13 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from collections.abc import Callable
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 FIXTURES = Path(__file__).resolve().parent.parent / "fixtures"
-NOW = datetime(2026, 10, 11, 12, 0, 0, tzinfo=timezone.utc)
+NOW = datetime(2026, 10, 11, 12, 0, 0, tzinfo=UTC)
 
 
 def load_fixture(name: str) -> Any:

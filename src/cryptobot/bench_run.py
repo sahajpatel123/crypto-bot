@@ -36,7 +36,7 @@ import os
 import signal
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -75,7 +75,7 @@ def _atomic_write_json(path: Path, record: dict) -> float:
 
 
 def _new_run_id() -> str:
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     return f"bench-{stamp}-{os.getpid()}"
 
 
@@ -435,7 +435,7 @@ class BenchRunner:
     @staticmethod
     def _clock_ms(session: Session) -> int:
         return int((session.clock.now() - datetime(
-            1970, 1, 1, tzinfo=timezone.utc)).total_seconds() * 1000)
+            1970, 1, 1, tzinfo=UTC)).total_seconds() * 1000)
 
     def _snapshot_feeds(self, session: Session) -> dict[str, Any]:
         feeds = {}
@@ -958,7 +958,7 @@ class BenchRunner:
                     if event is None:
                         self._n_heartbeats += 1
                         now_ms = int((session.clock.now() - datetime(
-                            1970, 1, 1, tzinfo=timezone.utc)
+                            1970, 1, 1, tzinfo=UTC)
                         ).total_seconds() * 1000)
                         session.clock.set_ms(now_ms + 1000)
                         continue

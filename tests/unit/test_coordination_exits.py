@@ -1,5 +1,5 @@
 """Exit-policy codec tests (manager-owned, runtime S2)."""
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
@@ -8,7 +8,7 @@ from cryptobot.coordination.exits import ExitPolicy, decode_exit_rule, encode_ex
 
 def _policy(**kw):
     base = dict(stop_price=99.5, target_price=102.0,
-                time_exit_utc=datetime(2026, 10, 12, 5, 0, tzinfo=timezone.utc),
+                time_exit_utc=datetime(2026, 10, 12, 5, 0, tzinfo=UTC),
                 policy_id="S1:stop+target+time")
     base.update(kw)
     return ExitPolicy(**base)

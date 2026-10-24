@@ -10,7 +10,7 @@ missing: ``depth``/``flow`` ``None`` rejects carry the relayed E-007
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
 from cryptobot.coordination import (
@@ -18,19 +18,18 @@ from cryptobot.coordination import (
     DecisionRecord,
     ExitPolicy,
     FeatureEvidence,
-    Intent,
     Side,
     encode_exit_rule,
 )
 
+from ._shared import gap_scan
 from .contract import (
     ARM_IDS_S5,
-    STRATEGY_VERSION,
     S5_FORECAST_COST,
+    STRATEGY_VERSION,
     build_evidence_ref,
     build_intent,
 )
-from ._shared import gap_scan
 from .s1 import MAX_CONSECUTIVE_MISSING_HALT, EvalLog
 from .s1 import S1Decision as S5Decision
 
@@ -44,7 +43,7 @@ __all__ = [
     "evaluate_view",
 ]
 
-_EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
+_EPOCH = datetime(1970, 1, 1, tzinfo=UTC)
 
 
 @dataclass(frozen=True)
@@ -199,7 +198,7 @@ def evaluate_side(
     checks["signal"] = "pass" if signal_ok else "fail"
 
     feats = [
-        FeatureEvidence("book_imbalance", f"topK-synced", thresh.split(" & ")[0],
+        FeatureEvidence("book_imbalance", "topK-synced", thresh.split(" & ")[0],
                         f"{imb:+.4f}"),
         FeatureEvidence("flow_buy_frac",
                         f"{p.sync_max_age_s}s-window", thresh.split(" & ")[1],

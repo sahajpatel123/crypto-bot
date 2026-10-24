@@ -260,7 +260,6 @@ def test_blocking_recv_prefers_buffered_before_waiting():
                     reason="needs openssl CLI for a throwaway cert")
 def test_nowait_over_real_tls_drains_without_select(tmp_path):
     import select as _select
-    import shutil
     import ssl
     import subprocess
 

@@ -1,8 +1,6 @@
 """Inline SVG charts (V-007). Zero JavaScript, zero CDN: pure static SVG."""
 from __future__ import annotations
 
-import math
-
 W, H, PAD_L, PAD_B, PAD_T, PAD_R = 640, 220, 64, 34, 14, 14
 INK, GRID, UP, DOWN, MUTED = "#1a1a1a", "#d8d8d8", "#0a6b3a", "#b00020", "#6b6b6b"
 

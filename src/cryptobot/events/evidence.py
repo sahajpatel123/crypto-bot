@@ -8,9 +8,10 @@ divergence, proving the log actually explains the run.
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 EVIDENCE_FORMAT = "cryptobot-protection-evidence/1"
 

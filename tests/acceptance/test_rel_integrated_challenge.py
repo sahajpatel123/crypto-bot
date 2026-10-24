@@ -13,14 +13,13 @@ import runpy
 import signal
 import subprocess
 import sys
-import tempfile
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
 
-T0 = datetime(2026, 10, 1, tzinfo=timezone.utc)
+T0 = datetime(2026, 10, 1, tzinfo=UTC)
 TOKEN = "w5rel-challenge"
 
 _UNIT = Path(__file__).resolve().parent.parent / "unit"
@@ -85,8 +84,7 @@ def _seed_mark(session, price):
 
 def _intent(now, entry_low, entry_high, inv, stop, target, exit_s=120,
             costs=(3.0, 0.0, 0.0, 0.0)):
-    from cryptobot.coordination import (DataQuality, ForecastCost, Intent,
-                                        Side, encode_exit_rule)
+    from cryptobot.coordination import DataQuality, ForecastCost, Intent, Side, encode_exit_rule
     from cryptobot.coordination.exits import ExitPolicy
     from cryptobot.coordination.selector import Candidate
     intent = Intent(
@@ -586,7 +584,7 @@ def test_rel_risk_thresholds_flow_day_restart(tmp_path):
     from cryptobot.risk.policy import RiskPolicy
     from cryptobot.risk.state import load_state
     from cryptobot.risk.types import AccountSnapshot, RiskConfig
-    now = {"t": datetime(2026, 10, 12, 0, 0, tzinfo=timezone.utc)}
+    now = {"t": datetime(2026, 10, 12, 0, 0, tzinfo=UTC)}
     spath = tmp_path / "risk_state.json"
     pol = RiskPolicy(RiskConfig(), state_path=spath,
                      now_utc=lambda: now["t"])
@@ -620,7 +618,7 @@ def test_rel_risk_thresholds_flow_day_restart(tmp_path):
                    or getattr(state2, "stops", None))
     assert halted2, "deposit replenished protection (must not)"
     # Day boundary: new day resets day counters, lifetime peak persists.
-    now["t"] = datetime(2026, 10, 13, 0, 0, tzinfo=timezone.utc)
+    now["t"] = datetime(2026, 10, 13, 0, 0, tzinfo=UTC)
     pol.reconcile_day(149.4, 50.0)
     # Restart: fresh policy over the same file keeps peak + halts.
     pol2 = RiskPolicy(RiskConfig(), state_path=spath,
@@ -665,13 +663,14 @@ def test_rel_invalid_calendar_blocks_entry_exit_works(tmp_path):
     entries inside the CPI window; exits keep working; entries resume
     after the window (normal Session path, offline canned sources)."""
     h = _w1()
+    from nautilus_trader.model.data import QuoteTick
+    from nautilus_trader.model.objects import Price, Quantity
+
     import cryptobot.events as _evpkg
     from cryptobot.events.freshness import FreshnessTracker, HttpResponse
     from cryptobot.events.runtime import ProtectionRuntime
     from cryptobot.events.sources import CpiSource, FomcSource
     from cryptobot.events.store import EventStore
-    from nautilus_trader.model.data import QuoteTick
-    from nautilus_trader.model.objects import Price, Quantity
     canned = Path(_evpkg.__file__).parent / "fixtures" / "canned"
 
     def _canned(url, timeout_s=20):
@@ -686,7 +685,7 @@ def test_rel_invalid_calendar_blocks_entry_exit_works(tmp_path):
             engine.instrument_id("BTCUSDT"), Price(bid, 2), Price(ask, 2),
             Quantity(1.0, 3), Quantity(1.0, 3), ts_event=ns, ts_init=ns))
 
-    cpi = datetime(2026, 10, 14, 12, 30, tzinfo=timezone.utc)
+    cpi = datetime(2026, 10, 14, 12, 30, tzinfo=UTC)
     session, store, engine = h["_paper_session"](tmp_path)
     try:
         store_rt = EventStore()
@@ -721,7 +720,7 @@ def test_rel_invalid_calendar_blocks_entry_exit_works(tmp_path):
         assert "event:in-window:CPI-2026-10-14" in rej, rej
         # After the window: entries flow again (block was the calendar).
         # The new day needs its real rollover reconcile first (ops flow).
-        after = datetime(2026, 10, 15, 12, 30, tzinfo=timezone.utc)
+        after = datetime(2026, 10, 15, 12, 30, tzinfo=UTC)
         session.clock.set_ms(int(after.timestamp() * 1000))
         session.policy.reconcile_day(
             session.ledger.marked_equity(100.2), session.ledger.total_flows())
@@ -816,7 +815,7 @@ def test_rel_protected_posture_admits_on_clear_day(tmp_path, monkeypatch):
         h["_pquote"](engine, 1000, 100.0, 100.2)
         session._drain_engine()
         # Inside the CPI window: the protected posture must block.
-        cpi = datetime(2026, 10, 14, 12, 30, tzinfo=timezone.utc)
+        cpi = datetime(2026, 10, 14, 12, 30, tzinfo=UTC)
         session.clock.set_ms(int(cpi.timestamp() * 1000))
         session.policy.reconcile_day(
             session.ledger.marked_equity(100.2), session.ledger.total_flows())

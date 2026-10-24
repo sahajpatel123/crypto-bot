@@ -17,9 +17,10 @@ from __future__ import annotations
 
 import json
 import os
-from datetime import datetime, timezone
+from collections.abc import Callable
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from cryptobot.app.engine import EngineEvent, EngineFill, EngineOrder
 from cryptobot.coordination import RiskOutcomeSink
@@ -52,7 +53,7 @@ class RuntimeTrader:
         self.log_path.parent.mkdir(parents=True, exist_ok=True)
         self.ledger = ledger
         self.outcome_sink = outcome_sink
-        self._now_utc = now_utc or (lambda: datetime.now(timezone.utc))
+        self._now_utc = now_utc or (lambda: datetime.now(UTC))
         self.exit_only = exit_only
         self.expiry_settle_polls = expiry_settle_polls
         self._client_reservation: dict[str, str] = {}  # client id -> reservation.
@@ -546,7 +547,7 @@ class RuntimeTrader:
         ledger: Any | None = None,
         outcome_sink: RiskOutcomeSink | None = None,
         now_utc: Callable[[], datetime] | None = None,
-    ) -> "RuntimeTrader":
+    ) -> RuntimeTrader:
         """Rebuild from the log, reconcile against the engine, replay deltas.
 
         Simulator orders do not survive restarts: submitted-but-unresolved ids

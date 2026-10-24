@@ -16,6 +16,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
+from datetime import UTC
+
 from cryptobot.coordination import DataQuality
 from cryptobot.market_data.bars import Bar1s, BarAggregator, to_s1_bar
 
@@ -64,12 +66,14 @@ def test_session_view_propagates_gap_quality(tmp_path):
     try:
         session = Session(cfg, store, tmp_path / "runs" / "gapq", "gapq")
         from collections import deque
+
         from cryptobot.app.session import _SymbolFeed
         feed = _SymbolFeed("BTCUSDT", cfg.warmup_bars)
         # Simulate a gap-derived window: a missing slot amid present bars.
-        from datetime import datetime, timezone
+        from datetime import datetime
+
         from cryptobot.strategies.s1 import Bar
-        t0 = datetime(2026, 1, 1, tzinfo=timezone.utc)
+        t0 = datetime(2026, 1, 1, tzinfo=UTC)
         feed.bars = deque([
             Bar(ts_utc=t0, open=100.0, high=100.0, low=100.0, close=100.0,
                 volume=1.0, trades=1, buy_frac=1.0, spread_bps=2.0,
@@ -78,8 +82,8 @@ def test_session_view_propagates_gap_quality(tmp_path):
         ], maxlen=cfg.warmup_bars + 5)
         session._feeds["BTCUSDT"] = feed
         seen = {}
-        from cryptobot.strategies.runtime import StrategyOutcome
         from cryptobot.coordination.selector import Candidate
+        from cryptobot.strategies.runtime import StrategyOutcome
 
         class _Spy:
             strategy_id = "S1"

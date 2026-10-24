@@ -10,15 +10,14 @@ import json
 import os
 import sys
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from cryptobot.app.config import load_config
 from cryptobot.app.session import Session, WallClock, _SymbolFeed
 from cryptobot.app.store import RunStore
 from cryptobot.coordination.exits import ExitPolicy, encode_exit_rule
-from cryptobot.coordination.intent import (
-    DataQuality, ForecastCost, Intent, Side)
+from cryptobot.coordination.intent import DataQuality, ForecastCost, Intent, Side
 from cryptobot.coordination.selector import Candidate
 
 
@@ -45,7 +44,7 @@ class _CtlEngine:
         self.exit_only: list = []
         self.submits: list = []
         self.cancels: list = []
-        self._now = datetime(2020, 1, 1, tzinfo=timezone.utc)
+        self._now = datetime(2020, 1, 1, tzinfo=UTC)
         self._unknown: list = []
 
     @property
@@ -105,7 +104,7 @@ def _ctl_session(tmp_path: Path, engine=None, name="ctl-1", **over):
     session.arm_replay_filters(
         {"BTCUSDT": {"tick_size": 0.10, "step_size": 0.001,
                      "min_qty": 0.001, "min_notional": 5.0}},
-        origin="test", asof_utc=datetime.now(timezone.utc))
+        origin="test", asof_utc=datetime.now(UTC))
     session._init_run_files()
     return session, store
 
@@ -328,7 +327,7 @@ def test_burst_records_control_latencies(tmp_path):
     engine = _CtlEngine()
     session, store = _ctl_session(tmp_path, engine)
     try:
-        base_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
+        base_ms = int(datetime.now(UTC).timestamp() * 1000)
 
         def gen():
             for i in range(200):
@@ -382,6 +381,7 @@ def test_config_rejects_inline_secrets(tmp_path):
 
 def test_config_rejects_prod_demo_and_testnet(tmp_path):
     import pytest
+
     from cryptobot.app.config import ConfigError
     base = open("configs/prod.toml").read()
     demo = base.replace("demo = false", "demo = true", 1)

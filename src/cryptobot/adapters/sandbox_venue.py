@@ -595,7 +595,7 @@ class SandboxVenue:
 
     @classmethod
     def load(cls, path: str | Path,
-             config: SandboxConfig | None = None) -> "SandboxVenue":
+             config: SandboxConfig | None = None) -> SandboxVenue:
         venue = cls(config)
         venue.restore(json.loads(Path(path).read_text(encoding="utf-8")))
         return venue

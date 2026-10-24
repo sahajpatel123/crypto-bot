@@ -1,8 +1,7 @@
 """F-CEO-07: nonfinite money/price/cost values are rejected, never approved."""
 import math
 
-import pytest
-from helpers import T0, audit_account, audit_intent, make_clock
+from helpers import audit_account, audit_intent, make_clock
 
 from cryptobot.coordination import ForecastCost
 from cryptobot.risk import AccountSnapshot, Approved, Rejected, RiskPolicy

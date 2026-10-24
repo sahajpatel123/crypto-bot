@@ -1,7 +1,7 @@
 """Freshness tests (Worker 4, W4-24H). Real verification, no minting."""
 import sys
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -9,15 +9,19 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
 import cryptobot.events as _evpkg  # noqa: E402
-from cryptobot.events.freshness import (CACHE_TTL, FreshnessTracker,  # noqa: E402
-                                        HttpResponse, SourceStateStore,
-                                        parse_cpi_release_dates,
-                                        parse_fomc_decision_dates)
+from cryptobot.events.freshness import (  # noqa: E402
+    CACHE_TTL,
+    FreshnessTracker,
+    HttpResponse,
+    SourceStateStore,
+    parse_cpi_release_dates,
+    parse_fomc_decision_dates,
+)
 from cryptobot.events.sources import CpiSource, FomcSource  # noqa: E402
 from cryptobot.events.store import EventStore  # noqa: E402
 
 CANNED = Path(_evpkg.__file__).parent / "fixtures" / "canned"
-T0 = datetime(2026, 10, 12, 13, 0, tzinfo=timezone.utc)
+T0 = datetime(2026, 10, 12, 13, 0, tzinfo=UTC)
 
 
 def _canned(url, timeout_s=20):
@@ -147,7 +151,7 @@ def test_schedule_drift_never_auto_applies(tmp_path):
     assert results["cpi"].extra == ("2026-10-21",)
     # Cache untouched: the Oct 14 event still stands as cached.
     assert store.get("CPI-2026-10-14").scheduled_utc == datetime(
-        2026, 10, 14, 12, 30, tzinfo=timezone.utc)
+        2026, 10, 14, 12, 30, tzinfo=UTC)
 
 
 def test_background_thread_refreshes_then_stops(tmp_path):

@@ -4,8 +4,11 @@ from __future__ import annotations
 import pytest
 
 from cryptobot.risk.margin import (
-    liquidation_ok, liquidation_price_isolated, maintenance_margin,
-    minimum_viable_equity)
+    liquidation_ok,
+    liquidation_price_isolated,
+    maintenance_margin,
+    minimum_viable_equity,
+)
 
 BRACKETS = [
     {"bracket": 1, "notionalCap": 50000.0, "maintMarginRatio": 0.004,

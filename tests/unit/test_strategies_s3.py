@@ -1,5 +1,4 @@
 """S3 baseline tests (Worker 1, Q-004): fades, filters, causality, interop."""
-import dataclasses
 import json
 import sys
 from datetime import timedelta
@@ -13,15 +12,14 @@ from cryptobot.research.synthetic import (
     SCENARIO_FLAT,
     SCENARIO_GAP,
     SCENARIO_S3_LONG,
-    SCENARIO_S3_SHORT,
     Fixture,
     generate_fixture,
 )
 from cryptobot.strategies.contract import (
     S3_BASE,
     S3_COST,
-    S3_REGIME,
     S3_FORECAST_COST,
+    S3_REGIME,
 )
 from cryptobot.strategies.s3 import Bar, evaluate_bar, evaluate_side
 

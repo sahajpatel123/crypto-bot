@@ -1,7 +1,7 @@
 """Strategy contract tests (Worker 1, Q-001): shared types + S1 conventions."""
 import dataclasses
 import sys
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -59,14 +59,14 @@ def test_s3_s4_s5_cost_presets_match_s1_values():
 
 
 def test_evidence_ref_format():
-    ts = datetime(2026, 1, 2, 0, 2, 34, tzinfo=timezone.utc)
+    ts = datetime(2026, 1, 2, 0, 2, 34, tzinfo=UTC)
     ref = C.build_evidence_ref("S1", "0.1.0", "BTCUSDT", Side.LONG, ts)
     assert ref == "S1:0.1.0:BTCUSDT:LONG:2026-01-02T00:02:34+00:00"
     assert C.build_evidence_ref("S1", "0.1.0", "BTCUSDT", Side.LONG, ts) == ref
 
 
 def _intent_kwargs(**kw):
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     base = dict(
         strategy="S1", instrument="BTCUSDT", side=Side.LONG,
         evidence_ts_utc=now, entry_low=100.0, entry_high=101.0,
@@ -113,7 +113,7 @@ def test_build_intent_enforces_structural_invariants():
         C.build_intent(**_intent_kwargs(
             side=Side.SHORT, entry_low=100.0, entry_high=101.0,
             invalidation_price=100.5))  # SHORT: must be > high
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     with pytest.raises(ValueError):
         C.build_intent(**_intent_kwargs(entry_expiry_utc=now - timedelta(seconds=1)))
     with pytest.raises(ValueError):

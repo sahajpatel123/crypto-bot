@@ -7,13 +7,13 @@ addendum signature and validates every delta like risk/ledger must.
 Deterministic: fake venue + injected clock + tmp logs.
 """
 import math
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
 from cryptobot.execution import FakeVenue, OrderManager, OrderState
 
-NOW = datetime(2026, 1, 1, tzinfo=timezone.utc)
+NOW = datetime(2026, 1, 1, tzinfo=UTC)
 
 
 class RecordingSinkV2:

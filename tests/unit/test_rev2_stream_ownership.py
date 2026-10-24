@@ -24,7 +24,7 @@ import sys
 import threading
 import time
 from collections import deque
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -38,16 +38,15 @@ from cryptobot.adapters.paper_engine import NautilusPaperEngine
 from cryptobot.adapters.user_stream import attach_user_stream
 from cryptobot.app.config import load_config
 from cryptobot.app.engine import EngineOrder
-from cryptobot.coordination.exits import encode_exit_rule, ExitPolicy
-from cryptobot.coordination.intent import (DataQuality, ForecastCost,
-                                           Intent, Side)
 from cryptobot.app.session import Session
 from cryptobot.app.store import RunStore
+from cryptobot.coordination.exits import ExitPolicy, encode_exit_rule
+from cryptobot.coordination.intent import DataQuality, ForecastCost, Intent, Side
 from cryptobot.coordination.selector import Candidate
 
 FIX = venues.FIX
 MECHANICS = "mechanic-band"
-NOW = datetime(2026, 10, 12, 6, 0, tzinfo=timezone.utc)
+NOW = datetime(2026, 10, 12, 6, 0, tzinfo=UTC)
 
 
 class FakeSocket:

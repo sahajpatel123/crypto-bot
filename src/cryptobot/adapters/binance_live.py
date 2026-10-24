@@ -49,13 +49,14 @@ import random
 import re
 import time
 import urllib.error
-import uuid
 import urllib.parse
 import urllib.request
+import uuid
+from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Callable, Protocol
+from typing import Any, Protocol
 
 from cryptobot.app.engine import (
     AccountPosition,
@@ -338,7 +339,7 @@ class BinanceLiveEngine:
         self._working_type = stop_working_type
         self._orders_ttl = float(open_orders_ttl_s)
         self._transport = transport or UrllibTransport(self._base_url)
-        self._now_utc = now_utc or (lambda: datetime.now(timezone.utc))
+        self._now_utc = now_utc or (lambda: datetime.now(UTC))
         self._now_ms = lambda: int(self._now_utc().timestamp() * 1000)
         self._offset_ms = 0
         self._ready = False
@@ -1337,7 +1338,7 @@ class BinanceLiveEngine:
         tid = str(order.get("t", ""))
         symbol = str(order["s"])
         ts = envelope.get("E")
-        now = (datetime.fromtimestamp(ts / 1000, tz=timezone.utc)
+        now = (datetime.fromtimestamp(ts / 1000, tz=UTC)
                if isinstance(ts, (int, float)) else self._now_utc())
         exec_id = (self._fill_exec_id(symbol, tid) if tid
                    else f"{self._venue}/{self._account_tag}/{symbol}/"

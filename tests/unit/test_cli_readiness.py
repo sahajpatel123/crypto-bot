@@ -4,7 +4,7 @@ No network, no real keys. Signed-venue behavior is covered with a stub
 engine; credential-absent paths use env scrubbing.
 """
 import argparse
-import os
+from datetime import UTC
 
 import pytest
 
@@ -208,14 +208,15 @@ class _StubLiveEngine:
         return _StubLiveEngine.status
 
     def account_snapshot(self):
-        from datetime import datetime, timezone
+        from datetime import datetime
+
         from cryptobot.app.engine import AccountSnapshot
         st = _StubLiveEngine.status
         return AccountSnapshot(
             wallet_equity_usdt=st["total_wallet_usdt"],
             available_margin_usdt=st["available_usdt"],
             margin_balance_usdt=st["total_wallet_usdt"],
-            positions=(), asof_utc=datetime(2026, 10, 14, tzinfo=timezone.utc),
+            positions=(), asof_utc=datetime(2026, 10, 14, tzinfo=UTC),
             complete=True)
 
     def open_orders(self):
@@ -317,7 +318,6 @@ def test_ws_socket_timeout_idle_binary_ignored_death_raises(monkeypatch):
     sock = factory("K")
     assert sock.recv(1.0) is None
     assert sock.recv(1.0) is None
-    import pytest
     with pytest.raises(WsClosed):
         sock.recv(1.0)
 

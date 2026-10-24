@@ -3,15 +3,12 @@ import copy
 import json
 import sys
 from collections import deque
-from datetime import datetime, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
 import venue_fixtures as venues
-from cryptobot.adapters.binance_live import BinanceLiveEngine, VenueHttpError
 from cryptobot.adapters.user_stream import UserStreamReader
-from cryptobot.app.engine import EngineOrder
 
 FIX = venues.FIX
 T0MS = venues.T0MS

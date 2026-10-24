@@ -8,14 +8,13 @@ value when momentum stalls. Emits manager-owned
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from cryptobot.coordination import (
     DataQuality,
     DecisionRecord,
     ExitPolicy,
     FeatureEvidence,
-    Intent,
     Side,
     encode_exit_rule,
 )
@@ -25,18 +24,17 @@ from cryptobot.features.range import edge_touches, vwap_typical
 from ._shared import columns, gap_scan
 from .contract import (
     ARM_IDS_S3,
-    STRATEGY_VERSION,
-    S3_BASE,
     S3_COST,
-    S3_REGIME,
     S3_FORECAST_COST,
+    S3_REGIME,
+    STRATEGY_VERSION,
     build_evidence_ref,
     build_intent,
 )
-from .s1 import S1Decision as S3Decision
 from .s1 import Bar, EvalLog
+from .s1 import S1Decision as S3Decision
 
-_EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
+_EPOCH = datetime(1970, 1, 1, tzinfo=UTC)
 WARMUP_N = 120
 MAX_CONSECUTIVE_MISSING_HALT = 5
 

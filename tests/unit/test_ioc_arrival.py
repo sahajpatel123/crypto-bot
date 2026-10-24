@@ -5,7 +5,7 @@ command arrival. A nonmarketable remainder cancels at arrival and NEVER
 revives on later ticks (F-W1B1 relabel ruled insufficient and superseded:
 no blanket maker-relabel; no-rest enforcement instead).
 """
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -14,7 +14,7 @@ nautilus = pytest.importorskip("nautilus_trader")
 from cryptobot.adapters import NautilusPaperEngine  # noqa: E402
 from cryptobot.app.engine import EngineOrder  # noqa: E402
 
-T0 = datetime(2026, 10, 1, tzinfo=timezone.utc)
+T0 = datetime(2026, 10, 1, tzinfo=UTC)
 
 
 def _engine(**kw):

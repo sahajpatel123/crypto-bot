@@ -8,7 +8,7 @@ determinism.
 Requires nautilus_trader (trial venv); skipped in the stdlib-only project env.
 """
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -30,7 +30,7 @@ from cryptobot.market_data.bridge import iter_market_stream, snapshot_record  # 
 from cryptobot.risk.policy import RiskPolicy  # noqa: E402
 from cryptobot.risk.types import AccountSnapshot, Approved, RiskConfig  # noqa: E402
 
-T0 = datetime(2026, 10, 1, tzinfo=timezone.utc)
+T0 = datetime(2026, 10, 1, tzinfo=UTC)
 T0MS = int(T0.timestamp() * 1000)
 EQUITY = 10_000.0
 
@@ -91,7 +91,7 @@ def _run(tmp_path, tag):
     fills_seen = []
     for tick in pump.pump_stream(iter(items)):
         now[0] = datetime.fromtimestamp(tick.record["exchange_ts_ms"] / 1000,
-                                        tz=timezone.utc)
+                                        tz=UTC)
         trader.ingest(tick.engine_events)  # pump already drained the engine.
         trader.poll()  # settle windows, sibling groups, callbacks.
         if not admitted and tick.record["seq"] == 2:

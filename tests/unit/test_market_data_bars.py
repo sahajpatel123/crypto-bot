@@ -1,5 +1,12 @@
 """1s-bar causality tests (Worker 2, E-006). Synthetic trade streams only."""
-from cryptobot.market_data.bars import Bar1s, BarAggregator, BarMissing, bar_from_dict, bar_to_dict, to_s1_bar
+from cryptobot.market_data.bars import (
+    Bar1s,
+    BarAggregator,
+    BarMissing,
+    bar_from_dict,
+    bar_to_dict,
+    to_s1_bar,
+)
 
 
 def _trade(ts_ms, trade_id, price=100.0, qty=1.0, maker=False):

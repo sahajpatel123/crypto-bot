@@ -15,9 +15,9 @@ from __future__ import annotations
 
 import math
 import time
-from datetime import datetime, timezone
+from collections.abc import Callable
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Callable
 
 from cryptobot.accounting.day import accounting_date
 from cryptobot.accounting.ledger import Ledger
@@ -45,7 +45,7 @@ class RiskPolicy:
     ) -> None:
         self.config = config or RiskConfig()
         self.state_path = Path(state_path)
-        self._now_utc = now_utc or (lambda: datetime.now(timezone.utc))
+        self._now_utc = now_utc or (lambda: datetime.now(UTC))
         self._state: RiskState = load_state(self.state_path)
         self._ledger: Ledger | None = None
         # READY-§5 executable narrowing (runtime-only, position-scoped like
@@ -73,7 +73,7 @@ class RiskPolicy:
         if self._last_tick_save_mono:
             try:
                 elapsed = (stamp - datetime.fromtimestamp(
-                    self._last_tick_save_mono, tz=timezone.utc)
+                    self._last_tick_save_mono, tz=UTC)
                     ).total_seconds()
             except (TypeError, ValueError, OverflowError, OSError):
                 elapsed = None

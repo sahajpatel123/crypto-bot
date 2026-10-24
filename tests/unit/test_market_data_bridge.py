@@ -3,7 +3,6 @@
 Stdlib-only except the nautilus mapping tests, which skip without nautilus.
 """
 import json
-from pathlib import Path
 
 import pytest
 

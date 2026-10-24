@@ -98,7 +98,7 @@ class WsClient:
 
     # -- construction ------------------------------------------------------
     @classmethod
-    def connect(cls, url: str, *, timeout_s: float = 10.0) -> "WsClient":
+    def connect(cls, url: str, *, timeout_s: float = 10.0) -> WsClient:
         parts = urlparse(url)
         if parts.scheme not in ("wss", "ws"):
             raise ValueError(f"bad websocket scheme: {parts.scheme}")
@@ -155,7 +155,7 @@ class WsClient:
         while len(self._buf) < n:
             try:
                 chunk = self._sock.recv(65536)
-            except socket.timeout as exc:
+            except TimeoutError as exc:
                 raise WsClosed(f"read timeout after {n} bytes wanted") from exc
             except OSError as exc:
                 raise WsClosed(f"socket error: {exc}") from exc

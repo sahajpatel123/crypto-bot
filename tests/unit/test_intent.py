@@ -1,5 +1,5 @@
 """Intent schema unit tests (manager-owned bootstrap)."""
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -7,7 +7,7 @@ from cryptobot.coordination import DataQuality, ForecastCost, Intent, Side
 
 
 def _intent(**kw):
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     base = dict(strategy="S1", version="0.1.0", instrument="BTCUSDT", side=Side.LONG,
                 evidence_ts_utc=now, entry_low=100.0, entry_high=101.0,
                 entry_expiry_utc=now + timedelta(seconds=60), invalidation_price=99.0,

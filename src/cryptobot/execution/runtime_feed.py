@@ -16,9 +16,10 @@ reference/fake venue is replay-harness-only and must never price fills.
 from __future__ import annotations
 
 import time
+from collections.abc import Callable, Iterable, Iterator
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
-from typing import Any, Callable, Iterable, Iterator
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from cryptobot.app.engine import EngineEvent, EngineFunding
 from cryptobot.market_data.bridge import StreamBook, StreamItem, book_features, flow_window
@@ -171,7 +172,7 @@ class StreamPump:
         self.stats["records"] += 1
         self.stats["heartbeats"] += 1
         target = (self.engine.now_utc + timedelta(seconds=1) if replay
-                  else datetime.now(timezone.utc))
+                  else datetime.now(UTC))
         try:
             self.engine.advance_to(target)
         except ValueError:

@@ -6,7 +6,7 @@ outcomes are asserted beyond booked-ledger equality across
 mechanical run splits.
 """
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -17,8 +17,8 @@ SYM_A = "BTCUSDT"
 SYM_B = "ETHUSDT"
 DAY1 = "2026-10-11"
 DAY2 = "2026-10-12"
-T1 = int(datetime(2026, 10, 11, tzinfo=timezone.utc).timestamp() * 1000)
-T2 = int(datetime(2026, 10, 12, tzinfo=timezone.utc).timestamp() * 1000)
+T1 = int(datetime(2026, 10, 11, tzinfo=UTC).timestamp() * 1000)
+T2 = int(datetime(2026, 10, 12, tzinfo=UTC).timestamp() * 1000)
 
 
 def _trade(symbol, seq, ts, agg_id, price):

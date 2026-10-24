@@ -1,11 +1,11 @@
 """Order-manager unit tests (Worker 2, E-001). Deterministic clock, fake venue."""
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
 from cryptobot.execution import FakeVenue, OrderManager, OrderState
 
-NOW = datetime(2026, 1, 1, tzinfo=timezone.utc)
+NOW = datetime(2026, 1, 1, tzinfo=UTC)
 
 
 def _manager(venue, tmp_path, **kw):

@@ -16,14 +16,22 @@ Simulator assumptions (logged at startup AND in every session report):
 from __future__ import annotations
 
 from collections import deque
-from datetime import datetime, timezone
+from collections.abc import Callable
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from cryptobot.execution import FakeVenue, OrderManager
 
-from .engine import (EngineCancel, EngineEvent, EngineExpire, EngineFill,
-                     EngineOrder, EngineOrderStatus, EngineReject)
+from .engine import (
+    EngineCancel,
+    EngineEvent,
+    EngineExpire,
+    EngineFill,
+    EngineOrder,
+    EngineOrderStatus,
+    EngineReject,
+)
 
 __all__ = ["ReferenceEngine", "SIMULATOR_ASSUMPTIONS"]
 
@@ -34,7 +42,7 @@ SIMULATOR_ASSUMPTIONS = (
     "stop/target legs, no native OCO.",
 )
 
-_EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
+_EPOCH = datetime(1970, 1, 1, tzinfo=UTC)
 
 
 class _FeeShim:
@@ -89,7 +97,7 @@ class ReferenceEngine:
                  taker_bps: float,
                  now_utc: Callable[[], datetime] | None = None,
                  submit_delay_ms: int = 0) -> None:
-        self._now_utc = now_utc or (lambda: datetime.now(timezone.utc))
+        self._now_utc = now_utc or (lambda: datetime.now(UTC))
         self._log_path = Path(log_path)
         self._taker_bps = taker_bps
         self.venue = FakeVenue(now_ms=lambda: int(

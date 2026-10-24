@@ -27,7 +27,8 @@ from __future__ import annotations
 import queue
 import threading
 import time
-from typing import Any, Callable, Protocol
+from collections.abc import Callable
+from typing import Any, Protocol
 
 
 class StreamSocket(Protocol):

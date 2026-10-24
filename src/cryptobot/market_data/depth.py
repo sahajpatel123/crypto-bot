@@ -9,7 +9,7 @@ until synchronization completes, and affected intervals stay labelled.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 __all__ = ["DepthBook", "DepthState"]
@@ -79,7 +79,7 @@ class DepthBook:
                 "resync_reason": self._resync_reason}
 
     @classmethod
-    def from_dict(cls, raw: dict[str, Any]) -> "DepthBook":
+    def from_dict(cls, raw: dict[str, Any]) -> DepthBook:
         """Rebuild book state exactly (checkpoint restore)."""
         book = cls(str(raw["symbol"]))
         book.bids = {p: q for p, q in raw["bids"]}

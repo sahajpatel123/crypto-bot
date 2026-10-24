@@ -7,11 +7,13 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
 import cryptobot.events as _evpkg  # noqa: E402
-from cryptobot.events.profiles import (OperationalProfile,  # noqa: E402
-                                       ResearchProfile, ReplayCutoff,
-                                       load_profile)
-from cryptobot.events.sources import (CpiSource, FomcSource,  # noqa: E402
-                                      apply_snapshot)
+from cryptobot.events.profiles import (  # noqa: E402
+    OperationalProfile,
+    ReplayCutoff,
+    ResearchProfile,
+    load_profile,
+)
+from cryptobot.events.sources import FomcSource, apply_snapshot  # noqa: E402
 from cryptobot.events.store import EventStore  # noqa: E402
 from cryptobot.events.timezones import parse_iso_utc  # noqa: E402
 

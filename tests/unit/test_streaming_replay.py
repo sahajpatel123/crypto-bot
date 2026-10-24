@@ -9,7 +9,6 @@ from cryptobot.app.session import Session
 from cryptobot.app.store import RunStore
 from cryptobot.market_data.replayer import (
     RollingEventHash,
-    assert_input_class,
     events_hash,
     iter_events,
     load_events,

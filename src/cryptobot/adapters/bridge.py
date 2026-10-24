@@ -29,16 +29,15 @@ from __future__ import annotations
 
 import json
 import select
-import socket
 import time
 import uuid
-from datetime import datetime, timezone
-from typing import Any, Callable, Iterator
+from collections.abc import Callable, Iterator
+from datetime import UTC, datetime
+from typing import Any
 
 from cryptobot.market_data.collector import MARKET_ROUTE, PUBLIC_ROUTE, select_capture_set
 from cryptobot.market_data.discovery import (
     FAPI_BASE_URL,
-    discover_usdt_perps,
     fetch_exchange_info,
     urllib_json_get,
 )
@@ -108,7 +107,7 @@ def live_events(
                                           top_n=max_symbols)
         if not chosen:
             raise RuntimeError("discovery returned no symbols")
-    run_id = f"live-{datetime.now(timezone.utc):%Y%m%dT%H%M%SZ}-{uuid.uuid4().hex[:6]}"
+    run_id = f"live-{datetime.now(UTC):%Y%m%dT%H%M%SZ}-{uuid.uuid4().hex[:6]}"
     conns: dict[str, WsClient] = {}
     pending_gap: dict[str, str | None] = {"market": None, "public": None}
     reconnects = {"market": 0, "public": 0}

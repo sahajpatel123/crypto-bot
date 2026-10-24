@@ -1,6 +1,6 @@
 """Event timezone tests (Worker 4, EV-001). EST/EDT + IST pinned."""
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -18,7 +18,7 @@ from cryptobot.events.types import Event
 
 
 def _utc(*args):
-    return datetime(*args, tzinfo=timezone.utc)
+    return datetime(*args, tzinfo=UTC)
 
 
 def test_fomc_january_is_est():

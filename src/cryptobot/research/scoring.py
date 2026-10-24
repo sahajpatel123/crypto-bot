@@ -28,7 +28,7 @@ import json
 import math
 import sqlite3
 from collections import Counter, defaultdict
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -50,7 +50,7 @@ def _read_jsonl(path: Path) -> list[dict[str, Any]]:
 def _parse_ts(value: str) -> datetime:
     moment = datetime.fromisoformat(value)
     if moment.tzinfo is None:
-        moment = moment.replace(tzinfo=timezone.utc)
+        moment = moment.replace(tzinfo=UTC)
     return moment
 
 
@@ -85,7 +85,7 @@ def _ledger_flows(run_dir: Path) -> list[dict[str, Any]]:
 def _ist_day(moment: datetime) -> str:
     """Accounting-day label (Asia/Kolkata) for a timestamp."""
     if moment.tzinfo is None:
-        moment = moment.replace(tzinfo=timezone.utc)
+        moment = moment.replace(tzinfo=UTC)
     return accounting_date(moment).isoformat()
 
 

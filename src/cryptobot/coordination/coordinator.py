@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from .intent import Intent
 
@@ -16,7 +16,7 @@ class CoordinatorDecision:
 
 class Coordinator:
     def select(self, intents: list[Intent], now_utc: datetime | None = None) -> CoordinatorDecision:
-        now = now_utc or datetime.now(timezone.utc)
+        now = now_utc or datetime.now(UTC)
         valid = [i for i in intents if i.entry_expiry_utc >= now and i.data_quality != "halt"]
         if not valid:
             return CoordinatorDecision(None, tuple(intents), "no-valid-intents")

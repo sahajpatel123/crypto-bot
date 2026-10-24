@@ -6,8 +6,7 @@ recorded-shape — hand-built, NOT actual captures.
 """
 import copy
 import json
-from datetime import datetime, timezone
-from pathlib import Path
+from datetime import UTC, datetime
 
 import pytest
 
@@ -300,7 +299,7 @@ def test_open_orders_cached_by_ttl(tmp_path, ready, orders):
     assert [s.client_order_id for s in first] == [own]  # stray filtered.
     assert first[0].state == "open" and first[0].qty == 0.001
     assert engine.open_orders() == first  # cached: no second request.
-    clock[0] = datetime.fromtimestamp(T0MS / 1000 + 2, tz=timezone.utc)
+    clock[0] = datetime.fromtimestamp(T0MS / 1000 + 2, tz=UTC)
     engine.open_orders()
     ignored = [e for e in _journal_events(tmp_path)
                if e["event"] == "foreign-orders-ignored"]

@@ -13,7 +13,7 @@ carries the persisted verified_utc and expires verified_utc + CACHE_TTL.
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Protocol

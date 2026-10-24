@@ -17,13 +17,13 @@ from __future__ import annotations
 
 import json
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
-from .discovery import (
-    FAPI_BASE_URL, SymbolMeta, discover_usdt_perps, fetch_exchange_info)
+from .discovery import FAPI_BASE_URL, SymbolMeta, discover_usdt_perps, fetch_exchange_info
 
 TICKER_24H_PATH = "/fapi/v1/ticker/24hr"
 BOOK_TICKER_PATH = "/fapi/v1/ticker/bookTicker"
@@ -79,7 +79,7 @@ def scan_universe(http_get: Callable[[str, float], tuple[Any, float]],
     ``cache_max_age_s``) is reused without any REST call. Stale cache is
     refreshed; refresh failure surfaces loudly (no silent stale reuse).
     """
-    now = now_utc or datetime.now(timezone.utc)
+    now = now_utc or datetime.now(UTC)
     if cache_path is not None and cache_path.exists():
         try:
             cached = json.loads(cache_path.read_text())

@@ -121,7 +121,7 @@ def test_watchdog_stale_exposed(tmp_path):
 def test_soak_burst_bounded_queue():
     import time as _t
 
-    from cryptobot.app.producer import BoundedProducer, TIMEOUT
+    from cryptobot.app.producer import TIMEOUT, BoundedProducer
 
     def gen():
         for i in range(5000):

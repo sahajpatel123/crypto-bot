@@ -18,18 +18,17 @@ import json
 import os
 import random
 import select
-import signal
-import socket
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from .bars import BarAggregator, BarMissing
 from .bridge import snapshot_record
 from .depth import DepthBook
-from .discovery import FAPI_BASE_URL, discover_usdt_perps, fetch_exchange_info, urllib_json_get
+from .discovery import FAPI_BASE_URL, discover_usdt_perps, urllib_json_get
 from .events import EVENT_FORMAT, parse_message, raw_envelope
 from .recorder import INPUT_OBSERVED
 from .ws import WsClient, WsClosed, WsHandshakeError
@@ -250,7 +249,7 @@ class Collector:
     def run(self, duration_s: float | None = None) -> RunStats:
         self.run_dir.mkdir(parents=True, exist_ok=True)
         (self.run_dir / "pid").write_text(str(os.getpid()))
-        self._started_utc = datetime.now(timezone.utc).isoformat()
+        self._started_utc = datetime.now(UTC).isoformat()
         self._started_mono = self._mono_ns()
         try:
             self._clock_start = measure_clock_offset_ms(self._rest_get)
@@ -322,7 +321,7 @@ class Collector:
             if not self.stats.stop_reason:
                 self.stats.stop_reason = "stopped"
             self._write_stats()
-            self._write_manifest(datetime.now(timezone.utc).isoformat(), files)
+            self._write_manifest(datetime.now(UTC).isoformat(), files)
             self._heartbeat()
         return self.stats
 
@@ -522,7 +521,7 @@ class Collector:
     def _heartbeat(self) -> None:
         (self.run_dir / "heartbeat.json").write_text(json.dumps({
             "run_id": self.config.run_id, "pid": os.getpid(),
-            "at_utc": datetime.now(timezone.utc).isoformat(),
+            "at_utc": datetime.now(UTC).isoformat(),
             "events_total": self.stats.events_total,
             "per_channel": self.stats.per_channel,
             "depth_resyncs": self.stats.depth_resyncs,

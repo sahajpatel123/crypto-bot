@@ -11,13 +11,13 @@ from cryptobot.research.backtest import (
     ARM_SETS,
     DEV_DAYS,
     MECHANISM_SPLIT,
+    SPLITS,
+    TEST_DAYS,
+    VAL_DAYS,
     OverlapDedup,
     _default_symbols,
     assemble_split_capture,
     build_partition,
-    SPLITS,
-    TEST_DAYS,
-    VAL_DAYS,
     compare_runs,
     curve_signature,
     day_events_for,
@@ -37,9 +37,9 @@ CONFIG = "configs/paper.toml"
 
 
 def test_splits_frozen_cover_30_days_disjoint():
-    assert DEV_DAYS == tuple(range(1, 16))
-    assert VAL_DAYS == tuple(range(16, 23))
-    assert TEST_DAYS == tuple(range(23, 31))
+    assert tuple(range(1, 16)) == DEV_DAYS
+    assert tuple(range(16, 23)) == VAL_DAYS
+    assert tuple(range(23, 31)) == TEST_DAYS
     assert SPLITS == {"dev": DEV_DAYS, "validation": VAL_DAYS, "test": TEST_DAYS}
     assert sorted(DEV_DAYS + VAL_DAYS + TEST_DAYS) == list(range(1, 31))
 
@@ -345,7 +345,7 @@ class _FakeVision:
                             "min_notional": 50.0}}},
         }
         base = int(dt.datetime(2026, 9, 11, 18, 30,
-                               tzinfo=dt.timezone.utc).timestamp() * 1000)
+                               tzinfo=dt.UTC).timestamp() * 1000)
         self._days = {}
         for day in ("2026-09-11", "2026-09-12", "2026-09-13"):
             self._days[day] = []
@@ -513,7 +513,7 @@ def test_assembly_max_events_never_reads_tail(tmp_path, monkeypatch):
 def test_day_has_quotes_is_day_scoped_captured():
     import datetime as _dt
 
-    base = _dt.datetime(2026, 9, 12, tzinfo=_dt.timezone.utc).timestamp()
+    base = _dt.datetime(2026, 9, 12, tzinfo=_dt.UTC).timestamp()
     manifest = {"source": [{
         "symbol": "BTCUSDT", "channels": ["aggTrade", "bookTicker"],
         "ts_min_ms": int(base * 1000),

@@ -1,7 +1,6 @@
 """T1.7: settled funding booked in ledger + reconciled vs venue."""
 from __future__ import annotations
 
-from datetime import datetime, timezone
 from pathlib import Path
 
 import venue_fixtures as venues

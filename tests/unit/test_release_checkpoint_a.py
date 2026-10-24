@@ -6,9 +6,8 @@ fill→ledger→protection, unknown→lookup→no-duplicate-entry, restart
 re-adopt without duplicate keys, and the reduce-only exit path.
 """
 import copy
-import json
 import sys
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -19,9 +18,8 @@ import venue_fixtures as venues
 from cryptobot.app.config import load_config
 from cryptobot.app.session import Session
 from cryptobot.app.store import RunStore
-from cryptobot.coordination.exits import encode_exit_rule, ExitPolicy
-from cryptobot.coordination.intent import (
-    DataQuality, ForecastCost, Intent, Side)
+from cryptobot.coordination.exits import ExitPolicy, encode_exit_rule
+from cryptobot.coordination.intent import DataQuality, ForecastCost, Intent, Side
 from cryptobot.coordination.selector import Candidate
 
 MECHANICS = "synthetic-mechanics"
@@ -57,7 +55,7 @@ def _session(tmp_path: Path, engine, run_id: str):
     store = RunStore(tmp_path / "runs" / "cryptobot.db")
     session = Session(cfg, store, tmp_path / "runs" / run_id, run_id,
                       engine=engine)
-    now = datetime(2026, 10, 12, 6, 0, tzinfo=timezone.utc)
+    now = datetime(2026, 10, 12, 6, 0, tzinfo=UTC)
     session.clock.set_ms(int(now.timestamp() * 1000))
     session.policy.reconcile_day(120.0, 0.0)
     session.store.create_run(run_id, MECHANICS, "fp",
@@ -171,6 +169,7 @@ def test_unknown_blocks_duplicate_entry_until_lookup(tmp_path):
     session, store = _session(tmp_path, engine, "ca-unknown")
     try:
         import pytest
+
         from cryptobot.adapters.binance_live import UnknownOutcomeError
         # W1-CATCH: Session retains the unknown cid and reconciles by
         # durable client ID before any resubmission (contract §4). Until

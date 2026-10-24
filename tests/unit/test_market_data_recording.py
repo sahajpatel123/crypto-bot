@@ -5,7 +5,6 @@ import pytest
 
 from cryptobot.market_data import (
     KlineRecorder,
-    analyze_klines,
     load_recording,
     replay,
     replay_hash,

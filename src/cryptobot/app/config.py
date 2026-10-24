@@ -5,7 +5,7 @@ import hashlib
 import json
 import math
 import tomllib
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 
 __all__ = ["AppConfig", "ConfigError", "load_config",
@@ -133,7 +133,7 @@ class AppConfig:
         return out
 
     @property
-    def risk(self) -> "RiskConfig":
+    def risk(self) -> RiskConfig:
         """Risk profile view: the exact RiskConfig the Session builds."""
         from cryptobot.risk.types import RiskConfig
         return RiskConfig(**self.to_risk_kwargs())
@@ -318,7 +318,7 @@ def _fingerprint_config(cfg: AppConfig) -> str:
         canonical_obj["x1_beta"] = cfg.x1_beta
     canonical = json.dumps(canonical_obj, sort_keys=True)
     return hashlib.sha256(
-        f"{PACKAGE_VERSION}|{canonical}".encode("utf-8")).hexdigest()[:16]
+        f"{PACKAGE_VERSION}|{canonical}".encode()).hexdigest()[:16]
 
 
 def with_resolved_symbols(cfg: AppConfig, symbols: list[str]) -> AppConfig:

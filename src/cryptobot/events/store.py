@@ -12,7 +12,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from .timezones import parse_iso_utc
 from .types import Event, SourceCoverage
 
 STORE_FORMAT = "cryptobot-events/1"

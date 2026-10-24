@@ -11,7 +11,7 @@ fails before W4's unification and passes after; open items carry
 strict-xfail with owner in tests/audit/conftest.py.
 """
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -23,7 +23,7 @@ from cryptobot.coordination.intent import DataQuality, Intent  # noqa: E402
 from cryptobot.coordination.selector import Selector  # noqa: E402
 from cryptobot.research.returns import ROUNDTRIP_COST_BPS  # noqa: E402
 
-T0 = datetime(2026, 10, 1, tzinfo=timezone.utc)
+T0 = datetime(2026, 10, 1, tzinfo=UTC)
 
 
 def _intent_with_costs(fee, spread, slippage, funding):

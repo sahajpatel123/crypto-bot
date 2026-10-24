@@ -8,13 +8,17 @@ reader + backup. No adapter file is touched here; doubles implement
 the contract surface from app/engine.py.
 """
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from cryptobot.app.engine import (AccountPosition, AccountSnapshot,
-                                  EngineEvent, EngineFill,
-                                  EngineOrderStatus)
+from cryptobot.app.engine import (
+    AccountPosition,
+    AccountSnapshot,
+    EngineEvent,
+    EngineFill,
+    EngineOrderStatus,
+)
 from cryptobot.app.session import Session
 from cryptobot.app.store import RunStore, StoreLocked, UnsafeState
 
@@ -119,7 +123,7 @@ def _position(**kw):
     pos = {"reservation_id": "r-1", "instrument": "BTCUSDT", "side": "LONG",
            "entry_pre_id": "e", "entry_id": "e", "legs": [], "retired": [],
            "stop": 99.0, "target": 102.0,
-           "time_exit": datetime.now(timezone.utc) + timedelta(hours=1),
+           "time_exit": datetime.now(UTC) + timedelta(hours=1),
            "legacy_exit": None, "protected": False, "protect_attempts": 0,
            "entry_cap": None, "close_ids": [], "emergency_latched": False,
            "exposure_noted": False}

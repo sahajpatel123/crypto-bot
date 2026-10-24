@@ -99,7 +99,7 @@ class DepthStore:
                 "ever_synced": sorted(self._ever_synced), "flow": flow}
 
     @classmethod
-    def from_dict(cls, raw: dict[str, Any]) -> "DepthStore":
+    def from_dict(cls, raw: dict[str, Any]) -> DepthStore:
         """Rebuild store state exactly (checkpoint restore)."""
         store = cls(levels=int(raw["levels"]),
                     stale_after_ms=int(raw["stale_after_ms"]))

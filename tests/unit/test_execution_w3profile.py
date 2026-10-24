@@ -1,9 +1,9 @@
 """W3-24H §4 execution races: partial-vs-cancel, stop-leg reject."""
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from cryptobot.execution import FakeVenue, OrderManager, OrderState
 
-NOW = datetime(2026, 1, 1, tzinfo=timezone.utc)
+NOW = datetime(2026, 1, 1, tzinfo=UTC)
 
 
 def _manager(venue, tmp_path, **kw):

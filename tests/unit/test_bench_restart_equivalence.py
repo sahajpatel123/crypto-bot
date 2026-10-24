@@ -13,13 +13,13 @@ Derived from W2's /tmp acceptance tape+harness (durable here).
 import json
 import shutil
 import sqlite3
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from cryptobot.bench_run import main as bench_main
 
 SYM = "BTCUSDT"
-T0 = int(datetime(2026, 10, 11, 18, 24, tzinfo=timezone.utc).timestamp() * 1000)
+T0 = int(datetime(2026, 10, 11, 18, 24, tzinfo=UTC).timestamp() * 1000)
 
 
 def _gen_events():

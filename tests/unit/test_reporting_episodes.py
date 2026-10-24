@@ -1,14 +1,14 @@
 """V-007: episode rebuild — partials, flips, shorts, funding attribution."""
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
 from cryptobot.reporting.episodes import build_episodes
 from cryptobot.reporting.schemas import Fill
 
-T0 = datetime(2026, 10, 10, 12, 0, tzinfo=timezone.utc)
+T0 = datetime(2026, 10, 10, 12, 0, tzinfo=UTC)
 
 
 def _fill(ts, side, qty, price, fee=0.0, exec_id="x", client="c"):
@@ -18,7 +18,7 @@ def _fill(ts, side, qty, price, fee=0.0, exec_id="x", client="c"):
 
 
 def _t(hours):
-    return datetime(2026, 10, 10, 12 + hours, 0, tzinfo=timezone.utc)
+    return datetime(2026, 10, 10, 12 + hours, 0, tzinfo=UTC)
 
 
 def test_simple_round_trip_math():

@@ -13,7 +13,13 @@ from .bridge import (
     to_nautilus_ticks,
 )
 from .capabilities import CONNECTOR_CANDIDATES, ConnectorCapability, build_matrix, render_markdown
-from .collector import Collector, CollectorConfig, RunStats, measure_clock_offset_ms, select_capture_set
+from .collector import (
+    Collector,
+    CollectorConfig,
+    RunStats,
+    measure_clock_offset_ms,
+    select_capture_set,
+)
 from .datasets import DatasetHandle, open_dataset, verify_dataset
 from .depth import DepthBook, DepthState
 from .discovery import (
@@ -26,7 +32,16 @@ from .discovery import (
 )
 from .events import EVENT_FORMAT, channel_of, parse_message, raw_envelope
 from .recorder import KlineRecorder, RecordingStats, analyze_klines
-from .replayer import ReplayEvent, events_hash, load_events, load_recording, replay, replay_events, replay_hash, replay_with_snapshots
+from .replayer import (
+    ReplayEvent,
+    events_hash,
+    load_events,
+    load_recording,
+    replay,
+    replay_events,
+    replay_hash,
+    replay_with_snapshots,
+)
 from .views import BookView, DepthStore, FlowView2, book_flow_for
 from .ws import WsClient, WsClosed, WsHandshakeError
 

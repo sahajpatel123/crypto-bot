@@ -30,7 +30,7 @@ missing. All timestamps are causal exchange event times.
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 QUIET_NO_TRADE = "quiet-no-trade"
@@ -43,7 +43,7 @@ UNKNOWN_PROVENANCE = "unknown-provenance"
 
 
 def _iso(ms: int) -> str:
-    return datetime.fromtimestamp(ms / 1000, tz=timezone.utc).isoformat()
+    return datetime.fromtimestamp(ms / 1000, tz=UTC).isoformat()
 
 
 def _usable_ms(value) -> int | None:

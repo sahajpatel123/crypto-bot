@@ -1,5 +1,5 @@
 """Coordinator selection tests (manager-owned, CONTRACTS v0.1.0 rules)."""
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from cryptobot.coordination import (
     Coordinator,
@@ -11,7 +11,7 @@ from cryptobot.coordination import (
 
 
 def _intent(side=Side.LONG, **kw):
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     base = dict(strategy="S1", version="0.1.0", instrument="BTCUSDT", side=side,
                 evidence_ts_utc=now, entry_low=100.0, entry_high=101.0,
                 entry_expiry_utc=now + timedelta(seconds=60),
@@ -40,7 +40,7 @@ def test_opposing_signals_stand_aside():
 
 def test_stale_and_halt_rejected():
     coord = Coordinator()
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     stale = _intent(evidence_ts_utc=now - timedelta(seconds=120),
                       entry_expiry_utc=now - timedelta(seconds=1))
     halted = _intent(data_quality=DataQuality.HALT)

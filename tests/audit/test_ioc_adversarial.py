@@ -15,7 +15,7 @@ Each test fails before its fix and passes after; open items carry
 strict-xfail with owner in tests/audit/conftest.py.
 """
 import sys
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -27,7 +27,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 from cryptobot.adapters import NautilusPaperEngine  # noqa: E402
 from cryptobot.app.engine import EngineOrder  # noqa: E402
 
-T0 = datetime(2026, 10, 1, tzinfo=timezone.utc)
+T0 = datetime(2026, 10, 1, tzinfo=UTC)
 
 
 def _engine(submit_delay_ms=0, fill_delay_ms=50, **kw):

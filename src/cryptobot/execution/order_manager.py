@@ -39,11 +39,12 @@ from __future__ import annotations
 import json
 import os
 import uuid
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from collections.abc import Callable
+from dataclasses import dataclass
+from datetime import UTC, datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from cryptobot.coordination import RiskOutcomeSink
 
@@ -115,7 +116,7 @@ class OrderManager:
         self.venue = venue
         self.log_path = Path(log_path)
         self.log_path.parent.mkdir(parents=True, exist_ok=True)
-        self._now_utc = now_utc or (lambda: datetime.now(timezone.utc))
+        self._now_utc = now_utc or (lambda: datetime.now(UTC))
         self.exit_only = exit_only
         self.outcome_sink = outcome_sink
         self.expiry_settle_polls = expiry_settle_polls
@@ -601,7 +602,7 @@ class OrderManager:
         now_utc: Callable[[], datetime] | None = None,
         exit_only: bool = False,
         outcome_sink: RiskOutcomeSink | None = None,
-    ) -> "OrderManager":
+    ) -> OrderManager:
         """Rebuild from the log: orders, fired callbacks, halt state; then reconcile, sweep, evaluate."""
         manager = cls(venue, log_path=log_path, now_utc=now_utc, exit_only=exit_only,
                       outcome_sink=outcome_sink)

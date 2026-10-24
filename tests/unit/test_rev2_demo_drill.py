@@ -9,7 +9,6 @@ Session (entry → protection → exit, stream gap, restart adoption,
 authoritative reconcile).
 """
 import contextlib
-import copy
 import hashlib
 import io
 import json
@@ -20,6 +19,8 @@ from pathlib import Path
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools" / "audit"))
+from datetime import UTC
+
 import demo_drill  # noqa: E402
 
 import venue_fixtures as venues  # noqa: E402
@@ -330,8 +331,7 @@ def test_preflight_clock_skew_fails(tmp_path, monkeypatch):
 def test_resume_adopt_open_exposure_books_closes_flat(tmp_path,
                                                   monkeypatch):
     """Restart with exposure: adopt (deduped), verify legs, close flat."""
-    import hashlib
-    from datetime import datetime, timezone
+    from datetime import datetime
     monkeypatch.setenv("BINANCE_DEMO_KEY", "k")
     monkeypatch.setenv("BINANCE_DEMO_SECRET", "s")
     ready = venues.ready_fixture()
@@ -369,7 +369,7 @@ def test_resume_adopt_open_exposure_books_closes_flat(tmp_path,
     ledger = Ledger(120.0)
     assert ledger.record_fill(
         "BUY", 0.010, 100.0, 0.0,
-        datetime(2026, 10, 14, tzinfo=timezone.utc), exec_id,
+        datetime(2026, 10, 14, tzinfo=UTC), exec_id,
         symbol="BTCUSDT")
     drill.session_dir.mkdir(parents=True, exist_ok=True)
     ledger.save(drill.session_dir / "ledger.json")

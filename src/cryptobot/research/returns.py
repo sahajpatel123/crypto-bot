@@ -21,6 +21,7 @@ import json
 from dataclasses import dataclass
 
 from cryptobot.coordination import Side
+from cryptobot.costs import COST_S1, roundtrip_bps
 from cryptobot.strategies.contract import (
     ARM_IDS_S3,
     ARM_IDS_S4,
@@ -28,8 +29,6 @@ from cryptobot.strategies.contract import (
 )
 
 from .experiments import (
-    EXP_003,
-    EXP_004,
     REGISTRY_VERSION,
     S3_SCENARIOS,
     S4_SCENARIOS,
@@ -38,8 +37,6 @@ from .experiments import (
     VALIDATION_SEEDS_S3,
     VALIDATION_SEEDS_S4,
 )
-from cryptobot.costs import COST_S1, roundtrip_bps
-
 from .runner import EVALUATORS
 from .synthetic import GENERATOR_ID, generate_fixture
 

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from cryptobot.strategies.contract import (
     ARM_IDS_S1,
@@ -340,7 +340,7 @@ class TrialRecord:
 
     @staticmethod
     def utcnow() -> str:
-        return datetime.now(timezone.utc).isoformat()
+        return datetime.now(UTC).isoformat()
 
 
 @dataclass

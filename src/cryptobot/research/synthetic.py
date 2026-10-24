@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import random
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from cryptobot.strategies.s1 import Bar
 
@@ -90,7 +90,7 @@ class Fixture:
         }
 
     @staticmethod
-    def from_dict(d: dict) -> "Fixture":
+    def from_dict(d: dict) -> Fixture:
         return Fixture(
             label=d["label"],
             generator=d["generator"],
@@ -151,7 +151,7 @@ def generate_fixture(
         raise ValueError(f"unknown scenario {scenario!r}")
     if n_bars < 200:
         raise ValueError("n_bars must be >= 200 (history + trigger room)")
-    t0 = t0_utc or datetime(2026, 1, 2, tzinfo=timezone.utc)
+    t0 = t0_utc or datetime(2026, 1, 2, tzinfo=UTC)
     rng = random.Random(seed)
     direction = -1.0 if scenario in (SCENARIO_SHORT, SCENARIO_S2_SHORT,
                                      SCENARIO_S3_SHORT, SCENARIO_S4_LONG) else 1.0

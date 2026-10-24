@@ -13,35 +13,32 @@ import math
 import os
 import time
 from collections import deque
-from datetime import datetime, timedelta, timezone
+from collections.abc import Callable
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from cryptobot.accounting.day import accounting_date
 from cryptobot.accounting.ledger import Ledger
 from cryptobot.coordination.exits import decode_exit_rule
-from cryptobot.coordination.selector import (Candidate, Selector,
-                                             SelectorConfig)
-from cryptobot.market_data.bars import (BarAggregator, BarMissing,
-                                        to_s1_bar)
+from cryptobot.coordination.selector import Candidate, Selector, SelectorConfig
+from cryptobot.market_data.bars import BarAggregator, BarMissing, to_s1_bar
 from cryptobot.market_data.bridge import load_snapshots
 from cryptobot.market_data.replayer import assert_input_class
 from cryptobot.market_data.views import DepthStore, book_flow_for
 from cryptobot.risk.policy import RiskPolicy
 from cryptobot.risk.rounding import ceil_to_tick, floor_to_step, floor_to_tick
-from cryptobot.risk.types import (AccountSnapshot, Approved, HealthStatus,
-                                  RiskConfig)
+from cryptobot.risk.types import AccountSnapshot, Approved, HealthStatus, RiskConfig
 
 from .config import AppConfig
 from .engine import EngineEvent, EngineOrder
-from .producer import (TIMEOUT, AsyncCall, BoundedProducer, DropBreaker,
-                       deadline_remaining_s)
+from .producer import TIMEOUT, AsyncCall, BoundedProducer, DropBreaker, deadline_remaining_s
 from .reference import ReferenceEngine
 from .store import RunStore
 
 __all__ = ["Session", "ReplayClock", "WallClock", "STRATEGY_ARMS"]
 
-_EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
+_EPOCH = datetime(1970, 1, 1, tzinfo=UTC)
 
 
 class _SessionEngineHandler:
@@ -98,7 +95,7 @@ def _map_b4_views(book: Any, flow: Any, reason: str) -> tuple[Any, Any, list[str
                 ask_notional=sum(p * q for p, q in book.asks),
                 levels=book.levels, imbalance=book.imbalance_top1,
                 ts_utc=datetime.fromtimestamp(book.ts_ms / 1000,
-                                              tz=timezone.utc))
+                                              tz=UTC))
             depth_reason = ""
     flow_view = None
     if flow is not None:
@@ -108,9 +105,9 @@ def _map_b4_views(book: Any, flow: Any, reason: str) -> tuple[Any, Any, list[str
             sell_count=flow.sell_count, vwap=flow.vwap or 0.0,
             trade_count=flow.buy_count + flow.sell_count,
             window_start_utc=datetime.fromtimestamp(
-                flow.window_start_ms / 1000, tz=timezone.utc),
+                flow.window_start_ms / 1000, tz=UTC),
             window_end_utc=datetime.fromtimestamp(
-                flow.window_end_ms / 1000, tz=timezone.utc))
+                flow.window_end_ms / 1000, tz=UTC))
         flow_reason = ""
     return depth, flow_view, [r for r in (depth_reason, flow_reason) if r]
 
@@ -173,7 +170,7 @@ class WallClock:
     """Wall-time clock for live paper sessions."""
 
     def now(self) -> datetime:
-        return datetime.now(timezone.utc)
+        return datetime.now(UTC)
 
 
 class Session:
@@ -332,7 +329,7 @@ class Session:
         self.store.set_state(self.run_id, state, reason)
         self._append_run_file("risk.jsonl", {
             "ts_utc": self.now_utc().isoformat(),
-            "wall_ts_utc": datetime.now(timezone.utc).isoformat(),
+            "wall_ts_utc": datetime.now(UTC).isoformat(),
             "kind": "run-state",
             "from_state": old, "to_state": state, "reason": reason})
 
@@ -376,7 +373,7 @@ class Session:
             )
         merged = dict(self.policy.config.instrument_filters)
         merged.update(built)
-        asof = asof_utc or datetime.now(timezone.utc)
+        asof = asof_utc or datetime.now(UTC)
         self.policy.config = replace(
             self.policy.config, instrument_filters=merged,
             filters_asof_utc=asof)
@@ -618,7 +615,7 @@ class Session:
                 event_id = (f"funding:{symbol}:{tran}" if tran is not None
                             else f"funding:{symbol}:{ts_ms}:{amount}")
                 ts = datetime.fromtimestamp(ts_ms / 1000,
-                                            tz=timezone.utc).isoformat()
+                                            tz=UTC).isoformat()
             except (TypeError, ValueError, OverflowError, OSError):
                 continue  # malformed row: reconcile diff will surface it
             if self.ledger.note_funding(event_id, amount, ts):
@@ -792,6 +789,7 @@ class Session:
     def _strategy_adapters(self) -> tuple[dict[str, Any], dict[str, Any]]:
         """Runtime adapters (base arms, incl. S5) + modules (variant arms)."""
         import importlib
+
         from cryptobot.strategies.runtime import get_adapter
         adapters: dict[str, Any] = {}
         modules: dict[str, Any] = {}
@@ -1179,7 +1177,7 @@ class Session:
                               intent.instrument, intent.side.value)
             self._append_run_file("risk.jsonl", {
                 "ts_utc": self.now_utc().isoformat(),
-                "wall_ts_utc": datetime.now(timezone.utc).isoformat(),
+                "wall_ts_utc": datetime.now(UTC).isoformat(),
                 "kind": "risk-decision",
                 "from_state": "", "to_state": "rejected",
                 "reason": verdict.reason})
@@ -2805,7 +2803,7 @@ class Session:
         summary: dict[str, Any] = {"source": "rest:fapi/v1/depth",
                                    "applied": 0, "synced": [],
                                    "primed": [], "failed": {}}
-        recv_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
+        recv_ms = int(datetime.now(UTC).timestamp() * 1000)
         for symbol, payload in fetched.items():
             if isinstance(payload, BaseException):
                 summary["failed"][symbol] = {
@@ -2889,7 +2887,7 @@ class Session:
             # future-knowledge events must not gate a historical replay.
             from cryptobot.events.profiles import ReplayCutoff
             first_dt = datetime.fromtimestamp(
-                int(first["exchange_ts_ms"]) / 1000.0, tz=timezone.utc)
+                int(first["exchange_ts_ms"]) / 1000.0, tz=UTC)
             filtered, counts = ReplayCutoff.apply(
                 self.protection.store, first_dt)
             self.protection.store = filtered
@@ -3196,7 +3194,7 @@ class Session:
             self._stop_alerted = True
             self._append_run_file("risk.jsonl", {
                 "ts_utc": self.now_utc().isoformat(),
-                "wall_ts_utc": datetime.now(timezone.utc).isoformat(),
+                "wall_ts_utc": datetime.now(UTC).isoformat(),
                 "kind": "operator-alert",
                 "from_state": "", "to_state": "emergency",
                 "reason": "halt:emergency:exposure-reduction"})
@@ -3265,7 +3263,7 @@ class Session:
                 action = caller_action(exc) if caller_action else "retry"
                 self._append_run_file("risk.jsonl", {
                     "ts_utc": self.now_utc().isoformat(),
-                    "wall_ts_utc": datetime.now(timezone.utc).isoformat(),
+                    "wall_ts_utc": datetime.now(UTC).isoformat(),
                     "kind": "unknown-drain",
                     "from_state": cid, "to_state": action,
                     "reason": f"{type(exc).__name__}:still-blocking"})
@@ -3281,12 +3279,10 @@ class Session:
         is logged, entries flow. Replay additionally applies
         ReplayCutoff at the first event instant in run_replay.
         """
-        from cryptobot.events.freshness import (
-            FreshnessTracker, default_http_get)
+        from cryptobot.events.freshness import FreshnessTracker, default_http_get
         from cryptobot.events.profiles import load_profile
         from cryptobot.events.runtime import ProtectionRuntime
-        from cryptobot.events.sources import (
-            CpiSource, FomcSource, adapters_for)
+        from cryptobot.events.sources import CpiSource, FomcSource, adapters_for
         from cryptobot.events.store import EventStore
         now = self.now_utc()
         try:
@@ -3932,7 +3928,7 @@ class Session:
             ctx["last_market_mono"] = now_mono
             self._append_run_file("risk.jsonl", {
                 "ts_utc": self.now_utc().isoformat(),
-                "wall_ts_utc": datetime.now(timezone.utc).isoformat(),
+                "wall_ts_utc": datetime.now(UTC).isoformat(),
                 "kind": "stream-stall",
                 "from_state": "streaming", "to_state": "resync",
                 "reason": "no market events for 60s; re-priming books"})
@@ -4063,8 +4059,7 @@ class Session:
                     # gracefully instead of dying with open exposure.
                     # Retryable/rejected intents are handled inside the
                     # step/engine and never reach here as run-enders.
-                    from cryptobot.adapters.binance_live import (
-                        classify_exception)
+                    from cryptobot.adapters.binance_live import classify_exception
                     policy = classify_exception(exc)
                     _exposed = bool(self.ledger.has_position()
                                     or self._position is not None)

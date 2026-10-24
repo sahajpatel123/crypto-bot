@@ -17,7 +17,7 @@ import copy
 import json
 import sys
 from collections import deque
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
@@ -33,7 +33,7 @@ from cryptobot.app.engine import EngineOrder
 
 FIX = Path(__file__).resolve().parents[1] / "fixtures" / "binance_live"
 T0MS = 1728720000000
-NOW = datetime.fromtimestamp(T0MS / 1000, tz=timezone.utc)
+NOW = datetime.fromtimestamp(T0MS / 1000, tz=UTC)
 
 
 class _Script:

@@ -28,8 +28,6 @@ from .experiments import (
 )
 from .synthetic import (
     GENERATOR_ID,
-    SOURCE_LABEL,
-    SCENARIOS,
     SCENARIO_CHOPPY,
     SCENARIO_FLAT,
     SCENARIO_GAP,
@@ -42,6 +40,8 @@ from .synthetic import (
     SCENARIO_S4_SHORT,
     SCENARIO_SHORT,
     SCENARIO_WIDE_SPREAD,
+    SCENARIOS,
+    SOURCE_LABEL,
     Fixture,
     generate_fixture,
 )

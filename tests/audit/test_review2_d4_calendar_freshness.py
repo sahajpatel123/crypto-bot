@@ -12,18 +12,17 @@ Fails on base 3cadfca (bug reproduced); passes once fixed.
 Strict-xfail marked in tests/audit/conftest.py while open.
 """
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
-from cryptobot.events.freshness import (
-    FreshnessTracker, HttpResponse)
+from cryptobot.events.freshness import FreshnessTracker, HttpResponse
 from cryptobot.events.sources import CpiSource, FomcSource
 from cryptobot.events.store import EventStore
 
-D12 = datetime(2026, 10, 12, tzinfo=timezone.utc)
-D14 = datetime(2026, 10, 14, tzinfo=timezone.utc)
+D12 = datetime(2026, 10, 12, tzinfo=UTC)
+D14 = datetime(2026, 10, 14, tzinfo=UTC)
 CANNED = (Path(__file__).resolve().parents[2] / "src" / "cryptobot"
           / "events" / "fixtures" / "canned")
 

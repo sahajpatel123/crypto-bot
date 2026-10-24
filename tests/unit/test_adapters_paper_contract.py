@@ -1,6 +1,6 @@
 """Paper contract-v1 tests (Worker 2, release Checkpoint A)."""
 import sys
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
@@ -10,7 +10,7 @@ import pytest
 from cryptobot.adapters.paper_engine import NautilusPaperEngine
 from cryptobot.app.engine import EngineOrder
 
-T0 = datetime(2026, 10, 1, tzinfo=timezone.utc)
+T0 = datetime(2026, 10, 1, tzinfo=UTC)
 
 
 def _engine(tmp_path, **kw):

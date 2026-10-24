@@ -6,16 +6,13 @@ protection with pending-fill coverage, child tracking to terminal,
 idempotent flatten, and fail-closed malformed ingest (W5 note).
 """
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from cryptobot.accounting.ledger import Ledger
 from cryptobot.app.engine import EngineEvent, EngineFill, EngineOrderStatus
 from cryptobot.app.session import Session
 from cryptobot.app.store import RunStore
-from cryptobot.risk.policy import RiskPolicy
-from cryptobot.risk.types import RiskConfig
 
 
 def _config(tmp_path, **over):
@@ -110,7 +107,7 @@ def _position(**kw):
     pos = {"reservation_id": "r-1", "instrument": "BTCUSDT", "side": "LONG",
            "entry_pre_id": "e", "entry_id": "e", "legs": [], "retired": [],
            "stop": 99.0, "target": 102.0,
-           "time_exit": datetime.now(timezone.utc) + timedelta(hours=1),
+           "time_exit": datetime.now(UTC) + timedelta(hours=1),
            "legacy_exit": None, "protected": False, "protect_attempts": 0,
            "entry_cap": None, "close_ids": [], "emergency_latched": False}
     pos.update(kw)
@@ -298,7 +295,7 @@ def test_vacuous_protection_stays_quiet(tmp_path):
 
 # --- inv 6: real-engine exits (state transitions, in-bracket) --------
 
-_RT0 = datetime(2026, 10, 12, 6, 0, tzinfo=timezone.utc)
+_RT0 = datetime(2026, 10, 12, 6, 0, tzinfo=UTC)
 
 
 def _paper_session(tmp_path):
@@ -316,8 +313,7 @@ def _paper_session(tmp_path):
 
 
 def _rintent(now, stop=99.0, target=102.0, exit_s=600):
-    from cryptobot.coordination import (DataQuality, ForecastCost, Intent,
-                                        Side, encode_exit_rule)
+    from cryptobot.coordination import DataQuality, ForecastCost, Intent, Side, encode_exit_rule
     from cryptobot.coordination.exits import ExitPolicy
     from cryptobot.coordination.selector import Candidate
     intent = Intent(

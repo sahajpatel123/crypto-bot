@@ -1,13 +1,11 @@
 """Selector tests (manager-owned, S6)."""
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
-from cryptobot.coordination import (DataQuality, ForecastCost, Intent, Side,
-                                    encode_exit_rule)
+from cryptobot.coordination import DataQuality, ForecastCost, Intent, Side, encode_exit_rule
 from cryptobot.coordination.exits import ExitPolicy
-from cryptobot.coordination.selector import (Candidate, Selector,
-                                             SelectorConfig)
+from cryptobot.coordination.selector import Candidate, Selector, SelectorConfig
 
-NOW = datetime(2026, 10, 12, 6, 0, tzinfo=timezone.utc)
+NOW = datetime(2026, 10, 12, 6, 0, tzinfo=UTC)
 
 
 def _intent(strategy="S1", instrument="BTCUSDT", side=Side.LONG,

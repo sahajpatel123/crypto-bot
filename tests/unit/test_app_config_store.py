@@ -1,8 +1,7 @@
 """App config + store tests (manager-owned, A-001)."""
 import pytest
 
-from cryptobot.app.config import (ConfigError, load_config,
-                                  with_resolved_symbols)
+from cryptobot.app.config import ConfigError, load_config, with_resolved_symbols
 from cryptobot.app.store import RunStore
 
 SAMPLE = "configs/paper.toml"

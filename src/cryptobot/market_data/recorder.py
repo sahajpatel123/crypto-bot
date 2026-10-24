@@ -21,10 +21,11 @@ observed too late to trade and is flagged stale.
 from __future__ import annotations
 
 import json
+from collections.abc import Iterable
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 RECORDING_FORMAT = "cryptobot-recording/1"
 INPUT_OBSERVED = "observed-public"
@@ -144,7 +145,7 @@ class KlineRecorder:
             "channel": channel,
             "interval_ms": interval_ms,
             "capture_cmd": capture_cmd,
-            "started_utc": datetime.now(timezone.utc).isoformat(),
+            "started_utc": datetime.now(UTC).isoformat(),
         }
         self._file.write(json.dumps(header) + "\n")
 

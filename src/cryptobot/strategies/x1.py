@@ -11,9 +11,9 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
-_EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
+_EPOCH = datetime(1970, 1, 1, tzinfo=UTC)
 
 from cryptobot.coordination import (
     DataQuality,
@@ -26,10 +26,10 @@ from cryptobot.coordination import (
 )
 from cryptobot.features.breakout import flow_mean, momentum_bps
 
+from ._shared import columns, gap_scan
 from .contract import (
     ARM_IDS_X1,
     STRATEGY_VERSION,
-    X1_BASE,
     X1_FLOW,
     X1_FORECAST_COST,
     X1_STRICT,
@@ -37,7 +37,6 @@ from .contract import (
     build_evidence_ref,
     build_intent,
 )
-from ._shared import columns, gap_scan
 
 # Dual-symbol feed declaration (X1.md §4): Session reads these to
 # attach the leader feed + frozen beta to X1 evaluations.

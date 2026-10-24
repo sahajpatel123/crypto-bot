@@ -24,7 +24,7 @@ from __future__ import annotations
 
 import json
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -33,8 +33,7 @@ from cryptobot.app.config import load_config
 from cryptobot.app.session import Session, WallClock
 from cryptobot.app.store import RunStore
 from cryptobot.coordination.exits import ExitPolicy, encode_exit_rule
-from cryptobot.coordination.intent import (
-    DataQuality, ForecastCost, Intent, Side)
+from cryptobot.coordination.intent import DataQuality, ForecastCost, Intent, Side
 from cryptobot.coordination.selector import Candidate
 
 
@@ -58,7 +57,7 @@ class _HaltEngine:
         self.reasons: set[str] = set()
         self.halt_calls: list[tuple[bool, str]] = []
         self.submits: list = []
-        self._now = datetime(2020, 1, 1, tzinfo=timezone.utc)
+        self._now = datetime(2020, 1, 1, tzinfo=UTC)
 
     @property
     def now_utc(self):
@@ -133,7 +132,7 @@ def _session(tmp_path: Path, engine=None, name="f2-health"):
                      "min_qty": 0.001, "min_notional": 5.0},
          "ETHUSDT": {"tick_size": 0.01, "step_size": 0.001,
                      "min_qty": 0.001, "min_notional": 5.0}},
-        origin="test", asof_utc=datetime.now(timezone.utc))
+        origin="test", asof_utc=datetime.now(UTC))
     session._init_run_files()
     return session, store
 

@@ -5,8 +5,15 @@ import pytest
 
 from cryptobot.market_data.ingest import BoundedIngest
 from cryptobot.market_data.latency import (
-    EVENT_AGE, FEATURE_CALC, FILL_NOTIFY, QUEUE_DELAY, RISK_TO_COMMAND,
-    STOP_CONFIRM, TRANSPORT_ACK, LatencyLedger)
+    EVENT_AGE,
+    FEATURE_CALC,
+    FILL_NOTIFY,
+    QUEUE_DELAY,
+    RISK_TO_COMMAND,
+    STOP_CONFIRM,
+    TRANSPORT_ACK,
+    LatencyLedger,
+)
 
 
 def test_unmeasured_spans_stay_unmeasured():
@@ -41,15 +48,12 @@ def test_timer_is_local_mono_only():
     with ledger.timer(FEATURE_CALC):
         pass
     assert ledger.summarize(FEATURE_CALC)[FEATURE_CALC]["n"] == 1
-    with pytest.raises(ValueError):
-        with ledger.timer(TRANSPORT_ACK):
-            pass
-    with pytest.raises(ValueError):
-        with ledger.timer(FILL_NOTIFY):
-            pass
-    with pytest.raises(ValueError):
-        with ledger.timer(STOP_CONFIRM):
-            pass
+    with pytest.raises(ValueError), ledger.timer(TRANSPORT_ACK):
+        pass
+    with pytest.raises(ValueError), ledger.timer(FILL_NOTIFY):
+        pass
+    with pytest.raises(ValueError), ledger.timer(STOP_CONFIRM):
+        pass
 
 
 def test_observe_rejects_unknown_and_nonfinite():

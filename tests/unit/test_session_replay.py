@@ -1,13 +1,12 @@
 """Session replay + admit/flatten + CLI smoke tests (manager-owned, A-001)."""
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from cryptobot.app.config import load_config
-from cryptobot.app.session import ReplayClock, Session
+from cryptobot.app.session import Session
 from cryptobot.app.store import RunStore
-from cryptobot.coordination import (DataQuality, ForecastCost, Intent, Side,
-                                    encode_exit_rule)
+from cryptobot.coordination import DataQuality, ForecastCost, Intent, Side, encode_exit_rule
 from cryptobot.coordination.exits import ExitPolicy
 from cryptobot.coordination.selector import Candidate
 
@@ -126,7 +125,7 @@ def test_crash_resume_continues(tmp_path):
 def test_admit_protect_flatten_cycle(tmp_path):
     session, store = _session(tmp_path, warmup_bars=3)
     try:
-        now = datetime(2026, 10, 12, 6, 0, tzinfo=timezone.utc)
+        now = datetime(2026, 10, 12, 6, 0, tzinfo=UTC)
         session.clock.set_ms(int(now.timestamp() * 1000))
         session.policy.reconcile_day(120.0, 0.0)
         session.store.create_run("sess-test", "replay", "fp",
@@ -207,7 +206,7 @@ def test_run_files_match_b9_schemas(tmp_path):
 def test_fill_rows_match_b9_schema(tmp_path):
     session, store = _session(tmp_path, warmup_bars=3)
     try:
-        now = datetime(2026, 10, 12, 6, 0, tzinfo=timezone.utc)
+        now = datetime(2026, 10, 12, 6, 0, tzinfo=UTC)
         session.clock.set_ms(int(now.timestamp() * 1000))
         session.policy.reconcile_day(120.0, 0.0)
         session.store.create_run("sess-test", "replay", "fp",
@@ -244,7 +243,7 @@ def test_short_uses_venue_sell_side(tmp_path):
     # Regression: session must submit venue SELL (never "SHORT") for shorts.
     session, store = _session(tmp_path, warmup_bars=3)
     try:
-        now = datetime(2026, 10, 12, 6, 0, tzinfo=timezone.utc)
+        now = datetime(2026, 10, 12, 6, 0, tzinfo=UTC)
         session.clock.set_ms(int(now.timestamp() * 1000))
         session.policy.reconcile_day(120.0, 0.0)
         session.store.create_run("sess-test", "replay", "fp",
@@ -318,7 +317,7 @@ def test_run_live_with_stub_engine(tmp_path):
         def close(self):
             pass
 
-    now_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
+    now_ms = int(datetime.now(UTC).timestamp() * 1000)
     base = (now_ms // 1000) * 1000 - 9000
     events = []
     for w in range(10):
@@ -438,12 +437,12 @@ def _protection_session(tmp_path):
     store.create_run("prot", "replay", "fp", str(session.workdir), None)
     session.ledger.record_fill(
         "BUY", 1.0, 100.0, 0.05,
-        datetime(2026, 10, 12, 6, 0, tzinfo=timezone.utc), "e1")
+        datetime(2026, 10, 12, 6, 0, tzinfo=UTC), "e1")
     session._position = {"reservation_id": "r-1", "instrument": "BTCUSDT",
                          "side": "LONG", "entry_pre_id": "p", "entry_id": "e",
                          "legs": [], "stop": 99.0, "target": 102.0,
                          "time_exit": datetime(2026, 10, 12, 7, 0,
-                                               tzinfo=timezone.utc),
+                                               tzinfo=UTC),
                          "legacy_exit": False, "protected": False,
                          "protect_attempts": 0}
     return session, store, engine
@@ -525,6 +524,7 @@ def _stopping_reason(store, run_id):
 def test_live_deadline_fires_on_silent_heartbeats(tmp_path):
     """B3: duration deadline ends the run during pure silence (no arrivals)."""
     import time
+
     from cryptobot.app.session import Session, WallClock
     cfg = _paper_cfg(tmp_path, "paper-b3a")
     store = RunStore(tmp_path / "runs" / "cryptobot.db")
@@ -576,12 +576,12 @@ def test_live_time_exit_fires_on_silent_heartbeat(tmp_path):
                           clock=WallClock(), engine=engine)
         session.ledger.record_fill(
             "BUY", 1.0, 100.0, 0.05,
-            datetime.now(timezone.utc), "e1")
+            datetime.now(UTC), "e1")
         session._position = {
             "reservation_id": "r-1", "instrument": "BTCUSDT",
             "side": "LONG", "entry_pre_id": "p", "entry_id": "e",
             "legs": [], "stop": 99.0, "target": 102.0,
-            "time_exit": datetime.now(timezone.utc) - timedelta(seconds=1),
+            "time_exit": datetime.now(UTC) - timedelta(seconds=1),
             "legacy_exit": False, "protected": False,
             "protect_attempts": 0}
         report = session.run_live(iter([None, None, None]), duration_s=30)
@@ -645,6 +645,7 @@ def test_protection_stop_must_cover_risk_approved_qty(tmp_path):
 def test_replay_run_feeds_reporting_package(tmp_path):
     """B6: a replay workdir loads strictly and reconciles via reporting/."""
     import json as _json
+
     from cryptobot.cli import main
     from cryptobot.reporting import build_report
     session, store = _session(tmp_path, warmup_bars=3)
@@ -719,14 +720,14 @@ def test_flat_inference_releases_risk_hold(tmp_path):
     try:
         session.ledger.record_fill(
             "SELL", 1.0, 101.0, 0.05,
-            datetime.now(timezone.utc), "e2")
+            datetime.now(UTC), "e2")
         assert not session.ledger.has_position()
         session.policy._state.reservations["r-1"] = _reservation()
         session.policy._state.open_position = True
         engine.leg_states = {"e": "filled"}
         engine.leg_filled = {"e": 1.0}
         session._update_position(
-            EngineEvent("tick", None, datetime.now(timezone.utc)))
+            EngineEvent("tick", None, datetime.now(UTC)))
         assert session._position is None
         assert store.get_run("prot")["state"] == "ready"
         assert session.policy._state.reservations == {}
@@ -743,15 +744,15 @@ def test_flat_inference_lifts_zero_net_unresolved(tmp_path):
     try:
         session.ledger.record_fill(
             "SELL", 1.0, 101.0, 0.05,
-            datetime.now(timezone.utc), "e2")
+            datetime.now(UTC), "e2")
         session.policy._state.reservations["r-1"] = _reservation()
         session.policy._move_to_unresolved(
-            "r-1", datetime.now(timezone.utc))
+            "r-1", datetime.now(UTC))
         assert session.policy.unresolved_ids() == ("r-1",)
         engine.leg_states = {"e": "filled"}
         engine.leg_filled = {"e": 1.0}
         session._update_position(
-            EngineEvent("tick", None, datetime.now(timezone.utc)))
+            EngineEvent("tick", None, datetime.now(UTC)))
         assert session._position is None
         assert session.policy.unresolved_ids() == ()
     finally:
@@ -766,7 +767,7 @@ def test_entry_dead_releases_reservation(tmp_path):
         session.policy._state.reservations["r-1"] = _reservation()
         engine.leg_states = {"e": "rejected"}
         session._update_position(
-            EngineEvent("tick", None, datetime.now(timezone.utc)))
+            EngineEvent("tick", None, datetime.now(UTC)))
         assert session._position is None
         assert session.policy._state.reservations == {}
     finally:
@@ -782,7 +783,7 @@ def test_event_gate_blocks_admit(tmp_path):
     session = Session(session.config, store, tmp_path / "runs" / "ev",
                       "ev", engine=_ScriptedEngine())
     try:
-        now = datetime(2026, 10, 12, 6, 0, tzinfo=timezone.utc)
+        now = datetime(2026, 10, 12, 6, 0, tzinfo=UTC)
         session.clock.set_ms(int(now.timestamp() * 1000))
         session.policy.reconcile_day(120.0, 0.0)
         from cryptobot.events.runtime import ProtectionRuntime
@@ -807,7 +808,7 @@ def test_event_gate_clear_passes_through(tmp_path):
     session = Session(session.config, store, tmp_path / "runs" / "ev2",
                       "ev2", engine=_RejectingEngine())
     try:
-        now = datetime(2026, 10, 12, 6, 0, tzinfo=timezone.utc)
+        now = datetime(2026, 10, 12, 6, 0, tzinfo=UTC)
         session.clock.set_ms(int(now.timestamp() * 1000))
         session.policy.reconcile_day(120.0, 0.0)
         from cryptobot.events.runtime import ProtectionRuntime
@@ -855,6 +856,7 @@ def test_event_prepare_flat_keeps_filled(tmp_path):
 def test_events_enabled_builds_gate(tmp_path):
     """run.events_enabled=True builds a gate from required fixtures."""
     import dataclasses
+
     from cryptobot.app.session import Session
     session, store = _session(tmp_path, warmup_bars=3)
     try:
@@ -896,7 +898,7 @@ def test_one_budget_pending_ledger_booked(tmp_path):
     """V-008 NEEDS: one budget = pending + |ledger| + booked excess."""
     session, store, engine = _margin_session(tmp_path)
     try:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         session.ledger.record_fill(
             "BUY", 1.0, 100.0, 0.05, now, "e1")
         class _Ord:
@@ -1023,7 +1025,7 @@ def test_submit_rejection_releases_and_continues(tmp_path):
     session = Session(session.config, store, tmp_path / "runs" / "rej",
                       "rej", engine=_RejectingEngine())
     try:
-        now = datetime(2026, 10, 12, 6, 0, tzinfo=timezone.utc)
+        now = datetime(2026, 10, 12, 6, 0, tzinfo=UTC)
         session.clock.set_ms(int(now.timestamp() * 1000))
         session.policy.reconcile_day(120.0, 0.0)
         _seed_mark(session)
@@ -1041,7 +1043,7 @@ def test_replay_filters_arm_step_sizing(tmp_path):
     from cryptobot.risk.types import Approved
     session, store = _session(tmp_path, warmup_bars=3)
     try:
-        now = datetime(2026, 10, 12, 6, 0, tzinfo=timezone.utc)
+        now = datetime(2026, 10, 12, 6, 0, tzinfo=UTC)
         session.clock.set_ms(int(now.timestamp() * 1000))
         session.policy.reconcile_day(120.0, 0.0)
         session.store.create_run("sess-test", "replay", "fp",
@@ -1070,8 +1072,8 @@ def test_funding_event_routes_to_ledger(tmp_path):
     session, store, engine = _protection_session(tmp_path)
     try:
         session._position["time_exit"] = (
-            datetime.now(timezone.utc) + timedelta(hours=1))
-        now = datetime.now(timezone.utc)
+            datetime.now(UTC) + timedelta(hours=1))
+        now = datetime.now(UTC)
         evt = EngineEvent(
             "funding", EngineFunding(
                 event_id="funding:BTCUSDT:123", instrument="BTCUSDT",
@@ -1116,7 +1118,7 @@ def test_b4_wiring_flow_present_depth_precise(tmp_path):
     from cryptobot.strategies.runtime import get_adapter
     session, store = _session(tmp_path, warmup_bars=3)
     try:
-        now = datetime(2026, 10, 12, 6, 0, tzinfo=timezone.utc)
+        now = datetime(2026, 10, 12, 6, 0, tzinfo=UTC)
         session.policy.reconcile_day(120.0, 0.0)
         session.store.create_run("sess-test", "replay", "fp",
                                  str(session.workdir), None)
@@ -1236,6 +1238,7 @@ def test_stop_actions_cancel_reduce_and_alert_once(tmp_path):
 def test_events_wiring_advisory_replay(tmp_path):
     """Manager §12: events_enabled replay builds advisory runtime + cutoff."""
     import dataclasses
+
     from cryptobot.app.session import Session
     cfg = load_config(_config(tmp_path, warmup_bars=3))
     cfg = dataclasses.replace(cfg, events_enabled=True)

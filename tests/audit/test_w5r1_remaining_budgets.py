@@ -13,7 +13,7 @@ four-budget cap (directive section 4); now passing unmarked.
 """
 import json
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
@@ -22,7 +22,7 @@ from cryptobot.coordination import DataQuality, ForecastCost, Intent, Side
 from cryptobot.risk import AccountSnapshot, Approved, Rejected, RiskConfig, RiskPolicy
 
 FIX = Path(__file__).resolve().parents[1] / "fixtures"
-NOW = datetime(2026, 10, 11, 12, 0, 0, tzinfo=timezone.utc)
+NOW = datetime(2026, 10, 11, 12, 0, 0, tzinfo=UTC)
 INTENTS = json.loads((FIX / "risk_intents.json").read_text())
 ACCOUNTS = json.loads((FIX / "risk_accounts.json").read_text())
 

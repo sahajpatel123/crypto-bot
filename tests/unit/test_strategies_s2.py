@@ -19,8 +19,8 @@ from cryptobot.research.synthetic import (
 from cryptobot.strategies.contract import (
     S2_BASE,
     S2_FLOW,
-    S2_VOLUME,
     S2_FORECAST_COST,
+    S2_VOLUME,
 )
 from cryptobot.strategies.s2 import Bar, evaluate_bar, evaluate_side
 

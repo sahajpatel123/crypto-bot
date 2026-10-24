@@ -1,5 +1,4 @@
 """Venue filter sourcing tests (manager-owned, run-mode arming)."""
-from datetime import datetime, timezone
 
 import pytest
 

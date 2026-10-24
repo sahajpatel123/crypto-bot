@@ -5,8 +5,14 @@ import json
 from pathlib import Path
 
 from cryptobot.market_data.eligibility import (
-    MISSING_TRADE_IDS, QUIET_NO_TRADE, STALE_EXECUTABLE, STALE_MARK,
-    TRANSPORT_GAP, UNKNOWN_PROVENANCE, classify_capture)
+    MISSING_TRADE_IDS,
+    QUIET_NO_TRADE,
+    STALE_EXECUTABLE,
+    STALE_MARK,
+    TRANSPORT_GAP,
+    UNKNOWN_PROVENANCE,
+    classify_capture,
+)
 
 BASE = 1_791_755_039_000
 
