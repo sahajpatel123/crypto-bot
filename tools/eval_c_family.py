@@ -24,7 +24,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from eval_h2_history import CACHE, MONTHS, UNIVERSE_B  # noqa: E402
+import eval_h2_history  # noqa: E402
+from eval_h2_history import CACHE, UNIVERSE_B, _fetch  # noqa: E402
 
 from cryptobot.research import c_family  # noqa: E402
 
@@ -34,6 +35,10 @@ FUND_URL = ("https://data.binance.vision/data/futures/um/monthly/"
             "fundingRate/{s}/{s}-fundingRate-{m}.zip")
 DEV = ("2022-01-01", "2024-12-31")
 HOLDOUT = ("2025-01-01", "2026-08-31")
+REPLICATION = ("2020-01-01", "2021-12-31")  # amendment 2, C2 only, once
+REPL_MONTHS = [f"{y}-{m:02d}" for y in range(2019, 2022) for m in range(1, 13)
+               if (y, m) >= (2019, 9)]
+MONTHS = REPL_MONTHS + eval_h2_history.MONTHS
 ALPHA = 0.05 / 4
 # Post-DEV amendments that spend the one-shot holdout on a DEV near-miss.
 AMENDED = {"C2": "research/prereg/C-family-amendment-1.md"}
@@ -43,10 +48,10 @@ def _day(ms: int) -> str:
     return datetime.fromtimestamp(ms / 1000, tz=UTC).strftime("%Y-%m-%d")
 
 
-def daily_closes(symbol: str) -> dict[str, float]:
+def daily_closes(symbol: str, months: list[str]) -> dict[str, float]:
     """UTC daily close = close of the 23:00 hourly mark bar."""
     out: dict[str, float] = {}
-    for month in MONTHS:
+    for month in months:
         path = CACHE / symbol / f"{month}.csv"
         if not path.exists():
             continue
@@ -79,9 +84,9 @@ def _fetch_funding(symbol: str, month: str) -> None:
     out.with_suffix(".tmp").replace(out)
 
 
-def daily_funding(symbol: str) -> dict[str, float]:
+def daily_funding(symbol: str, months: list[str]) -> dict[str, float]:
     out: dict[str, float] = {}
-    for month in MONTHS:
+    for month in months:
         path = FUND_CACHE / symbol / f"{month}.csv"
         if not path.exists():
             continue
@@ -92,12 +97,17 @@ def daily_funding(symbol: str) -> dict[str, float]:
     return out
 
 
-def load() -> tuple[dict, dict]:
-    jobs = [(s, m) for s in UNIVERSE_B for m in MONTHS]
+def load(*, replication: bool = False) -> tuple[dict, dict]:
+    months = MONTHS if replication else eval_h2_history.MONTHS
+    if replication:  # 2019-21 prices are fetched only for amendment 2
+        with ThreadPoolExecutor(max_workers=16) as pool:
+            list(pool.map(lambda j: _fetch(*j),
+                          [(s, m) for s in UNIVERSE_B for m in REPL_MONTHS]))
+    jobs = [(s, m) for s in UNIVERSE_B for m in months]
     with ThreadPoolExecutor(max_workers=16) as pool:
         list(pool.map(lambda j: _fetch_funding(*j), jobs))
-    closes = {s: daily_closes(s) for s in UNIVERSE_B}
-    funding = {s: daily_funding(s) for s in UNIVERSE_B}
+    closes = {s: daily_closes(s, months) for s in UNIVERSE_B}
+    funding = {s: daily_funding(s, months) for s in UNIVERSE_B}
     return {s: c for s, c in closes.items() if c}, funding
 
 
@@ -157,7 +167,36 @@ def cmd_holdout(hid: str) -> int:
     return 0
 
 
+def cmd_replicate() -> int:
+    out = ROOT / "reports/hypotheses/C2-replication.json"
+    if out.exists():
+        print(f"replicate: REFUSED — {out.name} exists (exactly once)",
+              file=sys.stderr)
+        return 2
+    closes, funding = load(replication=True)
+    stats = c_family.score(c_family.run(c_family.SPECS["C2"], closes, funding,
+                                        start=REPLICATION[0], end=REPLICATION[1]))
+    fails = []
+    if not (stats["mean_net_bps"] > 0 and stats["p_value"] <= 0.01):
+        fails.append(f"1: mean={stats['mean_net_bps']:.2f} p={stats['p_value']:.4f}")
+    if stats["mean_adverse_bps"] <= 0:
+        fails.append("2: mean <= 0 at 2x adverse")
+    bad = [y for y in ("2020", "2021") if stats["by_year"].get(y, -1.0) <= 0]
+    if bad:
+        fails.append(f"3: non-positive years {bad}")
+    doc = {"hypothesis": "C2-XSMOM", "split": "REPLICATION-2020-21",
+           "window": REPLICATION, "code_commit": _commit(),
+           "amendment": "research/prereg/C-family-amendment-2.md",
+           "verdict": "FORWARD-PAPER-CANDIDATE" if not fails else "KILLED",
+           "fails": fails, **stats}
+    out.write_text(json.dumps(doc, indent=1) + "\n")
+    print(json.dumps(doc, indent=1))
+    return 0
+
+
 if __name__ == "__main__":
+    if len(sys.argv) == 2 and sys.argv[1] == "replicate":
+        raise SystemExit(cmd_replicate())
     if len(sys.argv) >= 2 and sys.argv[1] == "dev":
         raise SystemExit(cmd_dev())
     if len(sys.argv) == 3 and sys.argv[1] == "holdout":
