@@ -33,14 +33,12 @@ class DayResult:
 def _eligible(closes: dict[str, dict[str, float]], days: list[str], t: int) -> list[str]:
     if t + 1 >= len(days):
         return []
-    out = []
-    lo = days[max(0, t - MIN_HISTORY_DAYS)]
-    for sym, series in closes.items():
-        if days[t] not in series or days[t + 1] not in series:
-            continue
-        if t < MIN_HISTORY_DAYS or lo not in series:
-            continue
-        out.append(sym)
+    if t < MIN_HISTORY_DAYS:
+        return []
+    # every close a signal or the P&L reads must exist (data gaps exclude)
+    need = [days[k] for k in (t - MIN_HISTORY_DAYS, t - LOOKBACK, t - 1, t, t + 1)]
+    out = [sym for sym, series in closes.items()
+           if all(d in series for d in need)]
     return sorted(out)
 
 
