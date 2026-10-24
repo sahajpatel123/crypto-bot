@@ -18,6 +18,7 @@ import argparse
 import json
 import os
 import signal
+import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -787,6 +788,24 @@ def _run_prod(args: argparse.Namespace, _engine_factory=None) -> int:
                   file=sys.stderr)
             engine.close()
             return 2
+        # The gate authorises the strategies and code the verdict scored;
+        # anything else (e.g. unvalidated S1-S5) must never trade live.
+        unscored = sorted(set(config.strategies_enabled)
+                          - set(gate.get("strategies") or []))
+        if unscored:
+            print(f"prod: REFUSED — strategies {unscored} have no PASS "
+                  f"verdict behind this gate (gate covers "
+                  f"{gate.get('strategies') or []}).", file=sys.stderr)
+            engine.close()
+            return 2
+        running = _git_head()
+        if not _commit_matches(str(gate.get("code_commit", "")), running):
+            print(f"prod: REFUSED — running code {running[:12] or 'unknown'} "
+                  f"is not the commit the verdict scored "
+                  f"({gate.get('code_commit') or 'unknown'}).",
+                  file=sys.stderr)
+            engine.close()
+            return 2
         from cryptobot.adapters import bridge as _bridge
         from cryptobot.app.session import Session, WallClock
 
@@ -796,8 +815,12 @@ def _run_prod(args: argparse.Namespace, _engine_factory=None) -> int:
         workdir = Path(config.storage_dir) / run_id
         session = Session(config, store, workdir, run_id,
                           pid=os.getpid(), clock=clock, engine=engine)
-        session.armed_capital_usdt = float(armed["capital_usdt"])
-        session.armed_canary_trades = int(armed.get("canary_trades", 10))
+        armed_limits = {"capital_usdt": float(armed["capital_usdt"]),
+                        "max_daily_loss_usdt": float(armed["max_daily_loss"]),
+                        "canary_trades": int(armed.get("canary_trades", 10))}
+        # Resume has no fresh seed: bind at the conservative ceiling now,
+        # re-bound to measured venue equity after seeding below.
+        session.apply_armed_limits(**armed_limits)
         engine.hot_cache_enabled = True
         if not args.resume:
             try:
@@ -818,6 +841,7 @@ def _run_prod(args: argparse.Namespace, _engine_factory=None) -> int:
                 store.close()
                 engine.close()
                 return 2
+            session.apply_armed_limits(**armed_limits, equity_usdt=seeded)
         _install_stop_handler(session)
         from cryptobot.adapters.user_stream import attach_user_stream
 
@@ -1212,7 +1236,10 @@ def cmd_verdict(args: argparse.Namespace) -> int:
         max_dd_bps=max((float(r.get("dd_bps", 0.0)) for r in rows),
                        default=0.0),
         dd_budget_bps=500.0, family_size=args.family_size)
-    commit = os.environ.get("CRYPTOBOT_CODE_COMMIT", "unknown")
+    # The gate only admits strategies the verdict actually scored.
+    result["strategies"] = sorted(
+        {s.strip() for s in (getattr(args, "strategies", "") or "").split(",") if s.strip()})
+    commit = os.environ.get("CRYPTOBOT_CODE_COMMIT") or _git_head() or "unknown"
     doc = verdict_document(hypothesis=args.hypothesis, result=result,
                            config_path=args.config,
                            data_manifest=args.trades, code_commit=commit)
@@ -1221,6 +1248,24 @@ def cmd_verdict(args: argparse.Namespace) -> int:
     if args.out:
         Path(args.out).write_text(text + "\n")
     return 0 if doc["verdict"] == "PASS" else 1
+
+
+def _git_head() -> str:
+    """Full HEAD commit of the running checkout, or "" when unknown."""
+    try:
+        out = subprocess.run(["git", "rev-parse", "HEAD"],
+                             cwd=Path(__file__).resolve().parent,
+                             capture_output=True, text=True, timeout=5)
+    except (OSError, subprocess.SubprocessError):
+        return ""
+    return out.stdout.strip() if out.returncode == 0 else ""
+
+
+def _commit_matches(bound: str, running: str) -> bool:
+    """Prefix match either way (verdicts may store short commits)."""
+    if not bound or bound == "unknown" or not running:
+        return False
+    return running.startswith(bound) or bound.startswith(running)
 
 
 def _read_json(path: str | None) -> dict:
@@ -1261,6 +1306,7 @@ def cmd_gate(args: argparse.Namespace) -> int:
         and _verdict_doc_valid(verdict),
         "demo_drill_pass": drill.get("verdict") == "PASS",
         "latency_pass": _latency_pass(latency),
+        "verdict_names_strategies": bool(verdict.get("strategies")),
         "no_blocked_in_state": "| BLOCKED |" not in state_text,
         "prod_submission_default_off": True,  # configs/prod.toml switch
     }
@@ -1270,6 +1316,9 @@ def cmd_gate(args: argparse.Namespace) -> int:
                      "verdict": _file_sha256(args.verdict_json),
                      "drill": _file_sha256(args.drill_json),
                      "latency": _file_sha256(args.latency_json)},
+                 "strategies": sorted(verdict.get("strategies") or []),
+                 "code_commit": (verdict.get("hashes") or {}).get(
+                     "code_commit", ""),
                  "expires_utc": datetime.fromtimestamp(
                      datetime.now(timezone.utc).timestamp() + 86400,
                      tz=timezone.utc).isoformat(),
@@ -1450,6 +1499,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--hypothesis", required=True)
     p.add_argument("--config", default="configs/paper.toml")
     p.add_argument("--family-size", type=int, default=1)
+    p.add_argument("--strategies", default="",
+                   help="comma-separated runtime strategy ids these trades "
+                        "came from (the gate admits only these live)")
     p.add_argument("--out", default=None)
     p.set_defaults(func=cmd_verdict)
     p = sub.add_parser("gate")

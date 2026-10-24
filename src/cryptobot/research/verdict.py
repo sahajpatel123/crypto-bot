@@ -19,18 +19,45 @@ from pathlib import Path
 from typing import Any
 
 
-def _bootstrap_ci(values: list[float], *, seed: int = 7,
-                  rounds: int = 2000) -> tuple[float, float]:
+def _block_bootstrap(values: list[float], days: list[str], *, seed: int = 7,
+                     rounds: int = 2000) -> list[float]:
+    """Sorted bootstrap means, resampling whole DAYS with replacement.
+
+    Trades on correlated symbols in the same day are not independent;
+    resampling day blocks keeps that dependence instead of overstating
+    the sample size the way an iid per-trade bootstrap does.
+    """
     if not values:
-        return (0.0, 0.0)
+        return [0.0]
+    blocks: dict[str, list[float]] = {}
+    for idx, val in enumerate(values):
+        key = days[idx] if idx < len(days) and days[idx] else f"#{idx}"
+        blocks.setdefault(key, []).append(val)
+    groups = list(blocks.values())
     rng = random.Random(seed)
-    n = len(values)
-    means = []
+    k = len(groups)
+    means: list[float] = []
     for _ in range(rounds):
-        means.append(statistics.fmean(values[rng.randrange(n)]
-                                      for _ in range(n)))
+        total, count = 0.0, 0
+        for _ in range(k):
+            grp = groups[rng.randrange(k)]
+            total += sum(grp)
+            count += len(grp)
+        means.append(total / count if count else 0.0)
     means.sort()
-    return (means[int(0.025 * rounds)], means[int(0.975 * rounds) - 1])
+    return means
+
+
+def _bootstrap_ci(values: list[float], *, seed: int = 7,
+                  rounds: int = 2000,
+                  days: list[str] | None = None) -> tuple[float, float]:
+    means = _block_bootstrap(values, days or [], seed=seed, rounds=rounds)
+    return (means[int(0.025 * len(means))], means[int(0.975 * len(means)) - 1])
+
+
+def _bootstrap_p(means: list[float]) -> float:
+    """One-sided p for H0: expectancy <= 0 (add-one smoothed)."""
+    return (sum(1 for m in means if m <= 0.0) + 1) / (len(means) + 1)
 
 
 def _sharpe(values: list[float]) -> float | None:
@@ -54,27 +81,30 @@ def evaluate_trades(trades_bps: list[float], *, adverse_bps: list[float],
                     "expectancy_bps": (statistics.fmean(trades_bps)
                                        if trades_bps else None)})
         return out
-    lo, hi = _bootstrap_ci(trades_bps)
+    means = _block_bootstrap(trades_bps, days)
+    lo, hi = means[int(0.025 * len(means))], means[int(0.975 * len(means)) - 1]
+    p_value = _bootstrap_p(means)
     exp_adv = statistics.fmean(adverse_bps) if adverse_bps else None
     by_day: dict[str, float] = {}
-    for day, val in zip(days, trades_bps, strict=False):
+    for day, val in zip(days, trades_bps, strict=True):
         by_day[day] = by_day.get(day, 0.0) + val
     nonneg = (sum(1 for v in by_day.values() if v >= 0) / len(by_day)
               if by_day else 0.0)
-    # Holm: smallest p must beat alpha/family_size; approximate the
-    # bootstrap two-sided p from the CI position of zero.
-    p_approx = 0.0 if lo > 0 else (0.5 if hi < 0 else 0.10)
+    # Holm across the family: evaluated alone, a hypothesis must beat
+    # the strictest step, alpha / family_size (the step-1 threshold).
+    # p comes from the day-block bootstrap, never from the CI position.
     holm_alpha = 0.05 / max(1, int(family_size))
     passed = (lo > 0 and (exp_adv or 0.0) > 0 and nonneg >= 0.60
               and max_dd_bps <= dd_budget_bps
-              and p_approx <= holm_alpha)
+              and p_value <= holm_alpha)
     out.update({
         "verdict": "PASS" if passed else "FAIL",
         "expectancy_bps": statistics.fmean(trades_bps),
         "expectancy_adverse_bps": exp_adv,
         "ci95": [lo, hi], "nonneg_day_frac": nonneg,
         "max_dd_bps": max_dd_bps, "sharpe": _sharpe(trades_bps),
-        "holm_alpha": holm_alpha, "p_approx": p_approx})
+        "holm_alpha": holm_alpha, "p_value": p_value,
+        "bootstrap": "day-block"})
     return out
 
 

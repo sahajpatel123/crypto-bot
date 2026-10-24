@@ -138,3 +138,30 @@ def test_soak_burst_bounded_queue():
     assert prod.dropped > 0
     assert sum(prod.dropped_by_type.values()) == prod.dropped
     prod.close()
+
+
+def test_verdict_holm_uses_real_bootstrap_p():
+    """Holm must bite: a marginal edge passes alone, fails in a family."""
+    import random as _r
+    rng = _r.Random(3)
+    vals = [rng.gauss(4.0, 30.0) for _ in range(600)]
+    days = [f"d{k % 60}" for k in range(600)]
+    alone = evaluate_trades(vals, adverse_bps=[v + 50 for v in vals],
+                            days=days, max_dd_bps=0.0, dd_budget_bps=500.0)
+    assert 0.0 < alone["p_value"] < 1.0
+    assert alone["bootstrap"] == "day-block"
+    family = evaluate_trades(vals, adverse_bps=[v + 50 for v in vals],
+                             days=days, max_dd_bps=0.0, dd_budget_bps=500.0,
+                             family_size=1000)
+    assert family["verdict"] == "FAIL"
+
+
+def test_verdict_day_blocks_widen_ci_for_correlated_trades():
+    """Same-day trades that move together must not count as independent."""
+    from cryptobot.research.verdict import _block_bootstrap
+    day_moves = [(-1) ** k * 40.0 + 5.0 for k in range(30)]
+    vals = [m for m in day_moves for _ in range(10)]  # 10 clones per day
+    blocked = _block_bootstrap(vals, [f"d{k // 10}" for k in range(300)])
+    iid = _block_bootstrap(vals, [f"t{k}" for k in range(300)])
+    width = lambda ms: ms[int(0.975 * len(ms)) - 1] - ms[int(0.025 * len(ms))]  # noqa: E731
+    assert width(blocked) > 2.5 * width(iid)

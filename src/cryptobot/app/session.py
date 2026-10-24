@@ -384,6 +384,40 @@ class Session:
                               {"origin": origin, "asof_utc": asof.isoformat(),
                                "symbols": sorted(built)})
 
+    def apply_armed_limits(self, *, capital_usdt: float,
+                           max_daily_loss_usdt: float, canary_trades: int,
+                           equity_usdt: float | None = None) -> None:
+        """Bind the owner's armed.json limits into the risk policy.
+
+        ``max_daily_loss_usdt`` becomes the emergency daily stop (as a
+        fraction of the reference equity) when tighter than the profile;
+        the operating stop is kept strictly inside it. Without a venue
+        equity (resume), the reference is 1.5x armed capital — the prod
+        route's seeding ceiling — so the fraction is never too loose.
+        """
+        if not (capital_usdt > 0 and 0 < max_daily_loss_usdt <= capital_usdt):
+            raise ValueError("armed limits need capital > 0 and "
+                             "0 < max_daily_loss <= capital")
+        self.armed_capital_usdt = float(capital_usdt)
+        self.armed_canary_trades = int(canary_trades)
+        reference = (float(equity_usdt) if equity_usdt and equity_usdt > 0
+                     else float(capital_usdt) * 1.5)
+        from dataclasses import replace
+
+        cap_pct = min(0.99, max_daily_loss_usdt / reference)
+        cfg = self.policy.config
+        emergency = min(cfg.emergency_stop_pct, cap_pct)
+        operating = min(cfg.operating_stop_pct, emergency / 2.0)
+        self.policy.config = replace(cfg, emergency_stop_pct=emergency,
+                                     operating_stop_pct=operating)
+        self.store.checkpoint(self.run_id, "armed-limits",
+                              {"capital_usdt": self.armed_capital_usdt,
+                               "max_daily_loss_usdt": float(max_daily_loss_usdt),
+                               "reference_equity_usdt": reference,
+                               "emergency_stop_pct": emergency,
+                               "operating_stop_pct": operating,
+                               "canary_trades": self.armed_canary_trades})
+
     def _ensure_symbol_filters(self, symbol: str) -> bool:
         """Arm filters for a newly seen paper symbol. False when blocked."""
         if self.config.mode != "paper":
