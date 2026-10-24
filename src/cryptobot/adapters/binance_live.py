@@ -81,6 +81,7 @@ PROD_FSTREAM_URL = "wss://fstream.binance.com"  # prod stream host (fstream).
 UNKNOWN_HTTP_STATUSES = (0, 502, 503, 504)  # timeout + gateways: outcome unknown.
 RATE_LIMIT_HTTP_STATUSES = (429, 418)  # too many requests / IP ban.
 RATE_LIMIT_VENUE_CODES = (-1003,)  # TOO_MANY_REQUESTS.
+CLOCK_OUTSIDE_RECVWINDOW_CODE = -1021  # timestamp outside recvWindow.
 ALGO_ORDER_TYPES = ("STOP_MARKET", "TAKE_PROFIT_MARKET")
 # Terminal seam states (contract v1 §2): an order observed here never
 # leaves; transitions INTO this set emit exactly one terminal event.
@@ -385,6 +386,13 @@ class BinanceLiveEngine:
         self._symbols: dict[str, str] = {}
         self._adopted_qty: dict[str, float] = {}
         self._terminal_emitted: set[str] = set()
+        # A -2013 "order does not exist" on a just-accepted order is far more
+        # often a venue read miss than a real void, and the seam reports a
+        # void as CANCELLED (dropping real cover). Void only after this many
+        # consecutive misses spanning at least this grace window.
+        self._void_misses: dict[str, tuple[int, int]] = {}
+        self.VOID_MISS_REQUIRED = 3
+        self.VOID_GRACE_MS = 3000
         self._event_handler: Any | None = None  # bind_sink push target.
         # Rate-limit refuse-fast window (epoch ms; 0 = clear). Submits +
         # reads raise inside it; cancels still attempt (capacity kept).
@@ -634,8 +642,14 @@ class BinanceLiveEngine:
                 raise self._note_rate_limit(exc) from None
             raise
 
+    def _resync_clock(self) -> None:
+        """Re-read the venue clock and store the signed-request offset."""
+        server_ms = int(self._public("GET", "/fapi/v1/time")["serverTime"])
+        self._offset_ms = server_ms - self._now_ms()
+
     def _signed(self, method: str, path: str,
-                params: dict[str, Any] | None = None) -> Any:
+                params: dict[str, Any] | None = None, *,
+                _resync_retry: bool = True) -> Any:
         try:
             return self._transport.request(
                 method, path, self._signed_params(dict(params or {})),
@@ -643,6 +657,23 @@ class BinanceLiveEngine:
         except VenueHttpError as exc:
             if self._is_rate_limit(exc):
                 raise self._note_rate_limit(exc) from None
+            if exc.code == CLOCK_OUTSIDE_RECVWINDOW_CODE and _resync_retry:
+                # -1021: the timestamp fell outside recvWindow, so the venue
+                # refused before executing anything (safe to retry, including
+                # submits). The offset was only ever synced once per symbol, so
+                # a drifting clock would otherwise reject every order forever
+                # with no alert. Re-sync from /fapi/v1/time and retry exactly
+                # once; a second -1021 is a real rejection.
+                try:
+                    self._resync_clock()
+                except VenueHttpError:
+                    pass  # keep the original rejection, never mask it.
+                else:
+                    self._journal("clock-resync",
+                                  {"path": path,
+                                   "offset_ms": self._offset_ms})
+                    return self._signed(method, path, params,
+                                        _resync_retry=False)
             if exc.status in UNKNOWN_HTTP_STATUSES:
                 raise
             raise VenueRejectedError(exc.status, exc.code, exc.msg) from None
@@ -651,8 +682,7 @@ class BinanceLiveEngine:
     def _ensure_ready(self, symbol: str) -> None:
         if self._ready and symbol in self._filters:
             return
-        server_ms = int(self._public("GET", "/fapi/v1/time")["serverTime"])
-        self._offset_ms = server_ms - self._now_ms()
+        self._resync_clock()
         if abs(self._offset_ms) > self._recv_window:
             raise VenueRejectedError(0, None,
                                      f"clock skew {self._offset_ms}ms exceeds "
@@ -883,10 +913,18 @@ class BinanceLiveEngine:
         self._guarded("lookup")
         symbol = self._symbol_of(client_id)
         is_algo = client_id in self._algo
+        try:
+            if is_algo:
+                view = self._lookup_algo(client_id, symbol)
+            else:
+                view = self._signed("GET", "/fapi/v1/order",
+                                    {"symbol": symbol,
+                                     "origClientOrderId": client_id})
+        except VenueRejectedError as exc:
+            if exc.code == -2013:  # not indexed (yet): grace, then void.
+                return self._void_or_grace(client_id, symbol)
+            raise
         if is_algo:
-            view = self._lookup_algo(client_id, symbol)
-            if view is None:
-                return None
             state = _local_state(str(view.get("algoStatus", "")))
             trig = view.get("triggeredOrderId")
             if trig:
@@ -895,20 +933,10 @@ class BinanceLiveEngine:
                                          {"triggered_id": str(trig)})
             trades_id = trig if trig else view.get("algoId")
         else:
-            try:
-                view = self._signed("GET", "/fapi/v1/order",
-                                    {"symbol": symbol,
-                                     "origClientOrderId": client_id})
-            except VenueRejectedError as exc:
-                if exc.code == -2013:  # unknown: the venue never saw it.
-                    self._states[client_id] = "void"
-                    self._journal_transition("lookup-void", client_id, {})
-                    self._maybe_emit_terminal(client_id, symbol,
-                                              "lookup-void:venue-never-saw")
-                    return None
-                raise
             state = _local_state(str(view.get("status", "")))
             trades_id = view.get("orderId")
+        # A hit proves the venue knows the id: the miss streak restarts.
+        self._void_misses.pop(client_id, None)
         self._states[client_id] = state
         exec_qty = float(view.get("executedQty", 0.0) or 0.0)
         self._adopt_user_trades(client_id, symbol, trades_id, exec_qty)
@@ -941,19 +969,43 @@ class BinanceLiveEngine:
             role=self._roles.get(client_order_id, "entry"),
             version=self._versions.get(client_order_id, 0))
 
+    def _void_or_grace(self, client_id: str,
+                       symbol: str) -> EngineOrderStatus | None:
+        """Decide whether a -2013 miss voids an order or is premature.
+
+        The venue answers -2013 for an id it has not indexed yet, so voiding
+        on a single miss drops real cover: the seam maps a void to CANCELLED
+        and order_manager voids a live order on a None reconcile. Require
+        VOID_MISS_REQUIRED consecutive misses spanning VOID_GRACE_MS before
+        voicing that verdict; until then keep the tracked state and report it,
+        so a transient miss is a retry rather than a lost stop.
+        """
+        now = self._now_ms()
+        count, first_ms = self._void_misses.get(client_id, (0, now))
+        count += 1
+        elapsed = now - first_ms
+        if count >= int(self.VOID_MISS_REQUIRED) \
+                and elapsed >= float(self.VOID_GRACE_MS):
+            self._void_misses.pop(client_id, None)
+            self._states[client_id] = "void"
+            self._journal_transition(
+                "lookup-void", client_id,
+                {"misses": count, "elapsed_ms": elapsed})
+            self._maybe_emit_terminal(client_id, symbol,
+                                      "lookup-void:venue-never-saw")
+            return None
+        self._void_misses[client_id] = (count, first_ms)
+        self._journal_transition(
+            "lookup-miss", client_id,
+            {"misses": count, "elapsed_ms": elapsed,
+             "grace_ms": int(self.VOID_GRACE_MS)})
+        return self.order_status(client_id)
+
     def _lookup_algo(self, client_id: str, symbol: str) -> dict | None:
-        try:
-            return self._signed("GET", "/fapi/v1/algoOrder",
-                                {"symbol": symbol,
-                                 "origClientAlgoId": client_id})
-        except VenueRejectedError as exc:
-            if exc.code == -2013:
-                self._states[client_id] = "void"
-                self._journal_transition("lookup-void", client_id, {})
-                self._maybe_emit_terminal(client_id, symbol,
-                                          "lookup-void:venue-never-saw")
-                return None
-            raise
+        """Read the algo rail; -2013 propagates to the shared grace gate."""
+        return self._signed("GET", "/fapi/v1/algoOrder",
+                            {"symbol": symbol,
+                             "origClientAlgoId": client_id})
 
     def journal_client_ids(self) -> tuple[str, ...]:
         """Client ids this engine has journaled (bot-owned venue orders)."""
@@ -1851,7 +1903,14 @@ class BinanceLiveEngine:
         if step is None:
             self._ensure_ready(symbol)
             step = self._filters[symbol]["step"]
-        protect_qty = floor_to_step(min(status.filled_qty, status.qty), step)
+        # A live entry can still fill its remainder. Legs are reduce-only, so
+        # sizing them to the whole entry covers fills that land after attach
+        # instead of leaving the still-fillable portion naked; a terminal
+        # entry retires its remainder and keeps the filled size.
+        live = str(status.state) not in TERMINAL_STATES
+        cover_qty = status.qty if live and status.qty > 1e-12 \
+            else status.filled_qty
+        protect_qty = floor_to_step(min(cover_qty, status.qty), step)
         if protect_qty <= 0:
             raise ValueError(f"protect qty below LOT_SIZE step for {symbol}")
         side = "SELL" if self._venue_side_of(entry_client_id) == "BUY" else "BUY"
