@@ -60,8 +60,10 @@ non-PASS, so no conclusion changes.
 2. **Forward study of daily XSMOM — preregistered and built
    (`research/prereg/C2-forward.md`, `tools/forward_c2.py`); it needs a
    host that can reach fapi.binance.com to run
-   `tools/forward_c2.py record` daily (cron/systemd timer) for >=180 days,
-   then one scoring. Background:** The
+   `tools/forward_c2.py record` daily (cron/systemd timer). Amendment 1
+   (`research/prereg/C2-forward-amendment-1.md`) replaced the 180-day test
+   (17% power) with group-sequential looks at 1/2/3 years (51% power);
+   see `reports/QUANT_ANALYSIS.md`. Background:** The
    historical record is exhausted (2020–2026 all read). The only honest
    way to resolve C2's "consistent but not significant" evidence is a
    NEW preregistration on data that does not exist yet: paper-trade it

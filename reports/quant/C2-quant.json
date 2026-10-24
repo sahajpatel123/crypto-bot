@@ -1,0 +1,142 @@
+{
+ "strategy": "C2-XSMOM",
+ "n_trials_in_project": 56,
+ "note": "descriptive only; no verdict changes",
+ "periods": {
+  "DEV": {
+   "n_days": 1094,
+   "mean_bps": 8.935060017688517,
+   "sd_bps": 166.82717141886232,
+   "skew": -0.20324400481298519,
+   "kurtosis": 10.853951425981125,
+   "worst_day_bps": -1323.7870926052428,
+   "best_day_bps": 902.0789178233875,
+   "sharpe_annual": 1.0232390832922098,
+   "psr_vs_0": 0.9603703363837737,
+   "deflated_sharpe": 0.29362919071107474,
+   "min_track_record_days": 961.1088884038168,
+   "breakeven_cost_bps_per_side": 95.49700575595587,
+   "kelly_leverage_raw": 3.2104351477595494,
+   "kelly_leverage_lcb_1sd": 1.3981582566087924,
+   "p_dd_25pct_at_1x": 0.2008458513449136,
+   "p_dd_50pct_at_1x": 0.040339056002463125,
+   "leverage_for_p_dd20_le_5pct_lcb": 0.1866866767703625
+  },
+  "HOLDOUT": {
+   "n_days": 607,
+   "mean_bps": 5.947805927248292,
+   "sd_bps": 136.8732727387757,
+   "skew": -0.42609725934341947,
+   "kurtosis": 6.891308137950601,
+   "worst_day_bps": -741.4482618998164,
+   "best_day_bps": 656.7347252960674,
+   "sharpe_annual": 0.8302035190196307,
+   "psr_vs_0": 0.8550904032602185,
+   "deflated_sharpe": 0.10847358085626191,
+   "min_track_record_days": 1464.2898586103113,
+   "breakeven_cost_bps_per_side": 70.02187604956359,
+   "kelly_leverage_raw": 3.1748227669166287,
+   "kelly_leverage_lcb_1sd": 0.2093973693027303,
+   "p_dd_25pct_at_1x": 0.20445418078215355,
+   "p_dd_50pct_at_1x": 0.041801512039301526,
+   "leverage_for_p_dd20_le_5pct_lcb": 0.02795942363091232
+  },
+  "REPLICATION": {
+   "n_days": 695,
+   "mean_bps": 14.739564924719067,
+   "sd_bps": 259.90832467881773,
+   "skew": 0.849342643196016,
+   "kurtosis": 12.142670276579311,
+   "worst_day_bps": -1618.5193676798058,
+   "best_day_bps": 1911.822988755587,
+   "sharpe_annual": 1.0834550714725135,
+   "psr_vs_0": 0.936265149416948,
+   "deflated_sharpe": 0.20034219078067406,
+   "min_track_record_days": 809.2673589693356,
+   "breakeven_cost_bps_per_side": 129.95625817136343,
+   "kelly_leverage_raw": 2.1819474392026734,
+   "kelly_leverage_lcb_1sd": 0.7225035319165632,
+   "p_dd_25pct_at_1x": 0.3358892724532467,
+   "p_dd_50pct_at_1x": 0.11282160334917136,
+   "leverage_for_p_dd20_le_5pct_lcb": 0.09647104159403676
+  }
+ },
+ "pooled": {
+  "n_days": 2396,
+  "mean_bps": 9.861966393936019,
+  "sd_bps": 192.50871257425553,
+  "skew": 0.5345382462822161,
+  "kurtosis": 15.012171354022255,
+  "worst_day_bps": -1618.5193676798058,
+  "best_day_bps": 1911.822988755587,
+  "sharpe_annual": 0.9787224738294101,
+  "psr_vs_0": 0.9942998771399798,
+  "deflated_sharpe": 0.5752978909158152,
+  "min_track_record_days": 1013.1748432689782,
+  "breakeven_cost_bps_per_side": 100.32239512206723,
+  "kelly_leverage_raw": 2.6611094611179507,
+  "kelly_leverage_lcb_1sd": 1.5998875617062156,
+  "p_dd_25pct_at_1x": 0.26433058836656725,
+  "p_dd_50pct_at_1x": 0.06987065994621561,
+  "leverage_for_p_dd20_le_5pct_lcb": 0.21362223531519886
+ },
+ "stouffer_p_three_periods_EXPLORATORY": 0.004777314600397986,
+ "fixed_sample": {
+  "power_180d_at_pooled_sharpe": 0.16914515867702343,
+  "power_365d": 0.2526636368126744,
+  "power_1095d": 0.520075639955498,
+  "days_for_80pct_power": 2355.8188259236576,
+  "days_for_80pct_power_half_edge": 9423.27530369463
+ },
+ "group_sequential": {
+  "looks_days": [
+   365,
+   730,
+   1095
+  ],
+  "obf_bounds": [
+   2.973,
+   2.102,
+   1.717
+  ],
+  "power_at_pooled_sharpe": 0.50779,
+  "power_at_half_sharpe": 0.20801,
+  "power_if_vol_managed_sharpe_1_25": 0.68597
+ },
+ "vol_managed_EXPLORATORY": {
+  "DEV": {
+   "mean_bps": 8.804469577182218,
+   "sharpe_annual": 1.0494307795020448,
+   "base_sharpe_annual": 1.0232390832922098
+  },
+  "HOLDOUT": {
+   "mean_bps": 8.50263684095013,
+   "sharpe_annual": 1.0530770086837105,
+   "base_sharpe_annual": 0.8302035190196307
+  },
+  "REPLICATION": {
+   "mean_bps": 10.785998896820502,
+   "sharpe_annual": 1.2466481539464886,
+   "base_sharpe_annual": 1.0834550714725135
+  }
+ },
+ "e_process": {
+  "bound_bps": 2000.0,
+  "lam_cap": 0.5,
+  "horizon_days": 1095,
+  "sims": 400,
+  "pooled_mean_bps": 9.861966393936019,
+  "edge_as_measured": {
+   "p_reject_within_3y": 0.19,
+   "median_days_if_rejected": 858
+  },
+  "half_edge": {
+   "p_reject_within_3y": 0.065,
+   "median_days_if_rejected": 944
+  },
+  "no_edge_false_positive": {
+   "p_reject_within_3y": 0.0025,
+   "median_days_if_rejected": 589
+  }
+ }
+}

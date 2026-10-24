@@ -4,16 +4,19 @@ Public REST only: no keys, no orders. Run once a day after 00:05 UTC:
 
   .venv/bin/python tools/forward_c2.py record [--root data/forward_c2]
   .venv/bin/python tools/forward_c2.py health [--root data/forward_c2]
+  .venv/bin/python tools/forward_c2.py score --look K   # only at 365/730/1095 days
 
 Each run books every completed UTC day since the last one (catch-up is
 safe; re-running the same day appends nothing). `health` reports only
-recorder coverage — never P&L statistics (no interim peeking).
+recorder coverage — never P&L statistics. `score` runs each preregistered
+look exactly once (amendment 1: O'Brien-Fleming, alpha 0.05 overall).
 """
 from __future__ import annotations
 
 import argparse
 import datetime as dt
 import json
+import statistics
 import sys
 import urllib.parse
 import urllib.request
@@ -22,11 +25,17 @@ from typing import Protocol
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from cryptobot.research import c_family  # noqa: E402
+from cryptobot.research import c_family, quant  # noqa: E402
 
 BASE = "https://fapi.binance.com"
 UNIVERSE_SIZE = 30
 HISTORY_DAYS = c_family.MIN_HISTORY_DAYS + 2
+REPORTS = Path(__file__).resolve().parents[1] / "reports/hypotheses"
+# Amendment 1: group-sequential looks (days) and one-sided O'Brien-Fleming
+# z bounds for overall alpha 0.05 (quant.obf_bounds(3), frozen here).
+LOOKS = (365, 730, 1095)
+OBF_BOUNDS = (2.973, 2.102, 1.717)
+VM_TARGET_BPS, VM_CAP, VM_WINDOW, VM_WARMUP = 150.0, 2.0, 120, 20
 
 
 class Fetcher(Protocol):
@@ -149,25 +158,78 @@ def record(root: Path, fetcher: Fetcher, today: str) -> int:
     return appended
 
 
-def health(root: Path) -> dict:
+def _rows(root: Path) -> list[dict]:
     ledger = root / "ledger.jsonl"
-    rows = [json.loads(ln) for ln in ledger.read_text().splitlines()] \
+    return [json.loads(ln) for ln in ledger.read_text().splitlines()] \
         if ledger.exists() else []
-    days = [r["day"] for r in rows]
+
+
+def health(root: Path) -> dict:
+    days = [r["day"] for r in _rows(root)]
     gaps = [d for a, d in zip(days, days[1:], strict=False) if d != _shift(a, 1)]
+    due = [k + 1 for k, n in enumerate(LOOKS) if len(days) >= n]
     return {"scored_days": len(days), "first": days[0] if days else None,
             "last": days[-1] if days else None, "gaps": gaps,
-            "ready_to_score": len(days) >= 180}
+            "looks_due": due, "next_look_at_days": next(
+                (n for n in LOOKS if len(days) < n), None)}
+
+
+def vol_managed(net: list[float]) -> list[float]:
+    """C2-VM secondary arm (descriptive): EWMA vol-targeted C2 net bps."""
+    out, prev = [], 1.0
+    for t, x in enumerate(net):
+        lev = quant.vol_target_leverage(net[max(0, t - VM_WINDOW):t], VM_TARGET_BPS,
+                                        VM_CAP) if t >= VM_WARMUP else 1.0
+        out.append(x * lev - abs(lev - prev) * c_family.COST_BPS_PER_SIDE)
+        prev = lev
+    return out
+
+
+def score_look(root: Path, out_dir: Path, look: int) -> dict:
+    """Group-sequential look `look` (1-based); each look runs exactly once."""
+    if not 1 <= look <= len(LOOKS):
+        raise ValueError(f"look must be 1..{len(LOOKS)}")
+    out = out_dir / f"C2-forward-look{look}.json"
+    if out.exists():
+        raise FileExistsError(f"{out.name} exists (each look runs exactly once)")
+    if look > 1 and not (out_dir / f"C2-forward-look{look - 1}.json").exists():
+        raise RuntimeError(f"look {look - 1} has not been scored")
+    rows = _rows(root)[:LOOKS[look - 1]]
+    if len(rows) < LOOKS[look - 1]:
+        raise RuntimeError(f"{len(rows)} of {LOOKS[look - 1]} days recorded")
+    results = [c_family.DayResult(r["day"], r["net_bps"], r["adverse_bps"],
+                                  r["gross_bps"], r["turnover"]) for r in rows]
+    stats = c_family.score(results)
+    z = statistics.NormalDist().inv_cdf(1 - stats["p_value"])
+    crossed = z >= OBF_BOUNDS[look - 1] and stats["mean_adverse_bps"] > 0
+    final = look == len(LOOKS)
+    verdict = "FORWARD-PASS" if crossed else ("KILLED" if final else "CONTINUE")
+    vm = quant.moments(vol_managed([r.net_bps for r in results]))
+    doc = {"hypothesis": "C2-XSMOM-forward", "look": look, "days": len(rows),
+           "prereg": ["research/prereg/C2-forward.md",
+                      "research/prereg/C2-forward-amendment-1.md"],
+           "z": z, "bound": OBF_BOUNDS[look - 1], "verdict": verdict, **stats,
+           "secondary_C2_VM_descriptive": {
+               "mean_bps": vm.mean,
+               "sharpe_annual": quant.annualize_sharpe(vm.sharpe)}}
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(doc, indent=1) + "\n")
+    return doc
 
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("cmd", choices=("record", "health"))
+    ap.add_argument("cmd", choices=("record", "health", "score"))
     ap.add_argument("--root", default="data/forward_c2")
+    ap.add_argument("--look", type=int, help="score: look number 1..3")
     args = ap.parse_args()
     root = Path(args.root)
     if args.cmd == "health":
         print(json.dumps(health(root), indent=1))
+        return 0
+    if args.cmd == "score":
+        doc = score_look(root, REPORTS, args.look or 0)
+        print(json.dumps(doc, indent=1))
         return 0
     today = dt.datetime.now(dt.UTC).strftime("%Y-%m-%d")
     print(f"forward_c2: appended {record(root, RestFetcher(), today)} day(s)")

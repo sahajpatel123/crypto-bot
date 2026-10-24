@@ -63,4 +63,47 @@ def test_rerun_same_day_appends_nothing(tmp_path):
     assert fwd.record(tmp_path, f, today=DAYS[50]) == 9
     assert fwd.record(tmp_path, f, today=DAYS[50]) == 0
     h = fwd.health(tmp_path)
-    assert h["scored_days"] == 9 and h["gaps"] == [] and not h["ready_to_score"]
+    assert h["scored_days"] == 9 and h["gaps"] == [] and h["looks_due"] == []
+
+
+def _ledger(root: Path, n: int, mean: float, seed: int = 4) -> None:
+    rng = random.Random(seed)
+    root.mkdir(parents=True, exist_ok=True)
+    with (root / "ledger.jsonl").open("w") as fh:
+        for k in range(n):
+            x = rng.gauss(mean, 150.0)
+            fh.write(json.dumps({
+                "day": (D0 + dt.timedelta(days=k)).isoformat(), "net_bps": x,
+                "adverse_bps": x - 9.0, "gross_bps": x + 9.0, "turnover": 1.0}) + "\n")
+
+
+def test_looks_run_in_order_once_and_only_when_due(tmp_path):
+    import pytest
+    root, out = tmp_path / "fwd", tmp_path / "rep"
+    _ledger(root, 400, mean=0.0)
+    assert fwd.health(root)["looks_due"] == [1]
+    with pytest.raises(RuntimeError, match="look 1 has not been scored"):
+        fwd.score_look(root, out, 2)
+    doc = fwd.score_look(root, out, 1)
+    assert doc["days"] == 365 and doc["verdict"] == "CONTINUE"
+    with pytest.raises(FileExistsError):
+        fwd.score_look(root, out, 1)
+    with pytest.raises(RuntimeError, match="400 of 730"):
+        fwd.score_look(root, out, 2)
+
+
+def test_a_strong_edge_passes_early_and_a_null_dies_at_the_end(tmp_path):
+    _ledger(tmp_path / "s", 365, mean=60.0)
+    strong = fwd.score_look(tmp_path / "s", tmp_path / "rs", 1)
+    assert strong["verdict"] == "FORWARD-PASS" and strong["z"] >= fwd.OBF_BOUNDS[0]
+    root, out = tmp_path / "n", tmp_path / "rn"
+    _ledger(root, 1095, mean=-5.0)
+    verdicts = [fwd.score_look(root, out, k)["verdict"] for k in (1, 2, 3)]
+    assert verdicts == ["CONTINUE", "CONTINUE", "KILLED"]
+
+
+def test_frozen_bounds_match_the_quant_derivation():
+    from cryptobot.research import quant
+    derived = quant.obf_bounds(3, sims=20_000)
+    for a, b in zip(derived, fwd.OBF_BOUNDS, strict=True):
+        assert abs(a - b) < 0.06

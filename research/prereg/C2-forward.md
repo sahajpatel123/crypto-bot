@@ -19,7 +19,8 @@ on UTC daily mark closes, long top quintile / short bottom quintile,
 Recorder: `tools/forward_c2.py` (public REST only, no keys, no orders),
 run once per day after 00:05 UTC; append-only `data/forward_c2/ledger.jsonl`.
 
-Scoring: exactly once, after >= 180 scored days, using
+Scoring (SUPERSEDED by C2-forward-amendment-1.md before any record):
+exactly once, after >= 180 scored days, using
 `c_family.score` (week-block bootstrap). FORWARD-PASS needs mean net >
 0 at 1x with one-sided p <= 0.05, mean > 0 at 2x adverse, and max
 drawdown < 2,500 bps. A PASS earns runtime work (multi-position
