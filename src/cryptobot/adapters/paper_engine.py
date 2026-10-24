@@ -34,6 +34,7 @@ execution client in this module is nautilus' backtest/sandbox simulator.
 """
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import random
@@ -1081,10 +1082,8 @@ class NautilusPaperEngine:
             event, detail = entry.get("event"), entry.get("detail", {})
             if event == "submitted":
                 submitted[detail["client_id"]] = detail
-                try:
+                with contextlib.suppress(IndexError, ValueError):
                     self._seq = max(self._seq, int(detail["client_id"].split("-")[1]))
-                except (IndexError, ValueError):
-                    pass
             elif event == "fill":
                 fills.append(detail)
                 self._recovered_fills[detail["client_id"]] = (
@@ -1123,10 +1122,8 @@ class NautilusPaperEngine:
             exec_id = str(record.get("exec_id", ""))
             parts = exec_id.split("/")
             if len(parts) == 4 and parts[0] == "paper" and parts[1] == self._run_tag:
-                try:
+                with contextlib.suppress(ValueError):
                     self._fill_seq = max(self._fill_seq, int(parts[3]))
-                except ValueError:
-                    pass
         for _ in range(self._seq):  # advance seeded RNG past journaled ids.
             self._rng.getrandbits(64)
         if halted is not None:

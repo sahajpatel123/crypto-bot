@@ -7,6 +7,7 @@ recorded-shape — hand-built, NOT actual captures.
 import copy
 import json
 from datetime import UTC, datetime
+from pathlib import Path
 
 import pytest
 
@@ -66,7 +67,7 @@ def test_paper_path_never_instantiates_live(tmp_path):
     from cryptobot.app.config import load_config
     from cryptobot.app.session import Session
     from cryptobot.app.store import RunStore
-    text = open("configs/paper.toml").read().replace(
+    text = Path("configs/paper.toml").read_text().replace(
         'dir = "runs"', f'dir = "{tmp_path / "runs"}"', 1)
     cfg_path = tmp_path / "test.toml"
     cfg_path.write_text(text)

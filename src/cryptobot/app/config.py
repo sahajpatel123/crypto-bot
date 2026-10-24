@@ -7,6 +7,10 @@ import math
 import tomllib
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from cryptobot.risk.types import RiskConfig
 
 __all__ = ["AppConfig", "ConfigError", "load_config",
            "with_resolved_symbols"]

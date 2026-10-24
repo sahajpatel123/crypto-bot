@@ -186,7 +186,7 @@ class RunStore:
             import fcntl
             try:
                 fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            except BlockingIOError:
+            except BlockingIOError as exc:
                 # A held flock always means a live holder (the OS
                 # releases a dead process's flock, and a merely stale
                 # pid in the file takes the success path above). An
@@ -194,7 +194,7 @@ class RunStore:
                 holder = self._lock_holder(fd)
                 raise StoreLocked(
                     f"store {self.path} locked by live holder "
-                    f"(pid file: {holder})")
+                    f"(pid file: {holder})") from exc
             os.ftruncate(fd, 0)
             os.write(fd, str(os.getpid()).encode("ascii"))
             self._lock_fd = fd
@@ -294,7 +294,7 @@ class RunStore:
             return None
         keys = ("run_id", "mode", "config_hash", "state", "pid", "started_utc",
                 "updated_utc", "heartbeat_utc", "workdir")
-        return dict(zip(keys, row))
+        return dict(zip(keys, row, strict=False))
 
     # -- intents / events / checkpoints ----------------------------------
     def record_intent(self, run_id: str, intent_id: str, strategy: str,

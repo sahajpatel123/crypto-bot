@@ -41,6 +41,7 @@ Safety rules (tested, no exceptions):
 """
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import hmac
 import json
@@ -237,12 +238,10 @@ class UrllibTransport:
         try:
             with urllib.request.urlopen(req, timeout=timeout) as resp:
                 # T1.2: request-weight accounting for the budget governor.
-                try:
+                with contextlib.suppress(TypeError, ValueError):
                     self.last_used_weight_1m = int(
                         resp.headers.get("X-MBX-USED-WEIGHT-1M", "") or 0) \
                         or getattr(self, "last_used_weight_1m", None)
-                except (TypeError, ValueError):
-                    pass
                 return json.loads(resp.read().decode("utf-8"))
         except urllib.error.HTTPError as exc:
             try:
@@ -474,11 +473,9 @@ class BinanceLiveEngine:
                 if exec_id and exec_id not in self._adopted_exec:
                     self._adopted_exec.add(exec_id)
                     self._unacked[exec_id] = str(cid)
-                    try:
+                    with contextlib.suppress(TypeError, ValueError):
                         self._adopted_qty[str(cid)] = self._adopted_qty.get(
                             str(cid), 0.0) + float(record.get("qty", 0.0))
-                    except (TypeError, ValueError):
-                        pass
             elif event == "fill-acked" and cid:
                 exec_id = str(record.get("exec_id", ""))
                 if exec_id:
@@ -1600,7 +1597,7 @@ class BinanceLiveEngine:
             account.get("totalInitialMargin", 0.0) or 0.0)
         self._margin_cache = (available, free)
         self._account_cached_at = time.monotonic()
-        try:
+        with contextlib.suppress(TypeError, ValueError):
             self._account_cache = AccountSnapshot(
                 wallet_equity_usdt=float(
                     account.get("totalWalletBalance", 0.0) or 0.0),
@@ -1610,8 +1607,6 @@ class BinanceLiveEngine:
                 positions=self._snapshot_positions(
                     account.get("positions", [])),
                 asof_utc=self._now_utc(), complete=True)
-        except (TypeError, ValueError):
-            pass
         return available, free
 
     def fee_bps(self, symbol: str) -> float:

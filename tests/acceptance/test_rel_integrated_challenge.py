@@ -7,6 +7,7 @@ on early checkpoints is an honest record of missing behavior, never a
 harness artifact: every case first proves its setup actually
 established the precondition it challenges.
 """
+import contextlib
 import json
 import os
 import runpy
@@ -767,7 +768,7 @@ def test_rel_protected_posture_admits_on_clear_day(tmp_path, monkeypatch):
             return HttpResponse(status=404, body=b"", url=url)
         return HttpResponse(status=200, body=page.read_bytes(), url=url)
     monkeypatch.setattr(_fresh, "default_http_get", _canned)
-    text = open("configs/paper-protected.toml").read()
+    text = Path("configs/paper-protected.toml").read_text()
     text = text.replace('dir = "runs"', f'dir = "{tmp_path / "runs"}"', 1)
     cfg_path = tmp_path / "protected.toml"
     cfg_path.write_text(text)
@@ -840,10 +841,8 @@ def test_rel_protected_posture_admits_on_clear_day(tmp_path, monkeypatch):
         assert session.protection.advisory_only is False, (
             "protected posture came up advisory (posture wiring)")
     finally:
-        try:
+        with contextlib.suppress(Exception):
             session._freshness.stop()
-        except Exception:
-            pass
         store.close()
 
 

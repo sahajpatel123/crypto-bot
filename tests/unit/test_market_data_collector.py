@@ -1,4 +1,5 @@
 """Collector supervision + ingest tests (Worker 2, E-006). Fakes only, no network."""
+import contextlib
 import json
 import socket
 from collections import deque
@@ -41,10 +42,8 @@ class FakeConn:
         item = self.script.popleft()
         if not self.script:
             self.sock.setblocking(False)  # last item: disarm so select idles after.
-            try:
+            with contextlib.suppress(OSError):
                 self.sock.recv(1)
-            except OSError:
-                pass
         if isinstance(item, Exception):
             raise item
         return item
@@ -60,10 +59,8 @@ class FakeConn:
 
     def close(self):
         self.closed = True
-        try:
+        with contextlib.suppress(OSError):
             self.sock.close()
-        except OSError:
-            pass
 
 
 def _trade_msg(seq_id=1, price="100", ts=1000):

@@ -43,7 +43,7 @@ def test_delta_validation_rejects_before_booking(tmp_path):
     _, _, gate = _slice(tmp_path)
     assert hasattr(gate.policy, "note_fill_delta"), \
         "sink must expose note_fill_delta (v0.2.0 addendum)"
-    with pytest.raises(Exception):
+    with pytest.raises(ValueError):
         _delta(gate, "exec-bad", qty=float("nan"))
     assert gate.ledger.position_qty() == 0.0
     assert gate.ledger.paid_costs() == 0.0

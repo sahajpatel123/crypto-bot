@@ -27,6 +27,7 @@ over 5 s is treated as sick and reconnected.
 """
 from __future__ import annotations
 
+import contextlib
 import json
 import select
 import time
@@ -249,7 +250,5 @@ def live_events(
                     time.sleep(_SELECT_TIMEOUT_S)  # dead socket set: never spin.
     finally:
         for conn in conns.values():
-            try:
+            with contextlib.suppress(OSError, WsClosed):
                 conn.close()
-            except (OSError, WsClosed):
-                pass

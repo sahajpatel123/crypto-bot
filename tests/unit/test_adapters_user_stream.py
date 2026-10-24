@@ -64,7 +64,6 @@ def _reader(engine, sockets, clock):
 
 
 def test_connect_heals_then_dispatches(tmp_path):
-    ready = json.loads((FIX / "readiness.json").read_text())
     orders = json.loads((FIX / "orders.json").read_text())
     engine, transport = _live(tmp_path, [
         ("POST", "/fapi/v1/listenKey", None, ("ok", {"listenKey": "K1"})),
@@ -145,7 +144,6 @@ def test_socket_error_heals_with_backoff_then_recovers(tmp_path):
     reader, made = _reader(engine, [sock], clock)
     assert reader.poll_once() == "healed"  # connected (heal: nothing open).
     sock.script.append("die")
-    real_factory = reader._factory
     reader._factory = lambda key: (_ for _ in ()).throw(
         ConnectionError("dial refused"))
     # Socket dies; the redial fails too -> backoff, no throw.

@@ -15,6 +15,7 @@ strictly scripted in order, so submit counts, duplicate submits, and
 cancel coverage are exact. Set MATRIX_TRANSCRIBE=1 to print the
 strict entries a row actually needs (development aid).
 """
+import contextlib
 import copy
 import itertools
 import json
@@ -598,19 +599,15 @@ class Rig:
         for closer in (self.stream, self.engine):
             if closer is None:
                 continue
-            try:
+            with contextlib.suppress(Exception):
                 closer.close()
-            except Exception:
-                pass
         self.stream, self.engine = None, None
 
     def close(self):
         self.close_streams()
         if self.store is not None:
-            try:
+            with contextlib.suppress(Exception):
                 self.store.close()
-            except Exception:
-                pass
             self.store = None
 
 

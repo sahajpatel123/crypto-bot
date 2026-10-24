@@ -259,7 +259,7 @@ class RuntimeTrader:
         # the same reservation, so delayed cancels and multi-group races
         # cannot stack exits into a reversal.
         events: list[dict[str, Any]] = []
-        for reservation_id, legs in self._legs.items():
+        for _reservation_id, legs in self._legs.items():
             filled = [c for c in legs if self._leg_filled_qty(c) > _EPS]
             if not filled:
                 continue

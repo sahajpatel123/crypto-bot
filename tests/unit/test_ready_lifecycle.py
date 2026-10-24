@@ -7,6 +7,7 @@ idempotent flatten, and fail-closed malformed ingest (W5 note).
 """
 import json
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 import pytest
 
@@ -17,7 +18,7 @@ from cryptobot.app.store import RunStore
 
 def _config(tmp_path, **over):
     from cryptobot.app.config import load_config
-    text = open("configs/paper.toml").read()
+    text = Path("configs/paper.toml").read_text()
     text = text.replace('dir = "runs"', f'dir = "{tmp_path / "runs"}"', 1)
     for key, value in over.items():
         text = text.replace(f"{key} =", f"{key} = {value} #", 1)

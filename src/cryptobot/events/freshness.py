@@ -16,6 +16,7 @@ the page are recorded as drift CANDIDATES and never auto-applied.
 """
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import json
 import os
@@ -117,7 +118,7 @@ def parse_fomc_decision_dates(body_text: str) -> set[date]:
 
     def year_at(pos: int) -> int | None:
         return next((y for y, start, end in
-                     zip(years, bounds, bounds[1:])
+                     zip(years, bounds, bounds[1:], strict=False)
                      if start <= pos < end), None)
 
     for block in _FOMC_MONTH_BLOCK.finditer(body_text):
@@ -250,10 +251,8 @@ class SourceStateStore:
                 handle.write(json.dumps(payload, indent=2, sort_keys=True))
             os.replace(tmp, self.path)
         finally:
-            try:
+            with contextlib.suppress(OSError):
                 os.unlink(tmp)
-            except OSError:
-                pass
 
     def get(self, source: str) -> SourceState:
         return self._states.get(source, SourceState(source=source))

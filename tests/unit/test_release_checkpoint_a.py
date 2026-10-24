@@ -5,6 +5,7 @@ synthetic-mechanics only (not economics, not a venue recording):
 fill→ledger→protection, unknown→lookup→no-duplicate-entry, restart
 re-adopt without duplicate keys, and the reduce-only exit path.
 """
+import contextlib
 import copy
 import sys
 from datetime import UTC, datetime, timedelta
@@ -26,7 +27,7 @@ MECHANICS = "synthetic-mechanics"
 
 
 def _config(tmp_path: Path) -> Path:
-    text = open("configs/paper.toml").read()
+    text = Path("configs/paper.toml").read_text()
     text = text.replace('dir = "runs"', f'dir = "{tmp_path / "runs"}"', 1)
     text = text.replace("warmup_bars =", "warmup_bars = 3 #", 1)
     path = tmp_path / "test.toml"
@@ -157,7 +158,7 @@ def test_live_fill_to_ledger_to_protection(tmp_path):
 
 
 def test_unknown_blocks_duplicate_entry_until_lookup(tmp_path):
-    ready, orders = venues.ready_fixture(), venues.orders_fixture()
+    ready, _orders = venues.ready_fixture(), venues.orders_fixture()
     engine, transport = venues.make_engine(
         tmp_path, [("GET", "/fapi/v2/account", None,
                     ("ok", ready["account"])),
@@ -184,11 +185,9 @@ def test_unknown_blocks_duplicate_entry_until_lookup(tmp_path):
         # During-unknown re-admit is blocked once Session retains the
         # unknown cid (W1 retention; single-position rule then holds).
         sent = len(transport.requests)
-        try:
+        with contextlib.suppress(UnknownOutcomeError):  # pre-merge: no retention yet; post-merge: blocked.
             session._maybe_admit(
                 [Candidate("S1", _intent(session.now_utc()))])
-        except UnknownOutcomeError:
-            pass  # pre-merge: no retention yet; post-merge: blocked.
         assert len(transport.requests) == sent  # no duplicate entry.
         # Lookup resolves; the position then books from the tape.
         transport.append(

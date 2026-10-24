@@ -21,7 +21,7 @@ from cryptobot.coordination.selector import Candidate
 
 
 def _paper_config(tmp_path: Path, **over):
-    text = open("configs/paper.toml").read()
+    text = Path("configs/paper.toml").read_text()
     text = text.replace('mode = "replay"', 'mode = "paper"', 1)
     text = text.replace('kind = "reference"', 'kind = "nautilus"', 1)
     text = text.replace('dir = "runs"', f'dir = "{tmp_path / "runs"}"', 1)

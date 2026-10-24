@@ -19,6 +19,7 @@ Guarded entry points (all source call sites use these module attributes):
 ``file:``/``data:`` URLs and AF_UNIX sockets are local and stay allowed.
 """
 
+import contextlib
 import ipaddress
 import socket
 import urllib.parse
@@ -121,10 +122,8 @@ class Guard:
 
     def uninstall(self) -> None:
         for _, obj, name, original in self._saved:
-            try:
+            with contextlib.suppress(AttributeError, TypeError):
                 setattr(obj, name, original)
-            except (AttributeError, TypeError):
-                pass
         self._saved = []
 
     def __enter__(self) -> "Guard":
@@ -137,10 +136,8 @@ class Guard:
 
 def _check_url(url) -> None:
     if hasattr(url, "get_full_url"):
-        try:
+        with contextlib.suppress(Exception):
             url = url.get_full_url()
-        except Exception:
-            pass
     if not isinstance(url, str):
         return
     parts = urllib.parse.urlsplit(url)

@@ -42,7 +42,7 @@ import uuid
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 from typing import Any
 
@@ -53,7 +53,7 @@ from .fake_venue import FakeVenue, VenueOrderView, VenueTimeoutError
 CONTRACT_VERSION = "v0.1.0"  # baseline; v0.1.1 handoff addendum implemented on the execution side.
 
 
-class OrderState(str, Enum):
+class OrderState(StrEnum):
     OPEN = "open"
     PARTIAL = "partial"
     FILLED = "filled"

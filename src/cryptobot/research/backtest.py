@@ -161,7 +161,6 @@ def day_events_for(dataset: DatasetHandle, symbol: str,
     if hasattr(dataset, "days"):
         events = [e for e in dataset.events(symbol, day_id) if e is not None]
         return events, {"day": day_id, "calendar": "synthetic-compressed"}
-    manifest = dataset.manifest  # type: ignore[attr-defined]
     kind = dataset.kind  # type: ignore[attr-defined]
     if kind == "vision-archive":
 
@@ -600,7 +599,7 @@ def assemble_split_capture(partitions: list[dict], split: str, out_dir,
             if max_events is not None and n_events >= max_events:
                 break  # causal prefix: unread tail never touched
     truncated = max_events is not None and n_events >= max_events
-    for entry, emitted in zip(day_manifest, emitted_per_part):
+    for entry, emitted in zip(day_manifest, emitted_per_part, strict=False):
         entry["n_emitted"] = emitted
     manifest = {
         "prep_version": "streaming-v1",

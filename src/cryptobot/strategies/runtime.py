@@ -166,7 +166,7 @@ def _side_reason(log: EvalLog) -> str:
 def _finish(long_log_intent: tuple[EvalLog, Intent | None],
             short_log_intent: tuple[EvalLog, Intent | None]) -> StrategyOutcome:
     """First intent (long priority) wins; double reject joins both reasons."""
-    for log, intent in (long_log_intent, short_log_intent):
+    for _log, intent in (long_log_intent, short_log_intent):
         if intent is not None:
             try:
                 policy = decode_exit_rule(intent.exit_rule)

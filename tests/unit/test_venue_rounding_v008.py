@@ -87,7 +87,7 @@ def test_engine_submit_fills_at_floored_qty():
     from cryptobot.app.engine import EngineOrder
     engine = _engine()
     _quote(engine, 0, 60000.00, 60000.50)
-    cid = engine.submit(EngineOrder("BTCUSDT", "BUY", 0.0019, "MARKET"))
+    engine.submit(EngineOrder("BTCUSDT", "BUY", 0.0019, "MARKET"))
     _quote(engine, 1, 60001.00, 60001.50)
     fills = [e for e in engine.poll() if e.kind == "fill"]
     assert len(fills) == 1

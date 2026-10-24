@@ -210,6 +210,6 @@ def test_run_returns_smoke_reconciles(tmp_path):
         rec = json.loads(line)
         assert rec["exit_t"] is None or rec["exit_t"] <= rec["signal_t"] + 135
         assert "fixture_hash" in rec and rec["split"] == "train"
-    for key, cell in doc["cells"].items():
+    for _key, cell in doc["cells"].items():
         assert cell["n_signals"] == cell["n_entered"] + cell["n_expired"]
         assert cell["n_entered"] == cell["n_stop"] + cell["n_target"] + cell["n_time"]

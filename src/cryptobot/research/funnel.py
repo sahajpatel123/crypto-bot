@@ -328,7 +328,7 @@ def _read_intents(db_path: Path) -> list[dict[str, Any]]:
     try:
         cols = [r[1] for r in
                 con.execute("pragma table_info(intents)").fetchall()]
-        return [dict(zip(cols, row)) for row in
+        return [dict(zip(cols, row, strict=False)) for row in
                 con.execute("select * from intents").fetchall()]
     finally:
         con.close()
@@ -553,7 +553,7 @@ def main(argv: list[str] | None = None) -> int:
             analyze_banked(json.loads(Path(cell).read_text()),
                            journal)
             for cell, journal in zip(args.banked_cell,
-                                     args.banked_journal)],
+                                     args.banked_journal, strict=False)],
         "symbol_time": [analyze_symbol_time(path)
                         for path in args.capture],
     }

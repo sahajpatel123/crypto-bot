@@ -262,7 +262,7 @@ def test_exit_race_overfill_freezes_further_exits(tmp_path):
         trader.protect("res-1", 59990.00, 60010.00)
     trader._client_fills[entry] = 0.002  # race setup: entry filled at venue.
     legs = [engine._mint("stop"), engine._mint("target")]
-    for leg, role in zip(legs, ("stop", "target")):
+    for leg, role in zip(legs, ("stop", "target"), strict=False):
         trader._client_reservation[leg] = "res-1"
         trader._client_role[leg] = role
         trader._legs.setdefault("res-1", {})[leg] = role

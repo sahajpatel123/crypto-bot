@@ -33,15 +33,15 @@ def test_summary_matches_rebuilt_metrics(tmp_path):
 
 def test_csv_shapes(tmp_path):
     out = build_report(FIX, tmp_path / "rep")
-    trades = list(csv.DictReader(open(out["trades.csv"])))
+    trades = list(csv.DictReader(Path(out["trades.csv"]).read_text().splitlines()))
     assert len(trades) == 1 and float(trades[0]["net"]) == 5.3
-    equity = list(csv.DictReader(open(out["equity.csv"])))
+    equity = list(csv.DictReader(Path(out["equity.csv"]).read_text().splitlines()))
     assert {"drawdown_usdt", "drawdown_pct", "date_ist"} <= set(equity[0])
     assert {"mark_source", "mark_age_ms"} <= set(equity[0])
     assert len(equity) == 5
-    daily = list(csv.DictReader(open(out["daily_returns.csv"])))
+    daily = list(csv.DictReader(Path(out["daily_returns.csv"]).read_text().splitlines()))
     assert daily[0]["label"] in ("trade", "no-trade", "no-coverage")
-    rej = list(csv.DictReader(open(out["rejections.csv"])))
+    rej = list(csv.DictReader(Path(out["rejections.csv"]).read_text().splitlines()))
     assert len(rej) == 2
 
 

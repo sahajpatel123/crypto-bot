@@ -1,5 +1,7 @@
 """Venue filter sourcing tests (manager-owned, run-mode arming)."""
 
+from pathlib import Path
+
 import pytest
 
 from cryptobot.app.filters import FilterError, build_run_filters
@@ -67,7 +69,7 @@ def test_arm_run_mode_wires_policy(tmp_path):
     from cryptobot.app.config import load_config
     from cryptobot.app.session import Session
     from cryptobot.app.store import RunStore
-    text = open("configs/paper.toml").read()
+    text = Path("configs/paper.toml").read_text()
     text = text.replace('mode = "replay"', 'mode = "paper"', 1)
     text = text.replace('kind = "reference"', 'kind = "nautilus"', 1)
     text = text.replace('dir = "runs"', f'dir = "{tmp_path / "runs"}"', 1)

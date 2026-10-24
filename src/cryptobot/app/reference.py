@@ -264,7 +264,6 @@ class ReferenceEngine:
                           target_price: float | None) -> list[str]:
         """Independent reduce-only legs sized to filled qty (verified individually)."""
         entry = self.manager.orders[entry_client_id]
-        legs: list[str] = []
         if target_price is None:
             stop = self.manager._submit(
                 entry.symbol, "SELL" if entry.venue_side == "BUY" else "BUY",

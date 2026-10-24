@@ -1,4 +1,6 @@
 """App config + store tests (manager-owned, A-001)."""
+from pathlib import Path
+
 import pytest
 
 from cryptobot.app.config import ConfigError, load_config, with_resolved_symbols
@@ -18,7 +20,7 @@ def test_sample_config_loads():
 
 
 def test_paper_mode_refuses_reference_engine(tmp_path):
-    text = (open(SAMPLE).read()
+    text = (Path(SAMPLE).read_text()
             .replace('mode = "replay"', 'mode = "paper"', 1))
     path = tmp_path / "paper.toml"
     path.write_text(text)
@@ -27,7 +29,7 @@ def test_paper_mode_refuses_reference_engine(tmp_path):
 
 
 def test_invalid_values_rejected(tmp_path):
-    base = open(SAMPLE).read()
+    base = Path(SAMPLE).read_text()
     cases = [
         ('mode = "replay"', 'mode = "live"'),
         ("leverage_cap = 3.0", "leverage_cap = 0"),
@@ -81,7 +83,7 @@ def test_with_resolved_symbols_recomputes_fingerprint():
     assert len(resolved.fingerprint) == 16
     assert resolved.fingerprint != cfg.fingerprint
     # Same universe loaded from TOML gets the same fingerprint.
-    text = open(SAMPLE).read().replace(
+    text = Path(SAMPLE).read_text().replace(
         "symbols = []", 'symbols = ["BTCUSDT", "ETHUSDT"]', 1)
     import tempfile
     with tempfile.NamedTemporaryFile("w", suffix=".toml",

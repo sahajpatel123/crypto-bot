@@ -31,9 +31,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install ruff
-      - name: Ruff (baseline reported, blocking once zero)
-        continue-on-error: true
+      - run: pip install ruff==0.17.1  # pinned: lint is blocking
+      - name: Ruff (blocking; baseline reached zero)
         run: ruff check src tests
 
   typecheck:

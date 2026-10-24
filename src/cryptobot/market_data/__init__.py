@@ -47,6 +47,7 @@ from .ws import WsClient, WsClosed, WsHandshakeError
 
 __all__ = [
     "CONNECTOR_CANDIDATES",
+    "EVENT_FORMAT",
     "Bar1s",
     "BarAggregator",
     "BarMissing",

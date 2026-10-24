@@ -20,6 +20,7 @@ select reports nothing (E-009 transport fix).
 from __future__ import annotations
 
 import base64
+import contextlib
 import hashlib
 import os
 import select
@@ -246,10 +247,8 @@ class WsClient:
             except OSError as exc:
                 raise WsClosed(f"socket error: {exc}") from exc
         finally:
-            try:
+            with contextlib.suppress(OSError):
                 self._sock.settimeout(previous)
-            except OSError:
-                pass
         if not chunk:
             raise WsClosed("peer closed the TCP connection")
         self._buf += chunk
@@ -272,10 +271,8 @@ class WsClient:
             elif frame.opcode == _OP_CLOSE:
                 del self._buf[:consumed]
                 self._closed = True
-                try:
+                with contextlib.suppress(OSError):
                     self._send_raw(_OP_CLOSE, frame.payload)
-                except OSError:
-                    pass
                 raise WsClosed(f"peer sent close (code/payload: {frame.payload!r})")
             else:
                 return
@@ -325,10 +322,8 @@ class WsClient:
                 elif frame.opcode == _OP_CLOSE:
                     del self._buf[offset:offset + consumed]
                     self._closed = True
-                    try:
+                    with contextlib.suppress(OSError):
                         self._send_raw(_OP_CLOSE, frame.payload)
-                    except OSError:
-                        pass
                     raise WsClosed(f"peer sent close (code/payload: {frame.payload!r})")
                 else:
                     raise WsClosed(f"unexpected opcode: {frame.opcode}")
@@ -388,10 +383,8 @@ class WsClient:
         except OSError:
             pass
         finally:
-            try:
+            with contextlib.suppress(OSError):
                 self._sock.close()
-            except OSError:
-                pass
 
     @property
     def native_socket(self) -> socket.socket:

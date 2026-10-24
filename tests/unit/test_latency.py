@@ -22,7 +22,7 @@ def test_unmeasured_spans_stay_unmeasured():
     assert set(summary) == {EVENT_AGE, QUEUE_DELAY, FEATURE_CALC,
                             RISK_TO_COMMAND, TRANSPORT_ACK, FILL_NOTIFY,
                             STOP_CONFIRM}
-    for span, stats in summary.items():
+    for _span, stats in summary.items():
         assert stats["n"] == 0
         assert stats["measured"] is False
         assert stats["max_ms"] == 0.0

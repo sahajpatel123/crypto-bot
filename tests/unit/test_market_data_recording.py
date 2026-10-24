@@ -26,7 +26,7 @@ def _write_recording(path, opens, *, recv_lag_ms=1_000, input_class=INPUT_SYNTHE
     rec = KlineRecorder(path, symbol="SYNUSDT", channel="klines/1m",
                         interval_ms=MIN, input_class=input_class,
                         source="unit-test", capture_cmd="pytest synthetic")
-    for i, open_ms in enumerate(opens):
+    for _i, open_ms in enumerate(opens):
         rec.record_rest_kline(_row(open_ms), open_ms + MIN - 1 + recv_lag_ms)
     return rec.finish()
 

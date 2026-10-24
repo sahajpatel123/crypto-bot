@@ -227,7 +227,7 @@ def flow_window(
     ordered = sorted(trades, key=lambda t: int(t["last_id"]))
     if prev_last_id is not None and int(ordered[0]["first_id"]) != prev_last_id + 1:
         return None, "flow:trade-id-gap"
-    for prev, cur in zip(ordered, ordered[1:]):
+    for prev, cur in zip(ordered, ordered[1:], strict=False):
         if int(cur["first_id"]) != int(prev["last_id"]) + 1:
             return None, "flow:trade-id-gap"
     buy_notional = sell_notional = 0.0

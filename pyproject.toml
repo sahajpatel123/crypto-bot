@@ -36,7 +36,10 @@ src = ["src", "tests"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
-ignore = ["E501"]  # line length handled by formatter-era code; keep gate on logic
+ignore = [
+    "E501",    # line length handled by formatter-era code; keep gate on logic
+    "SIM102",  # nested ifs here carry a guard comment between the conditions
+]
 
 [tool.mypy]
 python_version = "3.12"

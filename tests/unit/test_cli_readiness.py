@@ -5,6 +5,7 @@ engine; credential-absent paths use env scrubbing.
 """
 import argparse
 from datetime import UTC
+from pathlib import Path
 
 import pytest
 
@@ -178,7 +179,7 @@ class _StubEngine:
 
 
 def _prod_config(tmp_path):
-    text = open("configs/prod.toml").read()
+    text = Path("configs/prod.toml").read_text()
     text = text.replace('dir = "runs"', f'dir = "{tmp_path / "runs"}"', 1)
     path = tmp_path / "prod.toml"
     path.write_text(text)
@@ -395,7 +396,7 @@ def test_paper_run_interrupted_prints_resume_hint(monkeypatch, tmp_path,
                                                   capsys):
     # A venue/connection death mid-run (e.g. routes-exhausted, observed
     # on paper-proof-30m) must leave a resume hint, not a bare traceback.
-    text = open("configs/paper-protected.toml").read()
+    text = Path("configs/paper-protected.toml").read_text()
     text = text.replace('symbols = []',
                         'symbols = ["BTCUSDT"]', 1)
     text = text.replace('dir = "runs"', f'dir = "{tmp_path}"', 1)
@@ -431,7 +432,7 @@ def test_paper_run_records_discovery(monkeypatch, tmp_path, capsys):
     import cryptobot.market_data.discovery as discovery_mod
     from cryptobot.app.session import Session
 
-    text = open("configs/paper-protected.toml").read()
+    text = Path("configs/paper-protected.toml").read_text()
     text = text.replace('dir = "runs"', f'dir = "{tmp_path}"', 1)
     cfg_path = tmp_path / "paper.toml"
     cfg_path.write_text(text)
@@ -467,7 +468,7 @@ def test_paper_resume_reuses_recorded_universe(monkeypatch, tmp_path,
     import cryptobot.market_data.collector as collector_mod
     from cryptobot.app.session import Session
 
-    text = open("configs/paper-protected.toml").read()
+    text = Path("configs/paper-protected.toml").read_text()
     text = text.replace('dir = "runs"', f'dir = "{tmp_path}"', 1)
     cfg_path = tmp_path / "paper.toml"
     cfg_path.write_text(text)

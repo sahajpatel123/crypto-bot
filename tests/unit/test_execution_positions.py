@@ -304,7 +304,7 @@ def test_submit_intent_persisted_before_side_effect(tmp_path):
     order = manager.submit_entry("BTCUSDT", "LONG", 0.01, 67005.0,
                                  expire_at_utc=_expiring(), reservation_id="r1")
     lines = (tmp_path / "orders.jsonl").read_text().splitlines()
-    kinds = [l for l in lines if f'"{order.client_id}"' in l]
+    kinds = [ln for ln in lines if f'"{order.client_id}"' in ln]
     assert '"submit-intent"' in kinds[0]  # intent is the first record for the ID.
     assert order.client_id in manager._minted_ids
 

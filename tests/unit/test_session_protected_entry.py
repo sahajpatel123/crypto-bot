@@ -15,7 +15,7 @@ from cryptobot.coordination.selector import Candidate
 
 
 def _config(tmp_path: Path, **over) -> Path:
-    text = open("configs/paper.toml").read()
+    text = Path("configs/paper.toml").read_text()
     text = text.replace('dir = "runs"', f'dir = "{tmp_path / "runs"}"', 1)
     for key, value in over.items():
         text = text.replace(f"{key} =", f"{key} = {value} #", 1)

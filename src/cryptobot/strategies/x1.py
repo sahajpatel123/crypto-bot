@@ -13,8 +13,6 @@ import math
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
-_EPOCH = datetime(1970, 1, 1, tzinfo=UTC)
-
 from cryptobot.coordination import (
     DataQuality,
     DecisionRecord,
@@ -37,6 +35,8 @@ from .contract import (
     build_evidence_ref,
     build_intent,
 )
+
+_EPOCH = datetime(1970, 1, 1, tzinfo=UTC)
 
 # Dual-symbol feed declaration (X1.md §4): Session reads these to
 # attach the leader feed + frozen beta to X1 evaluations.

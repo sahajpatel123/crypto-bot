@@ -24,6 +24,7 @@ excessive lag halt new entries without discarding evidence.
 """
 from __future__ import annotations
 
+import contextlib
 import queue
 import threading
 import time
@@ -75,10 +76,8 @@ class UserStreamReader:
 
     def _drop(self) -> None:
         if self._socket is not None:
-            try:
+            with contextlib.suppress(Exception):
                 self._socket.close()
-            except Exception:
-                pass
             self._socket = None
 
     def _ensure_connected(self) -> bool:
@@ -416,10 +415,8 @@ class UserStreamAttachment:
                 except queue.Empty:
                     continue
                 if self._closed:
-                    try:
+                    with contextlib.suppress(Exception):
                         sock.close()
-                    except Exception:
-                        pass
                     return
                 try:
                     while not self._closed:
@@ -436,10 +433,8 @@ class UserStreamAttachment:
                         self._put_blocking(
                             ("envelope", envelope, self._now()))
                 finally:
-                    try:
+                    with contextlib.suppress(Exception):
                         sock.close()
-                    except Exception:
-                        pass
         except Exception as exc:  # supervision: loud death, no spin.
             with self._state_lock:
                 self._errors += 1
@@ -520,10 +515,8 @@ class UserStreamAttachment:
         try:
             self._sock_box.put_nowait(sock)
         except queue.Full:
-            try:
+            with contextlib.suppress(Exception):
                 sock.close()
-            except Exception:
-                pass
             return False
         self._backoff_s = self._initial_backoff_s
         self._last_keepalive_at = self._now()
@@ -561,10 +554,8 @@ class UserStreamAttachment:
     def _redial(self, why: str) -> None:
         sock, self._live_socket = self._live_socket, None
         if sock is not None:
-            try:
+            with contextlib.suppress(Exception):
                 sock.close()
-            except Exception:
-                pass
         self._engage_halt(_GAP_REASON, "user-stream-gap",
                           {"phase": "redial", "why": why})
 
@@ -620,10 +611,8 @@ class UserStreamAttachment:
                     sock = self._sock_box.get_nowait()
                 except queue.Empty:
                     break
-                try:
+                with contextlib.suppress(Exception):
                     sock.close()
-                except Exception:
-                    pass
         finally:
             self._reader.close()
         if thread is threading.current_thread():
@@ -656,8 +645,6 @@ def attach_user_stream(
     """
     attachment = UserStreamAttachment(session, engine, ws_factory,
                                       **kwargs)
-    try:
+    with contextlib.suppress(AttributeError):
         session._user_stream_attachment = attachment
-    except AttributeError:
-        pass
     return attachment

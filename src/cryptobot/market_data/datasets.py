@@ -149,15 +149,13 @@ class DatasetHandle:
                                                         order))
         merged = heapq.merge(*streams, key=lambda item: (item[0], item[1]))
         run_id = f"replay:{self.manifest_sha()[:8]}:{symbol}:{day}"
-        seq = 0
         last_ts: int | None = None
-        for ts, _, event in merged:
+        for seq, (ts, _, event) in enumerate(merged, 1):
             if last_ts is not None:
                 idle = last_ts + _HEARTBEAT_IDLE_MS
                 while idle < ts:
                     yield None
                     idle += _HEARTBEAT_IDLE_MS
-            seq += 1
             event["run_id"] = run_id
             event["seq"] = seq
             yield event

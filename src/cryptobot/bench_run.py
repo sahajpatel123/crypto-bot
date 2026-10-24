@@ -202,9 +202,7 @@ class BenchRunner:
                 for event in stream:
                     yield self._symbols[0], event
                 return
-            seq = 0
-            for event in stream:
-                seq += 1
+            for seq, event in enumerate(stream, 1):
                 event["seq"] = seq
                 yield self._symbols[0], event
             return
@@ -263,9 +261,7 @@ class BenchRunner:
         ts = int(event.get("exchange_ts_ms") or 0)
         if self._start_ms is not None and ts < self._start_ms:
             return False
-        if self._end_ms is not None and ts >= self._end_ms:
-            return False
-        return True
+        return not (self._end_ms is not None and ts >= self._end_ms)
 
     @staticmethod
     def _cursor_copy(cursor: dict[str, Any]) -> dict[str, Any]:

@@ -9,6 +9,7 @@ the contract surface from app/engine.py.
 """
 import json
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 import pytest
 
@@ -25,7 +26,7 @@ from cryptobot.app.store import RunStore, StoreLocked, UnsafeState
 
 def _config(tmp_path, **over):
     from cryptobot.app.config import load_config
-    text = open("configs/paper.toml").read()
+    text = Path("configs/paper.toml").read_text()
     text = text.replace('dir = "runs"', f'dir = "{tmp_path / "runs"}"', 1)
     for key, value in over.items():
         text = text.replace(f"{key} =", f"{key} = {value} #", 1)
@@ -589,7 +590,7 @@ def test_protected_posture_honors_advisory_only(tmp_path, monkeypatch):
         lambda self, store, http_get, now: calls.append(True) or {})
     monkeypatch.setattr(
         freshen.FreshnessTracker, "start", lambda *a, **k: None)
-    text = open("configs/paper-protected.toml").read()
+    text = Path("configs/paper-protected.toml").read_text()
     text = text.replace('dir = "runs"', f'dir = "{tmp_path / "runs"}"', 1)
     path = tmp_path / "protected.toml"
     path.write_text(text)
@@ -636,14 +637,13 @@ def test_lock_reentrant_same_process_and_refuses_foreign(tmp_path):
         store.release_lock()
         store.release_lock()
         # A foreign-held flock refuses with StoreLocked.
-        fd = open(str(path.with_name("s.db.lock")), "w")
-        try:
-            fcntl.flock(fd.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-            with pytest.raises(StoreLocked):
-                store.acquire_lock()
-        finally:
-            fcntl.flock(fd.fileno(), fcntl.LOCK_UN)
-            fd.close()
+        with open(str(path.with_name("s.db.lock")), "w") as fd:
+            try:
+                fcntl.flock(fd.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                with pytest.raises(StoreLocked):
+                    store.acquire_lock()
+            finally:
+                fcntl.flock(fd.fileno(), fcntl.LOCK_UN)
         store.acquire_lock()  # free again: succeeds.
     finally:
         store.close()

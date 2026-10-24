@@ -7,6 +7,7 @@ Nautilus for paper via E-007).
 """
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import json
 import math
@@ -320,12 +321,10 @@ class Session:
             # Pre-run supervision (control_tick before create_run):
             # register the run row so the transition is recorded,
             # not lost. A concurrent create falls through to set_state.
-            try:
+            with contextlib.suppress(Exception):
                 self.store.create_run(self.run_id, self.config.mode,
                                       self.config.fingerprint,
                                       str(self.workdir), self._pid)
-            except Exception:
-                pass
         self.store.set_state(self.run_id, state, reason)
         self._append_run_file("risk.jsonl", {
             "ts_utc": self.now_utc().isoformat(),
@@ -507,10 +506,8 @@ class Session:
                "flatten_attempted": attempted, "flatten_ok": flatten_ok,
                "ts_utc": self.now_utc().isoformat()}
         self.alerts.append(out)
-        try:
+        with contextlib.suppress(Exception):  # checkpoint best-effort here
             self.store.checkpoint(self.run_id, "safe-mode", out)
-        except Exception:  # noqa: BLE001 — checkpoint best-effort here
-            pass
         return out
 
     def _is_flat_confirmed(self) -> bool:
@@ -590,10 +587,8 @@ class Session:
                "budget_s": self.protection_budget_s,
                "ts_utc": self.now_utc().isoformat()}
         self.alerts.append(out)
-        try:
+        with contextlib.suppress(Exception):  # alert recorded above
             self.store.checkpoint(self.run_id, "protection-gap", out)
-        except Exception:  # noqa: BLE001 — alert recorded above
-            pass
         self._flatten("protection-gap-timeout")
         return True
 
@@ -1299,10 +1294,8 @@ class Session:
             # B2/F3: an unsubmittable opportunity (dust below the venue
             # step, full queue, exit-only race) is rejected, never fatal.
             # The risk hold is freed (zero booked: actually freed).
-            try:
+            with contextlib.suppress(ValueError, KeyError):
                 self.store.update_command(cmd_id, "failed")
-            except (ValueError, KeyError):
-                pass
             self.policy.release(verdict.reservation_id)
             reason = f"execution:submit-rejected:{type(exc).__name__}"
             self._note_reject(reason, intent.strategy, intent.instrument,
@@ -1313,11 +1306,9 @@ class Session:
                 reason, self.now_utc().isoformat())
             return
         self._submit_ts[pre_id] = self.now_utc()
-        try:
+        with contextlib.suppress(ValueError, KeyError):
             self.store.update_command(cmd_id, "submitted",
                                       engine_client_id=pre_id)
-        except (ValueError, KeyError):
-            pass
         self._known_reservations.add(verdict.reservation_id)
         self._position = {"reservation_id": verdict.reservation_id,
                           "instrument": intent.instrument,
@@ -1510,10 +1501,8 @@ class Session:
             pos.get("admit_intent"), snapshot, recorded, budget) \
             if pos.get("admit_intent") is not None else None
         if recheck is not None:
-            try:
+            with contextlib.suppress(Exception):
                 self.engine.cancel(entry_id, f"executable-recheck:{recheck}")
-            except Exception:
-                pass
             self.policy.release(pos["reservation_id"])
             self._note_reject(f"risk:{recheck}", pos.get("strategy", ""),
                               pos.get("instrument", ""), pos.get("side", ""))
@@ -1620,11 +1609,9 @@ class Session:
                         submitted = self._submit_ts.pop(key)
                         break
             if submitted is not None:
-                try:
+                with contextlib.suppress(TypeError, AttributeError):
                     self._dispatch_ms.append(
                         (payload.ts_utc - submitted).total_seconds() * 1000)
-                except (TypeError, AttributeError):
-                    pass
             outcome = self._apply_fill(
                 client_order_id=payload.client_order_id,
                 execution_id=payload.execution_id,
@@ -1928,10 +1915,8 @@ class Session:
                 except (ValueError, KeyError, AttributeError):
                     continue
             if match:
-                try:
+                with contextlib.suppress(ValueError, KeyError):
                     self.store.update_command(cmd["cmd_id"], "resolved")
-                except (ValueError, KeyError):
-                    pass
 
     def _reconcile_commands(self) -> None:
         """Reconcile open commands against tracked order truth (v1 §4).
@@ -1949,10 +1934,8 @@ class Session:
             eid = cmd.get("engine_client_id")
             if not eid:
                 if cmd.get("status") != "unknown":
-                    try:
+                    with contextlib.suppress(ValueError, KeyError):
                         self.store.update_command(cmd["cmd_id"], "unknown")
-                    except (ValueError, KeyError):
-                        pass
                 continue
             real = eid
             try:
@@ -1966,10 +1949,8 @@ class Session:
                 status = self._tracked_status(eid)
             if status is not None and getattr(status, "state", "") in (
                     "filled", "rejected", "cancelled", "expired"):
-                try:
+                with contextlib.suppress(ValueError, KeyError):
                     self.store.update_command(cmd["cmd_id"], "resolved")
-                except (ValueError, KeyError):
-                    pass
 
     def _fill_reservation(self, client_order_id: str) -> str | None:
         """Reservation a fill books under, or None when foreign/unknown.
@@ -2489,10 +2470,7 @@ class Session:
             return False
         # entry_pre_id is an alias superseded once entry_id resolves —
         # only the unresolved handle blocks.
-        if pos.get("entry_id"):
-            tracked = [pos.get("entry_id")]
-        else:
-            tracked = [pos.get("entry_pre_id")]
+        tracked = [pos.get("entry_id")] if pos.get("entry_id") else [pos.get("entry_pre_id")]
         tracked += list(pos.get("legs") or [])
         tracked += list(pos.get("retired") or [])
         tracked += list(pos.get("close_ids") or [])
@@ -2698,11 +2676,9 @@ class Session:
                 instrument=symbol, side=side, qty=abs(net),
                 kind="MARKET", reduce_only=True,
                 reservation_id=close_rid, role="target"))
-            try:
+            with contextlib.suppress(ValueError, KeyError):
                 self.store.update_command(close_cmd, "submitted",
                                           engine_client_id=pre_id)
-            except (ValueError, KeyError):
-                pass
             if pos is not None:
                 pos.setdefault("close_ids", []).append(pre_id)
             else:
@@ -3001,10 +2977,8 @@ class Session:
             # re-converged so UNKNOWNs re-resolve; no-op elsewhere.
             reconnected = getattr(self.engine, "stream_reconnected", None)
             if callable(reconnected):
-                try:
+                with contextlib.suppress(Exception):
                     reconnected()
-                except Exception:
-                    pass
         if channel in ("aggTrade", "bookTicker", "depth", "markPrice") and symbol:
             # Engine + views see every market channel (depth/markPrice used
             # to be dropped here, which starved funding terms and book/flow
@@ -3209,34 +3183,27 @@ class Session:
                 state = getattr(status, "state", "open")
                 if state in ("filled", "rejected", "cancelled", "expired"):
                     continue
-                try:
+                with contextlib.suppress(Exception):  # cancel requested; booking stands till confirmed.
                     self.engine.cancel(status.client_order_id, "stop-action")
-                except Exception:
-                    pass  # cancel requested; booking stands till confirmed.
         if "reduce_exposure" in actions:
-            try:
+            with contextlib.suppress(ValueError, KeyError, RuntimeError):  # reduction retried next tick; exposure retained.
                 self._flatten("stop-action")
-            except (ValueError, KeyError, RuntimeError):
-                pass  # reduction retried next tick; exposure retained.
         if self._stop_alerted or self.policy.emergency_active():
             # A latch stood: probe reconciled recovery only when no
             # exposure actions remain (cheap bool gate off the hot path).
             if "cancel_pending_orders" not in actions \
-                    and "reduce_exposure" not in actions:
-                if self.policy.recover_from_emergency(
-                        self._snapshot_account()):
-                    self._stop_alerted = False
-                    self._release_all_exit_only("emergency-recovered")
-                    self._set_state("ready", "emergency-recovered")
+                    and "reduce_exposure" not in actions and self.policy.recover_from_emergency(
+                    self._snapshot_account()):
+                self._stop_alerted = False
+                self._release_all_exit_only("emergency-recovered")
+                self._set_state("ready", "emergency-recovered")
 
     def _stop_refresh(self) -> None:
         """Stop the background official-source refresher, if running."""
         tracker = self._freshness
         if tracker is not None:
-            try:
+            with contextlib.suppress(RuntimeError, OSError):
                 tracker.stop()
-            except (RuntimeError, OSError):
-                pass
 
     def _drain_unknown_outcomes(self) -> None:
         """Resolve unknown order outcomes via lookup (W3-24H P4).
@@ -3370,10 +3337,8 @@ class Session:
         unknown = getattr(self.engine, "unknown_ids", None)
         errors = self._exchange_errors
         if callable(unknown):
-            try:
+            with contextlib.suppress(Exception):
                 errors += len(unknown())
-            except Exception:
-                pass
         return (AnomalyReading(
             spread_bps=spread, book_depth_ratio=depth_ratio,
             abs_return_bps=abs_ret, latency_ms=latency,
@@ -3398,10 +3363,8 @@ class Session:
         entry = self._tracked_status(entry_id)
         if entry is not None and entry.filled_qty > 1e-12:
             return  # filled: protection stays on.
-        try:
+        with contextlib.suppress(ValueError, KeyError):  # already gone; clear + release below still apply.
             self.engine.cancel(entry_id, "event-prepare-flat")
-        except (ValueError, KeyError):
-            pass  # already gone; clear + release below still apply.
         # NOTE (READY-§5 scope): clear-on-request is the pinned EV-001
         # contract. A fill landing between the cancel request and this
         # clear is the genuine sub-latency cancel/fill race: it still
@@ -3574,10 +3537,8 @@ class Session:
         path = self.workdir / "position.json"
         pos = self._position
         if pos is None:
-            try:
+            with contextlib.suppress(FileNotFoundError):
                 path.unlink()
-            except FileNotFoundError:
-                pass
             return
         shell = {k: pos.get(k) for k in self._SHELL_FIELDS}
         # Live code reads these with .get(key, default): a persisted
@@ -3724,15 +3685,13 @@ class Session:
                 if cid:
                     self._order_cum[cid] = self._order_cum.get(cid, 0.0) + qty
                 if rid and rid in self._known_reservations:
-                    try:
+                    with contextlib.suppress(ValueError):  # already booked, or invalid row: gates decide.
                         self.policy.note_fill_delta(
                             rid, exec_id, payload.get("instrument", ""),
                             payload.get("side", ""), payload.get("qty", 0.0),
                             payload.get("price", 0.0), payload.get("fee", 0.0),
                             row.get("ts_utc", ""))
-                    except ValueError:
-                        pass  # already booked, or invalid row: gates decide.
-                    try:
+                    with contextlib.suppress(ValueError):
                         # The policy gate returns before the ledger when
                         # policy already booked: heal the ledger
                         # explicitly (exec-gated: no double-book).
@@ -3741,8 +3700,6 @@ class Session:
                             payload.get("side", ""), payload.get("qty", 0.0),
                             payload.get("price", 0.0), payload.get("fee", 0.0),
                             row.get("ts_utc", ""))
-                    except ValueError:
-                        pass
                     if exec_id not in fills_have:
                         self._append_run_file("fills.jsonl", {
                             "execution_id": exec_id,
@@ -3760,16 +3717,12 @@ class Session:
                     # pre-crash block restarts with the session.
                     self._block_booking(f"unknown-fill:{cid}")
             elif row.get("kind") == "funding":
-                try:
+                with contextlib.suppress(ValueError):  # already booked, or invalid row: gates decide.
                     self.policy.note_funding(
                         row.get("execution_id"), payload.get("amount", 0.0),
                         row.get("ts_utc", ""))
-                except ValueError:
-                    pass  # already booked, or invalid row: gates decide.
-        try:
+        with contextlib.suppress(ValueError, KeyError):
             self._cmd_seq = self.store.command_count(self.run_id)
-        except (ValueError, KeyError):
-            pass
 
     def _resume_state(self) -> None:
         run = self.store.get_run(self.run_id)
@@ -3852,8 +3805,9 @@ class Session:
         if not samples:
             return {"n": 0, "p50": 0.0, "p95": 0.0, "p99": 0.0,
                     "max": 0.0}
-        pick = lambda p: samples[min(len(samples) - 1,
-                                     int(p * len(samples)))]
+        def pick(p):
+            return samples[min(len(samples) - 1,
+                                             int(p * len(samples)))]
         return {"n": len(samples), "p50": pick(0.50), "p95": pick(0.95),
                 "p99": pick(0.99), "max": samples[-1]}
 

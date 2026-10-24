@@ -53,7 +53,7 @@ def _capture(path: Path, windows: int = 10) -> Path:
 
 
 def _config(tmp_path: Path, **over) -> Path:
-    text = open("configs/paper.toml").read()
+    text = Path("configs/paper.toml").read_text()
     text = text.replace('dir = "runs"', f'dir = "{tmp_path / "runs"}"', 1)
     for key, value in over.items():
         text = text.replace(f"{key} =", f"{key} = {value} #", 1)
@@ -279,7 +279,7 @@ def test_short_uses_venue_sell_side(tmp_path):
 
 def test_run_live_with_stub_engine(tmp_path):
     from cryptobot.app.session import Session, WallClock
-    text = open("configs/paper.toml").read()
+    text = Path("configs/paper.toml").read_text()
     text = text.replace('mode = "replay"', 'mode = "paper"', 1)
     text = text.replace('kind = "reference"', 'kind = "nautilus"', 1)
     text = text.replace('dir = "runs"', f'dir = "{tmp_path / "runs"}"', 1)
@@ -361,7 +361,7 @@ def test_run_live_with_stub_engine(tmp_path):
 
 def test_paper_session_requires_injected_engine(tmp_path):
     import pytest
-    text = open("configs/paper.toml").read()
+    text = Path("configs/paper.toml").read_text()
     text = text.replace('mode = "replay"', 'mode = "paper"', 1)
     text = text.replace('kind = "reference"', 'kind = "nautilus"', 1)
     text = text.replace('dir = "runs"', f'dir = "{tmp_path / "runs"}"', 1)
@@ -503,7 +503,7 @@ def test_protection_dead_leg_retries(tmp_path):
 
 
 def _paper_cfg(tmp_path, name="paper"):
-    text = open("configs/paper.toml").read()
+    text = Path("configs/paper.toml").read_text()
     text = text.replace('mode = "replay"', 'mode = "paper"', 1)
     text = text.replace('kind = "reference"', 'kind = "nautilus"', 1)
     text = text.replace('dir = "runs"', f'dir = "{tmp_path / "runs"}"', 1)
@@ -1118,7 +1118,6 @@ def test_b4_wiring_flow_present_depth_precise(tmp_path):
     from cryptobot.strategies.runtime import get_adapter
     session, store = _session(tmp_path, warmup_bars=3)
     try:
-        now = datetime(2026, 10, 12, 6, 0, tzinfo=UTC)
         session.policy.reconcile_day(120.0, 0.0)
         session.store.create_run("sess-test", "replay", "fp",
                                  str(session.workdir), None)

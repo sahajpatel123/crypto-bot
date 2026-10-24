@@ -11,6 +11,7 @@ boundaries — never the network).
 Red at early REV2 SHAs is an honest record of missing behavior: each
 case first proves its setup established the precondition it challenges.
 """
+import contextlib
 import json
 import os
 import runpy
@@ -35,9 +36,9 @@ def _w5rev2_cwd(monkeypatch):
     tests from the repo root whatever the pytest invocation."""
     monkeypatch.chdir(ROOT)
 
-from cryptobot.adapters.user_stream import attach_user_stream
-from cryptobot.app.engine import EngineOrder
-from cryptobot.coordination.selector import Candidate
+from cryptobot.adapters.user_stream import attach_user_stream  # noqa: E402
+from cryptobot.app.engine import EngineOrder  # noqa: E402
+from cryptobot.coordination.selector import Candidate  # noqa: E402
 
 _CA = None
 _FAKESOCK = None
@@ -110,17 +111,13 @@ def _until_drained(session, fn, timeout_s=20.0, step_s=0.05,
     injected fault class under test."""
     deadline = time.monotonic() + timeout_s
     while time.monotonic() < deadline:
-        try:
+        with contextlib.suppress(ignore):
             _pump_owner(session)
-        except ignore:
-            pass
         if fn():
             return True
         time.sleep(step_s)
-    try:
+    with contextlib.suppress(ignore):
         _pump_owner(session)
-    except ignore:
-        pass
     return bool(fn())
 
 
@@ -383,7 +380,7 @@ def test_rev2_booking_failure_halts_entries_keeps_exits(tmp_path,
             instrument="BTCUSDT", side="SELL", qty=qty, kind="MARKET",
             role="target", reservation_id="r-exit-ok",
             reduce_only=True))
-        with pytest.raises(Exception):
+        with pytest.raises(ValueError, match="exit-only"):
             engine.submit(EngineOrder(
                 instrument="BTCUSDT", side="BUY", qty=qty, kind="MARKET",
                 role="entry", reservation_id="r-entry-no"))
@@ -527,10 +524,8 @@ def test_rev2_restart_with_exposure_adopts_once(tmp_path):
     finally:
         if att is not None:
             att.close()
-        try:
+        with contextlib.suppress(Exception):
             store.close()
-        except Exception:
-            pass
 
 
 def _scrub_env(monkeypatch):

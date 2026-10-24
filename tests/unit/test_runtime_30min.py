@@ -22,7 +22,7 @@ from cryptobot.coordination.selector import Candidate
 
 
 def _paper_config(tmp_path: Path, **over) -> object:
-    text = open("configs/paper.toml").read()
+    text = Path("configs/paper.toml").read_text()
     text = text.replace('mode = "replay"', 'mode = "paper"', 1)
     text = text.replace('kind = "reference"', 'kind = "nautilus"', 1)
     text = text.replace('dir = "runs"', f'dir = "{tmp_path / "runs"}"', 1)
@@ -365,7 +365,7 @@ def test_prod_config_guards(tmp_path):
 
 def test_config_rejects_inline_secrets(tmp_path):
     from cryptobot.app.config import ConfigError
-    text = open("configs/prod.toml").read()
+    text = Path("configs/prod.toml").read_text()
     text = text.replace("allow_live_submission = false",
                         "allow_live_submission = false\n"
                         'api_secret = "sk-live-abc"', 1)
@@ -383,7 +383,7 @@ def test_config_rejects_prod_demo_and_testnet(tmp_path):
     import pytest
 
     from cryptobot.app.config import ConfigError
-    base = open("configs/prod.toml").read()
+    base = Path("configs/prod.toml").read_text()
     demo = base.replace("demo = false", "demo = true", 1)
     path = tmp_path / "demo.toml"
     path.write_text(demo)
@@ -442,7 +442,7 @@ def test_preflight_prod_observe_only_go():
 
 
 def test_preflight_submission_needs_confirm_and_keys(tmp_path):
-    text = open("configs/prod.toml").read()
+    text = Path("configs/prod.toml").read_text()
     text = text.replace("allow_live_submission = false",
                         "allow_live_submission = true", 1)
     path = tmp_path / "live.toml"
@@ -459,7 +459,7 @@ def test_preflight_submission_needs_confirm_and_keys(tmp_path):
 
 
 def test_preflight_rejects_inline_secret_and_reports_json(tmp_path):
-    text = open("configs/prod.toml").read()
+    text = Path("configs/prod.toml").read_text()
     text = text.replace("allow_live_submission = false",
                         "allow_live_submission = false\n"
                         'api_secret = "sk-live-abc"', 1)

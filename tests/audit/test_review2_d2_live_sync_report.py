@@ -39,7 +39,7 @@ class _CannedResponse:
 
 
 def _session(tmp_path):
-    text = open("configs/paper.toml").read()
+    text = Path("configs/paper.toml").read_text()
     text = text.replace('dir = "runs"', f'dir = "{tmp_path / "runs"}"', 1)
     cfg_path = tmp_path / "test.toml"
     cfg_path.write_text(text)

@@ -13,6 +13,7 @@ run directory (outside git); only fixtures/manifests/reports ship.
 """
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import json
 import os
@@ -310,14 +311,10 @@ class Collector:
                 os.fsync(fh.fileno())
                 fh.close()
             for route in ("market", "public"):
-                try:
+                with contextlib.suppress(KeyError, OSError, WsClosed):
                     self._conns[route].close()
-                except (KeyError, OSError, WsClosed):
-                    pass
-            try:
+            with contextlib.suppress(OSError):
                 (self.run_dir / "pid").unlink()
-            except OSError:
-                pass
             if not self.stats.stop_reason:
                 self.stats.stop_reason = "stopped"
             self._write_stats()
@@ -491,10 +488,8 @@ class Collector:
         return route in self._conns
 
     def _drop_connection(self, route: str, *, injected: bool) -> None:
-        try:
+        with contextlib.suppress(KeyError, OSError, WsClosed):
             self._conns.pop(route).close()
-        except (KeyError, OSError, WsClosed):
-            pass
         if injected:
             self.stats.disconnects_injected += 1
         else:

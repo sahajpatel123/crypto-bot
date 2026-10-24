@@ -106,7 +106,7 @@ def _orders():
 
 
 def _config(tmp_path: Path) -> Path:
-    text = open("configs/paper.toml").read()
+    text = Path("configs/paper.toml").read_text()
     text = text.replace('dir = "runs"', f'dir = "{tmp_path / "runs"}"', 1)
     text = text.replace("warmup_bars =", "warmup_bars = 3 #", 1)
     path = tmp_path / "test.toml"
@@ -469,7 +469,6 @@ def test_unbooked_fill_stays_recoverable_until_recorded(tmp_path):
     booking-acked: it stays in the recoverable set, blocks booking,
     and redelivery re-emits (transport dedup never consumes an
     unbooked execution)."""
-    ready = _ready()
     engine, _ = venues.make_engine(tmp_path, [])
     session, store = _session(tmp_path, engine, "r2-unbooked")
     calls, outcomes = [], []

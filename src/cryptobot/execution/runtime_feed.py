@@ -15,6 +15,7 @@ reference/fake venue is replay-harness-only and must never price fills.
 """
 from __future__ import annotations
 
+import contextlib
 import time
 from collections.abc import Callable, Iterable, Iterator
 from dataclasses import dataclass, field
@@ -173,10 +174,8 @@ class StreamPump:
         self.stats["heartbeats"] += 1
         target = (self.engine.now_utc + timedelta(seconds=1) if replay
                   else datetime.now(UTC))
-        try:
+        with contextlib.suppress(ValueError):  # heartbeat behind the engine clock: nothing to advance.
             self.engine.advance_to(target)
-        except ValueError:
-            pass  # heartbeat behind the engine clock: nothing to advance.
         engine_events = list(self.engine.poll())
         funding = [e.payload for e in engine_events if e.kind == "funding"]
         engine_events = [e for e in engine_events if e.kind != "funding"]

@@ -11,8 +11,6 @@ import math
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
-_EPOCH = datetime(1970, 1, 1, tzinfo=UTC)
-
 from cryptobot.coordination import (
     DataQuality,
     DecisionRecord,
@@ -43,6 +41,8 @@ from .contract import (
     build_evidence_ref,
     build_intent,
 )
+
+_EPOCH = datetime(1970, 1, 1, tzinfo=UTC)
 
 MAX_CONSECUTIVE_MISSING_HALT = 5
 

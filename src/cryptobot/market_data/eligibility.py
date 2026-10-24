@@ -58,7 +58,7 @@ def _stale_spans(obs_ms: list[int], bound_ms: int) -> list[tuple[int, int]]:
     """(start, end] spans where trailing observation age exceeds bound."""
     spans = []
     ordered = sorted(obs_ms)
-    for prev, cur in zip(ordered, ordered[1:]):
+    for prev, cur in zip(ordered, ordered[1:], strict=False):
         if cur - prev > bound_ms:
             spans.append((prev + bound_ms, cur))
     return spans

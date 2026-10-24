@@ -110,7 +110,7 @@ def compute_metrics(run, episodes: list) -> Metrics:
 
     # Drawdown from the marked curve (open losses included).
     peak, max_dd, trough_ts, peak_ts = -math.inf, 0.0, None, None
-    dd_pct, dd_peak_ts = 0.0, None
+    dd_pct, _dd_peak_ts = 0.0, None
     cur_peak_ts = None
     for row in equity:
         if row.marked_equity > peak:
@@ -120,7 +120,7 @@ def compute_metrics(run, episodes: list) -> Metrics:
             max_dd, trough_ts, peak_ts = dd, row.ts_utc, cur_peak_ts
         pct = dd / peak if peak else 0.0
         if pct > dd_pct:
-            dd_pct, dd_peak_ts = pct, cur_peak_ts
+            dd_pct, _dd_peak_ts = pct, cur_peak_ts
     m.drawdown = {
         "max_drawdown_usdt": max_dd,
         "max_drawdown_pct": dd_pct,
@@ -257,7 +257,7 @@ def _reliability(run) -> dict:
     eq = run.equity
     if len(eq) >= 3:
         gaps_sorted = sorted((b.ts_utc - a.ts_utc).total_seconds()
-                             for a, b in zip(eq, eq[1:]))
+                             for a, b in zip(eq, eq[1:], strict=False))
         median = _pct(gaps_sorted, 50) or 1.0
         gaps = [g for g in gaps_sorted if g > 2 * median]
     stages: dict[str, dict[str, int]] = {}

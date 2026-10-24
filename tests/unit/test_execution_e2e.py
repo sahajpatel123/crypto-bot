@@ -7,6 +7,7 @@ determinism.
 
 Requires nautilus_trader (trial venv); skipped in the stdlib-only project env.
 """
+import contextlib
 import json
 from datetime import UTC, datetime, timedelta
 
@@ -88,7 +89,6 @@ def _run(tmp_path, tag):
     items = list(iter_market_stream(events_path, snaps_path))
     admitted = False
     entry_id = None
-    fills_seen = []
     for tick in pump.pump_stream(iter(items)):
         now[0] = datetime.fromtimestamp(tick.record["exchange_ts_ms"] / 1000,
                                         tz=UTC)
@@ -124,10 +124,8 @@ def _run(tmp_path, tag):
             admitted_qty = verdict.qty
         if admitted and entry_id is not None and trader._client_fills.get(entry_id, 0.0) > 0:
             exits = decode_exit_rule(intent.exit_rule)
-            try:
+            with contextlib.suppress(ValueError):  # already protected.
                 trader.protect(admitted_res, exits.stop_price, exits.target_price)
-            except ValueError:
-                pass  # already protected.
     trader.poll()
     trader.poll()
     return {
