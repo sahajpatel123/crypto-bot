@@ -1,0 +1,15 @@
+{
+ "config_sha256": "fca4a03c29b2f7cca4d79e2bd97d4d4572e69a61a6cad62b012a209354f0fa8d",
+ "history": [
+  {
+   "reason": "C1 confirms on FORWARD only; holdout is burned",
+   "state": "AWAIT_FORWARD",
+   "ts_utc": "2026-10-18T21:57:00.093287+00:00"
+  }
+ ],
+ "hypothesis": "C1",
+ "provenance": "OBSERVED",
+ "reason": "C1 confirms on FORWARD only; holdout is burned",
+ "state": "AWAIT_FORWARD",
+ "updated_utc": "2026-10-18T21:57:00.093287+00:00"
+}

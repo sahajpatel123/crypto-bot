@@ -1,0 +1,33 @@
+B1 cell (('lookback_d', 20), ('target_vol', 0.15), ('vol_window_d', 20))
+B1 cell (('lookback_d', 20), ('target_vol', 0.25), ('vol_window_d', 20))
+B1 cell (('lookback_d', 20), ('target_vol', 0.15), ('vol_window_d', 60))
+B1 cell (('lookback_d', 20), ('target_vol', 0.25), ('vol_window_d', 60))
+B1 cell (('lookback_d', 60), ('target_vol', 0.15), ('vol_window_d', 20))
+B1 cell (('lookback_d', 60), ('target_vol', 0.25), ('vol_window_d', 20))
+B1 cell (('lookback_d', 60), ('target_vol', 0.15), ('vol_window_d', 60))
+B1 cell (('lookback_d', 60), ('target_vol', 0.25), ('vol_window_d', 60))
+B1 cell (('lookback_d', 120), ('target_vol', 0.15), ('vol_window_d', 20))
+B1 cell (('lookback_d', 120), ('target_vol', 0.25), ('vol_window_d', 20))
+B1 cell (('lookback_d', 120), ('target_vol', 0.15), ('vol_window_d', 60))
+B1 cell (('lookback_d', 120), ('target_vol', 0.25), ('vol_window_d', 60))
+B1 MATCH {"diffs": {}, "cells_equal": true, "committed_best": {"lookback_d": 120, "target_vol": 0.25, "vol_window_d": 60}, "fresh_best": {"lookback_d": 120, "vol_window_d": 60, "target_vol": 0.25}}
+B6 cell (('mode', 'plain'), ('threshold', 1), ('window_d', 7))
+B6 cell (('mode', 'trendfilter'), ('threshold', 1), ('window_d', 7))
+B6 cell (('mode', 'plain'), ('threshold', 2), ('window_d', 7))
+B6 cell (('mode', 'trendfilter'), ('threshold', 2), ('window_d', 7))
+B6 cell (('mode', 'plain'), ('threshold', 1), ('window_d', 30))
+/Users/sahajpatel/Code/cryto-bot-edge/src/cryptobot/research/family_b.py:418: RuntimeWarning: divide by zero encountered in log
+  g = float(np.log(oi.loc[rd] / oi.loc[rd - pd.Timedelta(days=W)]))
+B6 cell (('mode', 'trendfilter'), ('threshold', 1), ('window_d', 30))
+/Users/sahajpatel/Code/cryto-bot-edge/src/cryptobot/research/family_b.py:418: RuntimeWarning: divide by zero encountered in log
+  g = float(np.log(oi.loc[rd] / oi.loc[rd - pd.Timedelta(days=W)]))
+B6 cell (('mode', 'plain'), ('threshold', 2), ('window_d', 30))
+/Users/sahajpatel/Code/cryto-bot-edge/src/cryptobot/research/family_b.py:418: RuntimeWarning: divide by zero encountered in log
+  g = float(np.log(oi.loc[rd] / oi.loc[rd - pd.Timedelta(days=W)]))
+B6 cell (('mode', 'trendfilter'), ('threshold', 2), ('window_d', 30))
+/Users/sahajpatel/Code/cryto-bot-edge/src/cryptobot/research/family_b.py:418: RuntimeWarning: divide by zero encountered in log
+  g = float(np.log(oi.loc[rd] / oi.loc[rd - pd.Timedelta(days=W)]))
+/Users/sahajpatel/Code/cryto-bot-edge/src/cryptobot/research/family_b.py:418: RuntimeWarning: divide by zero encountered in log
+  g = float(np.log(oi.loc[rd] / oi.loc[rd - pd.Timedelta(days=W)]))
+B6 MATCH {"diffs": {}, "cells_equal": true, "committed_best": {"mode": "plain", "threshold": 1, "window_d": 30}, "fresh_best": {"window_d": 30, "threshold": 1, "mode": "plain"}}
+REDERIVE_DONE

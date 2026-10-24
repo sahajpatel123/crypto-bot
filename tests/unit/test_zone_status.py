@@ -7,11 +7,28 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import subprocess
 from pathlib import Path
 
 import pytest
 
 REPO = Path(__file__).resolve().parents[2]
+
+
+def _committed_blob(relative: str) -> str:
+    """Read a committed git object, never the mutable working tree.
+
+    The hardening worktree shares a checkout with a concurrent pivot
+    campaign; its uncommitted coord/pivot/ZONES.json previously made
+    this test non-hermetic. Tests may only rely on git objects or
+    fixtures under tests/.
+    """
+    try:
+        return subprocess.run(
+            ["git", "-C", str(REPO), "show", f"HEAD:{relative}"],
+            check=True, capture_output=True, text=True).stdout
+    except (OSError, subprocess.CalledProcessError) as exc:
+        pytest.skip(f"git object {relative} unavailable: {exc}")
 SPEC = importlib.util.spec_from_file_location(
     "zone_status", REPO / "tools" / "zone_status.py")
 assert SPEC and SPEC.loader
@@ -67,9 +84,7 @@ def test_unknown_kind_and_bad_manifest_raise(tmp_path):
 
 
 def test_real_zones_manifest_shape():
-    manifest = json.loads(
-        (REPO / "coord" / "pivot" / "ZONES.json").read_text(
-            encoding="utf-8"))
+    manifest = json.loads(_committed_blob("coord/pivot/ZONES.json"))
     assert set(manifest["zones"]) == {
         "Z0-safety", "Z1-data", "Z2-execution", "Z3-alpha",
         "Z4-risk", "Z5-validation", "Z6-liveops"}

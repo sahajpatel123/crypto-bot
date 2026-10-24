@@ -316,7 +316,14 @@ def test_venue_position_with_empty_cache_is_not_flat(tmp_path):
         engine.states["e"] = EngineOrderStatus(
             "e", "BTCUSDT", "cancelled", 1.0, 0.0, "r-1", "entry")
         statuses = session._tracked_statuses_for(session._position)
-        # Flat everywhere locally...
+        # B1: an unavailable venue snapshot is UNKNOWN, never flat.
+        assert session._release_agrees(
+            session._position, statuses, statuses["e"]) is False
+        # A complete flat snapshot then agrees.
+        engine.snapshot = AccountSnapshot(
+            wallet_equity_usdt=120.0, available_margin_usdt=100.0,
+            margin_balance_usdt=120.0, positions=(),
+            asof_utc=session.now_utc(), complete=True)
         assert session._release_agrees(
             session._position, statuses, statuses["e"]) is True
         # ...but the venue reports a position: not flat, no touch.

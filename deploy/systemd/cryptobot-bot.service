@@ -1,0 +1,25 @@
+[Unit]
+Description=cryptobot paper session (prod requires owner arm)
+After=network-online.target cryptobot-recorder.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=cryptobot
+Group=cryptobot
+WorkingDirectory=/opt/cryptobot
+EnvironmentFile=-/etc/cryptobot.env
+ExecStart=/opt/cryptobot/.venv/bin/cryptobot run --mode paper --config configs/paper.toml
+Restart=on-failure
+RestartSec=10
+StartLimitIntervalSec=600
+StartLimitBurst=5
+KillSignal=SIGTERM
+TimeoutStopSec=120
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/opt/cryptobot/data /opt/cryptobot/runs
+
+[Install]
+WantedBy=multi-user.target

@@ -1,227 +1,208 @@
-# STATE — live/hardening (principal-engineer takeover)
+# STATE — live/edge-sprint (Family B: low-frequency edge search)
 
-Branch: `live/hardening` from `deep/integration` @ `e766383`.
-Mission: research harness (2/10 for live capital) → hardened, validated,
-gated, ready for a *supervised small-capital live trial*; find out honestly
-whether any strategy has a real fee-inclusive edge. A rigorous negative
-result plus a hardened system is success. Priority: money-handling
-correctness > validation integrity > features.
+Worktree: `/Users/sahajpatel/Code/cryto-bot-edge`
+Branch: `live/edge-sprint` from `live/final-hardening` tip `a313254`
+Date: 2026-10-18. Closeout 2026-10-19: read `PROJECT_CLOSEOUT.md` first.
+Review date 2026-12-18. Resume at the closeout section, not at a new hypothesis.
+Prior run (F0–F9) history is in git (`a313254` and below).
+Rules: no orders, no keys, human-only arm, machine-written verdict/gate/
+vault/autopilot artifacts, every claim cites command+output or file path.
 
-## Task list
+## Completion checklist
 
-| ID | Task | Status |
+| Item | Status | Evidence |
 |---|---|---|
-| T0.1 | Baseline targeted tests + this file | DONE |
-| T0.2 | Consolidate F2 health recovery + F-SIZING-01 (+ client-ID if present); restore F2 tests; prove `_release_exit_only` callers | DONE |
-| T0.3 | ruff + mypy configs (strict on risk/execution/adapters/app) + CI | DONE |
-| T0.4 | Truth-in-docs (doctor, run_live docstring, README E-007, prod.toml) | DONE |
-| T1.1 | Venue-seeded accounting + account-mode verification (fail closed) | DONE |
-| T1.2 | Hot path: cached account snapshot, debounced risk writer, weight governor, benchmark | PARTIAL |
-| T1.3 | Table-driven exception policy + safe mode; one order-lifecycle path | PARTIAL |
-| T1.4 | Protection window + shadow stop + gap budget | PARTIAL |
-| T1.5 | SIGTERM/SIGINT flattens by default; `--leave-protected` opt-out | DONE |
-| T1.6 | Client IDs: UUID run prefix + persisted monotonic seq, ≤36 chars | DONE |
-| T1.7 | Settled funding booked in ledger, reconciled vs venue | DONE |
-| T1.8 | Tiered maintenance margin / liquidation gate + min-viable-equity calc | PARTIAL |
-| T1.9 | Pessimistic paper fills (book-walk + latency penalty); 1x/2x cost P&L | PARTIAL |
-| T2.1 | Ingestion/strategy decoupling, drop accounting + breaker | PARTIAL |
-| T2.2 | Honor `max_hf_subscriptions` (BTCUSDT, ETHUSDT default) | PARTIAL |
-| T2.3 | `cryptobot latency-probe` (gate: p99 feed age <250ms, drops <0.1%) | PARTIAL |
-| T2.4 | 5x-burst soak test (bounded memory, drop budget) | PARTIAL |
-| T3.1 | systemd unit + Dockerfile, crash-loop breaker, resume-on-restart | PARTIAL |
-| T3.2 | External watchdog (flatten on stale heartbeat + exposure) | PARTIAL |
-| T3.3 | Pluggable alerts (rate-limited, fake-sink tested) | PARTIAL |
-| T3.4 | JSON logging + rotation, metrics export, FULL-sync cost report | PARTIAL |
-| T3.5 | `cryptobot data verify`; gz replay docs | PARTIAL |
-| T4.1 | Fixture recorder (redacted) + recorded-fixture contract tests | PARTIAL |
-| T4.2 | `cryptobot demo-drill` (hashed JSON report) | PARTIAL |
-| T4.3 | OWNER_ACTIONS.md (exact commands + expected outputs) | TODO |
-| T5.1 | Cost model v2 + break-even / required-win-rate tables | PARTIAL |
-| T5.2 | Maker-capable replay/paper execution (conservative queue model) | PARTIAL |
-| T5.3 | Hypothesis registry ≤6, preregistered + committed pre-evaluation | DONE |
-| T5.4 | Evaluation protocol (walk-forward, purge/embargo, bootstrap, Holm) | PARTIAL |
-| T5.5 | `cryptobot verdict` PASS/FAIL/UNDERPOWERED JSON (hash-bound) | PARTIAL |
-| T5.6 | ≥14d pessimistic paper if any PASS | TODO |
-| T6.1 | `cryptobot gate` + `cryptobot arm` two-step prod enablement (built OFF) | DONE |
-| T6.2 | Capital ladder + automatic demotion/halt | PARTIAL |
-| T6.3 | Live canary: first N trades at minimum size | PARTIAL |
+| Suite green, 0 failed | DONE | closeout: 1640 passed, 1 skipped, 0 failed in 1566.76s (`/tmp/closeout-suite.log`, EXIT:0) |
+| Split + holdout sealed BEFORE analysis | DONE | chunk-2a22e52c3c8f50db before lake returns; B4 screen chunk sealed before its decode |
+| Preregs committed before evaluations | DONE | b0b4ac4 / 70e2f38 |
+| Leak tests present and passing | DONE | shift, shuffle, Sharpe>3, B1 future-bar test |
+| Differential test passes | DONE | `test_differential_vectorized_vs_event` |
+| Every verdict machine-written | DONE | `research/verdicts_b/B4.json` is void; `invalidations.json` names `2974cc1a…` (D-042) |
+| RESEARCH_VERDICTS_B.md maps to verdict JSONs | DONE | |
+| Arm/gate refusal tests pass | DONE | `test_autopilot_gate.py` arm refusals |
+| OWNER_ACTIONS.md one ordered list | DONE | steps 1–17 |
 
-Status values: TODO / IN_PROGRESS / DONE / BLOCKED / PARTIAL.
+## Task table
 
-## T0.1 baseline (verified 2026-10-17, this session)
+| ID | Task | Status | Evidence |
+|---|---|---|---|
+| E0.1 | Re-entry: read memory, full suite 0 failed | DONE | 1501 passed/1 skipped nobench + 27 bench = 1528/1/0 failed |
+| E0.2 | Autopilot run-once Family A, record dev outcomes | DONE | closeout: H1–H6 UNDERPOWERED/AWAIT_DATA (`research/autopilot/dev/H*.json`) |
+| E1.1 | Vision inventory, DATA_INVENTORY.md | DONE | `tools/vision_inventory.py`, `DATA_INVENTORY.md`; probes verified |
+| E1.2 | Checksummed download | DONE | resume pull 118137 ok / 0 failed (terminal 972826); 49077 dev + 118548 holdout zips |
+| E1.3 | Parquet store + hash manifest + DQ report | DONE (code) | `research/lake.py`, 4 tests; build runs when bytes land |
+| E1.4 | Point-in-time universe + no-lookahead test | DONE | `research/universe.py`, 5 tests incl. lookahead proof |
+| E2.1 | SPLIT.md prereg + commit (DEV/HOLDOUT/FORWARD, detectable Sharpe) | DONE | `research/prereg/SPLIT.md` fb95e02 |
+| E2.2 | Vault HOLDOUT class + seal holdout pre-analysis + import lint | DONE | chunk-2a22e52c3c8f50db, 118548 files, manifest sha 2a22e52c…, decode_accesses 0, before any return statistic |
+| E2.3 | Family B budget (8) + Holm family justification | DONE | SPLIT.md + D-032 |
+| E3 | Family B preregs B1–B7 committed pre-evaluation | DONE | 7 preregs + configs + registry b0b4ac4/70e2f38; D-035 pre-eval corrections |
+| E4.1 | Slow backtester vectorized + event reference + differential | DONE | `slow_backtest.py`, differential 1e-9, 10 engine tests |
+| E4.2 | Realism (fees+50%, funding, sqrt impact, filters, liq, delist) | DONE | hand-computed cost test; liq/delist/spot/stops |
+| E4.3 | Capital sweep 120/1000/10000 | DONE | `capital_sweep` + test |
+| E4.4 | Leak detectors as tests | DONE | shift/shuffle/SR3/no-lookahead signals |
+| E4.5 | Reviewer sub-agent breaks E4; fix findings | DONE | 15 findings; all CRITICAL/HIGH fixed + tested (37 E4/E5 tests green) |
+| E5 | Statistics module + tests (WF, bootstrap, DSR, PBO, SPA, plateau, regimes, DD, capacity) | DONE | `slow_stats.py`, 9 tests |
+| E6.1 | DEV evaluation, all trials counted, kill failures | DONE | B1–B7 KILLED; 59 trials (`dev/B*.json` n_trials) |
+| E6.2 | Freeze survivors, holdout screen once via verdict | DONE | B4 screen void (D-042); chain `research/verdicts_b/invalidations.json` |
+| E6.3 | Autopilot Family B extension (FROZEN/HOLDOUT_SCREEN/SCREEN_PASS/FORWARD_*) | DONE | B1–B7 state KILLED; invalidated verdicts are refused |
+| E6.4 | RESEARCH_VERDICTS_B.md from machine JSONs | DONE | |
+| E7 | Slow paper path for the SCREEN_PASS | DONE | no survivor; `SLOW_ENGINE_DESIGN.md`; forward clock not started |
+| E8 | OWNER_ACTIONS + README/ARCHITECTURE/RUNBOOK | DONE | steps 15–17 |
+| E9 | FINAL_STATUS.md | DONE | see FINAL_STATUS.md; closeout supersedes any SCREEN_PASS reading |
 
-Command:
-`nice .venv/bin/python -m pytest tests/unit/test_binance_live_contract.py
-tests/unit/test_binance_live_v008.py tests/unit/test_execution_orders.py
-tests/unit/test_execution_e2e.py tests/acceptance/test_ledger.py
-tests/acceptance/test_risk_sizing.py tests/acceptance/test_risk_v008.py -q`
-→ **81 passed in 2.91s**. `tests/unit/test_session_health_recovery.py` does
-NOT exist on `deep/integration` (confirmed: `file or directory not found`) —
-it is the missing F2 test to restore in T0.2.
+## Owner hurdle review (2026-10-19)
 
-## Audit-claim verification (code-checked before fixing)
+`cryptobot monitor` on the committed DEV artifacts: NO-GO,
+HURDLE_UNMET. Best result B4 OOS Sharpe 4.396, max drawdown 0.47%.
+A 2%/day mean at that Sharpe would need ~8.7% daily vol. Plan:
+`UPGRADE_PLAN.md`. Decision: D-047. No prereg edited. No cell retuned.
 
-1. Ledger seeded from config even live — **CONFIRMED**:
-   `src/cryptobot/app/session.py:188` `Ledger(config.paper_capital_usdt)`;
-   `configs/prod.toml:16` `paper_capital_usdt = 120.0` ("NOT live equity").
-   Venue seeding: only via periodic `_snapshot_account()` (session.py:2757);
-   no startup wallet/position/order seeding found.
-2. Signed REST on hot path — **CONFIRMED**: `binance_live.py:625,1307,1315,
-   1388,1416` call `_signed("GET","/fapi/v2/account")`; account view at
-   :1307 explicitly "no cache". Fsync-per-tick claim: risk-state writer to
-   verify in T1.2.
-3. Venue exceptions kill process — **PLAUSIBLE, to pin in T1.3**: Session has
-   `_exchange_errors` counter (session.py:215) but no safe-mode flatten path
-   found on the live driver; classification table absent.
-4. No atomic bracket / protection window — **TO VERIFY in T1.4** (entry →
-   `attach_protection` sequencing in `app/engine.py`, `app/reference.py`).
-5. SIGTERM does not flatten — **CONFIRMED**: `cli.py:121-126` handler only
-   sets `session._stop_flag = "graceful"`; no flatten/confirm path.
-6. No maintenance-margin/liquidation model — **CONFIRMED** (no
-   `leverageBracket`/liquidation-price code in risk/; verify in T1.8).
-7. Feed drops / `max_hf_subscriptions` unused — **TO MEASURE in T2.1/T2.2**
-   (config declares `max_hf_subscriptions = 2` in paper/prod/demo tomls;
-   subscription path to trace).
-8. Client-ID collision — **CONFIRMED for live engine**:
-   `binance_live.py:249` default `run_tag="bl"`, `:650-653`
-   `f"{run_tag}-{seq:06d}-{rand16}"` with per-process `seq` and only 16 bits
-   of randomness → collisions across restarts are likely. (`OrderManager`
-   at `execution/order_manager.py:132-135` uses 8 hex chars — better, still
-   per-process seq.) No run-unique UUID prefix, no persisted seq.
-9. F2 + F-SIZING-01 unmerged — **CONFIRMED**: `fix/f2-health-recovery`
-   (`eb0cfe1`) and `integration/owner-exec` (`21e21a4` merge, `a576e73`
-   sizing clamp) are not ancestors of HEAD. On HEAD,
-   `session.py:2757-2759` still latches health once (`_halt_entries` with no
-   release); `risk/sizing.py:93` still `stressed = sum(legs)/10000*...`
-   unclamped (negative funding credit enlarges size).
-   `_release_exit_only` (session.py:1494) has **zero production callers** on
-   HEAD — only `tests/unit/test_rev2_stream_ownership.py:644`.
-10. Live funding never booked — **PARTIAL**: `ledger.py:169-180`
-    `record_funding`/`note_funding` exist and `binance_live.py:1399-1404`
-    sums `FUNDING_FEE` income, but no live-path caller books settled funding
-    into the ledger (to pin in T1.7).
-11. Zero-slippage paper fills — **CONFIRMED**: `paper_engine.py:223`
-    `FillModel(prob_fill_on_limit=1.0, prob_slippage=0.0, ...)`.
-    `OrderManager.submit_with_retry` (`order_manager.py:159`) is the tested
-    retry path; live path uses `BinanceLiveEngine.submit` directly — retry
-    logic not wired into live (T1.3).
+## Operational completion (resume the first non-DONE row)
 
-Also: no `.github/` CI on HEAD; no ruff/mypy config in `pyproject.toml`
-(dev extra is pytest only). Working tree carries uncommitted pivot work
-(`tools/pivot_*`, `tests/unit/test_pivot_*`, `data/pilot/`, `reports/pivot/`)
-that predates this branch — left untouched, never committed as own work.
+Work on `release/v1` at `v1.0-final` and after. Gate stays NO-GO.
+No demonstrated edge.
 
-## Decisions
+| ID | Task | Status | Evidence |
+|---|---|---|---|
+| A | Command matrix + selftest | DONE | `cryptobot selftest --all` PASS, 58 commands, 142 checks (risk/chaos/determinism/refusals/adjudicator/recorder smoke/host/background), `COMMAND_MATRIX.md` |
+| B | Exchange emulator + drill + soak | DONE | 20-cell real-socket drill + 24h soak with all faults and fill integrity, `tests/unit/test_emulator_hardening.py`; EMULATED-stamped incl. list rows and combined streams; recorder smoke. Gate rejects it |
+| C | Operator commands | DONE | `cryptobot ops` incl. STOP/TP via algo, post-only, cancel/cancel-all, flatten, kill; prod refuses every action; 10 tests in `test_ops_commands.py` (D-048) |
+| D1 | Move data root / retention | PARTIAL | `EXTERNAL_DATA_ROOT` unset, so no move (D-046). Alias supported. `cryptobot compact` = zstd Parquet + hash-chained equivalence proof; raw deletion CUT pending manifest v2 (D-050). Projection ~16d vs 103d surfaces as `disk_alert` |
+| D2 | Recorder coverage | DONE | `RECORDER_COVERAGE.md`. H4 other venues IMPRACTICAL-BY-RESOURCE (D-046) |
+| D3 | C1 timeline | DONE | `c1_final_utc`. Test `test_c1_final_date_never_passes_the_grace`. Force-close stays at T per frozen prereg (D-048) |
+| D4 | Sleep / gap notify | DONE | caffeinate in the recorder plist; daily gap % in `autopilot report` (`ops/gaps.py`); `background status` disk projection + notification; tests `test_recorder_gaps.py`, `test_background_status.py` |
+| D5 | background install/status | DONE | `cryptobot background status` prints adjudication date, disk/gap fields. install.sh uses `$ROOT/.venv` (D-048) |
+| E1 | owner wizard | DONE | `cryptobot owner` prints PASS/TODO + send-back, validates --step (D-048) |
+| E2 | README quickstart | DONE | fresh clone `/tmp/cryptobot-final-clean` at `2e0fd32`: install 1.08s, doctor READY, selftest 142/0 PASS, drill 20 cells + soak 24h, ops/prod refusal, final-status, monitor, owner, background, compact, certify all run. `release/cleanroom-final.log` ends CLEANROOM_FINAL_OK |
+| E3 | certify | DONE | `cryptobot certify` PASS on the hardened tree and in the fresh clone: 58 commands 100%, 142 selftest checks, 20-cell drill, 24h soak. `COMPLETION_CERTIFICATE.md` |
+| E4 | suite + tag | DONE | Python 3.12 full suite 1687 passed, 1 skipped, 0 failed, 1183.91s (`/tmp/final-suite.log` EXIT:0) on `ed06d79`. Tag `v1.0.1` |
 
-- D-H1: Branch `live/hardening` created from `deep/integration` @ e766383;
-  commit per task with task ID (explicitly directed by the takeover
-  protocol). No push without explicit ask. `deep/sc-scalp` never merged
-  (negative evidence).
-- D-H2: `data/captures/campaign-1day-20261017` is never read/touched
-  (untouched confirmation data, live campaign running). Dev data:
-  `data/pilot`, `datasets/benchmark_30d`; log every use in
-  `research/DATA_LEDGER.md`.
-- D-H3: Prod submission stays OFF by default; P6 builds the arming path
-  only. Gate thresholds are never lowered to pass; any change needs a
-  written justification in DECISIONS.md.
+## Consolidation task table (resume the first non-DONE row)
 
-## T0.2 consolidation (DONE)
+| ID | Task | Status | Evidence |
+|---|---|---|---|
+| Z0 | Re-entry | DONE | tip `00474c1` tag `closeout-v1`. Dirty before Z1.1: OWNER_ACTIONS.md, RESEARCH_VERDICTS_B.md, SLOW_ENGINE_DESIGN.md, research/autopilot_b/dev/B2.json, B4.json, reports/2026-10-18.json, state/B1–B7.json, transitions.json, transitions.json.VOIDED-foreign, untracked dev/_family.json |
+| Z1.1 | Provenance: archive or commit dirty Family B | DONE | restored to committed artifacts; `archive/z1.1-uncommitted.patch`; D-044 |
+| Z1.2 | release/v1, tag v1.0-closeout, bundle + tar | DONE | tag `v1.0-closeout` = `d3e0ba7`; branch `release/v1`; `release/v1.0-closeout.bundle`, `release/research-artifacts.tar`, `release/SHA256SUMS` |
+| Z1.3 | Holdout map + INC-1 | DONE | `tools/holdout_reconcile.py`; `release/holdout-reconcile.json` subset_ok false (132/198 and 132/202 inside chunk-2a22; spot and rest_tail outside); D-045 |
+| Z1.4 | Clean-room proof | DONE | clone of `release/v1.0-closeout.bundle` at `d3e0ba7` (`release/cleanroom.log`). `uv sync --locked` then `--extra dev`. Pytest on Python 3.12: 3 failed, 1640 passed, 1 skipped; failures are `copy.replace` (3.13+). Fixed with `dataclasses.replace`; those 3 tests pass on the 3.12 venv. Acceptance RC 0. Gate NO-GO RC 2. Arm REFUSED TTY RC 2. B1 and B6 rederive MATCH (`release/rederive.log`) |
+| Z2.1 | Configurable data root | DONE | `src/cryptobot/research/data_root.py`, `tests/unit/test_data_root.py`, `research/DATA_ROOT.md` |
+| Z2.2 | Family A dev eval on pilot + benchmark | DONE | `tools/family_a_dev.py` on external pilot (29 days, no quote channel) and local benchmark (aggTrade 248, fundingRate 10, markPrice 248). H1–H6 UNDERPOWERED/AWAIT_DATA. `estimate_power([])` IMPOSSIBLE, days_required null. Report `research/autopilot/reports/family-a-z2.json` |
+| Z3 | Passive launchd jobs + RECORDER_COSTS.md | DONE | `deploy/macos/install.sh` loaded 5 agents. 18:36 elapsed, heartbeat fresh, 3 sealed chunks, manifest chain clean, vault head unchanged. Costs in `RECORDER_COSTS.md`: 9.9% of one core, 58.21 MB/hour, ~12 days to the 8192 MB guard |
+| Z4 | C1 B4b prereg before any forward read | DONE | `research/prereg/C1-b4b-carry.md` and `research/configs/C1.toml` committed before any forward read. Confirmation cell k=1.5, drift_band=0.05. Holdout BURNED |
+| Z5 | Adjudication table + cryptobot adjudicate | DONE | `research/prereg/ADJUDICATION.md` committed before launchd. `cryptobot adjudicate` hash chain. Tests: ARCHIVE_NEGATIVE unloads plists, PAPER_ONLY, READY_FOR_HUMAN_DECISION, SYNTHETIC refused, AWAIT_DATA force-closed. C1 holdout burn appended on `invalidations.json` |
+| Z6 | PROJECT_FINAL_REPORT.md + final-status | DONE | `PROJECT_FINAL_REPORT.md`. `cryptobot final-status` prints H1–H6 AWAIT_DATA, B1–B7 KILLED, C1 AWAIT_FORWARD, adjudication WAITING |
+| Z7 | Suite green, tag v1.0-final | DONE | Python 3.12 full suite: 1656 passed, 1 skipped, 0 failed, 1634.42s (`/tmp/z7-suite.log` EXIT:0). Tag `v1.0-final` |
 
-Reproduced on HEAD before fixing (branch tests run against e766383):
-F2 file → 6 failed/1 passed (stale latch never releases; entries never flow
-after mark recovery); sizing file → 2 failed/2 passed (−25bps funding credit
-sized qty×stop = 33.6 USDT vs 12.5 budget). Cherry-picked `eb0cfe1`
-(F2, → b686d0b) and `a576e73` (F-SIZING-01, → b87ee9a); after: both files
-11 passed; targeted regression (session×4 + sizing×3 + execution) 84 passed.
-`_release_exit_only` production callers now: `_apply_health_gate`
-(session.py:1569) ← `_health_tick` (:1585) ← event path (:2832). No
-client-ID work exists on `integration/owner-exec` (diff of
-binance_live.py/order_manager.py vs e766383 is empty) → client IDs are
-T1.6. `docs/f2-health-recovery.md` came with the F2 cherry-pick.
+## Closeout (2026-10-19)
+
+Evidence page: `PROJECT_CLOSEOUT.md`. Tag `closeout-v1`.
+
+- C1: `research/verdicts_b/B4.json` document_sha256
+  `2974cc1a24cdc1ef99238380919a9070e271427798482a5ded351e03bda028e8`
+  is invalidated in `research/verdicts_b/invalidations.json` (D-042,
+  25% per-leg clip). Verdict, autopilot, and gate refuse a listed hash
+  and refuse a broken chain. Tests: `tests/unit/test_invalidation.py`.
+- C2: three holdout decodes, all consumer `verdict`, hypothesis B4
+  (chunks `c87821b135ac9667` twice, `74e0747f6d1aab3a` once). Holdout
+  is clean for H1–H6 and B1–B3, B5–B7. BURNED for B4 and any B4
+  variant. Future carry variants confirm on FORWARD data only.
+- C3: H1–H6 `AWAIT_DATA`. `estimate_power([])` is IMPOSSIBLE
+  ("fewer than 2 dev trades"); `days_required` is null. Stores
+  `data/pilot` and `datasets/benchmark_30d` are absent. Preregs
+  unedited.
+- C4: `PROJECT_CLOSEOUT.md`. Review date 2026-12-18.
+- C5: suite 1640 passed, 1 skipped, 0 failed, 1566.76s,
+  `/tmp/closeout-suite.log` EXIT:0.
+
+No new research. Recorder disk/day and CPU were not measured: no
+recorder process on this host, and `/opt/cryptobot/data/recorder` is
+absent.
+
+## E1.1 inventory (measured, subagent ses_eb1a1a8e9ffe0y708UEU0wkeyt)
+
+- Monthly UM datasets (8): klines 1056 syms, mark 1039, premium 982,
+  index 979, fundingRate 988, aggTrades 1044, trades 1044, bookTicker 315.
+  Monthly leg ends 2026-09.
+- Daily UM datasets (9): same minus fundingRate, plus metrics 1038 syms,
+  bookDepth 1008. Daily leg ends 2026-10-17.
+- Klines intervals: 1m–1d all 1056/1056; 1w/3d 346; 1mo 280; no `1M`.
+- Range: klines 2020-01→2026-09; trades BTC back to 2019-09 (earliest UM).
+- Delisted retained: LUNAUSDT frozen 2022-05, LENDUSDT ends 2020-11,
+  ANCUSDT 2022-05, expired quarterlies present; 134/1056 no daily extension.
+- bookTicker discontinued ~2024-04 (do not plan on it).
+- metrics daily-only (OI + L/S ratios, 5-min rows); fundingRate monthly-only.
+- Spot BTC/ETH 1d 2017-08→2026-09 available (basis leg possible).
+- Planned pull ≈ 13.8 GB zipped (metrics ≈ 9.7 GB dominates).
+- aggTrades/trades TB-scale: out of scope.
+- Evidence: `DATA_INVENTORY.md`, raw `/tmp/vision-inventory.json`.
+- Independent verification (this run): metrics + funding probes match
+  (`curl` 2026-10-18, columns + CHECKSUM scheme confirmed).
+
+## Key constraints derived
+
+- Liquidity-scope lists (1m top-20, metrics subset) must be computed
+  from DEV-only data AFTER SPLIT.md commits C. The inventory's
+  lifetime-bytes top-20 must NOT be used (peeks at holdout volumes).
+- Holdout bytes: filename-date split, hash raw bytes, never decode
+  before freeze. DQ reports are DEV-only until verdict-time validation.
+- Metrics pull is request-heavy (~1 file/symbol/day): two-pass pull —
+  pass 1 klines/funding/mark, then metrics only for symbols that ever
+  enter the trailing top-30 universe (computed from DEV+filenames... no:
+  universe membership uses klines closes — a return look. Restrict
+  membership computation to DEV-period klines; holdout-only entrants get
+  metrics pulled at verdict time if needed. Document in pull plan.)
+
+## Resume note (2026-10-18 evening)
+
+First non-DONE task is E1.2, then E6.1. Do not decode holdout.
+Independent reviewers confirmed, and this run fixed before any lake eval:
+- `slow_stats.deflated_sharpe` now uses non-annualized SR and sqrt(T-1)
+  (annualized plug-in was a false DSR≈1). Pinned at 0.97137 in
+  `test_dsr_exact_and_monotone`.
+- Holdout lb80 is the 20% bootstrap order statistic (`lower_q=0.20`),
+  not the 10% end of a two-sided 80% interval.
+- Backtester: liquidation fills at the breaching wick; stops are
+  time-sorted inside [d, d+1d) and later funding is not charged after
+  the stop; drawdown is a positive fraction in both engines; zero-vol
+  positive equity is infinite Sharpe and leak-flagged; missing-bar
+  trail stats fall back to the previous bar; exact-zero targets are
+  not counted as drops.
+CJK vision URLs are percent-encoded (`_ascii_url`). Pull resumed after
+that fix; seal holdout bytes (hash only) the moment the pull exits,
+before `build_lake` or any return statistic.
 
 ## Commands run
 
-- `git switch -c live/hardening` (from deep/integration @ e766383)
-- targeted baseline above → 81 passed
-- T0.2: `pytest /tmp/test_session_health_recovery.py` → 6F/1P on HEAD;
-  `pytest tests/acceptance/test_sizing_funding_clamp.py` → 2F/2P on HEAD;
-  after cherry-picks → 11 passed; regression set → 84 passed
-- T0.3 (ff1b184): ruff 0.17.1 baseline 628 errors, mypy 2.4.0 baseline 464
-  errors/58 files — configs committed, CI lint/type jobs report
-  non-blocking until baselines reach zero (never weakened to pass).
-- T0.4 (31b6c4d): doctor live-label fix + test_doctor_truth 28 passed
-  with test_cli_readiness.
-- P2-P6 batch (test_hardening_batch 9 passed): DropBreaker+hysteresis
-  wired in _control_step, per-type producer drops, HF cap in bridge +
-  CLI BTC/ETH default; latency-probe/data-verify/verdict/gate/arm/
-  demo-drill CLI (arm refuses without GO+env ack+typed phrase);
-  alerts (Memory/Log/Webhook + rate limit), metrics counters;
-  systemd+Dockerfile (crash-loop via StartLimitBurst), watchdog tool
-  (no countdownCancelAll); cost_model_v2 tables, maker queue model,
-  verdict engine (bootstrap/Holm/UNDERPOWERED), ladder+canary.
-  PARTIAL = owner-run live evidence still owed (latency p99, drill,
-  soak at venue scale, FULL-sync measurement) — see FINAL_STATUS.
-- T1.4 (PARTIAL): existing attach (stop-first, verified, 3-attempt
-  emergency flatten) + new shadow_stop_breached + protection time
-  budget (30s -> flatten + protection-gap alert) wired in
-  _ensure_protection_inner. Fault-injection on sandbox venue owed
-  (covered partially by T1.3 safe-mode + existing protection tests);
-  parallel stop/target is sequential stop-first by design (safer).
-- T1.5: Session.shutdown_flatten (bounded retries, flat confirmed
-  via ledger+venue snapshot), graceful stop in _supervise now
-  flattens, --leave-protected CLI flag wired (paper run). 34 passed
-  with cli/session regressions.
-- T1.9 (PARTIAL): execution/fill_realism.py book-walk + latency +
-  stressed_pnl 1x/2x; paper FillModel prob_slippage 0.0->1.0 (always
-  1 tick adverse). One existing paper test updated to allow the
-  slipped tick (behaviour change, assertion widened by exactly the
-  slip). Owed: wire book-walk into Session replay accounting and
-  report pnl_2x in run reports.
-- T1.7: engine.funding_income + Session.book_settled_funding
-  (tranId-idempotent) + funding_reconcile; 6 tests with T1.8 passed.
-  Live-loop periodic booking call owed (startup + hourly) — noted.
-- T1.8 (PARTIAL): risk/margin.py tiered maintenance margin, isolated
-  liquidation price, liquidation_ok (3x + beyond stop+slippage),
-  minimum_viable_equity. Admission wiring into policy.evaluate owed
-  (needs leverageBracket fetch at readiness) — gate function tested.
-- T1.6: _new_client_id = tag(sanitised<=16)-uuid10-seq6 (<=36, legal
-  charset); 1000 ids across 5 simulated restarts unique. Regression
-  fix: v008 unreachable test scripted 3 errors for T1.3 bounded retry.
-- T1.3 (PARTIAL): classify_exception table (retry_backoff/lookup_first/
-  reject_intent/safe_mode), bounded retry on account_snapshot read,
-  Session.enter_safe_mode (halt+flatten retries+alert, never raises),
-  run_live converts safe_mode/lookup_first to graceful end. Evidence:
-  test_exception_policy + regressions 28 passed. Live path order
-  lifecycle is BinanceLiveEngine (OrderManager retry unchanged for
-  reference path — ONE live path; OrderManager remains replay-only,
-  documented not deleted to keep suite contract). Owed: wiring
-  retry_backoff at submit call sites (engine refuse-fast already
-  covers rate-limit window) — tracked in FINAL_STATUS.
-- T1.2 (PARTIAL): engine account cache TTL 5s (REST + ACCOUNT_UPDATE),
-  account_snapshot_cached, weight governor from X-MBX-USED-WEIGHT-1M,
-  RiskPolicy._persist_tick debounce (transitions force; flush_state).
-  Evidence: test_hotpath_cache 4 tests + regressions = 77 passed.
-  Before: account_margin = 1 signed REST/call; after: <=1 per 5s/engine.
-  Owed: background REST refresher thread + stale-cache entry halt and
-  replay p99 benchmark — stale REST failure currently propagates
-  (handled as safe-mode in T1.3); do not claim DONE until then.
-- T1.1: test_venue_seeding 5F on HEAD → after Ledger.reseed_opening,
-  Session.seed_from_venue, BinanceLiveEngine.verify_account_modes +
-  journal_client_ids, CLI _seed_live_session (demo + prod): 84 passed
-  (venue_seeding + cli_readiness + binance_live x2). Recent-income
-  fetching at startup deferred to T1.7 (funding booking); seed uses
-  wallet/positions/orders now. Full P0 suite still owed (R-1).
+- E0 suite nobench → `edge-suite-nobench.log`: 1501 passed, 1 skipped.
+- E0 suite bench (background) → `edge-suite-bench.log`.
+- E0.2 autopilot run-once → RC=0, all DEV_EVAL.
+- E1.1 `tools/vision_inventory.py --out /tmp/vision-inventory.json`.
+- Probes: metrics/funding curl 200, formats confirmed.
 
-## Open risks
+## Official holdout chunks (E6.2 use; latest per leg, zero pre-freeze decodes)
+- klines: chunk-3f104eec72e7d745 (34,760)
+- markPriceKlines: chunk-62e972497f0e2c52 (35,494)
+- premiumIndexKlines: chunk-d77aca777ad358c9 (32,189)
+- fundingRate: chunk-2c330fb27f671e68 (16,105)
+- metrics: chunk-231cc79b795dd852 (123,414)
+- spot: chunk-10f9e3e4e089375a (66)
+- rest_tail: chunk-2df6f950d29a75ac (6,712)
+Superseded (same bytes, older seals): chunk-e3ca72/chunk-4cb724/chunk-af97c4/chunk-24045b.
+Foreign all-in-one chunk-2a22 + foreign B4-screen chunk-c878 (2 post-freeze decodes) exist but are NOT used officially. My voided B4 screen decoded chunk-74e0 once (superseded by D-042 rerun).
 
-- R-1 CLOSED: definitive full suite on 8b7f254: 1479 passed,
-  1 failed, 1 skipped (1434s). The one failure
-  (test_zone_status::test_real_zones_manifest_shape) reads the
-  concurrent UNCOMMITTED coord/pivot/ZONES.json (Z6 cites a drill
-  PASS in the working copy); committed HEAD has Z6 evidence=[] as
-  the test expects. Not a hardening regression; pivot files untouched.
-- R-2: Pivot working-tree changes may interact with suite runs (pivot
-  tests present); keep them out of hardening commits.
-- R-3: No credentials available (by design) — all venue-behaviour claims
-  must be proven on the sandbox venue / recorded fixtures; live claims
-  become OWNER_ACTIONS.md entries.
+## Operational closeout (2026-10-20)
+
+| Criterion | Status | Evidence |
+|---|---|---|
+| selftest --all PASS | PASS | 58 commands, 142 checks, 0 failed; fresh clone too |
+| command matrix 100% PASS | PASS | `COMMAND_MATRIX.md`, generated by `certify` |
+| emulator drill + soak PASS, EMULATED | PASS | 20 cells, 24h soak, dupe=False lost=False open=0; gate rejects EMULATED |
+| ops tested incl. every prod refusal | PASS | `tests/unit/test_ops_commands.py` (10) + selftest per-action refusals |
+| clean-room clone proof | PASS | `release/cleanroom-final.log` at `2e0fd32`, ends CLEANROOM_FINAL_OK |
+| certify PASS | PASS | `COMPLETION_CERTIFICATE.md`; 58/58, drill+soak, suite line |
+| only owner items remain | MOSTLY | demo drill, legal, tax (BLOCKED-OWNER); no external recorder disk: ~18.5 projected days vs ~103 to adjudication, so unattended capture to adjudication is BLOCKED-OWNER resource work (D-050) |
+
+Suite: 1687 passed, 1 skipped, 0 failed, 1183.91s, `/tmp/final-suite.log`
+EXIT:0. Tag: `v1.0.1`. Gate: NO-GO. No demonstrated edge.
+No orders placed, no keys read, no arm/gate artifact written.

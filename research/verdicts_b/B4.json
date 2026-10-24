@@ -1,0 +1,38 @@
+{
+ "bullets": {
+  "adverse": true,
+  "drawdown": true,
+  "lower_bound": true,
+  "point": true
+ },
+ "data_provenance": "SEALED-HOLDOUT",
+ "dev_sharpe": 4.393739546067741,
+ "document_sha256": "2974cc1a24cdc1ef99238380919a9070e271427798482a5ded351e03bda028e8",
+ "family_size": 7,
+ "hashes": {
+  "code_commit": "fdb8967",
+  "config_sha256_16": "81e057641702d6f0",
+  "data_manifest": "chunk-c87821b135ac9667",
+  "sealed_chunk_sha256": "c87821b135ac9667d8ef780fe3fa2ed611c905b567e7809ab9f67917d2890b8e"
+ },
+ "hypothesis": "B4",
+ "lb80": 1.887372208947933,
+ "max_dd": 0.0017736363468667804,
+ "metrics": {
+  "dev_sharpe": 4.393739546067741,
+  "final_equity": 10192.29417223865,
+  "lb80": 1.887372208947933,
+  "max_dd": 0.0017736363468667804,
+  "n_rebalances": 173,
+  "point_sharpe": 2.9452675249191795,
+  "sharpe_2x": 0.5453357229526462,
+  "turnover": 1.4890903782433182
+ },
+ "n_rebalances": 173,
+ "n_trades": 173,
+ "point_sharpe": 2.9452675249191795,
+ "screen_caveat": "A ~33-month holdout cannot PROVE a true Sharpe of ~1 (detectable ~0.98 one-sided 95%); this screen kills inconsistency, it does not certify edge. See research/prereg/SPLIT.md.",
+ "sharpe_2x": 0.5453357229526462,
+ "turnover": 1.4890903782433182,
+ "verdict": "SCREEN_PASS"
+}

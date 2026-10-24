@@ -1,0 +1,64 @@
+{
+ "format": "cryptobot-autopilot-report/1",
+ "generated_utc": "2026-10-18T16:34:20.189797+00:00",
+ "hypotheses": [
+  {
+   "hypothesis": "B1",
+   "power": null,
+   "provenance": "OBSERVED_PUBLIC",
+   "reason": "dev promotion failed",
+   "state": "KILLED",
+   "updated_utc": "2026-10-18T16:34:20.163034+00:00"
+  },
+  {
+   "hypothesis": "B2",
+   "power": null,
+   "provenance": "OBSERVED_PUBLIC",
+   "reason": "dev promotion failed",
+   "state": "KILLED",
+   "updated_utc": "2026-10-18T16:34:20.166281+00:00"
+  },
+  {
+   "hypothesis": "B3",
+   "power": null,
+   "provenance": "OBSERVED_PUBLIC",
+   "reason": "dev promotion failed",
+   "state": "KILLED",
+   "updated_utc": "2026-10-18T16:34:20.169313+00:00"
+  },
+  {
+   "hypothesis": "B4",
+   "power": null,
+   "provenance": "OBSERVED_PUBLIC",
+   "reason": "dev promotion failed",
+   "state": "KILLED",
+   "updated_utc": "2026-10-18T16:34:20.172427+00:00"
+  },
+  {
+   "hypothesis": "B5",
+   "power": null,
+   "provenance": "OBSERVED_PUBLIC",
+   "reason": "dev promotion failed",
+   "state": "KILLED",
+   "updated_utc": "2026-10-18T16:34:20.175398+00:00"
+  },
+  {
+   "hypothesis": "B6",
+   "power": null,
+   "provenance": "OBSERVED_PUBLIC",
+   "reason": "dev promotion failed",
+   "state": "KILLED",
+   "updated_utc": "2026-10-18T16:34:20.179180+00:00"
+  },
+  {
+   "hypothesis": "B7",
+   "power": null,
+   "provenance": "OBSERVED_PUBLIC",
+   "reason": "dev promotion failed",
+   "state": "KILLED",
+   "updated_utc": "2026-10-18T16:34:20.183810+00:00"
+  }
+ ],
+ "log_problems": [],
+ "terminal_no_edge": true
+}

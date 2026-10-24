@@ -1,0 +1,8 @@
+# H6 frozen research config (prereg 2026-10-18); not a live config.
+hypothesis = "H6"
+applies_to = ["H2", "H3"]
+symbols = ["BTCUSDT", "ETHUSDT"]
+rv_multiple = [2, 3, 4]
+shock_return_bps = [30, 50, 80]
+window_minutes = [2, 5, 10]
+family_size = 6

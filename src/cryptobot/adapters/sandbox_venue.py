@@ -35,6 +35,11 @@ from typing import Any
 from cryptobot.adapters.binance_live import VenueHttpError
 
 LABEL_KEY = "sandboxSimulated"
+_KNOWN_ACTIONS = {
+    "rate-limit", "rate-limit-418", "unknown", "gateway-502",
+    "gateway-504", "timeout", "reject", "partial-legs", "reorder",
+    "dupe", "die", "expire-key", "void-lookup",
+}
 
 SYMBOLS = {
     "BTCUSDT": {"base": 60000.0, "tick": 0.10, "step": 0.001,
@@ -55,11 +60,21 @@ class FaultScript:
     """Scripted venue faults, applied in request order (logged).
 
     Each entry: {"op": <path suffix or "stream" or "submit:<n>">,
-    "action": "rate-limit" | "unknown" | "partial-legs" |
-    "reorder" | "dupe" | "die" | "expire-key" | "void-lookup",
+    "action": "rate-limit" | "rate-limit-418" | "unknown" |
+    "gateway-502" | "gateway-504" | "timeout" | "reject" |
+    "partial-legs" | "reorder" | "dupe" | "die" | "expire-key" |
+    "void-lookup",
     "at": <1-based request counter, or "always"/"once">}.
     """
     entries: list[dict[str, Any]] = field(default_factory=list)
+
+
+def _aligned(value: float, step: float) -> bool:
+    """Venue filter: value is a whole multiple of step (1e-6 tolerance)."""
+    if step <= 0:
+        return True
+    units = value / step
+    return abs(units - round(units)) <= 1e-6
 
 
 @dataclass
@@ -155,8 +170,20 @@ class SandboxVenue:
         if action == "rate-limit":
             raise VenueHttpError(429, -1003,
                                  "sandbox: Way too many requests")
+        if action == "rate-limit-418":
+            raise VenueHttpError(418, -1003,
+                                 "sandbox: IP banned for rate abuse")
         if action == "unknown":
             raise VenueHttpError(503, None, "sandbox: response dropped")
+        if action == "gateway-502":
+            raise VenueHttpError(502, None, "sandbox: bad gateway")
+        if action == "gateway-504":
+            raise VenueHttpError(504, None, "sandbox: gateway timeout")
+        if action == "timeout":
+            raise VenueHttpError(0, None, "sandbox: simulated timeout")
+        if action == "reject":
+            raise VenueHttpError(400, -2010,
+                                 "sandbox: scripted deterministic reject")
         if action == "partial-legs":
             for spec in SYMBOLS.values():
                 spec["size"] = 0.0001  # below any drill qty.
@@ -167,6 +194,19 @@ class SandboxVenue:
                  LABEL_KEY: True})
         if action == "die":
             self._stream_die_armed = True
+        if action not in _KNOWN_ACTIONS:
+            raise ValueError(f"sandbox: unknown fault action {action!r}")
+
+    def _expire_listen_key_if_due(self) -> None:
+        """Enforce the venue's listenKey TTL (no silent eternal keys)."""
+        if self.listen_key is None or self.key_deadline_ms is None:
+            return
+        if self.now_ms() < self.key_deadline_ms:
+            return
+        self.listen_key = None
+        self.key_deadline_ms = None
+        self.stream_queue.append(
+            {"e": "listenKeyExpired", "E": self.now_ms(), LABEL_KEY: True})
 
     # -- positions / balances -------------------------------------------------
     def _position(self, symbol: str) -> dict[str, float]:
@@ -249,6 +289,13 @@ class SandboxVenue:
         if cid in self.by_client:
             raise VenueHttpError(400, -2013, "sandbox: duplicate client id")
         spec = SYMBOLS[symbol]
+        if not _aligned(qty, spec["step"]):
+            raise VenueHttpError(400, -4014,
+                                 "sandbox: quantity not aligned to step")
+        if kind == "LIMIT" and not _aligned(float(params["price"]),
+                                            spec["tick"]):
+            raise VenueHttpError(400, -4014,
+                                 "sandbox: price not aligned to tick")
         # Notional at ORDER price (venue semantics). Relative 1e-3
         # dust tolerance absorbs sim float/walk microstructure at the
         # boundary (documented, labeled); real violations still reject.
@@ -365,6 +412,13 @@ class SandboxVenue:
             raise VenueHttpError(400, -2013 - 2,
                                  "sandbox: algo rail takes conditionals")
         qty = float(params["quantity"])
+        spec = SYMBOLS[symbol]
+        if not _aligned(qty, spec["step"]):
+            raise VenueHttpError(400, -4014,
+                                 "sandbox: quantity not aligned to step")
+        if not _aligned(float(params["stopPrice"]), spec["tick"]):
+            raise VenueHttpError(400, -4014,
+                                 "sandbox: stopPrice not aligned to tick")
         cid = str(params.get("clientAlgoId",
                              f"sandbox-algo-{self._algo_seq + 1}"))
         if cid in self.algo_by_client:
@@ -526,6 +580,7 @@ class SandboxVenue:
     # -- stream ------------------------------------------------------------------------
     def poll_stream(self) -> dict[str, Any] | None:
         """Next user-stream envelope with scripted reorder/dupe applied."""
+        self._expire_listen_key_if_due()
         if self._stream_die_armed:
             self._stream_die_armed = False
             raise ConnectionError("sandbox: socket died (scripted)")
@@ -617,6 +672,7 @@ class SandboxTransport:
                 headers: dict[str, str]) -> Any:
         venue = self.venue
         venue.request_no += 1
+        venue._expire_listen_key_if_due()
         venue.log.append({"n": venue.request_no, "method": method,
                           "path": path, "params": dict(params)})
         self.requests.append((method, path, dict(params)))
@@ -651,6 +707,18 @@ class SandboxTransport:
                     "makerCommissionRate": str(spec["taker_bps"] / 10000.0),
                     "takerCommissionRate": str(spec["taker_bps"] / 10000.0),
                     LABEL_KEY: True}
+        if handler == ("GET", "/fapi/v1/leverageBracket"):
+            sym = str(params.get("symbol", "")).upper() or "ETHUSDT"
+            return [{"symbol": sym, "brackets": [
+                {"bracket": 1, "notionalCap": "50000",
+                 "maintMarginRatio": "0.004", "cum": "0"},
+                {"bracket": 2, "notionalCap": "250000",
+                 "maintMarginRatio": "0.005", "cum": "50"}]},
+                {LABEL_KEY: True}]
+        if handler == ("GET", "/fapi/v2/positionRisk"):
+            sym = str(params.get("symbol", "")).upper() or "ETHUSDT"
+            return [{"symbol": sym, "leverage": venue.cfg.leverage,
+                     LABEL_KEY: True}]
         if handler == ("GET", "/fapi/v2/account"):
             return venue.account_view()
         if handler == ("POST", "/fapi/v1/leverage"):
@@ -688,6 +756,26 @@ class SandboxTransport:
                     "bidPrice": f"{book['bid']:.2f}",
                     "askPrice": f"{book['ask']:.2f}",
                     "time": book["ts_ms"], LABEL_KEY: True}
+        if handler == ("GET", "/fapi/v1/depth"):
+            book = venue.book(str(params.get("symbol", "BTCUSDT")).upper())
+            return {"lastUpdateId": 1,
+                    "bids": [[f"{book['bid']:.2f}", f"{book['bid_qty']:.4f}"]],
+                    "asks": [[f"{book['ask']:.2f}", f"{book['ask_qty']:.4f}"]],
+                    LABEL_KEY: True}
+        if handler == ("GET", "/fapi/v1/premiumIndex"):
+            sym = str(params.get("symbol", "BTCUSDT")).upper()
+            return {"symbol": sym, "markPrice": f"{venue.mid(sym):.2f}",
+                    "indexPrice": f"{venue.mid(sym):.2f}",
+                    "lastFundingRate": "0.0001",
+                    "time": venue.now_ms(), LABEL_KEY: True}
+        if handler in (("GET", "/fapi/v1/positionSide/dual"),
+                       ("POST", "/fapi/v1/positionSide/dual")):
+            return {"dualSidePosition": False, LABEL_KEY: True}
+        if handler in (("GET", "/fapi/v1/multiAssetsMargin"),
+                       ("POST", "/fapi/v1/multiAssetsMargin")):
+            return {"multiAssetsMargin": False, LABEL_KEY: True}
+        if handler == ("POST", "/fapi/v1/marginType"):
+            return {"code": 200, "msg": "success", LABEL_KEY: True}
         raise VenueHttpError(404, -2013 - 99,
                              f"sandbox: unhandled {method} {path}")
 
