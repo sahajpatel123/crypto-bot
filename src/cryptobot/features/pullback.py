@@ -6,7 +6,7 @@ before the trigger bar); the trigger bar's own close drives resumption.
 """
 from __future__ import annotations
 
-from .breakout import InsufficientHistory, MissingData, _window
+from .breakout import _window
 
 __all__ = [
     "pullback_high",

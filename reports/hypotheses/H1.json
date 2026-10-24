@@ -1,0 +1,12 @@
+{
+ "hypothesis": "H1-maker-ofi-scalp",
+ "verdict": "UNDERPOWERED",
+ "reason": "UNEVALUABLE on dev data: no quote/book channel (pilot manifest: 'no quote channel in futures archive (books unevaluable)'); top-5 imbalance cannot be computed and will not be proxied. Needs book capture.",
+ "n_trades": 0,
+ "hashes": {
+  "config_sha256_16": "bb30d503496c0046",
+  "data_manifest": "benchmark_30d:9008ba92ef88a8cf",
+  "code_commit": "9d4e7ea"
+ },
+ "document_sha256": "be792d80d721a32c6cf12f128e18527a29d08953712886b105f500dba51688f8"
+}

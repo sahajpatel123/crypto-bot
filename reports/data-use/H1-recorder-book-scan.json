@@ -1,0 +1,89 @@
+{
+ "chunks": 395,
+ "consumer": "H1/H5 signal-frequency diagnostic (not a verdict)",
+ "diagnostic": true,
+ "format": "cryptobot-book-scan/1",
+ "generated_utc": "2026-10-21T12:27:20.626123+00:00",
+ "h1_verdict_reference": {
+  "document_sha256": "25e2d857a67428fb7b1b81f79e325dc88bd05a5fb224d931eaea77b1d261b9cb",
+  "verdict": "UNDERPOWERED"
+ },
+ "interpretation": "The recorder's 30 s full-depth books are not the H1 capture's 1 s event-book samples. A high signal rate here means the frozen threshold is not rare on a full book; it does not produce fills or overturn the H1 verdict, which remains UNDERPOWERED.",
+ "levels": 5,
+ "not_a_verdict": true,
+ "note": "Full REST depth snapshots only. No aggTrade stream, so no fills/verdict. The recorder marks its diff chain with gap=depth-chain; that path is not used.",
+ "per_symbol": {
+  "BTCUSDT": {
+   "max": 0.9983,
+   "mean_abs": 0.5017,
+   "min": -0.9984,
+   "n": 1913,
+   "signals": 761,
+   "thresholds": {
+    ">0.3": 1339,
+    ">0.4": 1144,
+    ">0.5": 954,
+    ">0.6": 761
+   }
+  },
+  "ETHUSDT": {
+   "max": 0.9998,
+   "mean_abs": 0.4848,
+   "min": -0.9993,
+   "n": 1913,
+   "signals": 733,
+   "thresholds": {
+    ">0.3": 1260,
+    ">0.4": 1073,
+    ">0.5": 886,
+    ">0.6": 733
+   }
+  }
+ },
+ "recommendation": "Keep H1 UNDERPOWERED. The 7/5,962 breach count reflects the H1 capture's shallow event book, not full-depth market behavior. A future H1 re-run needs a capture that maintains full depth AND aggTrade prints; the recorder alone cannot supply fills.",
+ "retained_snapshots": {
+  "h1-accrual-01": {
+   "max": 0.2832,
+   "mean_abs": 0.3822,
+   "min": -0.882,
+   "n": 6,
+   "signals": 2,
+   "thresholds": {
+    ">0.3": 3,
+    ">0.4": 2,
+    ">0.5": 2,
+    ">0.6": 2
+   }
+  },
+  "h5-accrual-01": {
+   "max": 0.285,
+   "mean_abs": 0.1138,
+   "min": -0.1415,
+   "n": 5,
+   "signals": 0,
+   "thresholds": {
+    ">0.3": 0,
+    ">0.4": 0,
+    ">0.5": 0,
+    ">0.6": 0
+   }
+  }
+ },
+ "root": "/Users/sahajpatel/Code/cryto-bot-edge/data/recorder",
+ "skipped": 0,
+ "snapshots": 3826,
+ "threshold": 0.6,
+ "total": {
+  "max": 0.9998,
+  "mean_abs": 0.4932,
+  "min": -0.9993,
+  "n": 3826,
+  "signals": 1494,
+  "thresholds": {
+   ">0.3": 2599,
+   ">0.4": 2217,
+   ">0.5": 1840,
+   ">0.6": 1494
+  }
+ }
+}

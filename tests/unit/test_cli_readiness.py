@@ -4,7 +4,8 @@ No network, no real keys. Signed-venue behavior is covered with a stub
 engine; credential-absent paths use env scrubbing.
 """
 import argparse
-import os
+from datetime import UTC
+from pathlib import Path
 
 import pytest
 
@@ -178,7 +179,7 @@ class _StubEngine:
 
 
 def _prod_config(tmp_path):
-    text = open("configs/prod.toml").read()
+    text = Path("configs/prod.toml").read_text()
     text = text.replace('dir = "runs"', f'dir = "{tmp_path / "runs"}"', 1)
     path = tmp_path / "prod.toml"
     path.write_text(text)
@@ -208,14 +209,15 @@ class _StubLiveEngine:
         return _StubLiveEngine.status
 
     def account_snapshot(self):
-        from datetime import datetime, timezone
+        from datetime import datetime
+
         from cryptobot.app.engine import AccountSnapshot
         st = _StubLiveEngine.status
         return AccountSnapshot(
             wallet_equity_usdt=st["total_wallet_usdt"],
             available_margin_usdt=st["available_usdt"],
             margin_balance_usdt=st["total_wallet_usdt"],
-            positions=(), asof_utc=datetime(2026, 10, 14, tzinfo=timezone.utc),
+            positions=(), asof_utc=datetime(2026, 10, 14, tzinfo=UTC),
             complete=True)
 
     def open_orders(self):
@@ -317,7 +319,6 @@ def test_ws_socket_timeout_idle_binary_ignored_death_raises(monkeypatch):
     sock = factory("K")
     assert sock.recv(1.0) is None
     assert sock.recv(1.0) is None
-    import pytest
     with pytest.raises(WsClosed):
         sock.recv(1.0)
 
@@ -364,6 +365,10 @@ def test_prod_no_creds_blocked_before_build(monkeypatch, tmp_path, capsys):
 
 def test_prod_full_driver_refuses_only_at_submission(monkeypatch, tmp_path,
                                                      capsys):
+    # Contract changed with the live launch: prod now refuses at the
+    # arming layer (config switch + GO gate + armed record) instead of
+    # constructing a driver it would never run. Read-only verification
+    # (guards, signed reads, FLAT state) still happens first.
     monkeypatch.setenv("CRYPTOBOT_API_KEY", "k")
     monkeypatch.setenv("CRYPTOBOT_API_SECRET", "s")
     _StubLiveEngine.status = _stub_venue_status()
@@ -373,9 +378,8 @@ def test_prod_full_driver_refuses_only_at_submission(monkeypatch, tmp_path,
     captured = capsys.readouterr()
     out, err = captured.out, captured.err
     assert rc == 2, out
-    assert "prod driver: Session prod-probe-1 constructed" in out
     assert "FLAT" in out
-    assert "submission disabled" in err
+    assert "allow_live_submission is false" in err
 
 
 def test_prod_signed_failure_refuses(monkeypatch, tmp_path, capsys):
@@ -392,7 +396,7 @@ def test_paper_run_interrupted_prints_resume_hint(monkeypatch, tmp_path,
                                                   capsys):
     # A venue/connection death mid-run (e.g. routes-exhausted, observed
     # on paper-proof-30m) must leave a resume hint, not a bare traceback.
-    text = open("configs/paper-protected.toml").read()
+    text = Path("configs/paper-protected.toml").read_text()
     text = text.replace('symbols = []',
                         'symbols = ["BTCUSDT"]', 1)
     text = text.replace('dir = "runs"', f'dir = "{tmp_path}"', 1)
@@ -428,7 +432,7 @@ def test_paper_run_records_discovery(monkeypatch, tmp_path, capsys):
     import cryptobot.market_data.discovery as discovery_mod
     from cryptobot.app.session import Session
 
-    text = open("configs/paper-protected.toml").read()
+    text = Path("configs/paper-protected.toml").read_text()
     text = text.replace('dir = "runs"', f'dir = "{tmp_path}"', 1)
     cfg_path = tmp_path / "paper.toml"
     cfg_path.write_text(text)
@@ -464,7 +468,7 @@ def test_paper_resume_reuses_recorded_universe(monkeypatch, tmp_path,
     import cryptobot.market_data.collector as collector_mod
     from cryptobot.app.session import Session
 
-    text = open("configs/paper-protected.toml").read()
+    text = Path("configs/paper-protected.toml").read_text()
     text = text.replace('dir = "runs"', f'dir = "{tmp_path}"', 1)
     cfg_path = tmp_path / "paper.toml"
     cfg_path.write_text(text)

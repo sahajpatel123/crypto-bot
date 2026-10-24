@@ -7,42 +7,40 @@ Nautilus for paper via E-007).
 """
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import json
 import math
 import os
 import time
 from collections import deque
-from datetime import datetime, timedelta, timezone
+from collections.abc import Callable
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from cryptobot.accounting.day import accounting_date
 from cryptobot.accounting.ledger import Ledger
 from cryptobot.coordination.exits import decode_exit_rule
-from cryptobot.coordination.selector import (Candidate, Selector,
-                                             SelectorConfig)
-from cryptobot.market_data.bars import (BarAggregator, BarMissing,
-                                        to_s1_bar)
+from cryptobot.coordination.selector import Candidate, Selector, SelectorConfig
+from cryptobot.market_data.bars import BarAggregator, BarMissing, to_s1_bar
 from cryptobot.market_data.bridge import load_snapshots
 from cryptobot.market_data.replayer import assert_input_class
 from cryptobot.market_data.views import DepthStore, book_flow_for
 from cryptobot.risk.margin import bracket_admission_check
 from cryptobot.risk.policy import RiskPolicy
 from cryptobot.risk.rounding import ceil_to_tick, floor_to_step, floor_to_tick
-from cryptobot.risk.types import (AccountSnapshot, Approved, HealthStatus,
-                                  RiskConfig)
+from cryptobot.risk.types import AccountSnapshot, Approved, HealthStatus, RiskConfig
 
 from .config import AppConfig
 from .engine import EngineEvent, EngineOrder
-from .producer import (TIMEOUT, AsyncCall, BoundedProducer, DropBreaker,
-                       deadline_remaining_s)
+from .producer import TIMEOUT, AsyncCall, BoundedProducer, DropBreaker, deadline_remaining_s
 from .reference import ReferenceEngine
 from .store import RunStore
 
 __all__ = ["Session", "ReplayClock", "WallClock", "STRATEGY_ARMS"]
 
-_EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
+_EPOCH = datetime(1970, 1, 1, tzinfo=UTC)
 
 
 class _SessionEngineHandler:
@@ -99,7 +97,7 @@ def _map_b4_views(book: Any, flow: Any, reason: str) -> tuple[Any, Any, list[str
                 ask_notional=sum(p * q for p, q in book.asks),
                 levels=book.levels, imbalance=book.imbalance_top1,
                 ts_utc=datetime.fromtimestamp(book.ts_ms / 1000,
-                                              tz=timezone.utc))
+                                              tz=UTC))
             depth_reason = ""
     flow_view = None
     if flow is not None:
@@ -109,9 +107,9 @@ def _map_b4_views(book: Any, flow: Any, reason: str) -> tuple[Any, Any, list[str
             sell_count=flow.sell_count, vwap=flow.vwap or 0.0,
             trade_count=flow.buy_count + flow.sell_count,
             window_start_utc=datetime.fromtimestamp(
-                flow.window_start_ms / 1000, tz=timezone.utc),
+                flow.window_start_ms / 1000, tz=UTC),
             window_end_utc=datetime.fromtimestamp(
-                flow.window_end_ms / 1000, tz=timezone.utc))
+                flow.window_end_ms / 1000, tz=UTC))
         flow_reason = ""
     return depth, flow_view, [r for r in (depth_reason, flow_reason) if r]
 
@@ -174,7 +172,7 @@ class WallClock:
     """Wall-time clock for live paper sessions."""
 
     def now(self) -> datetime:
-        return datetime.now(timezone.utc)
+        return datetime.now(UTC)
 
 
 class Session:
@@ -243,6 +241,10 @@ class Session:
         self._submit_ts: dict[str, datetime] = {}
         self._events_seen = 0
         self._flatten_pending = False
+        # Live arming context (set by the prod route from armed.json):
+        # capital ceiling + canary trade count. Paper/replay leave unset.
+        self.armed_capital_usdt: float | None = None
+        self.armed_canary_trades: int = 0
         self._orphan_close_ids: list[str] = []  # pos-less flatten closes.
         # Contract v1 §3 (W1): idempotent booking state. Applied
         # execution ids (durable in execution_events; rebuilt on
@@ -340,16 +342,14 @@ class Session:
             # Pre-run supervision (control_tick before create_run):
             # register the run row so the transition is recorded,
             # not lost. A concurrent create falls through to set_state.
-            try:
+            with contextlib.suppress(Exception):
                 self.store.create_run(self.run_id, self.config.mode,
                                       self.config.fingerprint,
                                       str(self.workdir), self._pid)
-            except Exception:
-                pass
         self.store.set_state(self.run_id, state, reason)
         self._append_run_file("risk.jsonl", {
             "ts_utc": self.now_utc().isoformat(),
-            "wall_ts_utc": datetime.now(timezone.utc).isoformat(),
+            "wall_ts_utc": datetime.now(UTC).isoformat(),
             "kind": "run-state",
             "from_state": old, "to_state": state, "reason": reason})
 
@@ -393,13 +393,47 @@ class Session:
             )
         merged = dict(self.policy.config.instrument_filters)
         merged.update(built)
-        asof = asof_utc or datetime.now(timezone.utc)
+        asof = asof_utc or datetime.now(UTC)
         self.policy.config = replace(
             self.policy.config, instrument_filters=merged,
             filters_asof_utc=asof)
         self.store.checkpoint(self.run_id, "filters-armed",
                               {"origin": origin, "asof_utc": asof.isoformat(),
                                "symbols": sorted(built)})
+
+    def apply_armed_limits(self, *, capital_usdt: float,
+                           max_daily_loss_usdt: float, canary_trades: int,
+                           equity_usdt: float | None = None) -> None:
+        """Bind the owner's armed.json limits into the risk policy.
+
+        ``max_daily_loss_usdt`` becomes the emergency daily stop (as a
+        fraction of the reference equity) when tighter than the profile;
+        the operating stop is kept strictly inside it. Without a venue
+        equity (resume), the reference is 1.5x armed capital — the prod
+        route's seeding ceiling — so the fraction is never too loose.
+        """
+        if not (capital_usdt > 0 and 0 < max_daily_loss_usdt <= capital_usdt):
+            raise ValueError("armed limits need capital > 0 and "
+                             "0 < max_daily_loss <= capital")
+        self.armed_capital_usdt = float(capital_usdt)
+        self.armed_canary_trades = int(canary_trades)
+        reference = (float(equity_usdt) if equity_usdt and equity_usdt > 0
+                     else float(capital_usdt) * 1.5)
+        from dataclasses import replace
+
+        cap_pct = min(0.99, max_daily_loss_usdt / reference)
+        cfg = self.policy.config
+        emergency = min(cfg.emergency_stop_pct, cap_pct)
+        operating = min(cfg.operating_stop_pct, emergency / 2.0)
+        self.policy.config = replace(cfg, emergency_stop_pct=emergency,
+                                     operating_stop_pct=operating)
+        self.store.checkpoint(self.run_id, "armed-limits",
+                              {"capital_usdt": self.armed_capital_usdt,
+                               "max_daily_loss_usdt": float(max_daily_loss_usdt),
+                               "reference_equity_usdt": reference,
+                               "emergency_stop_pct": emergency,
+                               "operating_stop_pct": operating,
+                               "canary_trades": self.armed_canary_trades})
 
     def _ensure_symbol_filters(self, symbol: str) -> bool:
         """Arm filters for a newly seen paper symbol. False when blocked."""
@@ -495,10 +529,8 @@ class Session:
                "flatten_attempted": attempted, "flatten_ok": flatten_ok,
                "ts_utc": self.now_utc().isoformat()}
         self.alerts.append(out)
-        try:
+        with contextlib.suppress(Exception):  # checkpoint best-effort here
             self.store.checkpoint(self.run_id, "safe-mode", out)
-        except Exception:  # noqa: BLE001 — checkpoint best-effort here
-            pass
         return out
 
     def _is_flat_confirmed(self) -> bool:
@@ -610,10 +642,8 @@ class Session:
                "budget_s": self.protection_budget_s,
                "ts_utc": self.now_utc().isoformat()}
         self.alerts.append(out)
-        try:
+        with contextlib.suppress(Exception):  # alert recorded above
             self.store.checkpoint(self.run_id, "protection-gap", out)
-        except Exception:  # noqa: BLE001 — alert recorded above
-            pass
         self._flatten("protection-gap-timeout")
         return True
 
@@ -635,7 +665,7 @@ class Session:
                 event_id = (f"funding:{symbol}:{tran}" if tran is not None
                             else f"funding:{symbol}:{ts_ms}:{amount}")
                 ts = datetime.fromtimestamp(ts_ms / 1000,
-                                            tz=timezone.utc).isoformat()
+                                            tz=UTC).isoformat()
             except (TypeError, ValueError, OverflowError, OSError):
                 continue  # malformed row: reconcile diff will surface it
             if self.ledger.note_funding(event_id, amount, ts):
@@ -809,6 +839,7 @@ class Session:
     def _strategy_adapters(self) -> tuple[dict[str, Any], dict[str, Any]]:
         """Runtime adapters (base arms, incl. S5) + modules (variant arms)."""
         import importlib
+
         from cryptobot.strategies.runtime import get_adapter
         adapters: dict[str, Any] = {}
         modules: dict[str, Any] = {}
@@ -1093,6 +1124,19 @@ class Session:
         arm_problem = self._prod_arm_problem()
         if arm_problem is not None:
             return arm_problem
+        if self.config.mode == "prod" and self.armed_capital_usdt is None:
+            return "config:prod-not-armed"
+        # Stale venue account truth must never admit new risk: if the
+        # live engine's cached snapshot is older than 30s, entries hold
+        # until a fresh REST snapshot lands (refresher/TTL covers it).
+        age_fn = getattr(self.engine, "account_cache_age_s", None)
+        if callable(age_fn):
+            try:
+                age = age_fn()
+            except Exception:  # noqa: BLE001 — unreadable age holds.
+                age = None
+            if age is not None and age > 30.0:
+                return "account:stale-cache"
         if not self._reconciled or self._flatten_pending:
             return "reconcile:restart-pending"
         if self._booking_blocked is not None:
@@ -1220,7 +1264,7 @@ class Session:
                               intent.instrument, intent.side.value)
             self._append_run_file("risk.jsonl", {
                 "ts_utc": self.now_utc().isoformat(),
-                "wall_ts_utc": datetime.now(timezone.utc).isoformat(),
+                "wall_ts_utc": datetime.now(UTC).isoformat(),
                 "kind": "risk-decision",
                 "from_state": "", "to_state": "rejected",
                 "reason": verdict.reason})
@@ -1237,6 +1281,18 @@ class Session:
         # Approved = risk-budgeted request; executable = submitted; fills =
         # booked. A snap that breaks minimums rejects loudly (hold freed).
         executable = self._snap_qty(intent.instrument, verdict.qty)
+        if self.config.mode == "prod" and self.armed_canary_trades > 0:
+            # Canary (T6.3): first N armed trades at minimum legal size.
+            from cryptobot.risk.ladder import canary_size
+
+            filt = self.policy.config.instrument_filters.get(
+                intent.instrument)
+            min_qty = float(getattr(filt, "min_qty", 0.0) or 0.0)
+            if min_qty > 0:
+                executable = canary_size(
+                    trade_index=self._admitted,
+                    canary_trades=self.armed_canary_trades,
+                    min_qty=min_qty, planned_qty=executable)
         recheck = self._recheck_executable(intent, snapshot, executable,
                                            verdict.reserved_risk)
         if recheck is not None:
@@ -1273,6 +1329,46 @@ class Session:
                 intent.instrument, intent.side.value, "rejected",
                 "selection:exit-undecodable", self.now_utc().isoformat())
             return
+        # Liquidation gate (T1.8): live engines exposing venue brackets
+        # must prove the stop fires well before liquidation. Engines
+        # without brackets (paper/replay) skip; a venue that returns no
+        # brackets fails closed for live admission.
+        brackets_fn = getattr(self.engine, "leverage_brackets", None)
+        if callable(brackets_fn) and self.config.mode == "prod":
+            from cryptobot.risk.margin import (
+                liquidation_ok,
+                liquidation_price_isolated,
+                maintenance_margin,
+            )
+
+            entry_ref = (intent.entry_high if intent.side.value == "LONG"
+                         else intent.entry_low)
+            try:
+                brackets = brackets_fn(intent.instrument)
+                notional = abs(executable * entry_ref)
+                maint = maintenance_margin(notional, brackets)
+                isolated = notional / max(1.0, float(
+                    self.config.leverage_cap))
+                signed_qty = (executable if intent.side.value == "LONG"
+                              else -executable)
+                liq = liquidation_price_isolated(
+                    entry=entry_ref, qty=signed_qty,
+                    isolated_margin=isolated, maint_margin=maint)
+                ok = liquidation_ok(
+                    entry=entry_ref, stop=stop, liq=liq,
+                    stressed_slippage_bps=50.0, side=intent.side.value)
+            except (ValueError, TypeError, KeyError):
+                ok = False
+            if not ok:
+                self.policy.release(verdict.reservation_id)
+                reason = "risk:liquidation-gate"
+                self._note_reject(reason, intent.strategy,
+                                  intent.instrument, intent.side.value)
+                self.store.record_intent(
+                    self.run_id, intent.evidence_ref, intent.strategy,
+                    intent.instrument, intent.side.value, "rejected",
+                    reason, self.now_utc().isoformat())
+                return
         side = "BUY" if intent.side.value == "LONG" else "SELL"
         # Directive L76: entries are price-protected marketable IOC, capped
         # at the intent's entry band (side-aware: LONG pays at most the
@@ -1379,13 +1475,25 @@ class Session:
             # Lookup-first / safe-mode class: unknown exposure direction.
             self._halt_entries(f"submit-{policy.action}")
             self.enter_safe_mode(f"submit-{type(exc).__name__}")
+        except (ValueError, PermissionError, OverflowError) as exc:
+            # B2/F3: an unsubmittable opportunity (dust below the venue
+            # step, full queue, exit-only race) is rejected, never fatal.
+            # The risk hold is freed (zero booked: actually freed).
+            with contextlib.suppress(ValueError, KeyError):
+                self.store.update_command(cmd_id, "failed")
+            self.policy.release(verdict.reservation_id)
+            reason = f"execution:submit-rejected:{type(exc).__name__}"
+            self._note_reject(reason, intent.strategy, intent.instrument,
+                              intent.side.value)
+            self.store.record_intent(
+                self.run_id, intent.evidence_ref, intent.strategy,
+                intent.instrument, intent.side.value, "rejected",
+                reason, self.now_utc().isoformat())
             return
         self._submit_ts[pre_id] = self.now_utc()
-        try:
+        with contextlib.suppress(ValueError, KeyError):
             self.store.update_command(cmd_id, "submitted",
                                       engine_client_id=pre_id)
-        except (ValueError, KeyError):
-            pass
         self._known_reservations.add(verdict.reservation_id)
         self._position = {"reservation_id": verdict.reservation_id,
                           "instrument": intent.instrument,
@@ -1629,10 +1737,8 @@ class Session:
             pos.get("admit_intent"), snapshot, recorded, budget) \
             if pos.get("admit_intent") is not None else None
         if recheck is not None:
-            try:
+            with contextlib.suppress(Exception):
                 self.engine.cancel(entry_id, f"executable-recheck:{recheck}")
-            except Exception:
-                pass
             self.policy.release(pos["reservation_id"])
             self._note_reject(f"risk:{recheck}", pos.get("strategy", ""),
                               pos.get("instrument", ""), pos.get("side", ""))
@@ -1739,11 +1845,9 @@ class Session:
                         submitted = self._submit_ts.pop(key)
                         break
             if submitted is not None:
-                try:
+                with contextlib.suppress(TypeError, AttributeError):
                     self._dispatch_ms.append(
                         (payload.ts_utc - submitted).total_seconds() * 1000)
-                except (TypeError, AttributeError):
-                    pass
             outcome = self._apply_fill(
                 client_order_id=payload.client_order_id,
                 execution_id=payload.execution_id,
@@ -2059,10 +2163,8 @@ class Session:
                 except (ValueError, KeyError, AttributeError):
                     continue
             if match:
-                try:
+                with contextlib.suppress(ValueError, KeyError):
                     self.store.update_command(cmd["cmd_id"], "resolved")
-                except (ValueError, KeyError):
-                    pass
 
     def _reconcile_commands(self) -> None:
         """Reconcile open commands against tracked order truth (v1 §4).
@@ -2080,10 +2182,8 @@ class Session:
             eid = cmd.get("engine_client_id")
             if not eid:
                 if cmd.get("status") != "unknown":
-                    try:
+                    with contextlib.suppress(ValueError, KeyError):
                         self.store.update_command(cmd["cmd_id"], "unknown")
-                    except (ValueError, KeyError):
-                        pass
                 continue
             real = eid
             try:
@@ -2097,10 +2197,8 @@ class Session:
                 status = self._tracked_status(eid)
             if status is not None and getattr(status, "state", "") in (
                     "filled", "rejected", "cancelled", "expired"):
-                try:
+                with contextlib.suppress(ValueError, KeyError):
                     self.store.update_command(cmd["cmd_id"], "resolved")
-                except (ValueError, KeyError):
-                    pass
 
     def _fill_reservation(self, client_order_id: str) -> str | None:
         """Reservation a fill books under, or None when foreign/unknown.
@@ -2638,10 +2736,7 @@ class Session:
             return False
         # entry_pre_id is an alias superseded once entry_id resolves —
         # only the unresolved handle blocks.
-        if pos.get("entry_id"):
-            tracked = [pos.get("entry_id")]
-        else:
-            tracked = [pos.get("entry_pre_id")]
+        tracked = [pos.get("entry_id")] if pos.get("entry_id") else [pos.get("entry_pre_id")]
         tracked += list(pos.get("legs") or [])
         tracked += list(pos.get("retired") or [])
         tracked += list(pos.get("close_ids") or [])
@@ -2886,11 +2981,9 @@ class Session:
                 instrument=symbol, side=side, qty=abs(net),
                 kind="MARKET", reduce_only=True,
                 reservation_id=close_rid, role="target"))
-            try:
+            with contextlib.suppress(ValueError, KeyError):
                 self.store.update_command(close_cmd, "submitted",
                                           engine_client_id=pre_id)
-            except (ValueError, KeyError):
-                pass
             if pos is not None:
                 pos.setdefault("close_ids", []).append(pre_id)
             else:
@@ -2991,7 +3084,7 @@ class Session:
         summary: dict[str, Any] = {"source": "rest:fapi/v1/depth",
                                    "applied": 0, "synced": [],
                                    "primed": [], "failed": {}}
-        recv_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
+        recv_ms = int(datetime.now(UTC).timestamp() * 1000)
         for symbol, payload in fetched.items():
             if isinstance(payload, BaseException):
                 summary["failed"][symbol] = {
@@ -3075,7 +3168,7 @@ class Session:
             # future-knowledge events must not gate a historical replay.
             from cryptobot.events.profiles import ReplayCutoff
             first_dt = datetime.fromtimestamp(
-                int(first["exchange_ts_ms"]) / 1000.0, tz=timezone.utc)
+                int(first["exchange_ts_ms"]) / 1000.0, tz=UTC)
             filtered, counts = ReplayCutoff.apply(
                 self.protection.store, first_dt)
             self.protection.store = filtered
@@ -3189,10 +3282,8 @@ class Session:
             # re-converged so UNKNOWNs re-resolve; no-op elsewhere.
             reconnected = getattr(self.engine, "stream_reconnected", None)
             if callable(reconnected):
-                try:
+                with contextlib.suppress(Exception):
                     reconnected()
-                except Exception:
-                    pass
         if channel in ("aggTrade", "bookTicker", "depth", "markPrice") and symbol:
             # Engine + views see every market channel (depth/markPrice used
             # to be dropped here, which starved funding terms and book/flow
@@ -3387,7 +3478,7 @@ class Session:
             self._stop_alerted = True
             self._append_run_file("risk.jsonl", {
                 "ts_utc": self.now_utc().isoformat(),
-                "wall_ts_utc": datetime.now(timezone.utc).isoformat(),
+                "wall_ts_utc": datetime.now(UTC).isoformat(),
                 "kind": "operator-alert",
                 "from_state": "", "to_state": "emergency",
                 "reason": "halt:emergency:exposure-reduction"})
@@ -3402,15 +3493,11 @@ class Session:
                 state = getattr(status, "state", "open")
                 if state in ("filled", "rejected", "cancelled", "expired"):
                     continue
-                try:
+                with contextlib.suppress(Exception):  # cancel requested; booking stands till confirmed.
                     self.engine.cancel(status.client_order_id, "stop-action")
-                except Exception:
-                    pass  # cancel requested; booking stands till confirmed.
         if "reduce_exposure" in actions:
-            try:
+            with contextlib.suppress(ValueError, KeyError, RuntimeError):  # reduction retried next tick; exposure retained.
                 self._flatten("stop-action")
-            except (ValueError, KeyError, RuntimeError):
-                pass  # reduction retried next tick; exposure retained.
         if self._stop_alerted or self.policy.emergency_active():
             # A latch stood: probe reconciled recovery only when no
             # exposure actions remain (cheap bool gate off the hot path).
@@ -3422,15 +3509,18 @@ class Session:
                     self._release_all_exit_only("emergency-recovered")
                     if not self._exit_only_reasons:
                         self._set_state("ready", "emergency-recovered")
+                    and "reduce_exposure" not in actions and self.policy.recover_from_emergency(
+                    self._snapshot_account()):
+                self._stop_alerted = False
+                self._release_all_exit_only("emergency-recovered")
+                self._set_state("ready", "emergency-recovered")
 
     def _stop_refresh(self) -> None:
         """Stop the background official-source refresher, if running."""
         tracker = self._freshness
         if tracker is not None:
-            try:
+            with contextlib.suppress(RuntimeError, OSError):
                 tracker.stop()
-            except (RuntimeError, OSError):
-                pass
 
     def _drain_unknown_outcomes(self) -> None:
         """Resolve unknown order outcomes via lookup (W3-24H P4).
@@ -3457,7 +3547,7 @@ class Session:
                 action = caller_action(exc) if caller_action else "retry"
                 self._append_run_file("risk.jsonl", {
                     "ts_utc": self.now_utc().isoformat(),
-                    "wall_ts_utc": datetime.now(timezone.utc).isoformat(),
+                    "wall_ts_utc": datetime.now(UTC).isoformat(),
                     "kind": "unknown-drain",
                     "from_state": cid, "to_state": action,
                     "reason": f"{type(exc).__name__}:still-blocking"})
@@ -3473,12 +3563,10 @@ class Session:
         is logged, entries flow. Replay additionally applies
         ReplayCutoff at the first event instant in run_replay.
         """
-        from cryptobot.events.freshness import (
-            FreshnessTracker, default_http_get)
+        from cryptobot.events.freshness import FreshnessTracker, default_http_get
         from cryptobot.events.profiles import load_profile
         from cryptobot.events.runtime import ProtectionRuntime
-        from cryptobot.events.sources import (
-            CpiSource, FomcSource, adapters_for)
+        from cryptobot.events.sources import CpiSource, FomcSource, adapters_for
         from cryptobot.events.store import EventStore
         now = self.now_utc()
         try:
@@ -3566,10 +3654,8 @@ class Session:
         unknown = getattr(self.engine, "unknown_ids", None)
         errors = self._exchange_errors
         if callable(unknown):
-            try:
+            with contextlib.suppress(Exception):
                 errors += len(unknown())
-            except Exception:
-                pass
         return (AnomalyReading(
             spread_bps=spread, book_depth_ratio=depth_ratio,
             abs_return_bps=abs_ret, latency_ms=latency,
@@ -3594,10 +3680,8 @@ class Session:
         entry = self._tracked_status(entry_id)
         if entry is not None and entry.filled_qty > 1e-12:
             return  # filled: protection stays on.
-        try:
+        with contextlib.suppress(ValueError, KeyError):  # already gone; clear + release below still apply.
             self.engine.cancel(entry_id, "event-prepare-flat")
-        except (ValueError, KeyError):
-            pass  # already gone; clear + release below still apply.
         # NOTE (READY-§5 scope): clear-on-request is the pinned EV-001
         # contract. A fill landing between the cancel request and this
         # clear is the genuine sub-latency cancel/fill race: it still
@@ -3771,10 +3855,8 @@ class Session:
         path = self.workdir / "position.json"
         pos = self._position
         if pos is None:
-            try:
+            with contextlib.suppress(FileNotFoundError):
                 path.unlink()
-            except FileNotFoundError:
-                pass
             return
         shell = {k: pos.get(k) for k in self._SHELL_FIELDS}
         # Live code reads these with .get(key, default): a persisted
@@ -3921,15 +4003,13 @@ class Session:
                 if cid:
                     self._order_cum[cid] = self._order_cum.get(cid, 0.0) + qty
                 if rid and rid in self._known_reservations:
-                    try:
+                    with contextlib.suppress(ValueError):  # already booked, or invalid row: gates decide.
                         self.policy.note_fill_delta(
                             rid, exec_id, payload.get("instrument", ""),
                             payload.get("side", ""), payload.get("qty", 0.0),
                             payload.get("price", 0.0), payload.get("fee", 0.0),
                             row.get("ts_utc", ""))
-                    except ValueError:
-                        pass  # already booked, or invalid row: gates decide.
-                    try:
+                    with contextlib.suppress(ValueError):
                         # The policy gate returns before the ledger when
                         # policy already booked: heal the ledger
                         # explicitly (exec-gated: no double-book).
@@ -3938,8 +4018,6 @@ class Session:
                             payload.get("side", ""), payload.get("qty", 0.0),
                             payload.get("price", 0.0), payload.get("fee", 0.0),
                             row.get("ts_utc", ""))
-                    except ValueError:
-                        pass
                     if exec_id not in fills_have:
                         self._append_run_file("fills.jsonl", {
                             "execution_id": exec_id,
@@ -3957,16 +4035,12 @@ class Session:
                     # pre-crash block restarts with the session.
                     self._block_booking(f"unknown-fill:{cid}")
             elif row.get("kind") == "funding":
-                try:
+                with contextlib.suppress(ValueError):  # already booked, or invalid row: gates decide.
                     self.policy.note_funding(
                         row.get("execution_id"), payload.get("amount", 0.0),
                         row.get("ts_utc", ""))
-                except ValueError:
-                    pass  # already booked, or invalid row: gates decide.
-        try:
+        with contextlib.suppress(ValueError, KeyError):
             self._cmd_seq = self.store.command_count(self.run_id)
-        except (ValueError, KeyError):
-            pass
 
     def _resume_state(self) -> None:
         run = self.store.get_run(self.run_id)
@@ -4049,8 +4123,9 @@ class Session:
         if not samples:
             return {"n": 0, "p50": 0.0, "p95": 0.0, "p99": 0.0,
                     "max": 0.0}
-        pick = lambda p: samples[min(len(samples) - 1,
-                                     int(p * len(samples)))]
+        def pick(p):
+            return samples[min(len(samples) - 1,
+                                             int(p * len(samples)))]
         return {"n": len(samples), "p50": pick(0.50), "p95": pick(0.95),
                 "p99": pick(0.99), "max": samples[-1]}
 
@@ -4125,7 +4200,7 @@ class Session:
             ctx["last_market_mono"] = now_mono
             self._append_run_file("risk.jsonl", {
                 "ts_utc": self.now_utc().isoformat(),
-                "wall_ts_utc": datetime.now(timezone.utc).isoformat(),
+                "wall_ts_utc": datetime.now(UTC).isoformat(),
                 "kind": "stream-stall",
                 "from_state": "streaming", "to_state": "resync",
                 "reason": "no market events for 60s; re-priming books"})
@@ -4314,8 +4389,7 @@ class Session:
                     # gracefully instead of dying with open exposure.
                     # Retryable/rejected intents are handled inside the
                     # step/engine and never reach here as run-enders.
-                    from cryptobot.adapters.binance_live import (
-                        classify_exception)
+                    from cryptobot.adapters.binance_live import classify_exception
                     policy = classify_exception(exc)
                     _exposed = bool(self.ledger.has_position()
                                     or self._position is not None)
@@ -4391,6 +4465,14 @@ class Session:
             "paid_costs": self.ledger.paid_costs(),
             "funding_net": self.ledger.funding_net(),
             "realised": self.ledger.net_realised(),
+            # Stressed economics (T1.9): realised already nets 1x costs,
+            # so gross = realised + costs and pnl_2x charges costs twice.
+            "pnl_stress": {
+                "pnl_1x": self.ledger.net_realised(),
+                "pnl_2x": self.ledger.net_realised()
+                - self.ledger.paid_costs()},
+            "armed": {"capital_usdt": self.armed_capital_usdt,
+                      "canary_trades": self.armed_canary_trades},
             "open_position": self.ledger.has_position(),
             "position_qty": self.ledger.position_qty(),
             "events_seen": self._events_seen,

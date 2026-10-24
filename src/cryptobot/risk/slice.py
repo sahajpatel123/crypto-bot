@@ -17,15 +17,15 @@ increments into both ledger and policy exposure books.
 """
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Callable
 
 from cryptobot.accounting import Ledger
 
 from .policy import RiskPolicy
-from .types import AccountSnapshot, Approved, HealthStatus, Rejected, RiskConfig
+from .types import AccountSnapshot, Approved, HealthStatus, RiskConfig
 
 LABEL = "risk-policy"
 
@@ -50,7 +50,7 @@ class SliceRisk:
         config: RiskConfig | None = None,
         now_utc: Callable[[], datetime] | None = None,
     ) -> None:
-        self._now_utc = now_utc or (lambda: datetime.now(timezone.utc))
+        self._now_utc = now_utc or (lambda: datetime.now(UTC))
         self.policy = RiskPolicy(config=config, state_path=state_path, now_utc=self._now_utc)
         self.ledger = Ledger(pilot_equity=day_start_equity)
         self.policy.bind_ledger(self.ledger)

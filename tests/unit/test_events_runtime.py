@@ -1,22 +1,20 @@
 """Protection runtime + evidence tests (Worker 4, W4-24H)."""
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
 import cryptobot.events as _evpkg  # noqa: E402
-from cryptobot.events.anomaly import (AnomalyBaseline,  # noqa: E402
-                                      AnomalyReading)
+from cryptobot.events.anomaly import AnomalyBaseline, AnomalyReading  # noqa: E402
 from cryptobot.events.evidence import read_evidence, replay_evidence  # noqa: E402
-from cryptobot.events.freshness import (FreshnessTracker,  # noqa: E402
-                                        HttpResponse)
+from cryptobot.events.freshness import FreshnessTracker, HttpResponse  # noqa: E402
 from cryptobot.events.runtime import ProtectionRuntime  # noqa: E402
 from cryptobot.events.sources import CpiSource, FomcSource  # noqa: E402
 from cryptobot.events.store import EventStore  # noqa: E402
 
 CANNED = Path(_evpkg.__file__).parent / "fixtures" / "canned"
-T0 = datetime(2026, 10, 12, 13, 0, tzinfo=timezone.utc)
+T0 = datetime(2026, 10, 12, 13, 0, tzinfo=UTC)
 
 
 def _canned(url, timeout_s=20):
@@ -49,7 +47,7 @@ def test_clear_entry_passes_and_logs(tmp_path):
 
 
 def test_gate_block_wins_and_logs_inputs(tmp_path):
-    cpi = datetime(2026, 10, 14, 12, 30, tzinfo=timezone.utc)
+    cpi = datetime(2026, 10, 14, 12, 30, tzinfo=UTC)
     store = EventStore()
     tracker = FreshnessTracker(tmp_path / "state.json",
                                [FomcSource(), CpiSource()])
@@ -76,7 +74,7 @@ def test_anomaly_action_blocks_quiet_calendar(tmp_path):
 
 
 def test_advisory_mode_logs_would_block_without_enforcing(tmp_path):
-    cpi = datetime(2026, 10, 14, 12, 30, tzinfo=timezone.utc)
+    cpi = datetime(2026, 10, 14, 12, 30, tzinfo=UTC)
     store = EventStore()
     tracker = FreshnessTracker(tmp_path / "state.json",
                                [FomcSource(), CpiSource()])

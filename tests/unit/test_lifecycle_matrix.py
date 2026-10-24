@@ -15,6 +15,7 @@ strictly scripted in order, so submit counts, duplicate submits, and
 cancel coverage are exact. Set MATRIX_TRANSCRIBE=1 to print the
 strict entries a row actually needs (development aid).
 """
+import contextlib
 import copy
 import itertools
 import json
@@ -22,22 +23,24 @@ import os
 import threading
 import time
 from collections import deque
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
 
 import venue_fixtures as venues
 from cryptobot.adapters.binance_live import (
-    BinanceLiveEngine, UnknownOutcomeError, VenueHttpError,
-    VenueRejectedError)
+    BinanceLiveEngine,
+    UnknownOutcomeError,
+    VenueHttpError,
+    VenueRejectedError,
+)
 from cryptobot.adapters.user_stream import attach_user_stream
 from cryptobot.app.config import load_config
 from cryptobot.app.session import Session, WallClock
 from cryptobot.app.store import RunStore
 from cryptobot.coordination.exits import ExitPolicy, encode_exit_rule
-from cryptobot.coordination.intent import (
-    DataQuality, ForecastCost, Intent, Side)
+from cryptobot.coordination.intent import DataQuality, ForecastCost, Intent, Side
 from cryptobot.strategies.runtime import StrategyOutcome
 
 CLASS = "matrix-test"
@@ -490,7 +493,7 @@ class Rig:
             expected_leverage=3, run_tag=RUN_TAG, live_enable=True,
             demo=True, base_url="https://demo-fapi.binance.com",
             transport=self.transport,
-            now_utc=lambda: datetime.now(timezone.utc))
+            now_utc=lambda: datetime.now(UTC))
         if journal_extra:
             with open(tmp_path / "live.jsonl", "a") as fh:
                 fh.write(journal_extra)
@@ -596,19 +599,15 @@ class Rig:
         for closer in (self.stream, self.engine):
             if closer is None:
                 continue
-            try:
+            with contextlib.suppress(Exception):
                 closer.close()
-            except Exception:
-                pass
         self.stream, self.engine = None, None
 
     def close(self):
         self.close_streams()
         if self.store is not None:
-            try:
+            with contextlib.suppress(Exception):
                 self.store.close()
-            except Exception:
-                pass
             self.store = None
 
 

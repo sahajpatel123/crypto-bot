@@ -8,20 +8,25 @@ reader + backup. No adapter file is touched here; doubles implement
 the contract surface from app/engine.py.
 """
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 import pytest
 
-from cryptobot.app.engine import (AccountPosition, AccountSnapshot,
-                                  EngineEvent, EngineFill,
-                                  EngineOrderStatus)
+from cryptobot.app.engine import (
+    AccountPosition,
+    AccountSnapshot,
+    EngineEvent,
+    EngineFill,
+    EngineOrderStatus,
+)
 from cryptobot.app.session import Session
 from cryptobot.app.store import RunStore, StoreLocked, UnsafeState
 
 
 def _config(tmp_path, **over):
     from cryptobot.app.config import load_config
-    text = open("configs/paper.toml").read()
+    text = Path("configs/paper.toml").read_text()
     text = text.replace('dir = "runs"', f'dir = "{tmp_path / "runs"}"', 1)
     for key, value in over.items():
         text = text.replace(f"{key} =", f"{key} = {value} #", 1)
@@ -119,7 +124,7 @@ def _position(**kw):
     pos = {"reservation_id": "r-1", "instrument": "BTCUSDT", "side": "LONG",
            "entry_pre_id": "e", "entry_id": "e", "legs": [], "retired": [],
            "stop": 99.0, "target": 102.0,
-           "time_exit": datetime.now(timezone.utc) + timedelta(hours=1),
+           "time_exit": datetime.now(UTC) + timedelta(hours=1),
            "legacy_exit": None, "protected": False, "protect_attempts": 0,
            "entry_cap": None, "close_ids": [], "emergency_latched": False,
            "exposure_noted": False}
@@ -592,7 +597,7 @@ def test_protected_posture_honors_advisory_only(tmp_path, monkeypatch):
         lambda self, store, http_get, now: calls.append(True) or {})
     monkeypatch.setattr(
         freshen.FreshnessTracker, "start", lambda *a, **k: None)
-    text = open("configs/paper-protected.toml").read()
+    text = Path("configs/paper-protected.toml").read_text()
     text = text.replace('dir = "runs"', f'dir = "{tmp_path / "runs"}"', 1)
     path = tmp_path / "protected.toml"
     path.write_text(text)
@@ -639,14 +644,13 @@ def test_lock_reentrant_same_process_and_refuses_foreign(tmp_path):
         store.release_lock()
         store.release_lock()
         # A foreign-held flock refuses with StoreLocked.
-        fd = open(str(path.with_name("s.db.lock")), "w")
-        try:
-            fcntl.flock(fd.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-            with pytest.raises(StoreLocked):
-                store.acquire_lock()
-        finally:
-            fcntl.flock(fd.fileno(), fcntl.LOCK_UN)
-            fd.close()
+        with open(str(path.with_name("s.db.lock")), "w") as fd:
+            try:
+                fcntl.flock(fd.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                with pytest.raises(StoreLocked):
+                    store.acquire_lock()
+            finally:
+                fcntl.flock(fd.fileno(), fcntl.LOCK_UN)
         store.acquire_lock()  # free again: succeeds.
     finally:
         store.close()

@@ -12,6 +12,8 @@ Exit 0 results written; 2 input/contract error.
 from __future__ import annotations
 
 import argparse
+import functools
+import gzip
 import json
 import math
 from pathlib import Path
@@ -26,11 +28,17 @@ HOLD_S = 60
 def load_bars(capture: Path, symbol: str) -> dict[int, float]:
     """sec -> close from causal aggTrade exchange times (no forward-fill)."""
     events = capture / "events.jsonl"
-    if not events.exists():
+    gz_events = capture / "events.jsonl.gz"
+    if events.exists():
+        open_fn = functools.partial(events.open, "rb")
+    elif gz_events.exists():
+        # Settled-day compaction: gzip of the byte-identical stream.
+        open_fn = functools.partial(gzip.open, gz_events, "rb")
+    else:
         raise ValueError(f"{capture}: events.jsonl missing")
     bars: dict[int, float] = {}
     n_trades = 0
-    with open(events, "rb") as fh:
+    with open_fn() as fh:
         for line in fh:
             try:
                 ev = json.loads(line)
@@ -58,7 +66,8 @@ def load_bars(capture: Path, symbol: str) -> dict[int, float]:
 
 
 def score_side(closes: dict[int, float], ordered: list[int],
-               threshold_bps: float, side: str) -> dict:
+               threshold_bps: float, side: str,
+               rt_cost_bps: float = RT_COST_BPS) -> dict:
     """Score one side. LONG: trail>=+thr; SHORT: trail<=-thr."""
     gross: list[float] = []
     t = 0
@@ -93,7 +102,7 @@ def score_side(closes: dict[int, float], ordered: list[int],
                 "net_winners": 0}
     mean = sum(gross) / n
     var = sum((g - mean) ** 2 for g in gross) / n
-    net = [g - RT_COST_BPS for g in gross]
+    net = [g - rt_cost_bps for g in gross]
     winners = sum(1 for x in net if x > 0)
     return {"n": n, "gross_mean_bps": round(mean, 2),
             "gross_std_bps": round(math.sqrt(var), 2),
@@ -108,6 +117,7 @@ def main() -> int:
     parser.add_argument("--capture", required=True)
     parser.add_argument("--symbols", required=True)
     parser.add_argument("--thresholds", default="15,30")
+    parser.add_argument("--rt-cost", type=float, default=RT_COST_BPS)
     parser.add_argument("--out", required=True)
     args = parser.parse_args()
     try:
@@ -115,6 +125,8 @@ def main() -> int:
         thresholds = [float(x) for x in args.thresholds.split(",")]
         if any(th <= 0 for th in thresholds):
             raise ValueError("thresholds must be > 0")
+        if args.rt_cost < 0:
+            raise ValueError("rt-cost must be >= 0")
         symbols = [s.strip().upper() for s in args.symbols.split(",")
                    if s.strip()]
         if not symbols:
@@ -126,11 +138,12 @@ def main() -> int:
             for thr in thresholds:
                 for side in ("LONG", "SHORT"):
                     key = f"{symbol}|{thr:g}bps|{side}"
-                    cells[key] = score_side(closes, ordered, thr, side)
+                    cells[key] = score_side(closes, ordered, thr, side,
+                                              args.rt_cost)
     except ValueError as exc:
         print(f"BLOCKED: {exc}")
         return EXIT_BLOCKED
-    result = {"capture": str(capture), "rt_cost_bps": RT_COST_BPS,
+    result = {"capture": str(capture), "rt_cost_bps": args.rt_cost,
               "warmup_bars": WARMUP_BARS, "trail_s": TRAIL_S,
               "hold_s": HOLD_S, "cells": cells}
     out = Path(args.out)
@@ -138,7 +151,7 @@ def main() -> int:
     out.write_text(json.dumps(result, indent=1, sort_keys=True) + "\n",
                    encoding="utf-8")
     print(f"STUDY-01 cells -> {args.out} "
-          f"(rt_cost={RT_COST_BPS}bps, optimistic execution)")
+          f"(rt_cost={args.rt_cost}bps, optimistic execution)")
     for key in sorted(cells):
         c = cells[key]
         print(f"  {key}: n={c['n']} gross_mean={c['gross_mean_bps']} "

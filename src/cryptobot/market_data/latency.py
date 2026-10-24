@@ -21,8 +21,9 @@ from __future__ import annotations
 import threading
 import time
 from collections import deque
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
-from typing import Any, Callable, Iterator
+from typing import Any
 
 EVENT_AGE = "event_age"
 QUEUE_DELAY = "queue_delay"

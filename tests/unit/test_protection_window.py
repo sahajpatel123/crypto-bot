@@ -1,7 +1,6 @@
 """T1.4: shadow stop + protection-time budget (fault paths)."""
 from __future__ import annotations
 
-from datetime import timezone
 from pathlib import Path
 
 from cryptobot.app.config import load_config

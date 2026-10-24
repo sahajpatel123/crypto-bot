@@ -46,7 +46,7 @@ class Reservation:
         }
 
     @classmethod
-    def from_dict(cls, reservation_id: str, raw: dict) -> "Reservation":
+    def from_dict(cls, reservation_id: str, raw: dict) -> Reservation:
         return cls(
             reservation_id=reservation_id,
             intent_ref=raw["intent_ref"],
@@ -111,7 +111,7 @@ class RiskState:
         }
 
     @classmethod
-    def from_dict(cls, raw: dict) -> "RiskState":
+    def from_dict(cls, raw: dict) -> RiskState:
         version = raw.get("version")
         if version == 1:
             raw = migrate_v1_to_v2(raw)

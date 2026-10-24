@@ -6,11 +6,6 @@ transport headers; risk monitor_tick debounces fsync (transitions force).
 """
 from __future__ import annotations
 
-import time
-from pathlib import Path
-
-import pytest
-
 import venue_fixtures as venues
 from cryptobot.risk.policy import RiskPolicy
 from cryptobot.risk.types import RiskConfig

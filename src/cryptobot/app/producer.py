@@ -17,7 +17,8 @@ import os
 import queue
 import threading
 import time
-from typing import Any, Callable, Iterator
+from collections.abc import Callable, Iterator
+from typing import Any
 
 __all__ = ["TIMEOUT", "AsyncCall", "BoundedProducer", "DropBreaker",
            "deadline_remaining_s"]
@@ -60,9 +61,9 @@ class DropBreaker:
 class _Timeout:
     """Sentinel type: poll() returned with no queued item (tick wake)."""
 
-    _inst: "_Timeout | None" = None
+    _inst: _Timeout | None = None
 
-    def __new__(cls) -> "_Timeout":
+    def __new__(cls) -> _Timeout:
         if cls._inst is None:
             cls._inst = super().__new__(cls)
         return cls._inst

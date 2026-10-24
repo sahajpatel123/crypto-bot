@@ -13,8 +13,8 @@ from __future__ import annotations
 
 import importlib.metadata as _md
 import sys
+from collections.abc import Mapping
 from dataclasses import dataclass, field
-from typing import Mapping
 
 # Point-in-time `pip index versions` observations (PyPI, no install performed).
 PYPI_OBSERVED_UTC = "2026-10-11T12:55:00Z"

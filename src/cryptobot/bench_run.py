@@ -36,7 +36,7 @@ import os
 import signal
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -75,7 +75,7 @@ def _atomic_write_json(path: Path, record: dict) -> float:
 
 
 def _new_run_id() -> str:
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     return f"bench-{stamp}-{os.getpid()}"
 
 
@@ -202,9 +202,7 @@ class BenchRunner:
                 for event in stream:
                     yield self._symbols[0], event
                 return
-            seq = 0
-            for event in stream:
-                seq += 1
+            for seq, event in enumerate(stream, 1):
                 event["seq"] = seq
                 yield self._symbols[0], event
             return
@@ -263,9 +261,7 @@ class BenchRunner:
         ts = int(event.get("exchange_ts_ms") or 0)
         if self._start_ms is not None and ts < self._start_ms:
             return False
-        if self._end_ms is not None and ts >= self._end_ms:
-            return False
-        return True
+        return not (self._end_ms is not None and ts >= self._end_ms)
 
     @staticmethod
     def _cursor_copy(cursor: dict[str, Any]) -> dict[str, Any]:
@@ -435,7 +431,7 @@ class BenchRunner:
     @staticmethod
     def _clock_ms(session: Session) -> int:
         return int((session.clock.now() - datetime(
-            1970, 1, 1, tzinfo=timezone.utc)).total_seconds() * 1000)
+            1970, 1, 1, tzinfo=UTC)).total_seconds() * 1000)
 
     def _snapshot_feeds(self, session: Session) -> dict[str, Any]:
         feeds = {}
@@ -958,7 +954,7 @@ class BenchRunner:
                     if event is None:
                         self._n_heartbeats += 1
                         now_ms = int((session.clock.now() - datetime(
-                            1970, 1, 1, tzinfo=timezone.utc)
+                            1970, 1, 1, tzinfo=UTC)
                         ).total_seconds() * 1000)
                         session.clock.set_ms(now_ms + 1000)
                         continue

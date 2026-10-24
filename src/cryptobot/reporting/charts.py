@@ -1,15 +1,13 @@
 """Inline SVG charts (V-007). Zero JavaScript, zero CDN: pure static SVG."""
 from __future__ import annotations
 
-import math
-
 W, H, PAD_L, PAD_B, PAD_T, PAD_R = 640, 220, 64, 34, 14, 14
 INK, GRID, UP, DOWN, MUTED = "#1a1a1a", "#d8d8d8", "#0a6b3a", "#b00020", "#6b6b6b"
 
 
 def _frame(title: str, caption: str, body: str, max_v: float, min_v: float,
            y_fmt) -> str:
-    pw, ph = W - PAD_L - PAD_R, H - PAD_T - PAD_B
+    _pw, ph = W - PAD_L - PAD_R, H - PAD_T - PAD_B
     lines = []
     for i in range(5):
         v = min_v + (max_v - min_v) * i / 4 if max_v != min_v else min_v

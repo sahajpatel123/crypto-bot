@@ -7,7 +7,6 @@ exit-only flag, reconnect heals and resumes.
 import copy
 import json
 import sys
-import threading
 import time
 from collections import deque
 from pathlib import Path
@@ -214,7 +213,7 @@ def test_gap_halts_entries_while_exits_work(tmp_path):
 
 
 def test_reconnect_heal_adopts_before_resuming(tmp_path):
-    ready, orders = _ready(), _orders()
+    orders = _orders()
     session, _ = _session()
     clock = Clock()
     # A journaled non-terminal order from before the gap.

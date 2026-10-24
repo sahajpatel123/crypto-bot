@@ -1,6 +1,6 @@
 """Event store tests (Worker 4, EV-001). CRUD, revisions, coverage, persist."""
 import sys
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -10,11 +10,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 from cryptobot.events.store import EventStore, coverage_status
 from cryptobot.events.types import Event, SourceCoverage
 
-T0 = datetime(2026, 10, 12, 13, 10, tzinfo=timezone.utc)
+T0 = datetime(2026, 10, 12, 13, 10, tzinfo=UTC)
 
 
 def _event(eid="E-1", when=None, rev=0, seen=None, local=None):
-    when = when or datetime(2026, 10, 14, 12, 30, tzinfo=timezone.utc)
+    when = when or datetime(2026, 10, 14, 12, 30, tzinfo=UTC)
     return Event(
         event_id=eid, source="cpi", title=eid, kind="release",
         source_url="https://www.bls.gov/schedule/",
@@ -23,7 +23,7 @@ def _event(eid="E-1", when=None, rev=0, seen=None, local=None):
         scheduled_utc=when, first_seen_utc=seen or T0, fetch_utc=T0,
         revision=rev,
         horizon_end_utc=datetime(2026, 12, 10, 13, 30,
-                                 tzinfo=timezone.utc),
+                                 tzinfo=UTC),
         expires_utc=when + timedelta(days=7))
 
 
@@ -32,14 +32,14 @@ def _coverage(status="fresh", fetched=None, horizon=None):
     return SourceCoverage(
         source="cpi", source_url="https://www.bls.gov/schedule/",
         horizon_end_utc=horizon or datetime(2026, 12, 10, 13, 30,
-                                            tzinfo=timezone.utc),
+                                            tzinfo=UTC),
         fetched_utc=fetched, expires_utc=fetched + timedelta(hours=24),
         status=status)
 
 
 def test_upsert_get_and_ordering():
     store = EventStore()
-    late = _event("B", datetime(2026, 11, 10, 13, 30, tzinfo=timezone.utc),
+    late = _event("B", datetime(2026, 11, 10, 13, 30, tzinfo=UTC),
                   local="2026-11-10T08:30:00")
     early = _event("A")
     store.upsert(late)
@@ -58,9 +58,9 @@ def test_between_and_by_source():
     store.upsert(fomc)
     assert [e.event_id for e in store.by_source("fomc")] == ["F"]
     window = store.between(datetime(2026, 10, 14, 12, 0,
-                                    tzinfo=timezone.utc),
+                                    tzinfo=UTC),
                            datetime(2026, 10, 14, 13, 0,
-                                    tzinfo=timezone.utc))
+                                    tzinfo=UTC))
     assert {e.event_id for e in window} == {"A", "F"}
 
 
@@ -77,7 +77,7 @@ def test_revision_monotonic_and_first_seen_immutable():
 def test_with_revision_records_change():
     event = _event()
     bumped = event.with_revision(
-        datetime(2026, 10, 14, 12, 30, tzinfo=timezone.utc),
+        datetime(2026, 10, 14, 12, 30, tzinfo=UTC),
         T0 + timedelta(hours=1), "rescheduled press end",
         ("press_end_utc",))
     assert bumped.revision == 1
@@ -105,7 +105,7 @@ def test_coverage_states():
 def test_json_round_trip(tmp_path):
     store = EventStore()
     store.upsert(_event().with_revision(
-        datetime(2026, 10, 14, 12, 30, tzinfo=timezone.utc),
+        datetime(2026, 10, 14, 12, 30, tzinfo=UTC),
         T0 + timedelta(hours=1), "n", ("title",)))
     store.set_coverage(_coverage())
     path = tmp_path / "events.json"
@@ -128,8 +128,8 @@ def test_prune_drops_expired_only():
     store = EventStore()
     store.upsert(_event("OLD"))
     store.upsert(_event("NEW", datetime(2027, 1, 5, 13, 30,
-                                        tzinfo=timezone.utc),
+                                        tzinfo=UTC),
                         local="2027-01-05T08:30:00"))
-    pruned = store.prune(datetime(2026, 11, 1, tzinfo=timezone.utc))
+    pruned = store.prune(datetime(2026, 11, 1, tzinfo=UTC))
     assert pruned == ["OLD"]
     assert store.get("NEW") is not None

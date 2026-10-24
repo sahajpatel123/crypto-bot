@@ -6,11 +6,10 @@ causality, dual alignment, Intent construction, the runtime
 adapter, the Session dual handoff, the registry/TOML allowlist
 pins, and the three frozen tools on synthetic inputs.
 """
-import copy
 import json
 import math
 import sys
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -28,14 +27,13 @@ from cryptobot.strategies.s1 import Bar  # noqa: E402
 from cryptobot.strategies.x1 import (  # noqa: E402
     DUAL_LAGGARD,
     DUAL_REF_SYMBOL,
-    X1Params,
     align_leader,
     evaluate_bar,
     evaluate_side,
 )
 
 REPO = Path(__file__).resolve().parents[2]
-T0 = datetime(2026, 1, 5, 0, 0, tzinfo=timezone.utc)
+T0 = datetime(2026, 1, 5, 0, 0, tzinfo=UTC)
 BETA = 1.2
 
 
@@ -392,7 +390,6 @@ def test_beta_tool_pure_functions():
 
 
 def test_beta_tool_ist_windowing_matches_harness(tmp_path):
-    import datetime as dt
 
     from cryptobot.research.backtest import _ist_window_ms
 

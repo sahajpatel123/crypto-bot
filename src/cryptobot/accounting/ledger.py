@@ -267,7 +267,7 @@ class Ledger:
         }
 
     @classmethod
-    def from_dict(cls, raw: dict) -> "Ledger":
+    def from_dict(cls, raw: dict) -> Ledger:
         if raw.get("version") != LEDGER_VERSION:
             raise ValueError(f"unsupported ledger version: {raw.get('version')!r}")
         ledger = cls(raw["pilot_equity"])
@@ -304,7 +304,7 @@ class Ledger:
         os.replace(tmp_name, path)
 
     @classmethod
-    def load(cls, path: str | Path) -> "Ledger":
+    def load(cls, path: str | Path) -> Ledger:
         return cls.from_dict(json.loads(Path(path).read_text(encoding="utf-8")))
 
     # -- internals -------------------------------------------------------------

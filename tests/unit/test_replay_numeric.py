@@ -10,7 +10,6 @@ import contextlib
 import importlib.util
 import io
 import json
-import sys
 from argparse import Namespace
 from pathlib import Path
 

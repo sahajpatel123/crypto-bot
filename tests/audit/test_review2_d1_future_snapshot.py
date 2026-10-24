@@ -53,9 +53,10 @@ def test_future_snapshot_mutation_does_not_affect_earlier_query():
     """Changing the 9000ms snapshot must not move the 1500ms view."""
     early_a = _primed(late_bid=200.0).book_flow_for("BTCUSDT", 1500)
     early_b = _primed(late_bid=300.0).book_flow_for("BTCUSDT", 1500)
-    key = lambda got: (None if got[0] is None
-                       else (got[0].bids[0][0], got[0].sync_age_ms,
-                             got[0].quality))
+    def key(got):
+        return (None if got[0] is None
+                           else (got[0].bids[0][0], got[0].sync_age_ms,
+                                 got[0].quality))
     assert key(early_a) == key(early_b), (
         f"future mutation changed earlier state: {key(early_a)} vs "
         f"{key(early_b)}")

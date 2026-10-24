@@ -11,17 +11,15 @@ boundaries — never the network).
 Red at early REV2 SHAs is an honest record of missing behavior: each
 case first proves its setup established the precondition it challenges.
 """
+import contextlib
 import json
 import os
 import runpy
 import signal
-import sqlite3
 import subprocess
 import sys
-import tempfile
-import threading
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -38,9 +36,9 @@ def _w5rev2_cwd(monkeypatch):
     tests from the repo root whatever the pytest invocation."""
     monkeypatch.chdir(ROOT)
 
-from cryptobot.adapters.user_stream import attach_user_stream
-from cryptobot.app.engine import EngineOrder
-from cryptobot.coordination.selector import Candidate
+from cryptobot.adapters.user_stream import attach_user_stream  # noqa: E402
+from cryptobot.app.engine import EngineOrder  # noqa: E402
+from cryptobot.coordination.selector import Candidate  # noqa: E402
 
 _CA = None
 _FAKESOCK = None
@@ -113,17 +111,13 @@ def _until_drained(session, fn, timeout_s=20.0, step_s=0.05,
     injected fault class under test."""
     deadline = time.monotonic() + timeout_s
     while time.monotonic() < deadline:
-        try:
+        with contextlib.suppress(ignore):
             _pump_owner(session)
-        except ignore:
-            pass
         if fn():
             return True
         time.sleep(step_s)
-    try:
+    with contextlib.suppress(ignore):
         _pump_owner(session)
-    except ignore:
-        pass
     return bool(fn())
 
 
@@ -167,7 +161,7 @@ def _reopen(ca, tmp_path, engine, run_id):
     store = ca["RunStore"](tmp_path / "runs" / "cryptobot.db")
     session = ca["Session"](cfg, store, tmp_path / "runs" / run_id,
                             run_id, engine=engine)
-    now = datetime(2026, 10, 12, 6, 0, tzinfo=timezone.utc)
+    now = datetime(2026, 10, 12, 6, 0, tzinfo=UTC)
     session.clock.set_ms(int(now.timestamp() * 1000))
     session.policy.reconcile_day(120.0, 0.0)
     session.arm_replay_filters(
@@ -386,7 +380,7 @@ def test_rev2_booking_failure_halts_entries_keeps_exits(tmp_path,
             instrument="BTCUSDT", side="SELL", qty=qty, kind="MARKET",
             role="target", reservation_id="r-exit-ok",
             reduce_only=True))
-        with pytest.raises(Exception):
+        with pytest.raises(ValueError, match="exit-only"):
             engine.submit(EngineOrder(
                 instrument="BTCUSDT", side="BUY", qty=qty, kind="MARKET",
                 role="entry", reservation_id="r-entry-no"))
@@ -530,10 +524,8 @@ def test_rev2_restart_with_exposure_adopts_once(tmp_path):
     finally:
         if att is not None:
             att.close()
-        try:
+        with contextlib.suppress(Exception):
             store.close()
-        except Exception:
-            pass
 
 
 def _scrub_env(monkeypatch):
@@ -678,7 +670,7 @@ def _crafted_row(ev_ms, evaluated_ms):
 
 def _iso(ms):
     return datetime.fromtimestamp(ms / 1000,
-                                  tz=timezone.utc).isoformat()
+                                  tz=UTC).isoformat()
 
 
 # --------------------------------------- 11. causality: decision order
@@ -687,6 +679,7 @@ def test_rev2_causality_fill_never_before_decision(tmp_path, monkeypatch):
     its decision is unscorable (never scored), and a stop exit prices
     at the executable exit-side quote, never the trigger print."""
     from unittest.mock import patch
+
     import tools.hr2_diagnostic as hr2
     # Defect case (review §4.6): evidence 01.0, decision 02.5.
     tape = ([(1000, 99.9, 100.0, 1, 1), (2500, 100.9, 101.0, 1, 1)],
@@ -722,6 +715,7 @@ def test_rev2_causality_unsupported_horizons_unscorable(tmp_path,
     """Crafted tape through the REAL scorer: markout horizons past mark
     coverage are unscorable, never carried-forward marks."""
     from unittest.mock import patch
+
     import tools.hr2_diagnostic as hr2
     # Marks end at +60s; horizons 120/300 have no coverage. Books
     # and prints near the 30/60s marks keep those horizons covered.

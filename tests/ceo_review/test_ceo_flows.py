@@ -1,5 +1,5 @@
 """F-CEO-06: external flows are not trading results (target/halt wiring)."""
-from helpers import T0, audit_intent, make_clock
+from helpers import audit_intent, make_clock
 
 from cryptobot.risk import SliceRisk
 

@@ -1,0 +1,21 @@
+{
+ "hypothesis": "H1-maker-ofi-scalp",
+ "n_trades": 1,
+ "family_size": 3,
+ "verdict": "UNDERPOWERED",
+ "reason": "n=1 < min_trades=300",
+ "expectancy_bps": -14.071808982413767,
+ "max_dd_sized_bps": 14.071808982413767,
+ "mean_equity_bps_per_day": -14.071808982413767,
+ "gross_expectancy_bps": 0.9281910175862329,
+ "trading_days": 1,
+ "mean_net_bps_per_active_day": -14.071808982413767,
+ "best_day_bps": -14.071808982413767,
+ "worst_day_bps": -14.071808982413767,
+ "hashes": {
+  "config_sha256_16": "4753cbef2cc9e96b",
+  "data_manifest": "capture:h1-accrual-01:22e366a77ee9",
+  "code_commit": "ab27871"
+ },
+ "document_sha256": "781bbbe86f7efff7ce2d743df8b7c5b56629bd9d4e2029b47e039b4b9178ca1f"
+}

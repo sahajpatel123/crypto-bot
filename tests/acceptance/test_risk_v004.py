@@ -10,9 +10,13 @@ from types import SimpleNamespace
 import pytest
 
 from conftest import FIXTURES, NOW, build_account, build_intent, load_fixture, make_policy
-from cryptobot.coordination import DataQuality
 from cryptobot.risk import (
-    Approved, InstrumentFilter, Rejected, RiskConfig, SliceRisk, plan_size,
+    Approved,
+    InstrumentFilter,
+    Rejected,
+    RiskConfig,
+    SliceRisk,
+    plan_size,
 )
 
 INTENTS = load_fixture("risk_intents.json")
@@ -302,8 +306,7 @@ def test_monitor_needs_reconciliation_after_rollover(tmp_path):
 
 # -- state migration --------------------------------------------------------
 def test_v1_state_migrates_with_forced_reconcile(tmp_path):
-    from cryptobot.risk.state import load_state, save_state
-    from cryptobot.risk import RiskPolicy
+    from cryptobot.risk.state import load_state
     state_path = tmp_path / "risk_state.json"
     shutil.copy(FIXTURES / "risk_state_v1.json", state_path)
     state = load_state(state_path)

@@ -6,7 +6,7 @@ recorded-shape — hand-built, NOT actual captures.
 """
 import copy
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -67,7 +67,7 @@ def test_paper_path_never_instantiates_live(tmp_path):
     from cryptobot.app.config import load_config
     from cryptobot.app.session import Session
     from cryptobot.app.store import RunStore
-    text = open("configs/paper.toml").read().replace(
+    text = Path("configs/paper.toml").read_text().replace(
         'dir = "runs"', f'dir = "{tmp_path / "runs"}"', 1)
     cfg_path = tmp_path / "test.toml"
     cfg_path.write_text(text)
@@ -300,7 +300,7 @@ def test_open_orders_cached_by_ttl(tmp_path, ready, orders):
     assert [s.client_order_id for s in first] == [own]  # stray filtered.
     assert first[0].state == "open" and first[0].qty == 0.001
     assert engine.open_orders() == first  # cached: no second request.
-    clock[0] = datetime.fromtimestamp(T0MS / 1000 + 2, tz=timezone.utc)
+    clock[0] = datetime.fromtimestamp(T0MS / 1000 + 2, tz=UTC)
     engine.open_orders()
     ignored = [e for e in _journal_events(tmp_path)
                if e["event"] == "foreign-orders-ignored"]

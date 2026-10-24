@@ -118,7 +118,6 @@ def _slice(tmp_path, name):
 
 
 def test_funding_arms_floor_and_drawdown_halts(tmp_path):
-    from datetime import timezone
     sl = _slice(tmp_path, "funded")
     sl.ledger.record_funding(150.0, NOW, event_id="f1")
     healthy = sl.policy.check_health(sl.snapshot(100.0, 0.0))

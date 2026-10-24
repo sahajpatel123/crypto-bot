@@ -18,10 +18,11 @@ import json
 import select
 import socket
 import sys
-import threading
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
+
+import contextlib
 
 from cryptobot.market_data.collector import Collector, CollectorConfig
 from cryptobot.market_data.ws import WsClient, encode_frame
@@ -72,14 +73,10 @@ def test_coalesced_second_frame_stranded(tmp_path):
             f"_buf still holds {len(client._buf)} bytes")
         assert collector.stats.events_total >= 1
     finally:
-        try:
+        with contextlib.suppress(OSError):
             client_sock.close()
-        except OSError:
-            pass
-        try:
+        with contextlib.suppress(OSError):
             server_sock.close()
-        except OSError:
-            pass
 
 
 class _BufferedConn:
@@ -105,10 +102,8 @@ class _BufferedConn:
 
     def close(self):
         self.closed = True
-        try:
+        with contextlib.suppress(OSError):
             self.sock.close()
-        except OSError:
-            pass
 
 
 def test_buffered_message_drained_without_readability(tmp_path):
@@ -179,11 +174,7 @@ def test_fragmented_ping_burst_and_quiet_routes(tmp_path):
             quiet_client.close()
             quiet_server.close()
     finally:
-        try:
+        with contextlib.suppress(OSError):
             client_sock.close()
-        except OSError:
-            pass
-        try:
+        with contextlib.suppress(OSError):
             server_sock.close()
-        except OSError:
-            pass

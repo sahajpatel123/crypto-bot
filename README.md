@@ -5,6 +5,17 @@ edge. Family B killed all seven hypotheses on the frozen gates after
 the B4 leg-size correction (D-042). An earlier B4 holdout screen is
 void and is not a pass. Arming still requires a human TTY. Read
 [RESEARCH_VERDICTS_B.md](RESEARCH_VERDICTS_B.md).
+Status (2026-10-24): **no strategy has a validated edge — do not trade
+real money** (see [RESEARCH_VERDICTS.md](RESEARCH_VERDICTS.md) and
+[REAL_CAPITAL_READINESS.md](REAL_CAPITAL_READINESS.md)). The live route
+exists but is disabled by default and refuses any strategy that a PASS
+verdict did not score; [LIVE_RUNBOOK.md](LIVE_RUNBOOK.md) describes it.
+Production submission is disabled by default (see `configs/prod.toml`:
+`allow_live_submission = false`, plus the `gate` + `arm` evidence chain). The
+E-007 Nautilus paper adapter IS integrated
+(`src/cryptobot/adapters/paper_engine.py` exists; an older revision of this
+README claimed it missing — corrected in T0.4); the reference engine still
+refuses paper by construction.
 
 Read [ARCHITECTURE.md](ARCHITECTURE.md), [SECURITY.md](SECURITY.md),
 [RUNBOOK.md](RUNBOOK.md), [RESEARCH_VERDICTS.md](RESEARCH_VERDICTS.md),
@@ -94,6 +105,25 @@ FORWARD_COMPARE → GATE_READY. The holdout is a SCREEN, not proof
 seal time and decoded only by `verdict` with a one-shot token.
 
 ## Confirmation and gate
+## Data use audit (retained stores)
+
+The project keeps large observed datasets outside git.  One read-only command
+proves every retained store is present, hash-verified, and actually readable
+by its consumer (benchmark, pilot, lake, holdout metadata, recorder, vault,
+and the reserved confirmation campaign):
+
+```sh
+uv run --locked cryptobot data assets --json-out reports/data-use/audit.json
+```
+
+`tools/eval_h123.py` and `tools/eval_h4.py` run the benchmark preflight
+before scoring, so a missing or hash-mismatched `datasets/cache` fails closed.
+`tools/recorder_book_scan.py` uses the recorder's full-depth snapshots for an
+H1 signal-frequency diagnostic (no fills; not a verdict).  Current evidence
+and gaps are recorded in [reports/DATA_USE.md](reports/DATA_USE.md).
+
+
+## Application commands (manager-owned, current)
 
 ```sh
 cryptobot vault freeze --hypothesis H2 --config research/configs/H2.toml \

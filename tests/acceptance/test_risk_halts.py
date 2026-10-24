@@ -5,7 +5,7 @@ import json
 import shutil
 from datetime import datetime
 
-from conftest import FIXTURES, NOW, build_account, build_intent, load_fixture, make_policy
+from conftest import FIXTURES, build_account, build_intent, load_fixture, make_policy
 from cryptobot.risk import Approved, Rejected
 
 INTENTS = load_fixture("risk_intents.json")

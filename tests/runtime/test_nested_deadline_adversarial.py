@@ -4,6 +4,7 @@ Seconds-scale. Each case asserts REQUIRED behavior: a red test is a genuine
 finding about the hard runtime rule, not a flaky probe. Teardown reaps only
 verified own-descendants (cmdline token match); unrelated PIDs are never killed.
 """
+import contextlib
 import json
 import os
 import signal
@@ -249,10 +250,8 @@ def test_rapid_fork_during_grace(tmp_path, stray_reaper):
             continue
         if TOKEN in out:
             survivors.append(pid)
-            try:
+            with contextlib.suppress(ProcessLookupError, PermissionError):
                 os.kill(pid, signal.SIGKILL)
-            except (ProcessLookupError, PermissionError):
-                pass
     assert not survivors, f"{len(survivors)} late-forked grandchildren survived: {survivors[:5]}"
 
 

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from cryptobot.app.config import load_config
@@ -11,7 +11,7 @@ from cryptobot.app.store import RunStore
 
 
 def _paper_config(tmp_path: Path):
-    text = open("configs/paper.toml").read()
+    text = Path("configs/paper.toml").read_text()
     text = text.replace('mode = "replay"', 'mode = "paper"', 1)
     text = text.replace('kind = "reference"', 'kind = "nautilus"', 1)
     text = text.replace('dir = "runs"', f'dir = "{tmp_path / "runs"}"', 1)
@@ -30,7 +30,7 @@ class _WatchdogStubEngine:
     def __init__(self):
         self.advance_calls = []
         self.pop_calls = 0
-        self._engine_now = datetime(2020, 1, 1, tzinfo=timezone.utc)
+        self._engine_now = datetime(2020, 1, 1, tzinfo=UTC)
 
     @property
     def now_utc(self):
@@ -117,7 +117,6 @@ def _bbo(ts: int):
 
 
 def test_engine_clock_advances_on_idle_heartbeats(tmp_path, monkeypatch):
-    from cryptobot.app import session as session_mod
 
     engine = _WatchdogStubEngine()
     session, store, _ = _armed_session(tmp_path, engine, monkeypatch)
@@ -149,7 +148,7 @@ def test_stream_stall_triggers_book_resync(tmp_path, monkeypatch):
     monkeypatch.setattr(time, "monotonic", lambda: fake["now"])
     # Also patch the session module reference if it bound time directly.
     monkeypatch.setattr(session_mod.time, "monotonic", lambda: fake["now"])
-    now_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
+    now_ms = int(datetime.now(UTC).timestamp() * 1000)
     base = (now_ms // 1000) * 1000 - 9000
     # The pump thread drains gen() ahead of the control thread, so the
     # 61s silence jump is driven from the control thread after wake 1.

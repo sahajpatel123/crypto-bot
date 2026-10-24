@@ -41,6 +41,7 @@ Safety rules (tested, no exceptions):
 """
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import hmac
 import json
@@ -49,13 +50,14 @@ import random
 import re
 import time
 import urllib.error
-import uuid
 import urllib.parse
 import urllib.request
+import uuid
+from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Callable, Protocol
+from typing import Any, Protocol
 
 from cryptobot.app.engine import (
     AccountPosition,
@@ -236,12 +238,10 @@ class UrllibTransport:
         try:
             with urllib.request.urlopen(req, timeout=timeout) as resp:
                 # T1.2: request-weight accounting for the budget governor.
-                try:
+                with contextlib.suppress(TypeError, ValueError):
                     self.last_used_weight_1m = int(
                         resp.headers.get("X-MBX-USED-WEIGHT-1M", "") or 0) \
                         or getattr(self, "last_used_weight_1m", None)
-                except (TypeError, ValueError):
-                    pass
                 return json.loads(resp.read().decode("utf-8"))
         except urllib.error.HTTPError as exc:
             try:
@@ -338,7 +338,7 @@ class BinanceLiveEngine:
         self._working_type = stop_working_type
         self._orders_ttl = float(open_orders_ttl_s)
         self._transport = transport or UrllibTransport(self._base_url)
-        self._now_utc = now_utc or (lambda: datetime.now(timezone.utc))
+        self._now_utc = now_utc or (lambda: datetime.now(UTC))
         self._now_ms = lambda: int(self._now_utc().timestamp() * 1000)
         self._offset_ms = 0
         self._ready = False
@@ -478,11 +478,9 @@ class BinanceLiveEngine:
                 if exec_id and exec_id not in self._adopted_exec:
                     self._adopted_exec.add(exec_id)
                     self._unacked[exec_id] = str(cid)
-                    try:
+                    with contextlib.suppress(TypeError, ValueError):
                         self._adopted_qty[str(cid)] = self._adopted_qty.get(
                             str(cid), 0.0) + float(record.get("qty", 0.0))
-                    except (TypeError, ValueError):
-                        pass
             elif event == "fill-acked" and cid:
                 exec_id = str(record.get("exec_id", ""))
                 if exec_id:
@@ -1354,7 +1352,7 @@ class BinanceLiveEngine:
         tid = str(order.get("t", ""))
         symbol = str(order["s"])
         ts = envelope.get("E")
-        now = (datetime.fromtimestamp(ts / 1000, tz=timezone.utc)
+        now = (datetime.fromtimestamp(ts / 1000, tz=UTC)
                if isinstance(ts, (int, float)) else self._now_utc())
         exec_id = (self._fill_exec_id(symbol, tid) if tid
                    else f"{self._venue}/{self._account_tag}/{symbol}/"
@@ -1714,7 +1712,7 @@ class BinanceLiveEngine:
             account.get("totalInitialMargin", 0.0) or 0.0)
         self._margin_cache = (available, free)
         self._account_cached_at = time.monotonic()
-        try:
+        with contextlib.suppress(TypeError, ValueError):
             self._account_cache = AccountSnapshot(
                 wallet_equity_usdt=float(
                     account.get("totalWalletBalance", 0.0) or 0.0),
@@ -1724,13 +1722,32 @@ class BinanceLiveEngine:
                 positions=self._snapshot_positions(
                     account.get("positions", [])),
                 asof_utc=self._now_utc(), complete=True)
-        except (TypeError, ValueError):
-            pass
         return available, free
 
     def fee_bps(self, symbol: str) -> float:
         """Venue taker rate in bps (cached at readiness)."""
         return self._fee_bps[symbol.upper()]
+
+    def leverage_brackets(self, symbol: str) -> list[dict[str, Any]]:
+        """Venue leverage brackets for the liquidation gate (T1.8).
+
+        Signed GET only. Returns raw bracket dicts (notionalCap,
+        maintMarginRatio, cum, ...); empty list when the venue shape is
+        unexpected so the caller fails closed.
+        """
+        self._guarded("leverage_brackets")
+        rows = self._signed("GET", "/fapi/v1/leverageBracket",
+                            {"symbol": symbol.upper()})
+        if isinstance(rows, dict):
+            rows = [rows]
+        if not isinstance(rows, list):
+            return []
+        for row in rows:
+            if isinstance(row, dict) and isinstance(
+                    row.get("brackets"), list):
+                return [dict(b) for b in row["brackets"]
+                        if isinstance(b, dict)]
+        return [dict(r) for r in rows if isinstance(r, dict)]
 
     def funding_income(self, symbol: str) -> list[dict[str, Any]]:
         """Raw FUNDING_FEE income rows (T1.7 booking/reconcile input)."""

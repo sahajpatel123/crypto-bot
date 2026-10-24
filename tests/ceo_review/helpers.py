@@ -11,13 +11,13 @@ runs are expected to fail exactly on the documented symptom; fix-after runs
 """
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
-from typing import Callable
+from collections.abc import Callable
+from datetime import UTC, datetime, timedelta
 
 from cryptobot.coordination import DataQuality, ForecastCost, Intent, Side
 from cryptobot.risk import AccountSnapshot
 
-T0 = datetime(2026, 10, 11, 12, 0, 0, tzinfo=timezone.utc)
+T0 = datetime(2026, 10, 11, 12, 0, 0, tzinfo=UTC)
 
 
 def make_clock(start: datetime = T0) -> tuple[list, Callable[[], datetime]]:

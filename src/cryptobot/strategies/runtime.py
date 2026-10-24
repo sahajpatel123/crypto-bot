@@ -37,7 +37,8 @@ from cryptobot.coordination import (
 )
 
 from .contract import ARM_BASE, S2_BASE, S3_BASE, S4_BASE, S5_BASE, X1_BASE
-from .s1 import Bar, EvalLog, evaluate_bar as _s1_bar
+from .s1 import Bar, EvalLog
+from .s1 import evaluate_bar as _s1_bar
 from .s2 import evaluate_bar as _s2_bar
 from .s3 import evaluate_bar as _s3_bar
 from .s4 import evaluate_bar as _s4_bar
@@ -165,7 +166,7 @@ def _side_reason(log: EvalLog) -> str:
 def _finish(long_log_intent: tuple[EvalLog, Intent | None],
             short_log_intent: tuple[EvalLog, Intent | None]) -> StrategyOutcome:
     """First intent (long priority) wins; double reject joins both reasons."""
-    for log, intent in (long_log_intent, short_log_intent):
+    for _log, intent in (long_log_intent, short_log_intent):
         if intent is not None:
             try:
                 policy = decode_exit_rule(intent.exit_rule)

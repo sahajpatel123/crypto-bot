@@ -17,6 +17,9 @@ datasets/cache/
 .DS_Store
 runs/
 .captures/
+.env
+gate.json
+armed.json
 
 # H-R2 extraction windows: regenerable via tools/hr2_diagnostic.py extract (~2 min)
 outputs/hr2/windows/
@@ -27,3 +30,6 @@ vision-plan-*.json
 vision-pull-*.json
 data/vault/chunks/
 data/vault/tokens/
+datasets/history_1h/
+datasets/history_funding/
+data/forward_c2/

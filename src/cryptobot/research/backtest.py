@@ -27,6 +27,7 @@ from __future__ import annotations
 import argparse
 import dataclasses
 import json
+from datetime import UTC
 from pathlib import Path
 from typing import Any, Protocol
 
@@ -134,8 +135,8 @@ def _utc_range(lo_ms: int, hi_ms: int) -> set[str]:
     import datetime as _dt
 
     out = set()
-    day = _dt.datetime.fromtimestamp(lo_ms / 1000, tz=_dt.timezone.utc).date()
-    end = _dt.datetime.fromtimestamp(hi_ms / 1000, tz=_dt.timezone.utc).date()
+    day = _dt.datetime.fromtimestamp(lo_ms / 1000, tz=_dt.UTC).date()
+    end = _dt.datetime.fromtimestamp(hi_ms / 1000, tz=_dt.UTC).date()
     while day <= end:
         out.add(day.isoformat())
         day += _dt.timedelta(days=1)
@@ -160,10 +161,8 @@ def day_events_for(dataset: DatasetHandle, symbol: str,
     if hasattr(dataset, "days"):
         events = [e for e in dataset.events(symbol, day_id) if e is not None]
         return events, {"day": day_id, "calendar": "synthetic-compressed"}
-    manifest = dataset.manifest  # type: ignore[attr-defined]
     kind = dataset.kind  # type: ignore[attr-defined]
     if kind == "vision-archive":
-        import datetime as _dt
 
         lo, hi = _ist_window_ms(day_id)
         utc_days = sorted(_utc_range(lo, hi - 1))
@@ -228,7 +227,7 @@ def day_has_quotes(dataset: DatasetHandle, symbol: str, day_id) -> bool:
     import datetime as _dt
 
     start = _dt.datetime.strptime(day_id, "%Y-%m-%d").replace(
-        tzinfo=_dt.timezone.utc).timestamp() * 1000
+        tzinfo=_dt.UTC).timestamp() * 1000
     end = start + 86_400_000
     for entry in manifest.get("source", []):
         if symbol not in _entry_symbols(entry):
@@ -266,7 +265,7 @@ def _partition_source_streams(dataset, symbol: str, day_id):
     import datetime as _dt
 
     start = _dt.datetime.strptime(day_id, "%Y-%m-%d").replace(
-        tzinfo=_dt.timezone.utc).timestamp() * 1000
+        tzinfo=_dt.UTC).timestamp() * 1000
     end = start + 86_400_000
     for entry in dataset.manifest.get("source", []):
         if symbol not in _entry_symbols(entry):
@@ -600,7 +599,7 @@ def assemble_split_capture(partitions: list[dict], split: str, out_dir,
             if max_events is not None and n_events >= max_events:
                 break  # causal prefix: unread tail never touched
     truncated = max_events is not None and n_events >= max_events
-    for entry, emitted in zip(day_manifest, emitted_per_part):
+    for entry, emitted in zip(day_manifest, emitted_per_part, strict=False):
         entry["n_emitted"] = emitted
     manifest = {
         "prep_version": "streaming-v1",
@@ -718,8 +717,8 @@ def run_cell(base_config_path, capture_dir, strategies: tuple[str, ...],
                 f"missing={report['missing_arms']} "
                 f"param_drift={sorted(report['param_diffs'])}")
     store = RunStore(run_path / "store.db")
-    from datetime import datetime, timezone
-    _EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
+    from datetime import datetime
+    _EPOCH = datetime(1970, 1, 1, tzinfo=UTC)
     now_cell: dict[str, Any] = {"now": lambda: _EPOCH}
     # Engine delays follow the base config (production parity). E-008's
     # rework (GTC trade-cross, valuation-only marks) resolved the Q-007
@@ -857,7 +856,6 @@ def run_comparison(dataset: DatasetHandle, out_dir, base_config_path,
                    require_config: str | None = None,
                    round_params: str | None = None) -> dict:
     """Frozen per-strategy + combined + cash comparison across splits."""
-    from .spread import PROFILE_ID, sensitivity_spreads
 
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)

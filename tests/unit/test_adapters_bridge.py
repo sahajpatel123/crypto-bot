@@ -1,4 +1,5 @@
 """Live-bridge iterator tests (Worker 2, E-007). Fakes only, no network."""
+import contextlib
 import json
 import socket
 from collections import deque
@@ -30,10 +31,8 @@ class FakeLiveConn:
         item = self.script.popleft()
         if not self.script:
             self.sock.setblocking(False)
-            try:
+            with contextlib.suppress(OSError):
                 self.sock.recv(1)
-            except OSError:
-                pass
         if isinstance(item, Exception):
             raise item
         return item
@@ -49,10 +48,8 @@ class FakeLiveConn:
 
     def close(self):
         self.closed = True
-        try:
+        with contextlib.suppress(OSError):
             self.sock.close()
-        except OSError:
-            pass
 
 
 def _trade(symbol="BTCUSDT", agg_id=1, price="100", ts=1000):

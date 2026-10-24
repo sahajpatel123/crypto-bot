@@ -10,20 +10,19 @@ import json
 import os
 import sys
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from cryptobot.app.config import load_config
 from cryptobot.app.session import Session, WallClock, _SymbolFeed
 from cryptobot.app.store import RunStore
 from cryptobot.coordination.exits import ExitPolicy, encode_exit_rule
-from cryptobot.coordination.intent import (
-    DataQuality, ForecastCost, Intent, Side)
+from cryptobot.coordination.intent import DataQuality, ForecastCost, Intent, Side
 from cryptobot.coordination.selector import Candidate
 
 
 def _paper_config(tmp_path: Path, **over) -> object:
-    text = open("configs/paper.toml").read()
+    text = Path("configs/paper.toml").read_text()
     text = text.replace('mode = "replay"', 'mode = "paper"', 1)
     text = text.replace('kind = "reference"', 'kind = "nautilus"', 1)
     text = text.replace('dir = "runs"', f'dir = "{tmp_path / "runs"}"', 1)
@@ -45,7 +44,7 @@ class _CtlEngine:
         self.exit_only: list = []
         self.submits: list = []
         self.cancels: list = []
-        self._now = datetime(2020, 1, 1, tzinfo=timezone.utc)
+        self._now = datetime(2020, 1, 1, tzinfo=UTC)
         self._unknown: list = []
 
     @property
@@ -105,7 +104,7 @@ def _ctl_session(tmp_path: Path, engine=None, name="ctl-1", **over):
     session.arm_replay_filters(
         {"BTCUSDT": {"tick_size": 0.10, "step_size": 0.001,
                      "min_qty": 0.001, "min_notional": 5.0}},
-        origin="test", asof_utc=datetime.now(timezone.utc))
+        origin="test", asof_utc=datetime.now(UTC))
     session._init_run_files()
     return session, store
 
@@ -328,7 +327,7 @@ def test_burst_records_control_latencies(tmp_path):
     engine = _CtlEngine()
     session, store = _ctl_session(tmp_path, engine)
     try:
-        base_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
+        base_ms = int(datetime.now(UTC).timestamp() * 1000)
 
         def gen():
             for i in range(200):
@@ -366,7 +365,7 @@ def test_prod_config_guards(tmp_path):
 
 def test_config_rejects_inline_secrets(tmp_path):
     from cryptobot.app.config import ConfigError
-    text = open("configs/prod.toml").read()
+    text = Path("configs/prod.toml").read_text()
     text = text.replace("allow_live_submission = false",
                         "allow_live_submission = false\n"
                         'api_secret = "sk-live-abc"', 1)
@@ -382,8 +381,9 @@ def test_config_rejects_inline_secrets(tmp_path):
 
 def test_config_rejects_prod_demo_and_testnet(tmp_path):
     import pytest
+
     from cryptobot.app.config import ConfigError
-    base = open("configs/prod.toml").read()
+    base = Path("configs/prod.toml").read_text()
     demo = base.replace("demo = false", "demo = true", 1)
     path = tmp_path / "demo.toml"
     path.write_text(demo)
@@ -442,7 +442,7 @@ def test_preflight_prod_observe_only_go():
 
 
 def test_preflight_submission_needs_confirm_and_keys(tmp_path):
-    text = open("configs/prod.toml").read()
+    text = Path("configs/prod.toml").read_text()
     text = text.replace("allow_live_submission = false",
                         "allow_live_submission = true", 1)
     path = tmp_path / "live.toml"
@@ -459,7 +459,7 @@ def test_preflight_submission_needs_confirm_and_keys(tmp_path):
 
 
 def test_preflight_rejects_inline_secret_and_reports_json(tmp_path):
-    text = open("configs/prod.toml").read()
+    text = Path("configs/prod.toml").read_text()
     text = text.replace("allow_live_submission = false",
                         "allow_live_submission = false\n"
                         'api_secret = "sk-live-abc"', 1)

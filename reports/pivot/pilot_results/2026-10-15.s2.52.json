@@ -1,0 +1,33 @@
+{
+ "capture": "data/pilot/2026-10-15",
+ "cells": {
+  "BTCUSDT|4h-cont|ALL": {
+   "gross_mean_bps": -102.54,
+   "gross_std_bps": 139.03,
+   "n": 4,
+   "net_hit_rate": 0.25,
+   "net_mean_bps": -154.54,
+   "net_winners": 1
+  },
+  "BTCUSDT|4h-cont|LONG": {
+   "gross_mean_bps": 31.18,
+   "gross_std_bps": 33.97,
+   "n": 2,
+   "net_hit_rate": 0.5,
+   "net_mean_bps": -20.82,
+   "net_winners": 1
+  },
+  "BTCUSDT|4h-cont|SHORT": {
+   "gross_mean_bps": -236.26,
+   "gross_std_bps": 41.78,
+   "n": 2,
+   "net_hit_rate": 0.0,
+   "net_mean_bps": -288.26,
+   "net_winners": 0
+  }
+ },
+ "entry_bps": 10.0,
+ "hold_h": 4,
+ "rt_cost_bps": 52.0,
+ "warmup_h": 4
+}

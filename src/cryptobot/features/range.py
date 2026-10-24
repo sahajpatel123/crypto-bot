@@ -30,7 +30,7 @@ def vwap_typical(
     total = sum(v)
     if total <= 0:
         return None
-    return sum((hi + li + ci) / 3 * vi for hi, li, ci, vi in zip(h, low, c, v)) / total
+    return sum((hi + li + ci) / 3 * vi for hi, li, ci, vi in zip(h, low, c, v, strict=False)) / total
 
 
 def edge_touches(

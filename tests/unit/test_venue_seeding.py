@@ -8,7 +8,7 @@ flat/clean venue seeds day-start + profit basis from VENUE equity.
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -19,7 +19,7 @@ from cryptobot.app.engine import AccountPosition, AccountSnapshot
 from cryptobot.app.session import Session
 from cryptobot.app.store import RunStore
 
-NOW = datetime(2026, 10, 17, tzinfo=timezone.utc)
+NOW = datetime(2026, 10, 17, tzinfo=UTC)
 
 
 def _snap(wallet=5000.0, positions=(), complete=True):

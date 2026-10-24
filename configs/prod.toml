@@ -7,16 +7,15 @@
 # CRYPTOBOT_API_SECRET in the process environment only.
 # Ledger currency is USDT. Asia/Kolkata accounting day.
 #
-# WARNING (T0.4 truth-in-docs; fix is T1.1): paper_capital_usdt is NOT
-# venue equity, but Session currently seeds Ledger + day-start equity from
-# it even in prod mode (src/cryptobot/app/session.py: Ledger(
-# config.paper_capital_usdt)). Do NOT treat 120.0 as live capital. T1.1
-# makes venue equity the only seed for demo/prod and restricts this field
-# to paper/replay. Until T1.1 lands, prod mode is accounting-unsafe.
+# Accounting: T1.1 (done) seeds Ledger + day-start equity from the venue
+# in prod; paper_capital_usdt below is a replay/paper placeholder only.
+# Live trading also needs a GO gate + armed.json, and prod refuses any
+# enabled strategy that the gate's PASS verdict did not score (S1-S5 are
+# unvalidated research strategies: they can never trade live as-is).
 
 [run]
 mode = "prod"                # prod = live USD-M via engine.kind = "live"
-paper_capital_usdt = 120.0   # REQUIRED placeholder; NOT live equity (see WARNING)
+paper_capital_usdt = 120.0   # REQUIRED placeholder; NOT live equity (venue-seeded)
 accounting_tz = "Asia/Kolkata"
 duration = "24h"
 

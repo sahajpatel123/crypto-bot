@@ -14,7 +14,7 @@ live use.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 
 ACTIONS = ("allow", "reject-entries", "cancel-entries", "reduce-risk",

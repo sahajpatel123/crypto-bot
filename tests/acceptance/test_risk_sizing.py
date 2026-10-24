@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pytest
 
-from conftest import NOW, build_account, build_intent, load_fixture, make_policy
+from conftest import build_account, build_intent, load_fixture, make_policy
 from cryptobot.risk import Approved, Rejected
 
 INTENTS = load_fixture("risk_intents.json")

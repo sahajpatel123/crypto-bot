@@ -20,14 +20,14 @@ Causality contract:
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 __all__ = ["Bar1s", "BarAggregator", "BarMissing", "to_s1_bar",
          "bar_from_dict", "bar_to_dict"]
 
-_EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
+_EPOCH = datetime(1970, 1, 1, tzinfo=UTC)
 
 
 @dataclass(frozen=True)
@@ -277,7 +277,7 @@ class BarAggregator:
                 "spreads_seen": self.spreads_seen}
 
     @classmethod
-    def from_dict(cls, raw: dict[str, Any]) -> "BarAggregator":
+    def from_dict(cls, raw: dict[str, Any]) -> BarAggregator:
         """Rebuild aggregator state exactly (checkpoint restore)."""
         agg = cls(str(raw["symbol"]), lateness_ms=int(raw["lateness_ms"]))
         for key, wd in raw["windows"].items():

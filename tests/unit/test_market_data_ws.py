@@ -1,5 +1,6 @@
 """WebSocket codec + loopback tests (Worker 2, E-006). No network: socketpair only."""
 import base64
+import contextlib
 import hashlib
 import socket
 import struct
@@ -46,10 +47,8 @@ def _server_script(sock, script):
     except OSError:
         pass
     finally:
-        try:
+        with contextlib.suppress(OSError):
             sock.close()
-        except OSError:
-            pass
 
 
 def _loopback(script):
@@ -260,7 +259,6 @@ def test_blocking_recv_prefers_buffered_before_waiting():
                     reason="needs openssl CLI for a throwaway cert")
 def test_nowait_over_real_tls_drains_without_select(tmp_path):
     import select as _select
-    import shutil
     import ssl
     import subprocess
 
@@ -308,11 +306,7 @@ def test_nowait_over_real_tls_drains_without_select(tmp_path):
         # Idle over TLS: SSLWantRead means absence, never an error.
         assert client.recv_message_nowait() is None
     finally:
-        try:
+        with contextlib.suppress(OSError):
             client_tls.close()
-        except OSError:
-            pass
-        try:
+        with contextlib.suppress(OSError):
             server_tls.close()
-        except OSError:
-            pass

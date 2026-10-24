@@ -14,7 +14,7 @@ tests/audit/conftest.py.
 import dataclasses
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
@@ -44,10 +44,9 @@ def test_stale_mark_block_mechanism_when_configured(tmp_path):
     refuse entries through the risk gate."""
     from cryptobot.coordination import ForecastCost, Side
     from cryptobot.coordination.intent import DataQuality, Intent
-    from cryptobot.risk import (AccountSnapshot, Approved, Rejected,
-                                RiskConfig, RiskPolicy)
+    from cryptobot.risk import AccountSnapshot, Approved, Rejected, RiskConfig, RiskPolicy
     cfg = RiskConfig(max_mark_age_ms=1000)
-    now = datetime(2026, 10, 1, tzinfo=timezone.utc)
+    now = datetime(2026, 10, 1, tzinfo=UTC)
     policy = RiskPolicy(config=cfg,
                         state_path=tmp_path / "risk_state.json",
                         now_utc=lambda: now)

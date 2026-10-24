@@ -1,6 +1,7 @@
 """Cost-contract tests (W2, 30MIN §5). Golden + asymmetric + funding-sign."""
 import pytest
 
+from cryptobot.coordination.intent import ForecastCost
 from cryptobot.costs import (
     CONTRACT_VERSION,
     COST_S1,
@@ -11,7 +12,6 @@ from cryptobot.costs import (
     one_way_bps,
     roundtrip_bps,
 )
-from cryptobot.coordination.intent import ForecastCost
 
 
 def test_golden_example_yields_26bps():

@@ -1,6 +1,6 @@
 """Anomaly policy tests (Worker 4, EV-001). Trip/hysteresis/cooldown."""
 import sys
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -15,7 +15,7 @@ from cryptobot.events.anomaly import (
     evaluate,
 )
 
-T0 = datetime(2026, 10, 12, 13, 10, tzinfo=timezone.utc)
+T0 = datetime(2026, 10, 12, 13, 10, tzinfo=UTC)
 BASE = AnomalyBaseline()
 
 

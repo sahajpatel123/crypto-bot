@@ -7,15 +7,16 @@ out of the live loop while exposure exists.
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone
 from pathlib import Path
-
-import pytest
 
 import venue_fixtures as venues
 from cryptobot.adapters.binance_live import (
-    RateLimitedError, UnknownOutcomeError, VenueHttpError,
-    VenueRejectedError, classify_exception)
+    RateLimitedError,
+    UnknownOutcomeError,
+    VenueHttpError,
+    VenueRejectedError,
+    classify_exception,
+)
 from cryptobot.app.config import load_config
 from cryptobot.app.session import Session
 from cryptobot.app.store import RunStore

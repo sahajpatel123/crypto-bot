@@ -1,5 +1,5 @@
 """V-008 §7: mark-age semantics + settled-funding reconcile input (engine side)."""
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
@@ -9,7 +9,7 @@ from cryptobot.accounting import Ledger  # noqa: E402
 from cryptobot.adapters import NautilusPaperEngine  # noqa: E402
 from cryptobot.app.engine import EngineFunding, EngineOrder  # noqa: E402
 
-T0 = datetime(2026, 10, 1, tzinfo=timezone.utc)
+T0 = datetime(2026, 10, 1, tzinfo=UTC)
 
 
 def _engine():
@@ -55,7 +55,7 @@ def test_note_mark_stamps_engine_now():
 
 def test_note_mark_honors_explicit_ts():
     engine = _engine()
-    ts = datetime(2026, 10, 2, tzinfo=timezone.utc)
+    ts = datetime(2026, 10, 2, tzinfo=UTC)
     engine.note_mark("BTCUSDT", 60000.0, ts_utc=ts)
     assert engine.valuation_mark_ts("BTCUSDT") == ts
 
@@ -66,7 +66,7 @@ def test_mark_price_marks_carry_exchange_time():
     engine.note_event(_mark_record(t0ms + 1000, 60000.0))
     assert engine.valuation_mark("BTCUSDT") == 60000.0
     assert engine.valuation_mark_ts("BTCUSDT") == datetime.fromtimestamp(
-        (t0ms + 1000) / 1000, tz=timezone.utc)
+        (t0ms + 1000) / 1000, tz=UTC)
 
 
 def test_settled_funding_total_matches_emitted_and_ledger():

@@ -8,8 +8,8 @@ change the result at ``t``. No randomness, no hidden state.
 from __future__ import annotations
 
 import math
+from collections.abc import Sequence
 from statistics import mean, pstdev
-from typing import Sequence
 
 STD_FLOOR = 1e-9
 

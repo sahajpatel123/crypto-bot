@@ -8,29 +8,25 @@
 - Missing/unverified required source -> no-entry; exits never blocked.
 """
 import sys
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
 import cryptobot.events as _evpkg  # noqa: E402
-from cryptobot.events.freshness import (FreshnessTracker,  # noqa: E402
-                                        HttpResponse,
-                                        parse_employment_dates)
+from cryptobot.events.freshness import FreshnessTracker, HttpResponse, parse_employment_dates  # noqa: E402
 from cryptobot.events.gate import EventGate, GateConfig  # noqa: E402
-from cryptobot.events.profiles import (OperationalProfile,  # noqa: E402
-                                       load_profile)
-from cryptobot.events.sources import (CpiSource, EmploymentSource,  # noqa: E402
-                                      FomcSource, adapters_for)
+from cryptobot.events.profiles import OperationalProfile, load_profile  # noqa: E402
+from cryptobot.events.sources import CpiSource, EmploymentSource, FomcSource, adapters_for  # noqa: E402
 from cryptobot.events.store import EventStore  # noqa: E402
 
 CANNED = Path(_evpkg.__file__).parent / "fixtures" / "canned"
 REPO = Path(__file__).resolve().parents[2]
-T0 = datetime(2026, 10, 14, 4, 2, tzinfo=timezone.utc)
+T0 = datetime(2026, 10, 14, 4, 2, tzinfo=UTC)
 
 
 def _utc(*parts):
-    return datetime(*parts, tzinfo=timezone.utc)
+    return datetime(*parts, tzinfo=UTC)
 
 
 def _canned_empsit(http_url, timeout_s=20):
@@ -67,11 +63,11 @@ def test_employment_fixture_verified_dates_and_release_time():
     # DST spot checks: EST (UTC-5) in Nov 2026, EDT (UTC-4) in Jul 2027.
     by_id = {e.event_id: e for e in snap.events}
     assert by_id["EMP-2026-11-06"].scheduled_utc == \
-        datetime(2026, 11, 6, 13, 30, tzinfo=timezone.utc)
+        datetime(2026, 11, 6, 13, 30, tzinfo=UTC)
     assert by_id["EMP-2027-07-02"].scheduled_utc == \
-        datetime(2027, 7, 2, 12, 30, tzinfo=timezone.utc)
+        datetime(2027, 7, 2, 12, 30, tzinfo=UTC)
     assert snap.horizon_end_utc == datetime(2027, 12, 3, 13, 30,
-                                            tzinfo=timezone.utc)
+                                            tzinfo=UTC)
 
 
 def test_employment_parser_release_list_rows_and_malformed_skip():
@@ -120,8 +116,8 @@ def test_refresh_ignores_scrolled_off_past_dates(tmp_path):
 
 def test_refresh_missing_upcoming_date_is_drift_outage(tmp_path):
     """An upcoming cached date absent from the page blocks entries."""
-    page = ("Employment Situation\n"
-            "<td>Dec. 4, 2026</td><td>08:30 AM</td>\n").encode()
+    page = (b"Employment Situation\n"
+            b"<td>Dec. 4, 2026</td><td>08:30 AM</td>\n")
 
     def _drifted(http_url, timeout_s=20):
         return HttpResponse(status=200, body=page, url=http_url)

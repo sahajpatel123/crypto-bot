@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 __all__ = ["columns", "gap_scan"]
 
 
-def columns(bars: list["Bar | None"]) -> dict[str, list[float | None]]:
+def columns(bars: list[Bar | None]) -> dict[str, list[float | None]]:
     """Numeric columns over the full bar list (None preserved for gaps)."""
     return {
         "high": [b.high if b else None for b in bars],
@@ -26,7 +26,7 @@ def columns(bars: list["Bar | None"]) -> dict[str, list[float | None]]:
 
 
 def gap_scan(
-    bars: list["Bar | None"], lo: int, hi: int
+    bars: list[Bar | None], lo: int, hi: int
 ) -> tuple[bool, int, bool]:
     """Return (gap_found, max_consecutive_missing, ts_disorder) over [lo:hi]."""
     max_consec = 0

@@ -3,8 +3,7 @@ from __future__ import annotations
 
 import pytest
 
-from cryptobot.execution.fill_realism import (
-    pessimistic_fill_price, stressed_pnl)
+from cryptobot.execution.fill_realism import pessimistic_fill_price, stressed_pnl
 
 
 def test_book_walk_buy_walks_asks_plus_latency():

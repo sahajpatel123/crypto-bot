@@ -6,8 +6,9 @@ with an error — the session never trades on invented filters.
 """
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import datetime
-from typing import Any, Callable
+from typing import Any
 
 from cryptobot.market_data.discovery import fetch_exchange_info
 from cryptobot.risk.types import InstrumentFilter

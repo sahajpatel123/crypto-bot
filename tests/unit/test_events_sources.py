@@ -1,6 +1,6 @@
 """Event source tests (Worker 4, EV-001). Fixtures + outage explicitness."""
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -15,7 +15,7 @@ from cryptobot.events.sources import (
 )
 from cryptobot.events.store import EventStore
 
-T0 = datetime(2026, 10, 12, 13, 10, tzinfo=timezone.utc)
+T0 = datetime(2026, 10, 12, 13, 10, tzinfo=UTC)
 ET = ZoneInfo("America/New_York")
 
 
@@ -35,7 +35,7 @@ def test_fomc_fixture_counts_and_ids():
     assert "FOMC-2026-10-28-press" in ids
     assert "FOMC-2026-12-09-decision" in ids
     assert snap.horizon_end_utc == datetime(2026, 12, 9, 20, 30,
-                                            tzinfo=timezone.utc)
+                                            tzinfo=UTC)
 
 
 def test_fomc_decision_days_match_official_calendar():
@@ -70,7 +70,7 @@ def test_cpi_fixture_dates_and_release_time():
         wall = datetime.fromisoformat(event.scheduled_local_iso)
         assert (wall.hour, wall.minute) == (8, 30)
     assert snap.horizon_end_utc == datetime(2026, 12, 10, 13, 30,
-                                            tzinfo=timezone.utc)
+                                            tzinfo=UTC)
 
 
 def test_every_fixture_instant_matches_wall_plus_zone():
@@ -79,7 +79,7 @@ def test_every_fixture_instant_matches_wall_plus_zone():
         for event in snap.events:
             wall = datetime.fromisoformat(
                 event.scheduled_local_iso).replace(tzinfo=ET)
-            assert wall.astimezone(timezone.utc) == event.scheduled_utc, \
+            assert wall.astimezone(UTC) == event.scheduled_utc, \
                 event.event_id
             if event.press_end_utc is not None:
                 assert event.press_end_utc > event.scheduled_utc
@@ -125,4 +125,4 @@ def test_apply_snapshot_loads_events_and_coverage():
     assert store.status_at(T0) == {"fomc": "unverified",
                                    "cpi": "unverified"}
     assert store.get("CPI-2026-10-14").scheduled_utc == datetime(
-        2026, 10, 14, 12, 30, tzinfo=timezone.utc)
+        2026, 10, 14, 12, 30, tzinfo=UTC)

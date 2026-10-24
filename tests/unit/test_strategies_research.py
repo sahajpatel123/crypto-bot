@@ -31,7 +31,6 @@ from cryptobot.research.experiments import (
 )
 from cryptobot.research.synthetic import (
     GENERATOR_ID,
-    SCENARIOS,
     SCENARIO_CHOPPY,
     SCENARIO_FLAT,
     SCENARIO_GAP,
@@ -44,6 +43,7 @@ from cryptobot.research.synthetic import (
     SCENARIO_S4_SHORT,
     SCENARIO_SHORT,
     SCENARIO_WIDE_SPREAD,
+    SCENARIOS,
     generate_fixture,
 )
 from cryptobot.strategies.contract import (

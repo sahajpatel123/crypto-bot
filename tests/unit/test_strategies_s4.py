@@ -11,11 +11,10 @@ from cryptobot.research.synthetic import (
     SCENARIO_CHOPPY,
     SCENARIO_FLAT,
     SCENARIO_GAP,
-    SCENARIO_S4_SHORT,
     Fixture,
     generate_fixture,
 )
-from cryptobot.strategies.contract import S4_BASE, S4_SIMPLE, S4_FORECAST_COST
+from cryptobot.strategies.contract import S4_BASE, S4_FORECAST_COST, S4_SIMPLE
 from cryptobot.strategies.s4 import Bar, evaluate_bar, evaluate_side
 
 FIXTURES = Path(__file__).resolve().parent.parent / "fixtures"

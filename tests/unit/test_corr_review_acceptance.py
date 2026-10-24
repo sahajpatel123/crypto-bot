@@ -12,7 +12,7 @@ import json
 import subprocess
 import sys
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -23,7 +23,7 @@ from cryptobot.adapters import NautilusPaperEngine  # noqa: E402
 from cryptobot.app.engine import EngineOrder  # noqa: E402
 from cryptobot.bench_run import BenchRunner  # noqa: E402
 
-T0 = datetime(2026, 10, 1, tzinfo=timezone.utc)
+T0 = datetime(2026, 10, 1, tzinfo=UTC)
 SYM = "BTCUSDT"
 
 
@@ -235,7 +235,7 @@ def test_changed_config_resume_refused(tmp_path):
 # -- Finding 4: freshness is scoped to the candidate symbol -------------------
 def _gate_session(tmp_path):
     from cryptobot.app.config import load_config
-    from cryptobot.app.session import Session, ReplayClock
+    from cryptobot.app.session import ReplayClock, Session
     from cryptobot.app.store import RunStore
     cfg = load_config("configs/paper.toml")
     store = RunStore(tmp_path / "gate.db")

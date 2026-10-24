@@ -9,20 +9,19 @@ from __future__ import annotations
 
 import json
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from cryptobot.app.config import load_config
 from cryptobot.app.session import Session, WallClock, _SymbolFeed
 from cryptobot.app.store import RunStore
 from cryptobot.coordination.exits import ExitPolicy, encode_exit_rule
-from cryptobot.coordination.intent import (
-    DataQuality, ForecastCost, Intent, Side)
+from cryptobot.coordination.intent import DataQuality, ForecastCost, Intent, Side
 from cryptobot.coordination.selector import Candidate
 
 
 def _paper_config(tmp_path: Path, **over):
-    text = open("configs/paper.toml").read()
+    text = Path("configs/paper.toml").read_text()
     text = text.replace('mode = "replay"', 'mode = "paper"', 1)
     text = text.replace('kind = "reference"', 'kind = "nautilus"', 1)
     text = text.replace('dir = "runs"', f'dir = "{tmp_path / "runs"}"', 1)
@@ -42,7 +41,7 @@ class _MarkEngine:
         self.marks: dict = {}
         self.mark_ts: dict = {}
         self.submits: list = []
-        self._now = datetime(2020, 1, 1, tzinfo=timezone.utc)
+        self._now = datetime(2020, 1, 1, tzinfo=UTC)
 
     @property
     def now_utc(self):
@@ -104,7 +103,7 @@ def _corr_session(tmp_path: Path, engine=None, name="corr-1"):
     session = Session(cfg, store, tmp_path / "runs" / name, name,
                       clock=WallClock(), engine=engine)
     session.policy.reconcile_day(120.0, 0.0)
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     session.arm_replay_filters(
         {"BTCUSDT": {"tick_size": 0.10, "step_size": 0.001,
                      "min_qty": 0.001, "min_notional": 5.0},

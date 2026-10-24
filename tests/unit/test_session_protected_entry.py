@@ -3,20 +3,19 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from cryptobot.app.config import load_config
 from cryptobot.app.session import Session
 from cryptobot.app.store import RunStore
-from cryptobot.coordination.exits import encode_exit_rule, ExitPolicy
-from cryptobot.coordination.intent import (
-    DataQuality, ForecastCost, Intent, Side)
+from cryptobot.coordination.exits import ExitPolicy, encode_exit_rule
+from cryptobot.coordination.intent import DataQuality, ForecastCost, Intent, Side
 from cryptobot.coordination.selector import Candidate
 
 
 def _config(tmp_path: Path, **over) -> Path:
-    text = open("configs/paper.toml").read()
+    text = Path("configs/paper.toml").read_text()
     text = text.replace('dir = "runs"', f'dir = "{tmp_path / "runs"}"', 1)
     for key, value in over.items():
         text = text.replace(f"{key} =", f"{key} = {value} #", 1)
@@ -91,7 +90,7 @@ def _ready_session(tmp_path: Path, engine) -> tuple[Session, RunStore]:
     store = RunStore(tmp_path / "runs" / "cryptobot.db")
     session = Session(cfg, store, tmp_path / "runs" / "prot-1", "prot-1",
                       engine=engine)
-    now = datetime(2026, 10, 12, 6, 0, tzinfo=timezone.utc)
+    now = datetime(2026, 10, 12, 6, 0, tzinfo=UTC)
     session.clock.set_ms(int(now.timestamp() * 1000))
     session.policy.reconcile_day(120.0, 0.0)
     session.store.create_run("prot-1", "replay", "fp",
@@ -187,7 +186,7 @@ def test_protected_ioc_fills_at_or_better_through_session(tmp_path):
 
     from cryptobot.adapters import NautilusPaperEngine
 
-    t0 = datetime(2026, 10, 12, 6, 0, tzinfo=timezone.utc)
+    t0 = datetime(2026, 10, 12, 6, 0, tzinfo=UTC)
     now = [t0]
     engine = NautilusPaperEngine(
         taker_bps=5.0, now_utc=lambda: now[0],

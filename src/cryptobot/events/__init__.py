@@ -10,25 +10,44 @@ the gate in the entry path (``_maybe_admit``) and never in exit handling.
 """
 from __future__ import annotations
 
-from .anomaly import (AnomalyBaseline, AnomalyConfig, AnomalyDecision,
-                      AnomalyReading, AnomalyState, evaluate)
+from .anomaly import (
+                      AnomalyBaseline,
+                      AnomalyConfig,
+                      AnomalyDecision,
+                      AnomalyReading,
+                      AnomalyState,
+                      evaluate,
+)
 from .evidence import EvidenceLog, read_evidence, replay_evidence
-from .freshness import (CACHE_TTL, REFRESH_INTERVAL_S, FreshnessTracker,
-                        HttpResponse, RefreshResult, SourceState,
-                        SourceStateStore, default_http_get,
-                        parse_cpi_release_dates,
-                        parse_employment_dates,
-                        parse_fomc_decision_dates)
+from .freshness import (
+                      CACHE_TTL,
+                      REFRESH_INTERVAL_S,
+                      FreshnessTracker,
+                      HttpResponse,
+                      RefreshResult,
+                      SourceState,
+                      SourceStateStore,
+                      default_http_get,
+                      parse_cpi_release_dates,
+                      parse_employment_dates,
+                      parse_fomc_decision_dates,
+)
 from .gate import EventGate, GateConfig, GateDecision
-from .profiles import (OperationalProfile, ReplayCutoff, ResearchProfile,
-                       load_profile)
+from .profiles import OperationalProfile, ReplayCutoff, ResearchProfile, load_profile
 from .runtime import ProtectionDecision, ProtectionRuntime
-from .sources import (CpiSource, EmploymentSource, FomcSource,
-                      SourceAdapter, SourceSnapshot, StubAdapter,
-                      adapters_for, apply_snapshot, required_snapshots)
+from .sources import (
+                      CpiSource,
+                      EmploymentSource,
+                      FomcSource,
+                      SourceAdapter,
+                      SourceSnapshot,
+                      StubAdapter,
+                      adapters_for,
+                      apply_snapshot,
+                      required_snapshots,
+)
 from .store import EventStore, coverage_status
-from .timezones import (ET_NAME, IST_NAME, et_local, format_ist, parse_iso_utc,
-                        to_ist, to_utc)
+from .timezones import ET_NAME, IST_NAME, et_local, format_ist, parse_iso_utc, to_ist, to_utc
 from .types import Event, Revision, SourceCoverage
 
 __all__ = [

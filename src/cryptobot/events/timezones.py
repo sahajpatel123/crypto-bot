@@ -11,7 +11,7 @@ observes no DST) following src/cryptobot/accounting/day.py.
 """
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 ET_NAME = "America/New_York"
@@ -45,7 +45,7 @@ def et_local(year: int, month: int, day: int, hour: int,
     naive = datetime(year, month, day, hour, minute, second)
     moment = naive.replace(tzinfo=zone, fold=0)
     # Round-trip check: a nonexistent wall time does not survive.
-    back = moment.astimezone(timezone.utc).astimezone(zone)
+    back = moment.astimezone(UTC).astimezone(zone)
     if back.replace(tzinfo=None) != naive:
         raise ValueError(f"nonexistent {ET_NAME} wall time: {naive.isoformat()}")
     return moment
@@ -70,7 +70,7 @@ def et_from_iso(local_iso: str) -> datetime:
 def to_utc(moment: datetime) -> datetime:
     if moment.tzinfo is None:
         raise ValueError("moment must be timezone-aware")
-    return moment.astimezone(timezone.utc)
+    return moment.astimezone(UTC)
 
 
 def to_ist(moment_utc: datetime) -> datetime:
@@ -88,4 +88,4 @@ def parse_iso_utc(text: str) -> datetime:
     moment = datetime.fromisoformat(text.strip().replace("Z", "+00:00"))
     if moment.tzinfo is None:
         raise ValueError(f"naive timestamp, UTC required: {text!r}")
-    return moment.astimezone(timezone.utc)
+    return moment.astimezone(UTC)

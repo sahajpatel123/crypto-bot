@@ -15,7 +15,7 @@ from __future__ import annotations
 import json
 import os
 import sqlite3
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -92,7 +92,7 @@ _DURABILITY_NOTE = (
 
 
 def _now() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 class RunStore:
@@ -186,7 +186,7 @@ class RunStore:
             import fcntl
             try:
                 fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            except BlockingIOError:
+            except BlockingIOError as exc:
                 # A held flock always means a live holder (the OS
                 # releases a dead process's flock, and a merely stale
                 # pid in the file takes the success path above). An
@@ -194,7 +194,7 @@ class RunStore:
                 holder = self._lock_holder(fd)
                 raise StoreLocked(
                     f"store {self.path} locked by live holder "
-                    f"(pid file: {holder})")
+                    f"(pid file: {holder})") from exc
             os.ftruncate(fd, 0)
             os.write(fd, str(os.getpid()).encode("ascii"))
             self._lock_fd = fd
@@ -242,7 +242,7 @@ class RunStore:
         store (refuse to clobber).
         """
         if dest is None:
-            stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+            stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
             dest = self.path.with_name(f"{self.path.name}.bak-{stamp}")
         dest = Path(dest)
         if dest.exists():
@@ -294,7 +294,7 @@ class RunStore:
             return None
         keys = ("run_id", "mode", "config_hash", "state", "pid", "started_utc",
                 "updated_utc", "heartbeat_utc", "workdir")
-        return dict(zip(keys, row))
+        return dict(zip(keys, row, strict=False))
 
     # -- intents / events / checkpoints ----------------------------------
     def record_intent(self, run_id: str, intent_id: str, strategy: str,

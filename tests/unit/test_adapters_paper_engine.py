@@ -4,7 +4,7 @@ Requires nautilus_trader (trial venv); skipped in the stdlib-only project env.
 Canonical seam types come from cryptobot.app.engine (manager-owned); this
 module defines no competing event/order types.
 """
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -22,7 +22,7 @@ from cryptobot.app.engine import (  # noqa: E402
     EngineReject,
 )
 
-T0 = datetime(2026, 10, 1, tzinfo=timezone.utc)
+T0 = datetime(2026, 10, 1, tzinfo=UTC)
 
 
 def _engine(now=None, **kw):
@@ -395,8 +395,14 @@ def _maker_filled_event(engine, client_id, price=60000.00):
     from nautilus_trader.model.enums import LiquiditySide, OrderSide, OrderType
     from nautilus_trader.model.events import OrderFilled
     from nautilus_trader.model.identifiers import (
-        AccountId, ClientOrderId, PositionId, StrategyId, TradeId,
-        TraderId, VenueOrderId)
+        AccountId,
+        ClientOrderId,
+        PositionId,
+        StrategyId,
+        TradeId,
+        TraderId,
+        VenueOrderId,
+    )
     from nautilus_trader.model.objects import Currency, Money, Price, Quantity
     iid = engine.instrument_id("BTCUSDT")
     return OrderFilled(

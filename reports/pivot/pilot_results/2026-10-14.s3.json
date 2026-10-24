@@ -1,0 +1,9 @@
+{
+ "capture": "data/pilot/2026-10-14",
+ "caveat": "funding leg only; hedge leg unobservable in pilot",
+ "date": "2026-10-14",
+ "funding_bps": -0.128,
+ "settlements": 3,
+ "target_bps": 40.0,
+ "target_ratio": -0.0032
+}

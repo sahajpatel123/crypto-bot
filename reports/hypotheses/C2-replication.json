@@ -1,0 +1,31 @@
+{
+ "hypothesis": "C2-XSMOM",
+ "split": "REPLICATION-2020-21",
+ "window": [
+  "2020-01-01",
+  "2021-12-31"
+ ],
+ "code_commit": "8bc2da3",
+ "amendment": "research/prereg/C-family-amendment-2.md",
+ "verdict": "KILLED",
+ "fails": [
+  "1: mean=14.74 p=0.0805"
+ ],
+ "n_days": 695,
+ "mean_net_bps": 14.739564924719067,
+ "mean_adverse_bps": 13.554672838388132,
+ "mean_gross_bps": 15.924457011050002,
+ "mean_turnover": 0.1316546762589928,
+ "ci95_week_block": [
+  -5.98039036197496,
+  36.61425759551309
+ ],
+ "p_value": 0.08045977011494253,
+ "sharpe_annual": 1.0834550714725135,
+ "total_net_bps": 10243.997622679752,
+ "max_dd_bps": 3784.580369162525,
+ "by_year": {
+  "2020": 7.592193453976416,
+  "2021": 21.201572007856257
+ }
+}

@@ -24,7 +24,7 @@ import sys
 import threading
 import time
 from collections import deque
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -38,16 +38,15 @@ from cryptobot.adapters.paper_engine import NautilusPaperEngine
 from cryptobot.adapters.user_stream import attach_user_stream
 from cryptobot.app.config import load_config
 from cryptobot.app.engine import EngineOrder
-from cryptobot.coordination.exits import encode_exit_rule, ExitPolicy
-from cryptobot.coordination.intent import (DataQuality, ForecastCost,
-                                           Intent, Side)
 from cryptobot.app.session import Session
 from cryptobot.app.store import RunStore
+from cryptobot.coordination.exits import ExitPolicy, encode_exit_rule
+from cryptobot.coordination.intent import DataQuality, ForecastCost, Intent, Side
 from cryptobot.coordination.selector import Candidate
 
 FIX = venues.FIX
 MECHANICS = "mechanic-band"
-NOW = datetime(2026, 10, 12, 6, 0, tzinfo=timezone.utc)
+NOW = datetime(2026, 10, 12, 6, 0, tzinfo=UTC)
 
 
 class FakeSocket:
@@ -107,7 +106,7 @@ def _orders():
 
 
 def _config(tmp_path: Path) -> Path:
-    text = open("configs/paper.toml").read()
+    text = Path("configs/paper.toml").read_text()
     text = text.replace('dir = "runs"', f'dir = "{tmp_path / "runs"}"', 1)
     text = text.replace("warmup_bars =", "warmup_bars = 3 #", 1)
     path = tmp_path / "test.toml"
@@ -470,7 +469,6 @@ def test_unbooked_fill_stays_recoverable_until_recorded(tmp_path):
     booking-acked: it stays in the recoverable set, blocks booking,
     and redelivery re-emits (transport dedup never consumes an
     unbooked execution)."""
-    ready = _ready()
     engine, _ = venues.make_engine(tmp_path, [])
     session, store = _session(tmp_path, engine, "r2-unbooked")
     calls, outcomes = [], []

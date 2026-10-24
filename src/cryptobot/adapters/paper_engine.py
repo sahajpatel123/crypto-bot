@@ -34,14 +34,15 @@ execution client in this module is nautilus' backtest/sandbox simulator.
 """
 from __future__ import annotations
 
+import contextlib
 import json
-import math
 import os
 import random
-from datetime import datetime, timezone
+from collections.abc import Callable
+from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from nautilus_trader.accounting.manager import AccountsManager
 from nautilus_trader.backtest.engine import SimulatedExchange
@@ -62,7 +63,6 @@ from nautilus_trader.model.enums import (
     LiquiditySide,
     OmsType,
     OrderSide,
-    OrderStatus,
     TimeInForce,
 )
 from nautilus_trader.model.events import (
@@ -188,7 +188,7 @@ class NautilusPaperEngine:
             outcome_sink is not None and not callable(outcome_sink))
         self.taker_bps = float(taker_bps)
         self.maker_bps = float(taker_bps if maker_bps is None else maker_bps)
-        self._now_utc = now_utc or (lambda: datetime.now(timezone.utc))
+        self._now_utc = now_utc or (lambda: datetime.now(UTC))
         self.submit_delay_ms = int(submit_delay_ms)
         self.fill_delay_ms = int(fill_delay_ms)
         self.strict_replay = bool(strict_replay)
@@ -542,7 +542,7 @@ class NautilusPaperEngine:
             if not self._ioc_marketable(symbol, side, cap):
                 arrived = (self._clock.timestamp_ns() if arrival_ns is None
                            else arrival_ns)
-                ts_utc = unix_nanos_to_dt(arrived).replace(tzinfo=timezone.utc)
+                ts_utc = unix_nanos_to_dt(arrived).replace(tzinfo=UTC)
                 _prt = self._last_print.get(symbol)
                 ref = self._bbo.get(symbol, ((_prt[0] if _prt else None),
                                              (_prt[0] if _prt else None),
@@ -645,7 +645,7 @@ class NautilusPaperEngine:
             if (cmd.expire_at_utc is not None
                     and now_ns > dt_to_unix_nanos(cmd.expire_at_utc)):
                 # Window passed while queued: expire, never submit late.
-                ts_utc = unix_nanos_to_dt(now_ns).replace(tzinfo=timezone.utc)
+                ts_utc = unix_nanos_to_dt(now_ns).replace(tzinfo=UTC)
                 self._journal("submitted", {
                     "client_id": client_id,
                     "instrument": cmd.instrument.upper(),
@@ -990,7 +990,7 @@ class NautilusPaperEngine:
                 self._marks[symbol] = float(mark)
                 exch_ms = event.get("exchange_ts_ms")
                 self._mark_ts[symbol] = (
-                    datetime.fromtimestamp(exch_ms / 1000, tz=timezone.utc)
+                    datetime.fromtimestamp(exch_ms / 1000, tz=UTC)
                     if isinstance(exch_ms, (int, float)) and exch_ms > 0
                     else self._now_utc())
             self._note_funding_terms(symbol, payload)
@@ -1043,7 +1043,7 @@ class NautilusPaperEngine:
         amount = -qty * ref * rate  # rate>0: longs pay.
         if amount == 0.0:
             return
-        ts_utc = datetime.fromtimestamp(funding_ms / 1000, tz=timezone.utc)
+        ts_utc = datetime.fromtimestamp(funding_ms / 1000, tz=UTC)
         self._settled_funding[symbol] = \
             self._settled_funding.get(symbol, 0.0) + amount
         self._emit(EngineEvent(
@@ -1082,10 +1082,8 @@ class NautilusPaperEngine:
             event, detail = entry.get("event"), entry.get("detail", {})
             if event == "submitted":
                 submitted[detail["client_id"]] = detail
-                try:
+                with contextlib.suppress(IndexError, ValueError):
                     self._seq = max(self._seq, int(detail["client_id"].split("-")[1]))
-                except (IndexError, ValueError):
-                    pass
             elif event == "fill":
                 fills.append(detail)
                 self._recovered_fills[detail["client_id"]] = (
@@ -1124,10 +1122,8 @@ class NautilusPaperEngine:
             exec_id = str(record.get("exec_id", ""))
             parts = exec_id.split("/")
             if len(parts) == 4 and parts[0] == "paper" and parts[1] == self._run_tag:
-                try:
+                with contextlib.suppress(ValueError):
                     self._fill_seq = max(self._fill_seq, int(parts[3]))
-                except ValueError:
-                    pass
         for _ in range(self._seq):  # advance seeded RNG past journaled ids.
             self._rng.getrandbits(64)
         if halted is not None:
@@ -1138,7 +1134,7 @@ class NautilusPaperEngine:
             # or not); Session dedups by execution_id (contract v1 §3).
             moment = datetime.fromisoformat(record["ts_utc"])
             if moment.tzinfo is None:
-                moment = moment.replace(tzinfo=timezone.utc)
+                moment = moment.replace(tzinfo=UTC)
             self._emit(EngineEvent(
                 "fill",
                 EngineFill(
@@ -1345,8 +1341,8 @@ class NautilusPaperEngine:
     @property
     def assumptions(self) -> tuple[str, ...]:
         return tuple([
-            f"simulator=nautilus-SimulatedExchange equivalent-of-SandboxExecutionClient core "
-            f"(matching/fills/fees all nautilus; no bot fill engine)",
+            "simulator=nautilus-SimulatedExchange equivalent-of-SandboxExecutionClient core "
+            "(matching/fills/fees all nautilus; no bot fill engine)",
             f"modeled delays: submit_delay_ms={self.submit_delay_ms} (pre-queue; "
             f"submit_immediate bypasses, exits-only) + fill_delay_ms={self.fill_delay_ms} "
             f"(venue latency, >0 enforced); submit_immediate bypasses both for one command",
@@ -1491,7 +1487,7 @@ class NautilusPaperEngine:
                     # ts_event is venue execution, ts_utc is report arrival.
                     "exec_ts_utc": unix_nanos_to_dt(
                         event.ts_event).replace(
-                            tzinfo=timezone.utc).isoformat()})
+                            tzinfo=UTC).isoformat()})
                 self._bump(payload.client_order_id)
                 self._emit(mapped)
             else:
@@ -1577,7 +1573,7 @@ class NautilusPaperEngine:
         )
 
     def _translate(self, event: OrderEvent) -> EngineEvent | None:
-        ts_utc = unix_nanos_to_dt(int(event.ts_event)).replace(tzinfo=timezone.utc)
+        ts_utc = unix_nanos_to_dt(int(event.ts_event)).replace(tzinfo=UTC)
         coid = event.client_order_id.value
         symbol = self._symbols.get(coid, event.instrument_id.symbol.value)
         if isinstance(event, OrderFilled):

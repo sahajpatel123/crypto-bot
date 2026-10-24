@@ -5,10 +5,10 @@ synthetic-mechanics only (not economics, not a venue recording):
 fill→ledger→protection, unknown→lookup→no-duplicate-entry, restart
 re-adopt without duplicate keys, and the reduce-only exit path.
 """
+import contextlib
 import copy
-import json
 import sys
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -19,16 +19,15 @@ import venue_fixtures as venues
 from cryptobot.app.config import load_config
 from cryptobot.app.session import Session
 from cryptobot.app.store import RunStore
-from cryptobot.coordination.exits import encode_exit_rule, ExitPolicy
-from cryptobot.coordination.intent import (
-    DataQuality, ForecastCost, Intent, Side)
+from cryptobot.coordination.exits import ExitPolicy, encode_exit_rule
+from cryptobot.coordination.intent import DataQuality, ForecastCost, Intent, Side
 from cryptobot.coordination.selector import Candidate
 
 MECHANICS = "synthetic-mechanics"
 
 
 def _config(tmp_path: Path) -> Path:
-    text = open("configs/paper.toml").read()
+    text = Path("configs/paper.toml").read_text()
     text = text.replace('dir = "runs"', f'dir = "{tmp_path / "runs"}"', 1)
     text = text.replace("warmup_bars =", "warmup_bars = 3 #", 1)
     path = tmp_path / "test.toml"
@@ -57,7 +56,7 @@ def _session(tmp_path: Path, engine, run_id: str):
     store = RunStore(tmp_path / "runs" / "cryptobot.db")
     session = Session(cfg, store, tmp_path / "runs" / run_id, run_id,
                       engine=engine)
-    now = datetime(2026, 10, 12, 6, 0, tzinfo=timezone.utc)
+    now = datetime(2026, 10, 12, 6, 0, tzinfo=UTC)
     session.clock.set_ms(int(now.timestamp() * 1000))
     session.policy.reconcile_day(120.0, 0.0)
     session.store.create_run(run_id, MECHANICS, "fp",
@@ -159,7 +158,7 @@ def test_live_fill_to_ledger_to_protection(tmp_path):
 
 
 def test_unknown_blocks_duplicate_entry_until_lookup(tmp_path):
-    ready, orders = venues.ready_fixture(), venues.orders_fixture()
+    ready, _orders = venues.ready_fixture(), venues.orders_fixture()
     engine, transport = venues.make_engine(
         tmp_path, [("GET", "/fapi/v2/account", None,
                     ("ok", ready["account"])),
@@ -171,6 +170,7 @@ def test_unknown_blocks_duplicate_entry_until_lookup(tmp_path):
     session, store = _session(tmp_path, engine, "ca-unknown")
     try:
         import pytest
+
         from cryptobot.adapters.binance_live import UnknownOutcomeError
         # W1-CATCH: Session retains the unknown cid and reconciles by
         # durable client ID before any resubmission (contract §4). Until
@@ -185,11 +185,9 @@ def test_unknown_blocks_duplicate_entry_until_lookup(tmp_path):
         # During-unknown re-admit is blocked once Session retains the
         # unknown cid (W1 retention; single-position rule then holds).
         sent = len(transport.requests)
-        try:
+        with contextlib.suppress(UnknownOutcomeError):  # pre-merge: no retention yet; post-merge: blocked.
             session._maybe_admit(
                 [Candidate("S1", _intent(session.now_utc()))])
-        except UnknownOutcomeError:
-            pass  # pre-merge: no retention yet; post-merge: blocked.
         assert len(transport.requests) == sent  # no duplicate entry.
         # Lookup resolves; the position then books from the tape.
         transport.append(

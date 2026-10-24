@@ -13,9 +13,10 @@ from __future__ import annotations
 import json
 import time
 import urllib.request
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Any, Callable
+from collections.abc import Callable
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from typing import Any
 
 from .recorder import INPUT_OBSERVED
 
@@ -67,7 +68,7 @@ def fetch_exchange_info(
     payload, latency_ms = http_get(base_url + EXCHANGE_INFO_PATH, timeout_s)
     if not isinstance(payload, dict) or "symbols" not in payload:
         raise ValueError("exchangeInfo payload missing 'symbols'")
-    fetched_at = datetime.now(timezone.utc).isoformat()
+    fetched_at = datetime.now(UTC).isoformat()
     return payload, latency_ms, fetched_at
 
 
@@ -126,7 +127,7 @@ def discover_usdt_perps(
         symbols=tuple(found),
         total_symbols_seen=seen,
         base_url=base_url,
-        fetched_at_utc=fetched_at_utc or datetime.now(timezone.utc).isoformat(),
+        fetched_at_utc=fetched_at_utc or datetime.now(UTC).isoformat(),
         fetch_latency_ms=fetch_latency_ms,
     )
 

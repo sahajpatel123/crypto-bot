@@ -9,9 +9,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
-
-_EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
+from datetime import UTC, datetime, timedelta
 
 from cryptobot.coordination import (
     DataQuality,
@@ -32,17 +30,19 @@ from cryptobot.features.breakout import (
     volume_z,
 )
 
+from ._shared import columns, gap_scan
 from .contract import (
     ARM_BASE,
     ARM_FLOW,
     ARM_IDS_S1,
     ARM_VOLUME,
-    STRATEGY_VERSION,
     S1_FORECAST_COST,
+    STRATEGY_VERSION,
     build_evidence_ref,
     build_intent,
 )
-from ._shared import columns, gap_scan
+
+_EPOCH = datetime(1970, 1, 1, tzinfo=UTC)
 
 MAX_CONSECUTIVE_MISSING_HALT = 5
 
@@ -111,7 +111,7 @@ class Bar:
         }
 
     @staticmethod
-    def from_dict(d: dict) -> "Bar":
+    def from_dict(d: dict) -> Bar:
         return Bar(
             ts_utc=datetime.fromisoformat(d["ts_utc"]),
             open=d["open"],

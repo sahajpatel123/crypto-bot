@@ -7,9 +7,13 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
-from cryptobot.research.allowlist import (AllowlistError, enforce,  # noqa: E402
-                                          resolve_config_arms,
-                                          runtime_param_fingerprint, verify)
+from cryptobot.research.allowlist import (  # noqa: E402
+    AllowlistError,
+    enforce,
+    resolve_config_arms,
+    runtime_param_fingerprint,
+    verify,
+)
 
 REPO = Path(__file__).resolve().parents[2]
 REGISTRY = REPO / "trials" / "round-01.json"

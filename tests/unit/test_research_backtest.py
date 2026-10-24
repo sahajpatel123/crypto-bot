@@ -11,13 +11,13 @@ from cryptobot.research.backtest import (
     ARM_SETS,
     DEV_DAYS,
     MECHANISM_SPLIT,
+    SPLITS,
+    TEST_DAYS,
+    VAL_DAYS,
     OverlapDedup,
     _default_symbols,
     assemble_split_capture,
     build_partition,
-    SPLITS,
-    TEST_DAYS,
-    VAL_DAYS,
     compare_runs,
     curve_signature,
     day_events_for,
@@ -37,9 +37,9 @@ CONFIG = "configs/paper.toml"
 
 
 def test_splits_frozen_cover_30_days_disjoint():
-    assert DEV_DAYS == tuple(range(1, 16))
-    assert VAL_DAYS == tuple(range(16, 23))
-    assert TEST_DAYS == tuple(range(23, 31))
+    assert tuple(range(1, 16)) == DEV_DAYS
+    assert tuple(range(16, 23)) == VAL_DAYS
+    assert tuple(range(23, 31)) == TEST_DAYS
     assert SPLITS == {"dev": DEV_DAYS, "validation": VAL_DAYS, "test": TEST_DAYS}
     assert sorted(DEV_DAYS + VAL_DAYS + TEST_DAYS) == list(range(1, 31))
 
@@ -166,11 +166,11 @@ def test_run_cell_rip_protection_cancels_unmarketable(tmp_path):
     assert report["events_seen"] == 6592
     assert report["intents_admitted"] >= 1
     assert fills_signature(cell["journal"]) == []
-    kinds = [json.loads(line)["event"] for line in open(cell["journal"])
+    kinds = [json.loads(line)["event"] for line in Path(cell["journal"]).read_text().splitlines()
              if line.strip()]
     assert "submitted" in kinds  # arrival journaled (at_arrival trace)...
     assert "terminal" in kinds  # ...and the unreachable touch canceled it.
-    details = [json.loads(line)["detail"] for line in open(cell["journal"])
+    details = [json.loads(line)["detail"] for line in Path(cell["journal"]).read_text().splitlines()
                if line.strip() and json.loads(line)["event"] == "terminal"]
     # 30MIN §4: the IOC cancels AT arrival against the tracked book and
     # never reaches the venue model (supersedes venue-canceled resting).
@@ -196,9 +196,9 @@ def test_determinism_two_runs_identical(tmp_path):
     diff = compare_runs(a["report"], a["journal"], b["report"], b["journal"])
     # Non-vacuous: submits + cancels happen (protected IOC on the rip),
     # and the full event sequence is identical across runs.
-    kinds_a = [json.loads(line)["event"] for line in open(a["journal"])
+    kinds_a = [json.loads(line)["event"] for line in Path(a["journal"]).read_text().splitlines()
                if line.strip()]
-    kinds_b = [json.loads(line)["event"] for line in open(b["journal"])
+    kinds_b = [json.loads(line)["event"] for line in Path(b["journal"]).read_text().splitlines()
                if line.strip()]
     assert "submitted" in kinds_a and "terminal" in kinds_a
     assert kinds_a == kinds_b
@@ -250,7 +250,7 @@ def _journal_prefix(journal_path, cutoff_ms):
     # Normalized (event, ts, detail) records strictly before the cutoff.
     from datetime import datetime
     out = []
-    for line in open(journal_path):
+    for line in Path(journal_path).read_text().splitlines():
         line = line.strip()
         if not line:
             continue
@@ -345,7 +345,7 @@ class _FakeVision:
                             "min_notional": 50.0}}},
         }
         base = int(dt.datetime(2026, 9, 11, 18, 30,
-                               tzinfo=dt.timezone.utc).timestamp() * 1000)
+                               tzinfo=dt.UTC).timestamp() * 1000)
         self._days = {}
         for day in ("2026-09-11", "2026-09-12", "2026-09-13"):
             self._days[day] = []
@@ -513,7 +513,7 @@ def test_assembly_max_events_never_reads_tail(tmp_path, monkeypatch):
 def test_day_has_quotes_is_day_scoped_captured():
     import datetime as _dt
 
-    base = _dt.datetime(2026, 9, 12, tzinfo=_dt.timezone.utc).timestamp()
+    base = _dt.datetime(2026, 9, 12, tzinfo=_dt.UTC).timestamp()
     manifest = {"source": [{
         "symbol": "BTCUSDT", "channels": ["aggTrade", "bookTicker"],
         "ts_min_ms": int(base * 1000),

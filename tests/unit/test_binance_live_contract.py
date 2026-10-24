@@ -2,7 +2,7 @@
 import copy
 import json
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
@@ -11,10 +11,8 @@ import pytest
 
 import venue_fixtures as venues
 from cryptobot.adapters.binance_live import (
-    BinanceLiveEngine,
     RateLimitedError,
     UnknownOutcomeError,
-    VenueHttpError,
     VenueRejectedError,
     caller_action,
 )
@@ -169,7 +167,7 @@ def test_rate_limit_backoff_protects_cancel_capacity(tmp_path):
             ("POST", "/fapi/v1/order", {"type": "MARKET"},
              ("err", 429, -1003, "rate limited"))],
         now_utc=lambda: datetime.fromtimestamp(now_ms[0] / 1000,
-                                               tz=timezone.utc))
+                                               tz=UTC))
     with pytest.raises(RateLimitedError) as exc:
         _submit_market(engine)
     assert exc.value.retry_after_s == 60.0

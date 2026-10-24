@@ -1,4 +1,6 @@
 """Book/flow view tests (W2, E-008; B4). Fixture records only."""
+import dataclasses
+
 import pytest
 
 from cryptobot.market_data.views import (
@@ -130,9 +132,9 @@ def test_views_are_frozen_and_store_is_bounded():
     store.apply_trade("BTCUSDT", _trade_payload(1, 60000.0))
     store.apply_trade("BTCUSDT", _trade_payload(2, 60001.0, ts_ms=T0MS + 1100))
     book, flow, _ = book_flow_for("BTCUSDT", T0MS + 1100, store)
-    with pytest.raises(Exception):
+    with pytest.raises(dataclasses.FrozenInstanceError):
         book.ts_ms = 0  # frozen dataclass.
-    with pytest.raises(Exception):
+    with pytest.raises(dataclasses.FrozenInstanceError):
         flow.last_id = 0
     # Bounded: one open window + one closed aggregate per symbol.
     state = store._flow["BTCUSDT"]

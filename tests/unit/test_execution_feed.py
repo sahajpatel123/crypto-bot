@@ -3,7 +3,7 @@
 Requires nautilus_trader (trial venv); skipped in the stdlib-only project env.
 """
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
@@ -14,7 +14,7 @@ from cryptobot.app.engine import EngineOrder  # noqa: E402
 from cryptobot.execution import StreamPump  # noqa: E402
 from cryptobot.market_data.bridge import iter_market_stream, snapshot_record  # noqa: E402
 
-T0 = datetime(2026, 10, 1, tzinfo=timezone.utc)
+T0 = datetime(2026, 10, 1, tzinfo=UTC)
 T0MS = int(T0.timestamp() * 1000)
 
 
@@ -199,7 +199,7 @@ def test_replay_heartbeat_advances_one_virtual_second():
         None,
         None,
     ]), replay=True))
-    assert engine.now_utc == datetime.fromtimestamp(T0MS / 1000, tz=timezone.utc) + timedelta(seconds=2)
+    assert engine.now_utc == datetime.fromtimestamp(T0MS / 1000, tz=UTC) + timedelta(seconds=2)
     assert pump.stats["heartbeats"] == 2
     assert all(t.record is None for t in ticks[1:])
 

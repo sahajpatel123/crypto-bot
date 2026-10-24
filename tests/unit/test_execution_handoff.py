@@ -5,14 +5,14 @@ a conformance assert pins the drop-in shape for the future V-001 wiring.
 Deterministic: fake venue, injected clock, tmp logs — no network/creds/randomness.
 """
 import os
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
 from cryptobot.coordination import RiskOutcomeSink
 from cryptobot.execution import FakeVenue, OrderManager, OrderState
 
-NOW = datetime(2026, 1, 1, tzinfo=timezone.utc)
+NOW = datetime(2026, 1, 1, tzinfo=UTC)
 
 
 class RecordingSink:

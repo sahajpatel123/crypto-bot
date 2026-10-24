@@ -1,6 +1,6 @@
 """Runtime boundary tests (Worker 1, Q-005): S1 seam, adapters, gates."""
 import sys
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
@@ -17,7 +17,7 @@ from cryptobot.strategies.runtime import (
 )
 from cryptobot.strategies.s1 import Bar
 
-T0 = datetime(2026, 1, 2, tzinfo=timezone.utc)
+T0 = datetime(2026, 1, 2, tzinfo=UTC)
 
 
 def _bars(n=40, spread_bps=1.0, close=100.0):

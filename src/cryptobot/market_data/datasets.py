@@ -23,8 +23,9 @@ import hashlib
 import heapq
 import json
 import tomllib
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 
 __all__ = ["DatasetHandle", "open_dataset", "verify_dataset"]
 
@@ -33,14 +34,14 @@ _TRANSFORM_VERSION = 2
 _STREAM_BATCH_ROWS = 65536
 
 
-def open_dataset(toml: str | Path) -> "DatasetHandle":
+def open_dataset(toml: str | Path) -> DatasetHandle:
     """Open a frozen-dataset manifest; raises on unknown kind/version."""
     path = Path(toml)
     manifest = tomllib.loads(path.read_bytes().decode("utf-8"))
     return DatasetHandle(path, manifest)
 
 
-def verify_dataset(handle: "DatasetHandle") -> list[str]:
+def verify_dataset(handle: DatasetHandle) -> list[str]:
     """Check every manifest ``local`` file present and hash-matching.
 
     Vision sources verify ``derived_sha256`` (source archives were verified
@@ -148,15 +149,13 @@ class DatasetHandle:
                                                         order))
         merged = heapq.merge(*streams, key=lambda item: (item[0], item[1]))
         run_id = f"replay:{self.manifest_sha()[:8]}:{symbol}:{day}"
-        seq = 0
         last_ts: int | None = None
-        for ts, _, event in merged:
+        for seq, (ts, _, event) in enumerate(merged, 1):
             if last_ts is not None:
                 idle = last_ts + _HEARTBEAT_IDLE_MS
                 while idle < ts:
                     yield None
                     idle += _HEARTBEAT_IDLE_MS
-            seq += 1
             event["run_id"] = run_id
             event["seq"] = seq
             yield event
@@ -219,7 +218,7 @@ class DatasetHandle:
         import datetime as _dt
 
         start = _dt.datetime.strptime(day, "%Y-%m-%d").replace(
-            tzinfo=_dt.timezone.utc).timestamp() * 1000
+            tzinfo=_dt.UTC).timestamp() * 1000
         end = start + 86_400_000
         run_id = f"replay:{self.manifest_sha()[:8]}:{symbol}:{day}"
         seq = 0

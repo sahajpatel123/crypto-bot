@@ -9,7 +9,6 @@ from cryptobot.app.session import Session
 from cryptobot.app.store import RunStore
 from cryptobot.market_data.replayer import (
     RollingEventHash,
-    assert_input_class,
     events_hash,
     iter_events,
     load_events,
@@ -102,7 +101,7 @@ def test_rolling_hash_equals_events_hash(tmp_path):
 
 
 def _session(tmp_path: Path):
-    text = open("configs/paper.toml").read()
+    text = Path("configs/paper.toml").read_text()
     text = text.replace('dir = "runs"', f'dir = "{tmp_path / "runs"}"', 1)
     cfg_path = tmp_path / "test.toml"
     cfg_path.write_text(text)

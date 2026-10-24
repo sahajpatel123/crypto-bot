@@ -16,16 +16,18 @@ the page are recorded as drift CANDIDATES and never auto-applied.
 """
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import json
 import os
 import re
 import tempfile
 import threading
+from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from .sources import COVERAGE_TTL
 from .store import EventStore, coverage_status
@@ -116,7 +118,7 @@ def parse_fomc_decision_dates(body_text: str) -> set[date]:
 
     def year_at(pos: int) -> int | None:
         return next((y for y, start, end in
-                     zip(years, bounds, bounds[1:])
+                     zip(years, bounds, bounds[1:], strict=False)
                      if start <= pos < end), None)
 
     for block in _FOMC_MONTH_BLOCK.finditer(body_text):
@@ -249,10 +251,8 @@ class SourceStateStore:
                 handle.write(json.dumps(payload, indent=2, sort_keys=True))
             os.replace(tmp, self.path)
         finally:
-            try:
+            with contextlib.suppress(OSError):
                 os.unlink(tmp)
-            except OSError:
-                pass
 
     def get(self, source: str) -> SourceState:
         return self._states.get(source, SourceState(source=source))
@@ -466,7 +466,7 @@ class FreshnessTracker:
         """Run refresh_once() on a daemon thread until stop()."""
         if self._thread is not None and self._thread.is_alive():
             raise RuntimeError("refresher already running")
-        clock = now_utc or (lambda: datetime.now(timezone.utc))
+        clock = now_utc or (lambda: datetime.now(UTC))
         stop = threading.Event()
         self._stop = stop
 

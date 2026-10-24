@@ -3,7 +3,6 @@
 No network, no keys. The stub engine/quote stand in for the venue;
 every kill path must FAIL + abort with no further phases.
 """
-import copy
 import sys
 import time
 from pathlib import Path
@@ -150,9 +149,11 @@ def test_unknowns_at_gate_kill(drill, creds, monkeypatch):
 
 def test_protection_miss_aborts_before_later_phases(drill, creds,
                                                     monkeypatch):
-    from test_rev2_demo_drill import (_algo_cancelled, _algo_working,
-                                      _cancelled, _listen_close,
-                                      _listen_open, _ready)
+    from test_rev2_demo_drill import (
+        _listen_close,
+        _listen_open,
+        _ready,
+    )
     ready, orders = venues.ready_fixture(), venues.orders_fixture()
     acct = venues.drill_account(ready)
     script = _ready(acct) + [
@@ -191,9 +192,14 @@ def test_protection_miss_aborts_before_later_phases(drill, creds,
 
 def test_exit_mismatch_aborts(drill, creds, monkeypatch):
     """Session path: the exit half-fills => KILL (emergency completes)."""
-    from test_rev2_demo_drill import (_algo_cancelled, _algo_working,
-                                      _cancelled, _listen_close,
-                                      _listen_open, _ready)
+    from test_rev2_demo_drill import (
+        _algo_cancelled,
+        _algo_working,
+        _cancelled,
+        _listen_close,
+        _listen_open,
+        _ready,
+    )
     ready, orders = venues.ready_fixture(), venues.orders_fixture()
     acct = venues.drill_account(ready)
     script = _ready(acct) + [
@@ -251,8 +257,7 @@ def test_exit_mismatch_aborts(drill, creds, monkeypatch):
 
 def test_honest_no_trade_blocks_protection(drill, creds, monkeypatch):
     """Session path: IOC cancels with no fill => BLOCKED, no KILL, rc 0."""
-    from test_rev2_demo_drill import (_cancelled, _listen_close,
-                                      _listen_open, _ready)
+    from test_rev2_demo_drill import _cancelled, _listen_close, _listen_open, _ready
     ready, orders = venues.ready_fixture(), venues.orders_fixture()
     acct = venues.drill_account(ready)
     script = _ready(acct) + [

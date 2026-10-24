@@ -6,8 +6,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
-from cryptobot.research.funnel import (analyze_banked, analyze_run,  # noqa: E402
-                                       analyze_symbol_time, map_reason)
+from cryptobot.research.funnel import analyze_banked, analyze_run, analyze_symbol_time, map_reason  # noqa: E402
 
 
 def test_reason_mapping_covers_plan_buckets():

@@ -6,17 +6,15 @@ recovery — then replay_evidence proves the log reproduces every decision.
 This is the committed form of the W4-24H gated-window/anomaly replay demo.
 """
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
 import cryptobot.events as _evpkg  # noqa: E402
-from cryptobot.events.anomaly import (AnomalyBaseline,  # noqa: E402
-                                      AnomalyReading)
+from cryptobot.events.anomaly import AnomalyReading  # noqa: E402
 from cryptobot.events.evidence import replay_evidence  # noqa: E402
-from cryptobot.events.freshness import (FreshnessTracker,  # noqa: E402
-                                        HttpResponse)
+from cryptobot.events.freshness import FreshnessTracker, HttpResponse  # noqa: E402
 from cryptobot.events.runtime import ProtectionRuntime  # noqa: E402
 from cryptobot.events.sources import CpiSource, FomcSource  # noqa: E402
 from cryptobot.events.store import EventStore  # noqa: E402
@@ -25,7 +23,7 @@ CANNED = Path(_evpkg.__file__).parent / "fixtures" / "canned"
 
 
 def _utc(*args):
-    return datetime(*args, tzinfo=timezone.utc)
+    return datetime(*args, tzinfo=UTC)
 
 
 def _canned(url, timeout_s=20):

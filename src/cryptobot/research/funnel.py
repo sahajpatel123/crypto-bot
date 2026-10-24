@@ -25,7 +25,7 @@ import argparse
 import json
 import sqlite3
 from collections import Counter
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -328,7 +328,7 @@ def _read_intents(db_path: Path) -> list[dict[str, Any]]:
     try:
         cols = [r[1] for r in
                 con.execute("pragma table_info(intents)").fetchall()]
-        return [dict(zip(cols, row)) for row in
+        return [dict(zip(cols, row, strict=False)) for row in
                 con.execute("select * from intents").fetchall()]
     finally:
         con.close()
@@ -476,7 +476,7 @@ def analyze_symbol_time(capture_path: str | Path) -> dict[str, Any]:
                 # tz-independent, but evidence labels must not depend on
                 # the local zone).
                 sec = datetime.fromtimestamp(
-                    int(ts_ms) / 1000, tz=timezone.utc).replace(
+                    int(ts_ms) / 1000, tz=UTC).replace(
                         microsecond=0).isoformat()
             except (ValueError, TypeError, OSError):
                 continue
@@ -553,7 +553,7 @@ def main(argv: list[str] | None = None) -> int:
             analyze_banked(json.loads(Path(cell).read_text()),
                            journal)
             for cell, journal in zip(args.banked_cell,
-                                     args.banked_journal)],
+                                     args.banked_journal, strict=False)],
         "symbol_time": [analyze_symbol_time(path)
                         for path in args.capture],
     }
