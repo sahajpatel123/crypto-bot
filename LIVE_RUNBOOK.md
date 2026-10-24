@@ -68,11 +68,16 @@ Gate needs `ws_p99_ms < 250` and `drop_rate < 0.001` in that file.
 Score a frozen strategy on untouched data, then:
 
 ```sh
-uv run --locked cryptobot verdict --trades trades.jsonl --hypothesis H2 \
-  --config configs/paper.toml --family-size 6 --out verdict.json
+uv run --locked cryptobot verdict --trades trades.jsonl --hypothesis <ID> \
+  --strategies <runtime strategy ids> --config configs/paper.toml \
+  --family-size <N> --out verdict.json
 ```
 
 Only `verdict: PASS` counts. UNDERPOWERED means keep collecting data.
+`--strategies` names the runtime strategies that produced the trades;
+the gate carries them (and the scored code commit), and prod refuses
+any enabled strategy outside that list or any other commit. As of
+2026-10-24 no hypothesis has a PASS (H2 was killed on history).
 
 ## 6. Gate + arm (only when 3–5 are green)
 
