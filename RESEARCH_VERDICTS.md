@@ -1,8 +1,13 @@
 # RESEARCH VERDICTS — does anything have a real fee-inclusive edge?
 
-**Answer today: no strategy has demonstrated a positive net
-expectancy.** A rigorous negative result plus a hardened system is a
-successful outcome here; nothing below is dressed up as a pass.
+**Answer (2026-10-24): no strategy has demonstrated a fee-inclusive
+edge.** Intraday families (S, X1, H1–H5, B1–B7) die on costs; H2's
++56bps dev result was KILLED on 4.7 years of unseen history (−17bps,
+n=6,441). The only consistent positive sign is daily cross-sectional
+momentum (C2: +9.2 / +5.9 / +14.7 bps/day on DEV / holdout /
+2020–21 replication, Sharpe 0.8–1.1, drawdowns to 38%), but no period
+met its preregistered bar, so C2 is KILLED and Family C is closed.
+Nothing below is dressed up as a pass.
 
 ## Evidence (development data only — see research/DATA_LEDGER.md)
 
@@ -40,12 +45,29 @@ cost, ≥300 trades, ≥60% non-negative days, drawdown in budget, Holm
 correction across the family. Confirmation happens exactly once per
 hypothesis on untouched data (the campaign capture, owner-released).
 
-## Recommendation — what to test next (ranked)
+## Statistics fixes (2026-10-24)
 
-1. **H1 maker OFI** on dev data with the pessimistic queue model;
-   if dev expectancy ≤ 0 at 1x maker cost, stop — do not tune.
-2. **H2 trend/vol-regime**: 26bps is small versus multi-hour moves;
-   this family has the best structural prior.
-3. **H3 funding tilts** as a filter on H2 rather than standalone.
-4. Only a dev PASS earns the single untouched-data confirmation,
-   then ≥14 days pessimistic paper (T5.6) before any arm discussion.
+`verdict.evaluate_trades` previously set its Holm p-value to 0 whenever
+the CI lower bound was positive (so Holm never bit) and bootstrapped
+correlated same-day trades as independent. It now uses a day-block
+bootstrap and a real one-sided bootstrap p. Earlier verdicts were all
+non-PASS, so no conclusion changes.
+
+## Recommendation — what is left (ranked)
+
+1. **Do not arm.** There is nothing validated to trade; the prod
+   route now refuses any strategy a PASS verdict did not score.
+2. **Owner decision — a new forward study of daily XSMOM.** The
+   historical record is exhausted (2020–2026 all read). The only honest
+   way to resolve C2's "consistent but not significant" evidence is a
+   NEW preregistration on data that does not exist yet: paper-trade it
+   forward with a point-in-time universe (incl. delistings) for at
+   least 6–12 months, scored once. Expect a Sharpe ~1 effect with
+   ~30–40% drawdowns at 1x gross; it is a portfolio strategy, not a
+   scalper, and would need a new runtime (multi-position, daily
+   rebalance) — the current Session is one-position-at-a-time.
+3. **Intraday book strategies** (H1/H5) only with a recorder that keeps
+   full depth AND aggTrade prints; maker-only, never taker.
+4. Every new claim: prereg committed first, DEV/holdout split, one
+   shot, `cryptobot verdict --strategies ...`, then ≥14d pessimistic
+   paper, demo drill, latency, gate, arm.

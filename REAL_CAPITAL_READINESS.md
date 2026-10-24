@@ -1,6 +1,22 @@
-# Real-capital readiness — 2026-10-21
+# Real-capital readiness — 2026-10-21 (updated 2026-10-24)
 
 ## Verdict: **NO-GO. Do not arm. Do not deploy real capital.**
+
+### Update 2026-10-24
+
+- **H2 KILLED** on 2022-01..2026-08 archive data it had never seen:
+  −17.09 bps/trade over 6,441 trades (gross +0.91), CI95 [−29.9, −4.1]
+  (`reports/hypotheses/H2-history.json`). It is no longer a candidate.
+- **Family C** (daily TSMOM / XSMOM / carry / reversal) preregistered
+  and scored: all FAIL DEV; the best (C2 XSMOM) was KILLED on the
+  one-shot 2025–26 holdout (p=0.154) and on the one-shot 2020–21
+  replication (p=0.080). See RESEARCH_VERDICTS.md.
+- Safety fixes: armed `max_daily_loss` is now enforced in the risk
+  policy; the gate records the strategies + code commit its verdict
+  scored and prod refuses anything else (so S1–S5 can never trade
+  live); verdict Holm p-value and day-block bootstrap corrected.
+- The prod route DOES run live when fully armed (since 095cbd7); item 3
+  below describes the earlier always-refuse state.
 
 The project's own gate says NO-GO. This is not a code-completion problem;
 there is no validated edge to trade.
@@ -14,7 +30,7 @@ there is no validated edge to trade.
 | Gate file | none — no `gate.json` GO exists | both worktrees |
 | Arm file | none — no `armed.json` exists | both worktrees |
 | H1 | UNDERPOWERED, n=1 (capture bulk events now missing) | `reports/hypotheses/H1*.json` |
-| H2 | **UNDERPOWERED, n=290 < 300** (best candidate: +56.42 bps/trade) | `reports/hypotheses/H2.json` |
+| H2 | dev UNDERPOWERED n=290 (+56.42bps) → **KILLED** on 2022–26 history (−17.09bps, n=6,441) | `reports/hypotheses/H2.json`, `H2-history.json` |
 | H3 | UNDERPOWERED, n=121; net −6.62 bps/trade | `reports/hypotheses/H3.json` |
 | H4 | UNDERPOWERED, n=0; cache ends 2026-10-19, fresh window starts 2026-10-20 | `reports/hypotheses/H4.json` |
 | H5 | UNDERPOWERED, n=0 | `reports/hypotheses/H5-accrual-01.json` |

@@ -1,8 +1,10 @@
 # Crypto scalping bot — Bot v0.1 application
 
-Status: engineering complete; live trading is possible only through the
-guarded arming route and is disabled by default. Follow
-[LIVE_RUNBOOK.md](/Users/sahajpatel/Code/cryto-bot/LIVE_RUNBOOK.md) end to end (keys last).
+Status (2026-10-24): **no strategy has a validated edge — do not trade
+real money** (see [RESEARCH_VERDICTS.md](RESEARCH_VERDICTS.md) and
+[REAL_CAPITAL_READINESS.md](REAL_CAPITAL_READINESS.md)). The live route
+exists but is disabled by default and refuses any strategy that a PASS
+verdict did not score; [LIVE_RUNBOOK.md](LIVE_RUNBOOK.md) describes it.
 Production submission is disabled by default (see `configs/prod.toml`:
 `allow_live_submission = false`, plus the `gate` + `arm` evidence chain). The
 E-007 Nautilus paper adapter IS integrated
