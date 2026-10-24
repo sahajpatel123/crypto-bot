@@ -506,7 +506,10 @@ def test_rel_unresolved_restart_nonsuccess(tmp_path):
             assert [e for e in engine2.poll()
                     if e.kind == "fill"] == [], "phantom fill adopted"
             # The venue never saw it: lookup reports void (None), never
-            # success; retry is allowed again only after the void.
+            # success; retry is allowed again only after the void. The -2013
+            # grace window is pinned in tests/unit/test_execution_defects.py;
+            # expire it here so this stays about a PROVEN void.
+            engine2.VOID_MISS_REQUIRED, engine2.VOID_GRACE_MS = 1, 0
             transport2.append(
                 ("GET", "/fapi/v1/order", {"origClientOrderId": cid},
                  ("err", 400, -2013, "Order does not exist.")))
