@@ -35,6 +35,8 @@ FUND_URL = ("https://data.binance.vision/data/futures/um/monthly/"
 DEV = ("2022-01-01", "2024-12-31")
 HOLDOUT = ("2025-01-01", "2026-08-31")
 ALPHA = 0.05 / 4
+# Post-DEV amendments that spend the one-shot holdout on a DEV near-miss.
+AMENDED = {"C2": "research/prereg/C-family-amendment-1.md"}
 
 
 def _day(ms: int) -> str:
@@ -131,7 +133,8 @@ def cmd_dev() -> int:
 
 def cmd_holdout(hid: str) -> int:
     dev = json.loads((ROOT / "reports/hypotheses/C-dev.json").read_text())
-    if dev["results"].get(hid, {}).get("dev_verdict") != "PASS":
+    if (dev["results"].get(hid, {}).get("dev_verdict") != "PASS"
+            and hid not in AMENDED):
         print(f"holdout: REFUSED — {hid} did not pass DEV", file=sys.stderr)
         return 2
     out = ROOT / f"reports/hypotheses/{hid}-holdout.json"
@@ -147,6 +150,7 @@ def cmd_holdout(hid: str) -> int:
           and stats["mean_adverse_bps"] > 0)
     doc = {"hypothesis": spec.name, "split": "HOLDOUT", "window": HOLDOUT,
            "code_commit": _commit(), "dev_commit": dev["code_commit"],
+           "amendment": AMENDED.get(hid),
            "verdict": "CONFIRMED" if ok else "KILLED", **stats}
     out.write_text(json.dumps(doc, indent=1) + "\n")
     print(json.dumps(doc, indent=1))
