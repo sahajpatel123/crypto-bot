@@ -1,8 +1,10 @@
 # RESUME — crypto-bot state
 
-Snapshot: **2026-10-25 10:55Z**, base `origin/live/hardening` @ `4b57100` (#51).
-`origin/release/v1` (the tree the recorder actually runs) is now at **`ef744a2`** — #44 + #45
-merged there; see §8. No restart has been performed.
+Snapshot: **2026-10-25 11:00Z**, base `origin/live/hardening` @ `59a34c0` (#52).
+`origin/release/v1` (the tree the recorder actually runs) is **`ef744a2`** — #44 + #45 merged there —
+and it is now **deployed in the edge tree with exactly one controlled restart done**: the recorder
+stream fix is **live**. The 10:00Z header this replaces ("no restart has been performed") was true when
+it was written; §8 carries both, and §5 carries the post-restart chunk counts.
 Gate: **NO-GO**, unchanged. Holdout sealed. No orders, no API-key reads, no live money.
 Read this file, then `git log --oneline -5 origin/live/hardening`, then the PR list. That is the whole
 handover — do not re-derive anything below.
@@ -14,10 +16,12 @@ gates), Family C is closed (C2 killed on replication), D1 is unevaluated for lac
 the only live experiment is the C2-FWD forward recorder booking its first rows. Five things changed
 this milestone. **DSR is formally unevaluable and the gate now fails closed**: `N_TRIALS` stays
 `None`, no finite upper bound can be proven, and the evaluator must refuse to emit a DSR verdict while
-it is unset — so D1 cannot PASS (§5). The **recorder stream gap** was found and fixed in code: for the
-whole 18–25 Oct run the recorder silently discarded three of its five subscribed streams, and #33 is
-merged on `live/hardening` — but **the running recorder does not execute that tree**, so the fix is
-not live until the owner deploys it (§8). **Binance is not geo-blocked from the Mac** — Reliance Jio's
+it is unset — so D1 cannot PASS (§5). The **recorder stream gap** was found, fixed in code, and is now
+**live**: for the whole 18–25 Oct run the recorder silently discarded three of its five subscribed
+streams; `release/v1` `ef744a2` was deployed to the edge tree and the recorder restarted **exactly
+once** (§8), and the first closed chunk after it holds **559 `trade_agg`** in five minutes (§5).
+Liquidations are still **not** recorded — `forceOrder` never delivers — and that stays an open gap,
+not a fix (§5). **Binance is not geo-blocked from the Mac** — Reliance Jio's
 DNS sinkholes it, and the opt-in DoH fallback for that is merged as #26. The recorder is running on
 the owner's Mac (one pid, heartbeat fresh) and is the single point of failure for every forward
 verdict; nothing that touches the exchange can run on Reason Cloud (§6). The fifth: **D1's evaluator
@@ -165,9 +169,10 @@ reachable by leaving the recorder running. `N_TRIALS` unset remains the third, i
 
 ## 4. Next steps, in priority order
 
-1. **Deploy the recorder fix — it is an owner decision, not an agent's.** #33 and #36 are merged on
-   `live/hardening`, but the running recorder executes the separate edge tree at `release/v1`
-   `6ad62b4`, so **a restart alone changes nothing** (§8). Do not update the edge tree yourself.
+1. **The recorder deploy is done (§8); the open gap is liquidations.** Trade flow, depth and the REST
+   mark price are recorded; `forceOrder` still delivers nothing, so **there is no liquidation history
+   at all**. Decide whether to record it another way or accept it — that is a scope decision to
+   record in this file, not an agent's quiet fix.
 2. **Prune finished session workspaces** before the disk drives the recorder into its 4,096 MB floor.
    Each Reason child session leaves ~1.2 GB under `~/.reason/workspace/sessions/`; there were six at
    08:11Z (≈7.2 GB) and guard's free-space samples swung 12,632 → 9,906 MB inside ten minutes. Never
@@ -180,7 +185,10 @@ reachable by leaving the recorder running. `N_TRIALS` unset remains the third, i
    the fail-closed rule — no DSR verdict and no D1 PASS while `N_TRIALS` is unset.
 4. **After any recorder deploy, verify it actually took:** a newly sealed chunk must contain `trade_agg`
    records, and a deliberately silent stream must raise the per-stream alert (#36). Chunks sealed before
-   the deploy keep their gap — that is history, not a regression.
+   the deploy keep their gap — that is history, not a regression. **That check is complete for the
+   2026-10-25 stream-fix deploy** — closed chunk `rec-000449-20261025T095957Z` holds **559 `trade_agg`**,
+   so the deploy took; the restart did not crash-loop. The per-stream silent alert (#36) was **not**
+   exercised on the live deploy, so that one part of the check is still outstanding.
 5. **C2-FWD.** Leave it running; scoring reads 365/730/1095 rows only, so nothing is readable yet.
    Never look at its P&L before then.
 6. **Do not re-open Family B or C and do not rescore B4.** The holdout is spent.
@@ -256,8 +264,9 @@ earliest possible PASS is 2027-03-01.
 
 ### Recorder (owner's Mac, read-only; `guard.log` 2026-10-25T07:42:05Z and my re-read at 08:11Z)
 
-- Exactly **one** recorder: pid **91414**, launchd `com.cryptobot.recorder`, `caffeinate` wrapper pid
-  91416. `--symbols BTCUSDT,ETHUSDT --chunk-seconds 300 --disk-budget-mb 4096`.
+- Exactly **one** recorder: pid **71989**, launchd `com.cryptobot.recorder`, `caffeinate` wrapper pid
+  71991 (`91414`/`91416` before the 10:00Z deploy, §8). `--symbols BTCUSDT,ETHUSDT --chunk-seconds
+  300 --disk-budget-mb 4096`.
 - `heartbeat_age_s` **0.0156**, free **12,295 MB** against the **4,096 MB** floor, runway **166.7 h**.
 - `c2fwd` days_behind **0**, **1** row booked; `stop_file` **false**; data volume **11.8 GiB** available.
 - Re-read at 08:11Z: one pid, heartbeat advancing (chunk `rec-000426-20261025T080325Z`), free space
@@ -279,6 +288,22 @@ raw prints (raw prints do not fit the 4 GB budget), a sealed chunk now raises a 
 naming any subscribed stream that produced no record**, and mark price continues from the 60 s REST
 `premiumIndex` poll. **Nothing was a disk-budget or priority cut** — do not "fix" it by raising the
 budget.
+
+**UPDATE 2026-10-25 10:10Z — the gap is closed for trade prints, and the deploy is measured, not
+assumed.** Chunk `rec-000448-20261025T095326Z` is the last complete chunk before the restart and holds
+only `book_ticker`, `depth`, `premium_index`, `open_interest`, `depth_snapshot` and `header` — no
+trades, no mark, no liquidation, exactly as above. The first closed chunk after the restart,
+`rec-000449-20261025T095957Z`, holds **143,027 `book_ticker`**, **5,855 `depth`**, **559 `trade_agg`**,
+**10 `premium_index`**, **10 `open_interest`**, **10 `depth_snapshot`**, **1 `header`** and **0
+`liquidation`**. Those types were re-counted from the sealed `.gz` while writing this file and match to
+the record.
+
+**The honest limit — do not read this as more than it says.** `BINANCE_SILENT_STREAMS` (`aggTrade`,
+`markPrice@1s`, `forceOrder`) handshake and then send **zero bytes**, so the recorder records no
+mark-price and no liquidation *stream*. Mark price comes from the 60 s REST `premiumIndex` poll and
+rides inside the `premium_index` records as `payload.markPrice`. **There is therefore still no recorded
+liquidation (`forceOrder`) history anywhere** — a known open gap, not something this deploy fixed.
+Trade prints are the only stream that closed.
 
 ## 6. Standing safety rules
 
@@ -319,7 +344,8 @@ it is off by default. The CLI and exchange-facing tools install `src/cryptobot/n
 **This is the trap that will waste a session if it is not read.** The launchd job executes the
 separate edge tree, not this repo:
 
-- Tree `~/Code/cryto-bot-edge`, branch **`release/v1`, HEAD `6ad62b4` (2026-10-20)**.
+- Tree `~/Code/cryto-bot-edge`, branch **`release/v1`, HEAD `ef744a2`** — `6ad62b4` until the 10:10Z
+deploy recorded at the end of this section.
 - `WorkingDirectory = ~/Code/cryto-bot-edge`; `PYTHONPATH = ~/.cryptobot/netshim:~/Code/cryto-bot-edge/src`;
   `CRYPTOBOT_DOH=1`.
 - `KeepAlive{SuccessfulExit:false}`, `ThrottleInterval 30`, so a clean stop does not restart into
@@ -328,7 +354,8 @@ separate edge tree, not this repo:
 So **#33 being merged on `live/hardening` changes no recorder behaviour**, and **restarting the
 recorder is a no-op** until the edge tree carries the change. Landing the fix there and updating
 `edge/src` is an **owner decision**; record it, do not do it. Only one controlled restart follows it,
-with rollback to `6ad62b4`. **No restart has been performed.**
+with rollback to `6ad62b4`. **No restart had been performed when this paragraph was written** — the
+2026-10-25 10:10Z update at the end of this section records the deploy that did it.
 
 **UPDATE 2026-10-25 10:00Z — the fix is now on `release/v1`, and the edge tree still is not.** Two
 pull requests were opened against `release/v1` (not `live/hardening`, and `release/v1` was **not**
@@ -377,6 +404,30 @@ C2-FWD runs from `~/Code/cryto-bot-fwd` at `9dc49f9` with `CRYPTOBOT_DOH=1`, lau
 `data/forward_c2/ledger.jsonl`; first row booked 2026-10-25T05:43Z for day 2026-10-24 (universe 30, 12
 positions). Preregistered scoring runs once at 365/730/1095 rows (first ≈2027-10-24); no P&L is read
 before then.
+
+**UPDATE 2026-10-25 10:10Z — the deploy is done: `ef744a2` in the edge tree, one controlled restart,
+one recorder throughout.** The edge tree at `~/Code/cryto-bot-edge` was fast-forwarded `6ad62b4` →
+**`ef744a2`** (clean, no rollback needed), then the recorder was restarted **exactly once**:
+
+```
+launchctl kickstart -k gui/<uid>/com.cryptobot.recorder
+```
+
+pids **91414 / 91416 → 71989 / 71991**. There was one recorder at every point of the change and never a
+second instance, and the first closed chunk after it, `rec-000449-20261025T095957Z`, carries trade flow
+(§5) — so the restart landed a working recorder rather than a crash loop.
+
+**Why #44 was load-bearing, restated because it is the trap.** `release/v1` tip `ba5d555` carried a
+duplicated block in `src/cryptobot/app/session.py` that is a hard `SyntaxError`, so `python -m
+cryptobot.cli` — the command launchd runs — could not import at all. A restart before #44 would have
+crash-looped the recorder instead of recording. #44 is what made this single restart safe.
+
+**Known red, unchanged by this deploy — do not read it as a regression.** `release/v1` CI is red at its
+base: `lint` carries **132 pre-existing errors in test files**, and the **test job cannot run at all**
+because `uv.lock` fails to parse (TOML error around line 779: `version = "0.17.2"` inside an array), so
+the job falls through to `.venv/bin/pytest`, which does not exist — **exit 127**. The recorder change's
+tests were therefore **validated locally, not by that branch's CI**; that is a verification limit, and
+`uv.lock` stays out of scope for this docs milestone.
 
 ## 9. Environment notes that still bite
 
