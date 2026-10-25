@@ -1095,6 +1095,9 @@ def evaluate(root: Path, *, force: bool = False,
 
 
 def main(argv=None) -> int:
+    from cryptobot import netguard  # opt-in DNS-sinkhole fallback (CRYPTOBOT_DOH=1)
+
+    netguard.install_from_env()
     ap = argparse.ArgumentParser(
         prog="forward_b4b",
         description="B4b forward basis recorder/evaluator (Vision CDN only)")

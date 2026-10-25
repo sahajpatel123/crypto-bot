@@ -1,112 +1,54 @@
 # RESUME — crypto-bot state
 
-Last checkpoint: 2026-10-25 ~05:10 UTC. Owner: Sahaj. Gate: **NO-GO** (no strategy has passed; holdout sealed).
+Last checkpoint: 2026-10-25. Owner: Sahaj. Gate: **NO-GO**. No strategy has passed; the holdout is sealed.
 
-Read this first after any interruption. Then check `git log --oneline -5 origin/live/hardening`
-and the PR list.
+Read this first after an interruption. Check `git log --oneline -5 origin/live/hardening` and the live PR list for current code and review state.
 
-## Where the code is
+## State as of 2026-10-25T07:10Z
 
-| Ref | SHA | State |
-|---|---|---|
-| `origin/live/hardening` | `0c2ccc4` | **Merged base.** PR #21 landed. Installs and runs green. |
-| PR #23 `reason/b4b-forward-basis-study-62b3f9db` | `64d5989` | Open. Merge of `8afd7d5` onto `0c2ccc4`. Lint + typecheck green; test job in progress. Awaiting independent re-review. |
-| `reason/resume-state` | this commit | Docs-only: this file. |
+BASE
+- live/hardening head = fc92c45 ("tests: stop pytest scratch filling laptop disks (#28)", push run 40170792405, lint/typecheck/test all success, test job 12.1 min).
+- #27 merged (docs/research ledger row). #28 merged. Nothing unreviewed on the base.
+- Historical baseline test-job duration on this repo: 12.1 min typical, 22.2 min worst observed (run 40169206876). Use this before calling any test job hung.
 
-`live/hardening` at `0c2ccc4` was verified locally, not just by badge:
-`uv sync --locked --extra dev` exit 0; **1510 passed, 3 skipped** (unit);
-**180 passed** (acceptance); `ruff check src tests` **0 findings**; collection
-**1513 tests, 0 errors**.
+OPEN PRS
+- #26 head e401b83, base live/hardening, open, not draft, merge_state unstable. lint success, typecheck success, test x2 in progress. Test step "Unit tests" started 06:47:16Z and was still running at 07:08Z = slow runner, NOT hung; log is not published mid-step.
+- #29 head 2e16664, draft, base live/hardening: lint success, typecheck success, one test success, one test in progress. Recorded base_sha 8f0f106, so it is one merge behind fc92c45.
+- #20 closed unmerged (superseded), lint failure + test cancelled — historical, not actionable.
 
-PR #21 carried the real base repair: the spliced `uv.lock`, the duplicate `cmd_gate`
-in `src/cryptobot/cli.py`, the `-2013` grace window, proof-by-id reconciliation,
-marked venue equity, clamped reduce-only legs, and the CI step-masking fix
-(one interpreter per step, blocking `uv sync --locked`, 60 min timeout).
-The arm test now asserts a refusal for each of the six CI env markers.
+RECORDER (measured on the Mac at 07:05Z, via devices_exec)
+- Exactly ONE instance: pid 91414 python -m cryptobot.cli recorder start, under caffeinate/nice pid 91416. Same argv, one logical recorder. Do not start another.
+- heartbeat.json ts_utc 2026-10-25T07:05:19Z against a 07:05:21Z clock = live.
+- chunk rec-000414 (window 07:03:24Z), records 57,200, bytes 1,688,549. Chunks 412/413/414 all written within the last 10 minutes.
+- data dir ~/Code/cryto-bot-edge/data/recorder = 2.2 GB total, chunks/ 420 entries.
+- --disk-budget-mb 4096. df / = 15 GiB free (55% used).
+- IMPORTANT CORRECTION: the earlier "recorder hits a disk cliff in ~7-10 days" is WRONG. The recorder self-caps at a 4096 MB budget and currently uses 2.2 GB, with 15 GiB free. There is no imminent storage cliff and no storage decision is needed from the owner. Remove any such warning from RESUME.md.
 
-## In flight
+GATE (unchanged, NO-GO)
+- B4 basis/carry: KILLED, turnover 17.05 vs frozen cap 12.
+- C2: KILLED, holdout p=0.154, replication p=0.080.
+- B4b forward basis/carry: UNDERPOWERED, 0/90 forward days, 0/20 round trips; forward clock starts 2026-11-01.
+- DSR 0.8211 at the real 30-day hold cap (0.8055 as called); the 0.7838 / "22.5 bets" figure is impossible and stays deleted.
+- Years gate needs 121 forward days: earliest possible PASS 2027-03-01. D1 unevaluated. Holdout sealed, no orders, no API key reads.
 
-- **PR #23** (B4b forward basis study). Content is research-only vs base: `.gitignore`,
-  `DECISIONS.md` (D-051..D-056), `RESEARCH_VERDICTS_B.md`, `research/prereg/B4b-forward-basis.md`,
-  `family_b_driver.py`, `slow_stats.py`, `tools/forward_b4b.py`, `tools/run_family_b.py`,
-  `tests/unit/test_forward_b4b.py`, `tests/unit/test_stats_confidence.py`.
-  At `64d5989`: `ruff check src tests` clean; **38** research tests pass.
-  Independence rule: **#23 does not merge until an independent reviewer re-checks the
-  eight findings and CI is green.** The B4b session must not merge it itself.
-- **Recorder** repaired (below). Watch the first closed chunk to confirm it is writing.
+## Network: Binance is not geo-blocked on the Mac; Jio DNS sinkholes it
 
-## Market-data recorder — repaired 2026-10-25T05:05Z
+Verified 2026-10-25 in Ahmedabad: Reliance Jio's resolver answers `*.binance.com` and `*.okx.com` with `49.44.79.236`, a dead host. Real addresses via DoH (`1.1.1.1` / `8.8.8.8`) work; fapi REST returned 200, fstream websocket upgrade 101, and demo-fapi returned 200. SNI and certificate checks are unaffected. Earlier claims that Binance futures was unreachable or needed a VPN were wrong. `data.binance.vision`, `testnet.binancefuture.com`, and `api.bybit.com` are not sinkholed; Cloud fapi HTTP 451 is a separate geo restriction.
 
-It had been **dead since 2026-10-20T07:19Z** (pid 25570 gone). Two causes, both fixed:
+The fix is opt-in `CRYPTOBOT_DOH=1`; it is only for a network where `cryptobot host-check` proves sinkholing. It is off by default. CLI and exchange-facing tools install `src/cryptobot/netguard.py`; `tools/netshim/sitecustomize.py` is standalone for processes that cannot import cryptobot. See `tools/netshim/README.md`.
 
-1. Every `com.cryptobot.*` launchd agent was **explicitly disabled**
-   (`launchctl print-disabled` showed recorder/watchdog/autopilot/refresh/adjudicate
-   => disabled).
-2. The plist pointed at `/Users/sahajpatel/Code/crypto-bot-edge`, which **does not
-   exist**. The real tree, with the code and all recorded data, is
-   `~/Code/cryto-bot-edge` (typo).
+## Recorder and forward data
 
-Repair applied: backed up the plist (`com.cryptobot.recorder.plist.bak-<timestamp>`),
-rewrote the four `crypto-bot-edge` paths to `cryto-bot-edge`, then `launchctl enable`
-+ `bootstrap` + `kickstart` for **recorder only** — the trading-side agents
-(autopilot, watchdog, adjudicate, refresh) were left disabled on purpose.
+- One launchd recorder only: `com.cryptobot.recorder`, tree `~/Code/cryto-bot-edge`, `PYTHONPATH=~/.cryptobot/netshim:~/Code/cryto-bot-edge/src`, `CRYPTOBOT_DOH=1`, `--symbols BTCUSDT,ETHUSDT --chunk-seconds 300 --disk-budget-mb 4096`, data in `~/Code/cryto-bot-edge/data/recorder`. Ingress was verified at 2026-10-25T05:33Z (50,400 records in the first 33 seconds). At 07:05Z it had 400 sealed chunks, 0 gaps in the last three, and one harmless unsealed `rec-000396-20261025T051309Z` not in the manifest. The measured volume was about 1.5 GB per UTC day; the recorder self-caps at 4096 MB. With 2.2 GB used and 15 GiB free there is no imminent storage cliff or owner storage decision.
+- The recorder plist uses `KeepAlive{SuccessfulExit:false}` and `ThrottleInterval 30`, so a clean stop does not restart into empty chunks. Never start a second recorder; verify the process and `recorder.pid` first.
+- `com.cryptobot.guard` runs every 5 minutes. It restarts only when no recorder is running, no STOP file exists, and free space is above the configured threshold; it prunes pytest scratch older than 6 hours only when pytest is not running. It alerts on low runway, stale heartbeat, duplicate recorder, or a C2-FWD ledger 2+ days behind. It never touches chunks, manifest, or ledgers.
+- A full `pytest tests/unit` run on the Mac once wrote 1.2–2.1 GB of scratch in about 25 minutes, dropping free space from 9.4 to 3.7 GiB; scratch was removed. Never run full unit or acceptance suites on the owner's Mac. Use CI or Reason Cloud, and put targeted-test scratch under `/tmp` then delete it.
+- C2-FWD is running from `~/Code/cryto-bot-fwd` at 9dc49f9 with `CRYPTOBOT_DOH=1`, launched by `com.cryptobot.c2fwd` four times daily (05:50/11:50/17:50/23:50 IST). Its ledger is `data/forward_c2/ledger.jsonl`; first row booked 2026-10-25T05:43Z for day 2026-10-24 (universe 30, 12 positions). Preregistered scoring runs once at 365/730/1095 rows (first about 2027-10-24); no P&L is read before then.
 
-Now: one instance, `cryptobot.cli recorder start --symbols BTCUSDT,ETHUSDT
---chunk-seconds 300 --disk-budget-mb 8192`, out `~/Code/cryto-bot-edge/data/recorder`.
-Resumed at chunk **rec-000395-20261025T050538Z**; series is continuous from
-`rec-000000-20261018T213756Z` (~397 chunks, 2.1 GB). KeepAlive is on.
+## Gate and next steps
 
-**Never start a second recorder.** Check with
-`ps -axo pid,command | grep 'cryptobot.cli recorder' | grep -v grep` and the pid file
-`~/Code/cryto-bot-edge/data/recorder/recorder.pid`.
-
-Two standing risks here:
-- `~/Code/cryto-bot` is at `83b24c7`, **behind `0c2ccc4`**, and that commit has no
-  `recorder` subcommand. The recorder therefore runs with
-  `PYTHONPATH=~/Code/cryto-bot-edge/src` and `CRYPTOBOT_ROOT=~/Code/cryto-bot-edge`.
-  Do not "fix" the plist back to the main checkout without first fast-forwarding it.
-- The Mac has **8.9 GiB free (96% used)**. Recorder data is capped at 8 GB by
-  `--disk-budget-mb`, currently 2.1 GB, so growth is bounded but the machine is tight.
-
-## Strategy numbers (after fees, slippage, funding)
-
-| Study | Verdict | Key numbers |
-|---|---|---|
-| B4 delta-neutral basis/carry (backtest) | **Killed** | Holdout burned (`release/holdout-reconcile.json`, three decodes). Turnover 17.05 vs frozen 12 — but that cap double-counts cost and measures no capacity. Nothing rescored. |
-| B4b forward basis/carry | **UNDERPOWERED** | 0 of 90 forward days, 0 of 20 round trips. Forward clock starts 2026-11-01. No result exists yet. |
-| B4 DSR (recomputed) | Passes 0.80 | 0.9464 at n_eff 91.5; **0.8211** at the real 30-day hold cap; 0.8055 as the runner calls it. The 0.7838 / "22.5 bets" figure in older notes is **impossible** (implies a 40.7-day hold) — it was wrong. |
-
-B4b gate set (frozen, prereg `research/prereg/B4b-forward-basis.md`): Sharpe >= 0.70;
-> 0.30 at 2x cost; DSR >= 0.80 at N=10; PBO <= 0.30; DD <= 35%; >= 2 positive calendar
-years with >= 60 forward days each; median participation <= 1% and max <= 5% of ADV;
-block-bootstrap lower bound > 0; Newey-West t(30) >= 2.0. Costs 49 bps round trip plus
-`0.5*sigma*sqrt(Q/ADV20)` impact per fill. One look, at >= 90 days AND >= 20 round trips.
-
-**A 90-day look can only KILL.** The years gate needs 121 forward days (2027-03-01),
-and it is blocking and non-structural, so a PASS is impossible before then.
-
-## Next steps, in order
-
-1. PR #23: wait for the independent reviewer's verdict on `64d5989` and for the test
-   job. Merge only if both are good; otherwise bound the fix and re-review.
-2. Confirm the recorder closed chunk 395 and advanced `heartbeat.json` past
-   2026-10-20T07:19:41Z. If not, read `~/Library/Logs/cryptobot/recorder.err`.
-3. Once #23 is merged: re-run the base gates at the merge commit (`uv sync --locked
-   --extra dev`, unit + acceptance, `ruff check src tests`).
-4. Run `tools/forward_b4b.py` against whatever forward data exists; expect
-   UNDERPOWERED until 2026-11-01 + 90 days. It must fire automatically when the
-   thresholds are met — no manual look.
-5. Keep the sealed holdout sealed. No rescoring of B4. No orders; trade-only keys,
-   withdrawals disabled; the live switch stays with the owner via `cryptobot owner`.
-
-## Ground rules for the next session
-
-- `ruff check src tests` is the CI lint scope (ruff 0.17.1, blocking). `tools/` is not
-  linted by CI; 138 findings live there and are not a merge blocker.
-- CI installs `--extra dev` and calls `.venv/bin/pytest`. `uv run pytest` fails
-  (`Failed to spawn: pytest`) because pytest is not in a dependency group.
-- A bare `uv sync --locked` on Python 3.15 picks 3.15.1 and cannot build
-  `nautilus-trader`; pin 3.12-3.14. CI pins 3.12.
-- Mutations are the test of a test: for every guard, delete it and confirm a named
-  test fails. Two were proven this way (spot accrual -> 1178.69 vs 1260.91;
-  years 60->30 -> both years-gate tests).
+- B4 basis/carry is KILLED (turnover 17.05 vs frozen cap 12); C2 is KILLED (holdout p=0.154, replication p=0.080).
+- B4b forward basis/carry is UNDERPOWERED: 0/90 forward days and 0/20 round trips. Its clock starts 2026-11-01; earliest possible PASS is 2027-03-01 because the years gate needs 121 forward days. A 90-day look can only KILL. D1 is unevaluated.
+- Keep the sealed holdout sealed. No rescoring of B4. No orders; trade-only keys, withdrawals disabled, and the live switch remains with the owner via `cryptobot owner`.
+- Use CI for full unit and acceptance tests. CI runs `uv sync --locked --extra dev`, then `.venv/bin/pytest`; `uv run pytest` fails because pytest is not in a dependency group. CI uses Python 3.12, and the repo supports Python 3.12–3.14; bare sync on 3.15 cannot build `nautilus-trader`.
+- Blocking lint scope is `ruff check src tests` (ruff 0.17.1); `tools/` is outside CI's lint scope, but the standalone shim is checked separately in this PR.
