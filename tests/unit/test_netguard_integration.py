@@ -39,7 +39,14 @@ HOSTS = ["fapi.binance.com", "fstream.binance.com", "demo-fapi.binance.com", "ap
 
 @pytest.fixture
 def shim(monkeypatch):
-    """netguard installed with DoH answering 127.0.0.1; name-checking guards lifted."""
+    """netguard installed with DoH answering 127.0.0.1; name-checking guards lifted.
+
+    Order-independent by construction: the shim is process-global, so whatever an
+    earlier test file left installed is torn down first (``netguard.install`` would
+    otherwise return False and the injected lookup would never be consulted), and
+    the module-level urllib opener is dropped so a ``ProxyHandler`` that an earlier
+    test built from the ambient environment cannot route these loopback dials.
+    """
     for var in ("http_proxy", "https_proxy", "all_proxy", "HTTP_PROXY", "HTTPS_PROXY",
                 "ALL_PROXY"):
         monkeypatch.delenv(var, raising=False)
@@ -47,12 +54,14 @@ def shim(monkeypatch):
     monkeypatch.setattr(socket, "create_connection", _CREATE_CONNECTION)
     monkeypatch.setattr(urllib.request, "urlopen", _URLOPEN)
     monkeypatch.setattr(urllib.request.OpenerDirector, "open", _OPENER_OPEN)
+    monkeypatch.setattr(urllib.request, "_opener", None)  # rebuild without proxies
     asked: list = []
 
     def lookup(name):
         asked.append(name)
         return ["127.0.0.1"], 60
 
+    netguard.uninstall()  # a previous file's shim must not shadow this lookup
     assert netguard.install(lookup=lookup) is True
     yield asked
     netguard.uninstall()
