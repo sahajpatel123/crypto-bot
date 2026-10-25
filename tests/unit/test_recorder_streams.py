@@ -130,6 +130,43 @@ def test_silent_stream_is_reported(tmp_path):
     assert any(a["kind"] == "stream-silent" for a in writer.alerts)
 
 
+def test_silent_stream_is_reported_per_stream_not_per_symbol(tmp_path):
+    """A live trade stream must not mask a dead depth or other stream."""
+    rec = _recorder(tmp_path, symbols=("BTCUSDT",))
+    silent = rec.writer._silent_streams({"streams": ["btcusdt@trade"]})
+    assert silent == ["btcusdt@bookTicker", "btcusdt@depth@100ms"]
+
+
+def test_trade_alias_covers_only_its_own_stream(tmp_path):
+    rec = _recorder(tmp_path, symbols=("BTCUSDT",))
+    quiet = rec.writer._silent_streams(
+        {"streams": ["btcusdt@aggTrade", "btcusdt@bookTicker",
+                     "btcusdt@depth@100ms"]})
+    assert quiet == []          # aggTrade satisfies the default trade stream
+
+
+def test_bare_stream_names_do_not_alarm(tmp_path):
+    """A /ws/<name> connection names records by event type, not by stream."""
+    rec = _recorder(tmp_path, symbols=("BTCUSDT",))
+    assert rec.writer._silent_streams(
+        {"streams": ["trade", "bookTicker", "depth"]}) == []
+
+
+def test_trade_agg_keeps_the_trade_id_range(tmp_path):
+    """Without the ids a replayed print could never be de-duplicated."""
+    rec = _recorder(tmp_path)
+    for trade_id, price in ((7, 100.0), (9, 101.0)):
+        rec._record_stream("binance", {
+            "stream": "btcusdt@trade",
+            "data": {"e": "trade", "E": 1000, "T": 1000, "s": "BTCUSDT",
+                     "t": trade_id, "p": str(price), "q": "1", "m": False}})
+    rec._flush_buckets()
+    rec.writer.close()
+    path = tmp_path / "chunks" / Path(rec.writer.sealed[0]["chunk"]).name
+    (agg,) = [r for r in _records(path) if r.get("type") == "trade_agg"]
+    assert (agg["first_trade_id"], agg["last_trade_id"]) == (7, 9)
+
+
 def test_aggregate_falls_back_to_raw_on_bad_payload(tmp_path):
     rec = _recorder(tmp_path)
     rec._record_stream("binance", {

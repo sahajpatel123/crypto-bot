@@ -720,3 +720,24 @@ Meta Muse Spark.
   dataset. The change must land on a chunk boundary when the owner
   restarts the recorder; the 18-25 Oct chunks stay as they are, and no
   preregistered threshold, holdout file or verdict is touched.
+
+- D-058 (the stream-silent guard is per stream, not per symbol,
+  2026-10-25): the first cut of D-057 guard exempted every SYMBOL@* name
+  as soon as any of that symbol trade records was seen, because the
+  trade/aggTrade equivalence was tested on the symbol rather than on the
+  stream name. With trade flowing by default that made the alert
+  unreachable in the one case it exists to catch -- one stream dying
+  while the symbol others keep flowing -- and the test that shipped with
+  it fed the empty seen set, so it could not fail. The equivalence now
+  applies only to its own stream name; a single-stream (/ws/<name>)
+  connection, whose records carry no stream field, is recognised by bare
+  event name instead of alerting on every chunk; and trade_agg keeps the
+  first/last trade id so a replayed or duplicated print can be
+  de-duplicated downstream. Two known limits are recorded rather than
+  papered over: a print arriving for a second whose bucket was already
+  flushed re-opens that second, so one (symbol, second) can carry two
+  partial trade_agg records that must be summed; and the second still
+  open when a chunk seals is written into the next chunk, so a chunk
+  manifest streams list is not exhaustive for its sealing second
+  (records are keyed by event_ms). No preregistered threshold, scored
+  dataset, verdict or holdout file is touched.
