@@ -13,6 +13,9 @@ sys.path.insert(0, str(ROOT))
 
 from tools.gate_calibration import (  # noqa: E402
     _comparison_suite,
+    _daily_stream,
+    _family_b4b_module,
+    _two_x_fee_increment_bps,
     oracle_month_share,
     oracle_positive_year_count,
 )
@@ -29,11 +32,24 @@ def _all_promotion_metrics(**overrides):
     return promotion_failures(**values)
 
 
+def test_synthetic_two_x_fee_stress_matches_b4b_fixed_fee_schedule():
+    assert _two_x_fee_increment_bps(_family_b4b_module()) == 49.0
+
+
+def test_synthetic_event_assignment_preserves_chronological_dependence():
+    rng = np.random.default_rng(4)
+    trades = np.arange(300, dtype=float)
+    _dates, _net, _day_labels, day_ix, event_values = _daily_stream(rng, trades)
+    assert np.all(np.diff(day_ix) >= 0)
+    assert np.array_equal(event_values, trades)
+
+
 def test_independent_statistics_match_200_random_inputs_each():
     result = _comparison_suite(n=200, seed=20261025)
     assert result["counts"] == {
         "DSR": 200,
         "PBO": 200,
+        "stationary_bootstrap_CI": 200,
         "day_block_bootstrap_CI": 200,
         "Sharpe_1x_and_2x_cost_series": 200,
         "expectancy_1x_and_2x_cost": 200,

@@ -13,7 +13,6 @@ import itertools
 import json
 import math
 import random
-import statistics
 import sys
 from collections import defaultdict
 from pathlib import Path
@@ -163,6 +162,29 @@ def oracle_stationary_ci(values, *, mean_block=5.0, rounds=1000,
     return sample[lo], sample[hi]
 
 
+def oracle_day_block_ci(values, days, *, rounds=64, alpha=0.05, seed=7):
+    """Naive whole-day resample, independent of verdict._block_bootstrap."""
+    if not values:
+        return (0.0, 0.0)
+    groups = {}
+    for i, value in enumerate(values):
+        key = days[i] if i < len(days) and days[i] else f"#{i}"
+        groups.setdefault(key, []).append(float(value))
+    blocks = list(groups.values())
+    rng = random.Random(seed)
+    means = []
+    for _ in range(rounds):
+        chosen = [blocks[rng.randrange(len(blocks))]
+                  for _ in range(len(blocks))]
+        total = math.fsum(math.fsum(block) for block in chosen)
+        count = sum(len(block) for block in chosen)
+        means.append(total / count if count else 0.0)
+    means.sort()
+    low = min(rounds - 1, int((alpha / 2) * rounds))
+    high = min(rounds - 1, int((1 - alpha / 2) * rounds) - 1)
+    return means[low], means[high]
+
+
 def oracle_month_share(returns: pd.Series) -> float:
     monthly = defaultdict(float)
     for stamp, value in returns.items():
@@ -227,31 +249,38 @@ def _daily_stream(rng, trade_returns_bps):
     months = pd.period_range("2020-01", "2023-12", freq="M")
     weights = rng.dirichlet(np.full(len(months), 2.5))
     monthly_counts = rng.multinomial(len(trade_returns_bps), weights)
-    daily_bps = np.zeros(len(dates), dtype=float)
-    event_day_ix = []
-    event_values = []
+    month_lengths = np.asarray([month.days_in_month for month in months])
+    month_starts = np.concatenate(([0], np.cumsum(month_lengths[:-1])))
+    month_ix = np.repeat(np.arange(len(months)), monthly_counts)
+    local_day = np.empty(len(trade_returns_bps), dtype=int)
     cursor = 0
-    for month_ix, (month, n_month) in enumerate(zip(months, monthly_counts, strict=True)):
-        month_days = dates[(dates.year == month.year) & (dates.month == month.month)]
-        if n_month:
-            choices = rng.integers(0, len(month_days), size=n_month)
-            for local_ix in choices:
-                event_day_ix.append(int(dates.get_loc(month_days[int(local_ix)])))
-            event_values.extend(trade_returns_bps[cursor:cursor + n_month])
-        cursor += n_month
-    # Preserve the generated event-order return process while assigning the
-    # monthly cluster counts to dates; pair values in month/event order.
-    for day_ix, bps in zip(event_day_ix, event_values, strict=True):
-        daily_bps[day_ix] += float(bps)
+    for month_number, count in enumerate(monthly_counts):
+        count = int(count)
+        if count:
+            local_day[cursor:cursor + count] = np.sort(rng.integers(
+                0, month_lengths[month_number], size=count))
+            cursor += count
+    event_day_ix = month_starts[month_ix] + local_day
+    daily_bps = np.bincount(event_day_ix, weights=trade_returns_bps,
+                             minlength=len(dates))
     net = daily_bps / 10_000.0
     dates_by_day = [str(d.date()) for d in dates]
-    return dates, net, dates_by_day, event_day_ix, np.asarray(event_values)
+    return dates, net, dates_by_day, event_day_ix, np.asarray(trade_returns_bps)
 
 
-def _generate_candidate_set(rng, *, family, events, edge_bps, k):
+def _two_x_fee_increment_bps(mod):
+    """Fixed spot/perp entry+exit fee schedule doubled at 2x; no impact/funding."""
+    return (2.0 * (mod.SPOT_TAKER_BPS + mod.SPOT_SPREAD_BPS)
+            + 2.0 * (mod.PERP_TAKER_BPS + mod.PERP_SPREAD_BPS))
+
+
+def _generate_candidate_set(rng, *, family, events, edge_bps, k,
+                            baseline_bps=0.0):
     streams = []
     for i in range(k):
-        edge = edge_bps if i == 0 else 0.0
+        # baseline_bps selects the null convention: zero after 1x fees or
+        # zero after 2x fees. Plant edge_bps on the selected candidate only.
+        edge = baseline_bps + (edge_bps if i == 0 else 0.0)
         trades = _draw_trade_returns(rng, events, family, edge)
         streams.append(_daily_stream(rng, trades))
     # Selection is external to B4b's single-cell evaluator: it represents
@@ -262,12 +291,13 @@ def _generate_candidate_set(rng, *, family, events, edge_bps, k):
     return streams[best], others, streams
 
 
-def _synthetic_eval(mod, stream, other_trial_sharpes, *, bootstrap_rounds):
+def _synthetic_eval(mod, stream, other_trial_sharpes, *, bootstrap_rounds,
+                    extra_cost_bps):
     dates, base_net, _days, event_ix, _event_values = stream
-    # Stress one extra 1 bp/trade at 2x cost. This is a transparent synthetic
-    # stress input, not a claim about any venue's fee schedule.
+    # The 2x stream applies the B4b fixed fee schedule a second time; market
+    # impact and funding are intentionally omitted and disclosed as limitations.
     event_counts = np.bincount(event_ix, minlength=len(base_net))
-    adverse_net = base_net - event_counts * 1e-4
+    adverse_net = base_net - event_counts * (extra_cost_bps / 10_000.0)
 
     def rows_for(net):
         equity = float(mod.DEFAULT_CONFIG.e0)
@@ -300,62 +330,160 @@ def _synthetic_eval(mod, stream, other_trial_sharpes, *, bootstrap_rounds):
         mod.BOOTSTRAP_ROUNDS = saved_boot
 
 
-def run_study(*, paths=40, seed=20261025, bootstrap_rounds=64):
+def _wilson_interval(successes, trials, z=1.959963984540054):
+    if trials <= 0:
+        return (0.0, 1.0)
+    p = successes / trials
+    den = 1.0 + z * z / trials
+    center = (p + z * z / (2 * trials)) / den
+    half = z * math.sqrt(p * (1 - p) / trials + z * z / (4 * trials * trials)) / den
+    return (max(0.0, center - half), min(1.0, center + half))
+
+
+def _run_cell(mod, rng, *, family, events, edge, n_trials, paths,
+              bootstrap_rounds, extra_cost_bps, baseline_bps):
+    go = 0
+    sharpes = []
+    daily_means = []
+    month_shares = []
+    for _ in range(paths):
+        candidate, other, _all = _generate_candidate_set(
+            rng, family=family, events=events, edge_bps=edge, k=n_trials,
+            baseline_bps=baseline_bps)
+        result = _synthetic_eval(mod, candidate, other,
+                                 bootstrap_rounds=bootstrap_rounds,
+                                 extra_cost_bps=extra_cost_bps)
+        go += result["status"] == "PASS"
+        sharpes.append(float(result.get("stats", {}).get("sharpe", 0.0)))
+        daily_means.append(float(result.get("stats", {}).get("mean_daily", 0.0)))
+        month_shares.append(oracle_month_share(pd.Series(
+            candidate[1], index=candidate[0])))
+    low, high = _wilson_interval(go, paths)
+    return {"family": family, "events": events, "edge_bps": edge,
+            "N": n_trials, "paths": paths, "go": int(go),
+            "rate": go / paths, "ci95_low": low, "ci95_high": high,
+            "mean_selected_sharpe": float(np.mean(sharpes)),
+            "mean_selected_daily_return": float(np.mean(daily_means)),
+            "mean_positive_month_share": float(np.mean(month_shares))}
+
+
+def run_study(*, paths=200, seed=20261025, bootstrap_rounds=64,
+              null_basis="one_x"):
     mod = _family_b4b_module()
     rng = np.random.default_rng(seed)
+    extra_cost_bps = _two_x_fee_increment_bps(mod)
+    if null_basis not in {"one_x", "two_x"}:
+        raise ValueError("null_basis must be one_x or two_x")
+    baseline_bps = extra_cost_bps if null_basis == "two_x" else 0.0
     families = ["iid_gaussian", "student_t3", "garch", "positive_ar",
                 "regime_switch"]
     event_counts = [100, 300, 1000, 3000]
-    edges = [2, 5, 10, 20, 40, 80, 120, 200]
+    planted_edges = [2, 5, 10, 20, 40, 80, 120, 200]
+    mde_edges = [45, 48, 49, 50, 52, 55, 60, 70]
+    sensitivity_paths = max(1, paths // 40)
+    power_paths = max(1, paths // 8)
     rows = []
-    # Main power/false-GO grid: the current frozen program-level N is 10.
+    # The current B4b prereg has N=10. Each null family is evaluated across
+    # event counts here; iid planted edges trace the power curve.
     for family in families:
-        edge_grid = [0] + edges
         for n_events in event_counts:
-            for edge in edge_grid:
-                go = 0
-                for _ in range(paths):
-                    candidate, other, _all = _generate_candidate_set(
-                        rng, family=family, events=n_events,
-                        edge_bps=edge, k=10)
-                    result = _synthetic_eval(mod, candidate, other,
-                                             bootstrap_rounds=bootstrap_rounds)
-                    go += result["status"] == "PASS"
-                rows.append({"family": family, "events": n_events,
-                             "edge_bps": edge, "N": 10, "paths": paths,
-                             "go": int(go), "rate": go / paths})
-    # N sensitivity is run on iid null plus a planted 20-bps edge, at each
-    # event count; that isolates the DSR multiplicity penalty without
-    # multiplying the expensive distributional grid by three.
+            rows.append(_run_cell(
+                mod, rng, family=family, events=n_events, edge=0,
+                n_trials=10, paths=paths,
+                bootstrap_rounds=bootstrap_rounds,
+                extra_cost_bps=extra_cost_bps,
+                baseline_bps=baseline_bps))
+    for n_events in event_counts:
+        for edge in sorted(set(planted_edges + mde_edges)):
+            rows.append(_run_cell(
+                mod, rng, family="iid_gaussian", events=n_events, edge=edge,
+                n_trials=10, paths=power_paths,
+                bootstrap_rounds=bootstrap_rounds,
+                extra_cost_bps=extra_cost_bps,
+                baseline_bps=baseline_bps))
+    # N=50 and 100 sensitivity: all five null processes, and the iid planted
+    # edge curve at each requested count. These smaller samples make runtime
+    # predictable; their wider intervals remain visible in the output.
     for n_trials in (50, 100):
+        for family in families:
+            for n_events in event_counts:
+                rows.append(_run_cell(
+                    mod, rng, family=family, events=n_events, edge=0,
+                    n_trials=n_trials, paths=sensitivity_paths,
+                    bootstrap_rounds=bootstrap_rounds,
+                    extra_cost_bps=extra_cost_bps,
+                    baseline_bps=baseline_bps))
         for n_events in event_counts:
-            for edge in (0, 20):
-                go = 0
-                for _ in range(paths):
-                    candidate, other, _all = _generate_candidate_set(
-                        rng, family="iid_gaussian", events=n_events,
-                        edge_bps=edge, k=n_trials)
-                    result = _synthetic_eval(mod, candidate, other,
-                                             bootstrap_rounds=bootstrap_rounds)
-                    go += result["status"] == "PASS"
-                rows.append({"family": "iid_gaussian", "events": n_events,
-                             "edge_bps": edge, "N": n_trials,
-                             "paths": paths, "go": int(go), "rate": go / paths})
-    # Required best-of-K stress. K=10/50 are already in the null grid; add
-    # K=200 at the most informative count, 3000 events, with N=200 correction.
-    go = 0
-    for _ in range(paths):
-        candidate, other, _all = _generate_candidate_set(
-            rng, family="multiple_testing", events=3000, edge_bps=0, k=200)
-        result = _synthetic_eval(mod, candidate, other,
-                                 bootstrap_rounds=bootstrap_rounds)
-        go += result["status"] == "PASS"
-    rows.append({"family": "multiple_testing", "events": 3000,
-                 "edge_bps": 0, "N": 200, "paths": paths,
-                 "go": int(go), "rate": go / paths})
-    return {"seed": seed, "paths": paths,
+            for edge in planted_edges:
+                rows.append(_run_cell(
+                    mod, rng, family="iid_gaussian", events=n_events,
+                    edge=edge, n_trials=n_trials, paths=sensitivity_paths,
+                    bootstrap_rounds=bootstrap_rounds,
+                    extra_cost_bps=extra_cost_bps,
+                    baseline_bps=baseline_bps))
+    # K=10 reuses the fully sampled iid null row. K=50 and K=200 are explicit
+    # best-of-K stresses with wider but separately reported Monte Carlo CIs.
+    source = next(r for r in rows if r["N"] == 10
+                  and r["family"] == "iid_gaussian"
+                  and r["events"] == 3000 and r["edge_bps"] == 0)
+    rows.append({**source, "family": "multiple_testing"})
+    rows.append(_run_cell(
+        mod, rng, family="multiple_testing", events=3000, edge=0,
+        n_trials=50, paths=max(25, paths // 16),
+        bootstrap_rounds=bootstrap_rounds,
+        extra_cost_bps=extra_cost_bps,
+        baseline_bps=baseline_bps))
+    rows.append(_run_cell(
+        mod, rng, family="multiple_testing", events=3000, edge=0,
+        n_trials=200, paths=max(25, paths // 16),
+        bootstrap_rounds=bootstrap_rounds,
+        extra_cost_bps=extra_cost_bps,
+        baseline_bps=baseline_bps))
+    return {"seed": seed, "null_basis": null_basis,
+            "null_paths_N10": paths,
+            "power_paths_N10": power_paths,
+            "sensitivity_paths_N50_N100": sensitivity_paths,
+            "two_x_fee_increment_bps": extra_cost_bps,
+            "edge_definition": ("net bps/trade after ordinary 1x fixed fees; the 2x adverse stream subtracts the additional fixed fee schedule" if null_basis == "one_x" else "net bps/trade after 2x fixed fees; the 1x stream adds one fixed fee schedule"),
             "bootstrap_rounds": bootstrap_rounds,
+            "production_bootstrap_rounds": mod.BOOTSTRAP_ROUNDS,
             "current_program_N": 10, "rows": rows}
+
+
+def minimum_detectable_edges(study, target_power=0.80):
+    rows = study["rows"]
+    estimates = []
+    for n_events in (100, 300, 1000, 3000):
+        curve = sorted((r["edge_bps"], r["rate"])
+                       for r in rows if r["N"] == 10
+                       and r["family"] == "iid_gaussian"
+                       and r["events"] == n_events and r["edge_bps"] > 0)
+        crossing = next((i for i, (_e, p) in enumerate(curve)
+                         if p >= target_power), None)
+        if crossing is None:
+            estimates.append({"events": n_events, "mde_bps": None,
+                              "status": f"> {curve[-1][0]} bps at tested grid"})
+            continue
+        edge, power = curve[crossing]
+        if crossing == 0:
+            mde = edge
+        else:
+            prev_edge, prev_power = curve[crossing - 1]
+            mde = (prev_edge if power == prev_power else
+                   prev_edge + (target_power - prev_power) / (power - prev_power)
+                   * (edge - prev_edge))
+        daily_bps = mde * n_events / 1461.0
+        annual_sr_iid = mde / 20.0 * math.sqrt(n_events / 4.0)
+        estimates.append({
+            "events": n_events, "mde_bps": mde,
+            "annual_sharpe_iid_reference": annual_sr_iid,
+            "mean_daily_return_bps_1x": daily_bps,
+            "mean_daily_return_pct_1x": daily_bps / 100.0,
+            "mean_daily_return_pct_3x": 3.0 * daily_bps / 100.0,
+            "target_power": target_power,
+            "power_at_crossing_grid_point": power,
+            "assumption": "20 bps per-trade SD, independent-trade Sharpe reference; daily return uses events/1461 and leverage scales returns linearly"})
+    return estimates
 
 
 def _comparison_suite(n=200, seed=20261025):
@@ -392,19 +520,25 @@ def _comparison_suite(n=200, seed=20261025):
             x[::7] = np.nan
         return x
 
+    dsr_trial_counts = set()
     for i in range(n):
         x = sample(i)
-        trials = rng.normal(0, 2, size=int(rng.integers(0, 18))).tolist()
+        trials = rng.normal(0, 2, size=9).tolist()
         if i % 11 == 0:
-            trials.append(float("nan"))
+            trials[0] = float("nan")
+        # Family B4b's program-level N=10 includes the selected candidate.
+        trials.append(slow_stats.sharpe(x))
         hold = None if i % 3 == 0 else float(rng.choice([1, 7, 30]))
-        prod = slow_stats.dsr_detail(x, trials, hold_days=hold)["dsr"]
+        detail = slow_stats.dsr_detail(x, trials, hold_days=hold)
+        prod = detail["dsr"]
+        dsr_trial_counts.add(detail["n_trials"])
         ref = oracle_dsr(x, trials, hold_days=hold)
         if not (math.isnan(prod) and math.isnan(ref)) and not math.isclose(
                 prod, ref, rel_tol=2e-8, abs_tol=2e-8):
             report["findings"].append({"metric": "DSR", "case": i,
                                        "production": prod, "oracle": ref})
     report["counts"]["DSR"] = n
+    report["DSR_finite_trial_counts"] = sorted(dsr_trial_counts)
 
     pbo_nonfinite = 0
     for i in range(n):
@@ -454,16 +588,33 @@ def _comparison_suite(n=200, seed=20261025):
                 report["findings"].append({"metric": "bootstrap_" + leg,
                                            "case": i, "production": a,
                                            "oracle": b})
+    report["counts"]["stationary_bootstrap_CI"] = n
+
+    for i in range(n):
+        x = sample(i, 80).tolist()
+        group_count = max(1, min(12, len(x) // 3))
+        days = [f"d{int(rng.integers(0, group_count))}" for _ in x]
+        prod = verdict._bootstrap_ci(x, seed=i + 13, rounds=64, days=days)
+        ref = oracle_day_block_ci(x, days, seed=i + 13, rounds=64)
+        for leg, a, b in zip(("lo", "hi"), prod, ref, strict=True):
+            if not (math.isnan(a) and math.isnan(b)) and not math.isclose(
+                    a, b, rel_tol=1e-12, abs_tol=1e-12):
+                report["findings"].append({"metric": "day_block_bootstrap_" + leg,
+                                           "case": i, "production": a,
+                                           "oracle": b})
     report["counts"]["day_block_bootstrap_CI"] = n
 
     for i in range(n):
         x = sample(i, 100)
-        prod = slow_stats.sharpe(x)
-        ref = oracle_sharpe(x)
-        if not (math.isnan(prod) and math.isnan(ref)) and not math.isclose(
-                prod, ref, rel_tol=1e-12, abs_tol=1e-12):
-            report["findings"].append({"metric": "Sharpe", "case": i,
-                                       "production": prod, "oracle": ref})
+        adverse = x - rng.uniform(0, 10, size=len(x))
+        for label, returns in (("1x", x), ("2x", adverse)):
+            prod = slow_stats.sharpe(returns)
+            ref = oracle_sharpe(returns)
+            if not (math.isnan(prod) and math.isnan(ref)) and not math.isclose(
+                    prod, ref, rel_tol=1e-12, abs_tol=1e-12):
+                report["findings"].append({"metric": "Sharpe_" + label,
+                                           "case": i, "production": prod,
+                                           "oracle": ref})
     report["counts"]["Sharpe_1x_and_2x_cost_series"] = n
 
     for i in range(n):
@@ -510,9 +661,11 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--audit", action="store_true", help="run 200-case independent comparisons")
     parser.add_argument("--study", action="store_true", help="run the seeded synthetic production-gate study")
-    parser.add_argument("--paths", type=int, default=40, help="Monte Carlo paths per study cell")
+    parser.add_argument("--paths", type=int, default=200, help="Monte Carlo paths per N=10 null cell; power and N sensitivity use smaller documented samples")
     parser.add_argument("--bootstrap-rounds", type=int, default=64,
                         help="resamples per synthetic study path; lower than production default for runtime")
+    parser.add_argument("--null-basis", choices=("one_x", "two_x"),
+                        default="one_x", help="define edge_bps after 1x or 2x fixed fees")
     parser.add_argument("--seed", type=int, default=20261025)
     parser.add_argument("--out", type=Path)
     args = parser.parse_args(argv)
@@ -520,8 +673,11 @@ def main(argv=None):
     if args.audit or not (args.audit or args.study):
         result["audit"] = _comparison_suite(seed=args.seed)
     if args.study:
-        result["study"] = run_study(paths=args.paths, seed=args.seed,
-                                    bootstrap_rounds=args.bootstrap_rounds)
+        study = run_study(paths=args.paths, seed=args.seed,
+                          bootstrap_rounds=args.bootstrap_rounds,
+                          null_basis=args.null_basis)
+        study["minimum_detectable_edges"] = minimum_detectable_edges(study)
+        result["study"] = study
     encoded = json.dumps(result, indent=2, sort_keys=True, allow_nan=True)
     if args.out:
         args.out.write_text(encoded + "\n", encoding="utf-8")
