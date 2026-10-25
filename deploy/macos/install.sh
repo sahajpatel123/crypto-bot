@@ -6,7 +6,7 @@ PY="${CRYPTOBOT_PYTHON:-$ROOT/.venv/bin/python}"
 AGENTS="$HOME/Library/LaunchAgents"
 LOGS="$HOME/Library/Logs/cryptobot"
 UID_N="$(id -u)"
-mkdir -p "$AGENTS" "$LOGS" "$ROOT/data/recorder" "$ROOT/data/lake/forward"
+mkdir -p "$AGENTS" "$LOGS" "$ROOT/data/recorder" "$ROOT/data/lake/forward" "$ROOT/data/pnl"
 install_one() {
   label="$1"
   body="$2"
@@ -92,6 +92,39 @@ install_one com.cryptobot.adjudicate "$(cat <<EOF
   <key>StartCalendarInterval</key>
   <dict><key>Hour</key><integer>3</integer><key>Minute</key><integer>45</integer></dict>
   ${COMMON//PLACE/adjudicate}
+</dict></plist>
+EOF
+)"
+install_one com.cryptobot.verdict-watch "$(cat <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>Label</key><string>com.cryptobot.verdict-watch</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>$PY</string><string>-m</string><string>cryptobot.cli</string>
+    <string>verdict-watch</string><string>--once</string>
+  </array>
+  <key>StartCalendarInterval</key>
+  <dict><key>Hour</key><integer>4</integer><key>Minute</key><integer>0</integer></dict>
+  ${COMMON//PLACE/verdict-watch}
+</dict></plist>
+EOF
+)"
+install_one com.cryptobot.pnl "$(cat <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>Label</key><string>com.cryptobot.pnl</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>$PY</string><string>-m</string><string>cryptobot.cli</string>
+    <string>pnl</string><string>daily</string><string>--out</string>
+    <string>$ROOT/data/pnl/daily.json</string>
+  </array>
+  <key>StartCalendarInterval</key>
+  <dict><key>Hour</key><integer>4</integer><key>Minute</key><integer>15</integer></dict>
+  ${COMMON//PLACE/pnl}
 </dict></plist>
 EOF
 )"
