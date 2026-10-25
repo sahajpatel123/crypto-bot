@@ -1,6 +1,7 @@
 # RESUME — crypto-bot state
 
-Snapshot: **2026-10-25 08:20Z**, base `origin/live/hardening` @ `a2acaba` (PR #33, recorder stream fix).
+Snapshot: **2026-10-25 09:05Z**, base `origin/live/hardening` @ `8471a83e` (PR #34, this file; #33 and #29
+underneath it).
 Gate: **NO-GO**, unchanged. Holdout sealed. No orders, no API-key reads, no live money.
 Read this file, then `git log --oneline -5 origin/live/hardening`, then the PR list. That is the whole
 handover — do not re-derive anything below.
@@ -31,9 +32,11 @@ Read from GitHub while writing this file, not from notes.
 | #28 | tests: stop pytest scratch filling laptop disks | `3461180` | squash `fc92c45` |
 | #26 | feat(net): netguard — opt-in DoH fallback for the ISP DNS sinkhole | `4c9a992` | squash `a635315` |
 | #35 | docs: refresh RESUME after netguard merge | `065375e` | squash `d950d78` |
-| #33 | fix(recorder): record trade flow, fail loudly on a silent stream | `5b1688d` | squash `a2acaba` = **current base** |
+| #33 | fix(recorder): record trade flow, fail loudly on a silent stream | `5b1688d` | squash `a2acaba` |
+| #29 | research(prereg): D1 OI-flush reversal + amendment 3 (fail-closed trial bound) | `4e7d37b` | squash `315bdc0a` |
 
-All six merged with `lint` + `typecheck` + `test` green.
+All seven merged with `lint` + `typecheck` + `test` green. `research/prereg/D1-amendment-3.md` is on the
+base and is the **sole source** for `N_TRIALS` (§5).
 
 ## 3. In progress — open PRs, by owner
 
@@ -41,10 +44,9 @@ Read from GitHub at 2026-10-25 08:20Z. Do not trust an older note for a head SHA
 
 | PR | Owner / topic | Head SHA | Checks I read |
 |---|---|---|---|
-| #29 | **D1** prereg + amendment 3 (trial-bound audit, fail-closed DSR) | `4e7d37b` | draft; `lint` + `typecheck` success, `test` success + `test` in progress. Carries `research/prereg/D1-amendment-3.md`, which is the **sole source** for `N_TRIALS`. |
-| #32 | **E1** emulator recovery fault matrix | `aa7e287` | draft; `lint` + `typecheck` success, `test` in progress (an earlier head `f785df4` had a `test` failure; re-pushed). |
+| #32 | **E1** emulator recovery fault matrix | `dc41e54` | draft; `lint` + `typecheck` success, `test` in progress (earlier heads `f785df4` and `aa7e287`; both re-pushed). |
 | #31 | **Gate audit (G1)** — audit gate statistics on synthetic data | `0de94ea` | draft; `lint` + `typecheck` + `test` all success, clean. G1 still running. |
-| #30 | **C2-FWD** audit of booking and scoring integrity | `376aa13` | draft; `lint` success, `typecheck`/`test` in progress. |
+| #30 | **C2-FWD** audit of booking and scoring integrity | `376aa13` | draft; all six checks success, clean — ready to mark ready for review. |
 | #34 | **This file** — RESUME milestone snapshot | see PR | docs only. |
 
 None of these is a gate verdict, and none changes a prereg threshold, a holdout file or CI.
@@ -58,14 +60,12 @@ None of these is a gate verdict, and none changes a prereg threshold, a holdout 
    Each Reason child session leaves ~1.2 GB under `~/.reason/workspace/sessions/`; there were six at
    08:11Z (≈7.2 GB) and guard's free-space samples swung 12,632 → 9,906 MB inside ten minutes. Never
    delete the folder of a session with a turn running.
-3. **#29.** Finish the prereg review and land it — amendment 3 is the file the evaluator reads for
-   `N_TRIALS`, and D1 must stay `UNEVALUATED` until it is merged.
-4. **#32 E1.** Let the re-pushed `test` finish; if red, read the job log and fix it. Draft until green.
-5. **#31, then #30.** #31 audits the gate statistics themselves, so it should land before any
+3. **#32 E1.** Let the re-pushed `test` finish; if red, read the job log and fix it. Draft until green.
+4. **#31, then #30.** #31 audits the gate statistics themselves, so it should land before any
    evaluator change touches DSR. Mark ready if the conclusions hold.
-6. **C2-FWD.** Leave it running; scoring reads 365/730/1095 rows only, so nothing is readable yet.
+5. **C2-FWD.** Leave it running; scoring reads 365/730/1095 rows only, so nothing is readable yet.
    Never look at its P&L before then.
-7. **Do not re-open Family B or C and do not rescore B4.** The holdout is spent.
+6. **Do not re-open Family B or C and do not rescore B4.** The holdout is spent.
 
 ## 5. Key numbers
 
@@ -75,7 +75,7 @@ None of these is a gate verdict, and none changes a prereg threshold, a holdout 
 keys tying a config to its fold/split or confirmation run, and they do not establish whether the
 H3-on-H2 and H6-on-H2/H3 filter applications ever ran. No H/B run-key manifest exists; the only one
 found is `trials/x1-run-manifest.json`, which is **X1-specific** and says nothing about H/B or restart
-completeness. `research/prereg/D1-amendment-3.md` (PR #29) also flags an unresolved contradiction in
+completeness. `research/prereg/D1-amendment-3.md` (merged in #29) also flags an unresolved contradiction in
 H6's text — its exact rules name H1/H3 and H2/H4, its grid paragraph says H2/H3 only. That is
 recorded, not silently rewritten.
 
@@ -119,7 +119,7 @@ refusing is correct behaviour, not a bug to work around.
 | B4 delta-neutral basis (backtest) | **KILLED on turnover** | turnover **17.05** (`17.05060731836767`, `research/autopilot_b/state/B4.json`) against the frozen cap **12** (`research/prereg/B4-delta-neutral-basis.md`: "turnover ≤ 12×. Any miss KILLS B4"). Holdout burned; nothing rescored. |
 | B4b forward basis | **UNDERPOWERED** | **0 of 90** forward days, **0 of 20** round trips (`research/prereg/B4b-forward-basis.md` requires both). Forward clock starts 2026-11-01. |
 | C2 XSMOM replication | **KILLED on replication** | replication **p = 0.080** against the bar **p ≤ 0.01** (holdout p = 0.154). `research/DATA_LEDGER.md`, `RESEARCH_VERDICTS.md`. Family C closed. |
-| D1 open-interest flush | **UNEVALUATED** | Pending forward data; prereg still a draft (#29). DSR cannot be emitted. |
+| D1 open-interest flush | **UNEVALUATED** | Prereg + amendment 3 merged (#29). Pending forward data, and `N_TRIALS` is unset, so DSR cannot be emitted. |
 
 B4b costs, unchanged: 49 bps round trip plus `0.5·σ·√(Q/ADV20)` impact per fill.
 **A 90-day look can only KILL**: the ≥2-positive-calendar-years gate needs 121 forward days, so
