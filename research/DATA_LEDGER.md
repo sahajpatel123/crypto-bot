@@ -1,6 +1,7 @@
 # Data ledger (T5 protocol) — every dataset use is logged here
 
 | Dataset | Class | Use | Date |
+| synthetic C2-FWD fixtures (tests/unit/test_forward_c2.py and test_forward_c2_audit.py; generated only) | SYNTHETIC | Recorder/scoring audit tests; no market observations or holdout data | this program |
 |---|---|---|---|
 | data/pilot | DEVELOPMENT (inspected) | Prior pilot: 0/14 cells positive, best -25.37bps @26bps cost (audit input) | pre-takeover |
 | datasets/benchmark_30d | DEVELOPMENT (inspected) | Prior benchmarks (H-R2 -13.42bps, X1 0 fills) | pre-takeover |
