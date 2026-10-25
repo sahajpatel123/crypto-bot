@@ -99,7 +99,18 @@ def record_once(symbols: list[str], out: Path, limit: int = 10,
             "errors": errors, "out": str(out)}
 
 
+def _install_netguard() -> None:
+    """Opt-in (CRYPTOBOT_DOH=1): re-resolve ISP-sinkholed exchange hostnames over DoH."""
+    src = str(Path(__file__).resolve().parents[1] / "src")
+    if src not in sys.path:
+        sys.path.append(src)
+    from cryptobot import netguard
+
+    netguard.install_from_env()
+
+
 def main() -> int:
+    _install_netguard()
     parser = argparse.ArgumentParser(
         description="Record venue funding settlements (public, no auth)")
     parser.add_argument("--symbols", required=True,
