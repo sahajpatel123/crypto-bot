@@ -730,7 +730,7 @@ def test_trial_count_refuses_when_only_one_half_is_present(tmp_path: Path,
                                                            monkeypatch) -> None:
     value, problem = d1_trials.trial_count_ready(tmp_path)
     assert value is None
-    monkeypatch.setattr(d1_trials, "N_TRIALS", 1187)
+    monkeypatch.setattr(d1_trials, "N_TRIALS", 990)
     value, problem = d1_trials.trial_count_ready(tmp_path)
     assert value is None and "is missing" in problem
     monkeypatch.setattr(d1_trials, "N_TRIALS", None)
@@ -739,9 +739,99 @@ def test_trial_count_refuses_when_only_one_half_is_present(tmp_path: Path,
     amendment.write_text("frozen\n", encoding="utf-8")
     value, problem = d1_trials.trial_count_ready(tmp_path)
     assert value is None and "N_TRIALS is unset" in problem
-    monkeypatch.setattr(d1_trials, "N_TRIALS", 1187)
+    monkeypatch.setattr(d1_trials, "N_TRIALS", 990)
     value, problem = d1_trials.trial_count_ready(tmp_path)
-    assert (value, problem) == (1187, None)
+    assert (value, problem) == (990, None)
+
+
+# Numbers a reader might be tempted to hand the DSR gate. Amendment 3 names
+# them and forbids each one as N_TRIALS: they are a documented-opportunity
+# subtotal (1406), a rejected proposed bound (1187), and two retracted floors
+# (470, 442). None of them may appear as a code constant, so no substitution can
+# happen without this test failing first.
+FORBIDDEN_TRIAL_COUNTS = (1406, 1187, 470, 442)
+
+
+def test_amendment_3_is_bound_and_every_candidate_number_is_absent() -> None:
+    """A3 is the sole source for N_TRIALS, and it says None. Check both halves."""
+    amendment = REPO / d1_trials.N_TRIALS_AMENDMENT
+    assert amendment.is_file(), "amendment 3 must be in the frozen prereg set"
+    text = amendment.read_text(encoding="utf-8")
+    assert "`N_TRIALS` remains `None`" in text
+    assert "must not be used by the evaluator" in text
+    assert "cannot replace `None`" in text
+    # The parser binds every D1 document in the directory, A3 included: a
+    # rebase that dropped it would change the hash set, not silently pass.
+    assert amendment.name in D.load_rules(PREREG).hashes
+    # Fail-closed today, with the amending file present but holding no number.
+    assert d1_trials.N_TRIALS is None
+    value, problem = d1_trials.trial_count_ready(REPO)
+    assert value is None
+    assert problem is not None and d1_trials.N_TRIALS_AMENDMENT in problem
+    # No source file carries any of them as a constant to substitute.
+    for path in sorted((REPO / "src").rglob("*.py")):
+        body = path.read_text(encoding="utf-8")
+        for number in FORBIDDEN_TRIAL_COUNTS:
+            assert str(number) not in body, f"{path} carries {number}"
+
+
+def _dev_calendar_trades(rules: D.Rules) -> dict[D.Cell, list[D.Trade]]:
+    """A PASS-shaped synthetic set on the frozen DEV calendar.
+
+    Every gate that can pass on DEV passes: the ranking across cells is stable,
+    every one of the 39 frozen months and all four DEV years carry positive
+    trades. Gates 6 and 7 are the frozen DEV calendar itself, so this is the
+    only shape in which a D1 PASS is reachable at all -- which makes it the
+    right fixture for proving that an unfrozen trial count blocks the PASS.
+    """
+    rng = np.random.default_rng(17)
+    start = dt.date(2020, 10, 1)
+    end = dt.date(2023, 12, 31)
+    days = [start + dt.timedelta(days=offset)
+            for offset in range((end - start).days + 1)]
+    trades: dict[D.Cell, list[D.Trade]] = {}
+    for rank, cell in enumerate(rules.cells):
+        drift = 4.0 - 0.3 * rank
+        rows: list[D.Trade] = []
+        for index, day in enumerate(days):
+            net = float(drift + rng.normal(0.0, 0.5))
+            entry = D._utc_ms(day.year, day.month, day.day, 12)
+            cost_1x, cost_2x = 14.0, 15.0
+            rows.append(D.Trade(
+                cell=cell, symbol=f"S{index % 6}USDT", direction=1,
+                entry_ms=entry, exit_ms=entry + 3600 * 1000,
+                entry_px=100.0, exit_px=100.0, gross_bps=net + cost_1x,
+                cost_1x_bps=cost_1x, cost_2x_bps=cost_2x,
+                funding_1x_bps=0.0, funding_2x_bps=0.0,
+                net_1x_bps=net, net_2x_bps=net + cost_1x - cost_2x,
+                imputed_funding=False, forced_exit_data_end=False,
+            ))
+        trades[cell] = rows
+    return trades
+
+
+def test_pass_is_impossible_while_the_trial_count_is_unset(rules: D.Rules) -> None:
+    trades = _dev_calendar_trades(rules)
+    calendar = sorted({trade.entry_day for rows in trades.values() for trade in rows})
+
+    # With a number the fixture is a clean PASS: the guard below is the only
+    # thing standing between it and a PASS_DEV verdict.
+    frozen = D.evaluate_cells(trades, rules, n_trials=1000, calendar_days=calendar)
+    assert frozen["verdict"] == "PASS_DEV"
+    assert {item["gate"]: item["status"] for item in frozen["gates"]}[4] == "pass"
+
+    # Unset: no DSR number, gate 4 not evaluable, and no PASS of any spelling.
+    blocked = D.evaluate_cells(trades, rules, n_trials=None,
+                               n_trials_problem="trial count not frozen: test",
+                               calendar_days=calendar)
+    gate4 = {item["gate"]: item for item in blocked["gates"]}[4]
+    assert gate4["status"] == "not_evaluable"
+    assert gate4["dsr"] is None
+    assert blocked["verdict"] == "BLOCKED"
+    assert "PASS" not in blocked["verdict"]
+    rendered = D.render(blocked)
+    assert "PASS" not in rendered.splitlines()[0]
+    assert "no PASS is possible" in rendered
 
 
 # --------------------------------------------------------------------------

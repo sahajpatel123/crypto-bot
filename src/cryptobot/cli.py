@@ -2377,6 +2377,11 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
+    # Opt-in (CRYPTOBOT_DOH=1): re-resolve ISP-sinkholed exchange hostnames over
+    # DNS-over-HTTPS before any command opens a socket. A no-op by default.
+    from cryptobot import netguard
+
+    netguard.install_from_env()
     try:
         args = build_parser().parse_args(argv)
         return int(args.func(args))

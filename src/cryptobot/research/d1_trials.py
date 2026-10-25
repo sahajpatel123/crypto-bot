@@ -2,11 +2,13 @@
 
 D1's DSR gate (``research/prereg/D1-oi-flush-reversal.md``, gate 4) needs the
 program-level configuration count ``N``.  The exact value is not frozen yet:
-``research/prereg/D1-amendment-2.md`` retracted the earlier ``N >= 470`` floor
-because a *lower* bound on trials makes ``SR0`` smaller and therefore the DSR
-threshold easier (anti-conservative).  R2 is replacing it with a provable upper
-bound (``N_max``) that must be frozen in an amendment before any D1 return,
-event count or power estimate is computed.
+amendments 2 and 3 retracted the earlier trial-count *floor* because a lower
+bound on trials makes ``SR0`` smaller and therefore the DSR threshold easier
+(anti-conservative), and amendment 3 then rejected every candidate upper bound
+as unprovable while aborted/restarted scored attempts stay uncapped.  So the
+count has to be frozen in the amending document before any D1 return, event
+count or power estimate is computed, and until then the only honest value is
+no value.
 
 So this module holds the only copy of the number, and it holds nothing until
 the amendment lands:
