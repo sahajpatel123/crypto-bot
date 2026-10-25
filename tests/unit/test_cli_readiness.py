@@ -559,3 +559,25 @@ def test_reconcile_exposed_expect_flat_fails(monkeypatch, capsys):
     assert rc == 0, out
     assert "reconcile: EXPOSED" in out
     assert "0.001" in out and "c1" in out
+
+
+def test_reconcile_unreachable_venue_fails_and_never_claims_flat(
+        monkeypatch, capsys):
+    """Row 10: an unreachable venue is UNKNOWN, never assumed flat."""
+    from cryptobot.adapters.binance_live import VenueHttpError
+
+    monkeypatch.setenv("BINANCE_DEMO_KEY", "k")
+    monkeypatch.setenv("BINANCE_DEMO_SECRET", "s")
+
+    class _Down(_StubLiveEngine):
+        def venue_status(self, symbols):
+            raise VenueHttpError(503, None, "venue unreachable")
+
+    import cryptobot.adapters.binance_live as live_mod
+    monkeypatch.setattr(live_mod, "BinanceLiveEngine", _Down)
+    rc = cli.cmd_reconcile(argparse.Namespace(config="configs/demo.toml",
+                                              expect_flat=False))
+    captured = capsys.readouterr()
+    assert rc == 2, captured
+    assert "FAIL" in captured.err
+    assert "FLAT" not in captured.out

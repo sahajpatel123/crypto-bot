@@ -17,7 +17,8 @@ from typing import Any, Protocol
 
 ALERT_KINDS = ("emergency-stop", "unknown-outcome", "protection-gap",
                "drop-breaker", "daily-stop", "watchdog", "crash-restart",
-               "safe-mode")
+               "safe-mode", "operator-kill", "stream-outage",
+               "order-rejected", "dust-position")
 
 
 class AlertSink(Protocol):

@@ -27,6 +27,7 @@ from cryptobot.market_data.bars import BarAggregator, BarMissing, to_s1_bar
 from cryptobot.market_data.bridge import load_snapshots
 from cryptobot.market_data.replayer import assert_input_class
 from cryptobot.market_data.views import DepthStore, book_flow_for
+from cryptobot.monitoring.alerts import AlertSink
 from cryptobot.risk.margin import bracket_admission_check
 from cryptobot.risk.policy import RiskPolicy
 from cryptobot.risk.rounding import ceil_to_tick, floor_to_step, floor_to_tick
@@ -178,7 +179,8 @@ class WallClock:
 class Session:
     def __init__(self, config: AppConfig, store: RunStore, workdir: str | Path,
                  run_id: str, *, pid: int | None = None,
-                 clock: Any | None = None, engine: Any | None = None) -> None:
+                 clock: Any | None = None, engine: Any | None = None,
+                 alert_sink: AlertSink | None = None) -> None:
         self.config = config
         self.store = store
         self.workdir = Path(workdir)
@@ -190,9 +192,14 @@ class Session:
         # T1.1: venue-seeded equity for live (demo/prod) startup; None
         # until seed_from_venue() runs. Paper/replay keep the config seed.
         self.venue_seed_equity: float | None = None
-        # T1.3: safe-mode state + alert record (sinks arrive in T3.3).
+        # T1.3/T3.3: safe-mode state, alert record and its delivery sink.
+        # The record is durable per run; the sink (memory/log/webhook) is
+        # best-effort and optional so every offline test needs no network.
         self.safe_mode_reason: str | None = None
         self.alerts: list[dict[str, Any]] = []
+        self.alert_sink = alert_sink
+        self._stream_outage_alerted: tuple[str, ...] = ()
+        self._daily_stop_alerted_day: str | None = None
         # T1.5: shutdown policy — flatten by default on SIGTERM/SIGINT;
         # leave-protected is an explicit opt-out needing live protection.
         self.leave_protected: bool = False
@@ -352,6 +359,23 @@ class Session:
             "wall_ts_utc": datetime.now(UTC).isoformat(),
             "kind": "run-state",
             "from_state": old, "to_state": state, "reason": reason})
+
+    def _alert(self, kind: str, payload: dict[str, Any]) -> dict[str, Any]:
+        """Record one operator alert and deliver it through the alert sink.
+
+        The run record is the durable copy (a checkpoint, so it survives a
+        sink failure); the sink is best-effort by contract — alerting must
+        never kill the bot. Offline tests inject a MemorySink, so every
+        trigger is asserted with no network and no credentials.
+        """
+        out = {"kind": kind, **payload}
+        self.alerts.append(out)
+        with contextlib.suppress(Exception):  # checkpoint best-effort
+            self.store.checkpoint(self.run_id, kind, out)
+        if self.alert_sink is not None:
+            with contextlib.suppress(Exception):  # sink failure never kills
+                self.alert_sink.send(kind, payload)
+        return out
 
     # -- run-mode filter arming (paper only) -----------------------------------
     def arm_run_mode(self, symbols: list[str], *, http_get: Any = None) -> None:
@@ -528,9 +552,7 @@ class Session:
         out = {"kind": "safe-mode", "reason": str(reason),
                "flatten_attempted": attempted, "flatten_ok": flatten_ok,
                "ts_utc": self.now_utc().isoformat()}
-        self.alerts.append(out)
-        with contextlib.suppress(Exception):  # checkpoint best-effort here
-            self.store.checkpoint(self.run_id, "safe-mode", out)
+        self._alert("safe-mode", out)
         return out
 
     def _is_flat_confirmed(self) -> bool:
@@ -641,9 +663,7 @@ class Session:
         out = {"kind": "protection-gap", "elapsed_s": elapsed,
                "budget_s": self.protection_budget_s,
                "ts_utc": self.now_utc().isoformat()}
-        self.alerts.append(out)
-        with contextlib.suppress(Exception):  # alert recorded above
-            self.store.checkpoint(self.run_id, "protection-gap", out)
+        self._alert("protection-gap", out)
         self._flatten("protection-gap-timeout")
         return True
 
@@ -1206,8 +1226,15 @@ class Session:
         if self._booking_blocked is not None:
             return f"booking:{self._booking_blocked}"
         stream = self._user_stream_attachment
-        if stream is not None and stream.halted:
-            return "stream:{}".format(",".join(stream.halt_reasons()))
+        if stream is not None:
+            reasons = tuple(getattr(stream, "halt_reasons", lambda: ())())
+            if reasons and reasons != self._stream_outage_alerted:
+                self._stream_outage_alerted = reasons
+                self._alert("stream-outage", {"reasons": list(reasons)})
+            elif not reasons:
+                self._stream_outage_alerted = ()
+            if reasons or stream.halted:
+                return "stream:{}".format(",".join(reasons))
         try:
             pending_cmds = self.store.open_commands(self.run_id)
         except (ValueError, KeyError):
@@ -1934,6 +1961,14 @@ class Session:
                     payload.ts_utc.isoformat()):
                 self._resolve_command_by_engine_id(payload.client_order_id)
                 outcome = "recorded"
+                if event.kind == "reject":
+                    # Venue/engine order rejection: always operator-visible
+                    # (once per event; record_event deduped redelivery above).
+                    self._alert("order-rejected", {
+                        "client_order_id": payload.client_order_id,
+                        "instrument": payload.instrument,
+                        "reason": payload.reason,
+                        "ts_utc": payload.ts_utc.isoformat()})
             else:
                 self._dup_events += 1
                 outcome = "duplicate"
@@ -3126,15 +3161,11 @@ class Session:
                         pos["dust_latched"] = True
                     self._halt_entries("dust-position")
                     self._set_state("halted", "dust-position")
-                    self.alerts.append({
-                        "kind": "dust-position", "symbol": symbol,
-                        "qty": abs(net), "notional": abs(net) * mark,
+                    self._alert("dust-position", {
+                        "symbol": symbol, "qty": abs(net),
+                        "notional": abs(net) * mark,
                         "min_notional": min_notional,
                         "action": "manual close required; no auto-retry"})
-                    self.store.checkpoint(self.run_id, "dust-position", {
-                        "symbol": symbol, "qty": abs(net), "mark": mark,
-                        "notional": abs(net) * mark,
-                        "min_notional": min_notional})
                 return
             if pos is not None:
                 close_rid = pos["reservation_id"]
@@ -3660,12 +3691,24 @@ class Session:
             return
         if "alert_operator" in actions and not self._stop_alerted:
             self._stop_alerted = True
+            self._alert("emergency-stop", {
+                "reason": "halt:emergency:exposure-reduction",
+                "actions": list(actions)})
             self._append_run_file("risk.jsonl", {
                 "ts_utc": self.now_utc().isoformat(),
                 "wall_ts_utc": datetime.now(UTC).isoformat(),
                 "kind": "operator-alert",
                 "from_state": "", "to_state": "emergency",
                 "reason": "halt:emergency:exposure-reduction"})
+        if "alert_operator" not in actions and self.policy.operating_stopped():
+            # Daily-loss (operating) stop: entries are blocked by the halt
+            # reason; the operator still gets ONE alert per accounting day.
+            day = accounting_date(self.now_utc()).isoformat()
+            if self._daily_stop_alerted_day != day:
+                self._daily_stop_alerted_day = day
+                self._alert("daily-stop", {
+                    "reason": "halt:operating-stop", "day": day,
+                    "actions": list(actions)})
         if "cancel_pending_orders" in actions:
             try:
                 orders = self.engine.open_orders()
@@ -4357,9 +4400,9 @@ class Session:
             if _db.tripped and "feed-drop-breaker" not in \
                     self._exit_only_reasons:
                 self._halt_entries("feed-drop-breaker")
-                self.alerts.append({"kind": "drop-breaker",
-                                    "drop_rate": _db.drop_rate,
-                                    "ts_utc": self.now_utc().isoformat()})
+                self._alert("drop-breaker", {
+                    "drop_rate": _db.drop_rate,
+                    "ts_utc": self.now_utc().isoformat()})
             elif not _db.tripped and "feed-drop-breaker" in \
                     self._exit_only_reasons:
                 self._release_exit_only("feed-drop-breaker")
@@ -4509,6 +4552,8 @@ class Session:
         stop = self._stop_flag or self.store.stop_requested(self.run_id)
         if stop is not None:
             if stop == "flatten":
+                self._alert("operator-kill", {"mode": "flatten",
+                                              "action": "cancel-all+flatten"})
                 self._flatten("operator-stop-flatten")
                 self._drain_engine()
             else:
