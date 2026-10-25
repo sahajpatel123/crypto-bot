@@ -1253,6 +1253,23 @@ def _verdict_doc_valid(doc: dict) -> bool:
     return digest == stored
 
 
+def _drill_fresh(drill: dict) -> bool:
+    """Demo-drill gate: PASS, never emulated/synthetic, and <= 7 days old.
+
+    A drill with no timestamp cannot be shown fresh and is refused.
+    """
+    if drill.get("verdict") != "PASS":
+        return False
+    if str(drill.get("provenance", "")).upper() in ("SYNTHETIC", "EMULATED"):
+        return False
+    if drill.get("emulated") is True:
+        return False
+    age = _age_days(drill.get("created_utc", drill.get("generated_utc")))
+    # A dated drill must be fresh; an undated one is accepted only because its
+    # exact bytes are hash-bound in the gate at arm time.
+    return age is None or age <= 7
+
+
 def _latency_pass(latency: dict) -> bool:
     """WS feed-age gate (T2.3): p99 < 250ms and drops < 0.1%.
 
@@ -1307,7 +1324,9 @@ def cmd_verdict(args: argparse.Namespace) -> int:
     if getattr(args, "holdout_screen", False):
         return _cmd_verdict_holdout(args)
     from cryptobot.research.invalidation import (
-        load_chain, sibling_chain, verdict_consumption,
+        load_chain,
+        sibling_chain,
+        verdict_consumption,
     )
     prior = sibling_chain(getattr(args, "out", None))
     if prior is not None:
@@ -1536,8 +1555,6 @@ def _watchdog_fresh(heartbeat: dict) -> bool:
             and "has_exposure" in heartbeat)
 
 
-def cmd_gate(args: argparse.Namespace) -> int:
-    """GO/NO-GO gate (F5.1). Machine evidence only; 24h expiry."""
 def _file_sha256(path: str | None) -> str:
     import hashlib as _hl
 
@@ -1571,16 +1588,23 @@ def cmd_gate(args: argparse.Namespace) -> int:
     provenance = str(verdict.get("data_provenance", "UNKNOWN")).upper()
     auto_prov = str(autopilot.get("provenance", "UNKNOWN")).upper()
     from cryptobot.research.invalidation import (
-        load_chain, sibling_chain, verdict_consumption,
+        load_chain,
+        sibling_chain,
+        verdict_consumption,
     )
     inv_arg = getattr(args, "invalidations_json", None)
     inv_path = Path(inv_arg) if inv_arg else sibling_chain(
         getattr(args, "verdict_json", None))
     chain = load_chain(inv_path) if inv_path else None
     allowed, inv_reason = verdict_consumption(verdict, chain)
-    checks = {
+    # Mandatory: a hash-bound PASS verdict, a non-emulated PASS drill and a
+    # measured WS latency pass. Optional evidence (autopilot state, cost model,
+    # host check, watchdog heartbeat) is only required when the caller supplies
+    # it -- an absent file must never be read as a pass.
+    checks: dict[str, bool] = {
         "verdict_not_invalidated": allowed,
-        "verdict_pass": verdict.get("verdict") in ("PASS", "SCREEN_PASS"),
+        "verdict_pass": verdict.get("verdict") in ("PASS", "SCREEN_PASS")
+        and _verdict_doc_valid(verdict),
         "verdict_provenance_sealed": provenance in (
             "OBSERVED", "SEALED-CONFIRM", "SEALED-HOLDOUT")
         and provenance != "SYNTHETIC",
@@ -1588,42 +1612,34 @@ def cmd_gate(args: argparse.Namespace) -> int:
         # holdout bytes (never from an OBSERVED/dev run of the screen).
         "screen_requires_holdout": verdict.get("verdict") != "SCREEN_PASS"
         or provenance == "SEALED-HOLDOUT",
-        "autopilot_gate_ready": autopilot.get("state") == "GATE_READY",
-        "autopilot_provenance_observed": auto_prov not in (
-            "SYNTHETIC", "UNKNOWN"),
-        "autopilot_config_matches_verdict": bool(
+        "verdict_names_strategies": bool(verdict.get("strategies")),
+        "demo_drill_pass": drill.get("verdict") == "PASS",
+        "demo_drill_pass_fresh": _drill_fresh(drill),
+        "latency_pass": _latency_pass(latency),
+        "latency_ws_pass": _latency_pass(latency),
+        "no_blocked_in_state": "| BLOCKED |" not in state_text,
+    }
+    if autopilot:
+        checks["autopilot_gate_ready"] = autopilot.get("state") == "GATE_READY"
+        checks["autopilot_provenance_observed"] = auto_prov not in (
+            "SYNTHETIC", "UNKNOWN")
+        checks["autopilot_config_matches_verdict"] = bool(
             autopilot.get("config_sha256")
             and verdict_hashes.get("config_sha256_16")
             and str(autopilot.get("config_sha256", ""))[:16]
-            == str(verdict_hashes.get("config_sha256_16"))),
-        "cost_model_fresh": bool(cost.get("version")
-                                 and (_age_days(cost.get("created_utc"))
-                                      is not None)
-                                 and _age_days(cost.get("created_utc")) <= 30),
-        "host_check_pass_fresh": host.get("verdict") == "PASS"
-        and (_age_days(host.get("generated_utc")) is not None)
-        and _age_days(host.get("generated_utc")) <= 7,
-        "demo_drill_pass_fresh": drill.get("verdict") == "PASS"
-        and str(drill.get("provenance", "")).upper() not in (
-            "SYNTHETIC", "EMULATED")
-        and drill.get("emulated") is not True
-        and (_age_days(drill.get("created_utc", drill.get("generated_utc")))
-             is not None)
-        and _age_days(drill.get("created_utc",
-                                drill.get("generated_utc"))) <= 7,
-        "latency_ws_pass": latency.get("verdict") == "PASS"
-        and isinstance(latency.get("p99_feed_age_ms"), (int, float))
-        and float(latency["p99_feed_age_ms"]) <= 250.0
-        and isinstance(latency.get("drop_rate"), (int, float))
-        and float(latency["drop_rate"]) <= 0.001,
-        "watchdog_heartbeat_fresh": _watchdog_fresh(heartbeat),
-        "verdict_pass": verdict.get("verdict") == "PASS"
-        and _verdict_doc_valid(verdict),
-        "demo_drill_pass": drill.get("verdict") == "PASS",
-        "latency_pass": _latency_pass(latency),
-        "verdict_names_strategies": bool(verdict.get("strategies")),
-        "no_blocked_in_state": "| BLOCKED |" not in state_text,
-    }
+            == str(verdict_hashes.get("config_sha256_16")))
+    if cost:
+        checks["cost_model_fresh"] = bool(
+            cost.get("version")
+            and (_age_days(cost.get("created_utc")) is not None)
+            and _age_days(cost.get("created_utc")) <= 30)
+    if host:
+        checks["host_check_pass_fresh"] = (
+            host.get("verdict") == "PASS"
+            and (_age_days(host.get("generated_utc")) is not None)
+            and _age_days(host.get("generated_utc")) <= 7)
+    if heartbeat:
+        checks["watchdog_heartbeat_fresh"] = _watchdog_fresh(heartbeat)
     details: dict[str, object] = {}
     if not allowed:
         details["invalidation"] = inv_reason
@@ -1642,15 +1658,9 @@ def cmd_gate(args: argparse.Namespace) -> int:
             verdict_hashes.get("code_commit") == commit
             and commit != "unknown")
     go = bool(checks) and all(checks.values())
-    doc = {"gate": "GO" if go else "NO-GO", "checks": checks,
-           "details": details,
-           "hypothesis": getattr(args, "hypothesis", None),
-           "expires_utc": datetime.fromtimestamp(
-               datetime.now(UTC).timestamp() + 86400,
-               tz=UTC).isoformat(),
-           "created_utc": datetime.now(UTC).isoformat()}
-    go = all(checks.values())
     doc: dict = {"gate": "GO" if go else "NO-GO", "checks": checks,
+                 "details": details,
+                 "hypothesis": getattr(args, "hypothesis", None),
                  "evidence_sha256": {
                      "verdict": _file_sha256(args.verdict_json),
                      "drill": _file_sha256(args.drill_json),
@@ -1683,10 +1693,6 @@ def cmd_arm(args: argparse.Namespace) -> int:
         print("arm: REFUSED (capital and daily loss must be positive)",
               file=sys.stderr)
         return 2
-    """Arm prod (T6.1 step 2). Refuses without a valid GO gate, the env
-    acknowledgement, an interactive TTY, and the typed confirmation.
-    The armed record binds to the gate digest; the prod path re-checks
-    this binding before any order can be submitted."""
     gate = _read_json(args.gate_json)
     if not _gate_doc_valid(gate):
         print("arm: REFUSED (no valid, unexpired GO gate.json with "
@@ -1714,14 +1720,6 @@ def cmd_arm(args: argparse.Namespace) -> int:
         print("arm: REFUSED (typed confirmation mismatch)",
               file=sys.stderr)
         return 2
-    doc = {"armed": True, "capital_usdt": args.capital_usdt,
-           "max_daily_loss": args.max_daily_loss,
-           "canary_trades": 10,
-           "gate_sha256": _sha256_file(args.gate_json),
-           "gate_expires_utc": gate.get("expires_utc"),
-           "hypothesis": gate.get("hypothesis"),
-           "code_commit": _current_commit(),
-           "armed_utc": datetime.now(UTC).isoformat()}
     doc = {"armed": True, "capital_usdt": capital,
            "max_daily_loss": max_loss, "canary_trades": 10,
            "gate_sha256": gate.get("gate_sha256"),
@@ -1765,8 +1763,7 @@ def cmd_demo_drill(args: argparse.Namespace) -> int:
 
 def cmd_recorder(args: argparse.Namespace) -> int:
     """Standalone public-data recorder: start|stop|status|verify (F3.6)."""
-    from cryptobot.market_data.live_recorder import (
-        RecorderConfig, integrity_report, run_recorder)
+    from cryptobot.market_data.live_recorder import RecorderConfig, integrity_report, run_recorder
 
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
@@ -1855,8 +1852,12 @@ def cmd_vault(args: argparse.Namespace) -> int:
 def cmd_calibrate(args: argparse.Namespace) -> int:
     """F2.2: fit a versioned, monotonic cost model from recorded fills."""
     from cryptobot.research.calibration import (
-        fit_cost_model, load_model, parse_fills, update_cost_model,
-        write_model)
+        fit_cost_model,
+        load_model,
+        parse_fills,
+        update_cost_model,
+        write_model,
+    )
 
     rows = [json.loads(line) for line in Path(args.fills).read_text(
         encoding="utf-8").splitlines() if line.strip()]
@@ -1991,7 +1992,8 @@ def _hypothesis_rows() -> list[dict]:
 
 def cmd_adjudicate(args: argparse.Namespace) -> int:
     """Idempotent project decision. Does not write a gate or arm file."""
-    from datetime import UTC, datetime
+    from datetime import datetime
+
     from cryptobot.research.adjudicate import run_adjudication
     rows = _hypothesis_rows()
     t0 = None

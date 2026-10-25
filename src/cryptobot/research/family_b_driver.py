@@ -13,11 +13,9 @@ import itertools
 import tomllib
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 
-from cryptobot.research.slow_stats import (
-    dsr_detail, pbo_cscv, plateau_fraction, sharpe)
+from cryptobot.research.slow_stats import dsr_detail, plateau_fraction, sharpe
 
 GRID_AXES = {
     "B1": [("lookback_d", [20, 60, 120]), ("vol_window_d", [20, 60]),
@@ -50,7 +48,7 @@ BLOCKING_FLAGS = frozenset({"leak-investigate"})
 def expand_grid(hypothesis: str) -> list[dict]:
     axes = GRID_AXES[hypothesis]
     names = [a[0] for a in axes]
-    return [dict(zip(names, combo)) for combo in
+    return [dict(zip(names, combo, strict=True)) for combo in
             itertools.product(*[a[1] for a in axes])]
 
 
@@ -156,7 +154,7 @@ def load_grid_from_toml(hypothesis: str,
                "funding_lookbacks_d": "lookback_d", "thresholds_k": "k",
                "thresholds_sigma": "threshold", "windows_h": "window_h",
                "windows_d": "window_d", "max_holds_d": "max_hold_d",
-               "vol_windows_d": "vol_window_d", "modes": "mode",
+               "modes": "mode",
                "selections": "selection", "weightings": "weighting"}
     for name in names:
         vals = None
@@ -166,7 +164,8 @@ def load_grid_from_toml(hypothesis: str,
         if vals is None:
             raise ValueError(f"{hypothesis}: TOML missing axis {name}")
         toml_axes.append(vals)
-    combos = [dict(zip(names, c)) for c in itertools.product(*toml_axes)]
+    combos = [dict(zip(names, c, strict=True))
+              for c in itertools.product(*toml_axes)]
     mine = expand_grid(hypothesis)
     if {cell_key(c) for c in combos} != {cell_key(c) for c in mine}:
         raise ValueError(f"{hypothesis}: TOML grid != GRID_AXES")
@@ -217,9 +216,10 @@ def run_holdout_screen(hypothesis: str, cell: dict, *,
                "B4": "daily", "B5": "daily", "B6": "weekly",
                "B7": "monthly"}[hypothesis]
     rebal = rebalance_dates(pd.DatetimeIndex(all_dates), cadence)
-    univ = lambda d: eligible_universe(d, merged["daily"], top_n=30,
-                                       min_listing_age_days=90,
-                                       min_quote_volume_30d=1e7)
+    def univ(d):
+        return eligible_universe(d, merged["daily"], top_n=30,
+                                 min_listing_age_days=90,
+                                 min_quote_volume_30d=1e7)
     sig = getattr(_fb, f"signals_{hypothesis.lower()}")
     targets, info = sig(data, cell, rebal, univ)
     res = _bt.simulate_vectorized(targets, merged["daily"], merged["funding"],

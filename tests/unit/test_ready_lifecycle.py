@@ -491,26 +491,37 @@ def test_paper_partial_entry_protects_filled_only(tmp_path):
 
 
 def test_resize_on_additional_fills_replaces_pair(tmp_path):
+    """Cover must equal the entry qty while it lives, not its booked fill.
+
+    Legs are reduce-only, so covering the whole live entry cannot over-exit;
+    a pair sized to the booked fill leaves the still-fillable remainder naked
+    and must be replaced.
+    """
     engine = _ScriptEngine()
     session, store = _session(tmp_path, engine)
     try:
-        # Live partial entry: pair covers 0.4, verified.
+        # Live partial entry (qty 1.0, filled 0.4) with cover for the full qty.
         session._position = _position(legs=["stop-1"], protected=True)
         session.policy._state.reservations["r-1"] = _reservation(session)
         session.ledger.record_fill("BUY", 0.4, 100.0, 0.02,
                                    session.now_utc(), "f1")
         engine.states = {
             "e": _scripted_status("e", "partial", 1.0, 0.4, "r-1"),
-            "stop-1": _scripted_status("stop-1", "open", 0.4, 0.0, "r-1")}
+            "stop-1": _scripted_status("stop-1", "open", 1.0, 0.0, "r-1")}
         statuses = {s.client_order_id: s for s in engine.open_orders()}
+        # The whole live entry is the need, not the booked 0.4 fill.
+        assert session._protection_need(
+            session._position, statuses) == pytest.approx(1.0)
         session._reverify_protection(session._position, statuses)
         assert session._position["protected"] is True
-        # More fills outgrow the pair: unprotect + replace with cover.
+        # The venue reports the pair back at the booked fill only (short of
+        # the still-fillable remainder): replace it with full cover.
         session.ledger.record_fill("BUY", 0.3, 100.0, 0.02,
                                    session.now_utc(), "f2")
         engine.states.update({
             "e": _scripted_status("e", "partial", 1.0, 0.7, "r-1"),
-            "stop-2": _scripted_status("stop-2", "open", 0.7, 0.0, "r-1")})
+            "stop-1": _scripted_status("stop-1", "open", 0.4, 0.0, "r-1"),
+            "stop-2": _scripted_status("stop-2", "open", 1.0, 0.0, "r-1")})
         engine.attach_script = [["stop-2"]]
         statuses = {s.client_order_id: s for s in engine.open_orders()}
         session._reverify_protection(session._position, statuses)

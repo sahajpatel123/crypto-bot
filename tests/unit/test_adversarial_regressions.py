@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import types
+from datetime import UTC
 
 import pytest
 
@@ -103,7 +104,7 @@ def test_leave_protected_requires_live_venue_stop():
 def test_prod_arm_problem_requires_valid_armed_and_gate(tmp_path, monkeypatch):
     import hashlib
     import json
-    from datetime import datetime, timedelta, timezone
+    from datetime import datetime, timedelta
 
     gate = tmp_path / "gate.json"
     armed = tmp_path / "armed.json"
@@ -115,7 +116,7 @@ def test_prod_arm_problem_requires_valid_armed_and_gate(tmp_path, monkeypatch):
     assert self._prod_arm_problem() == "config:prod-not-armed"
     gate.write_text(json.dumps({
         "gate": "GO",
-        "expires_utc": (datetime.now(timezone.utc)
+        "expires_utc": (datetime.now(UTC)
                         + timedelta(hours=1)).isoformat()}))
     armed.write_text(json.dumps({"armed": False}))
     assert self._prod_arm_problem() == "config:prod-not-armed"

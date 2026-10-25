@@ -567,7 +567,7 @@ Meta Muse Spark.
   the 2026-10 monthly funding file (a holdout-dated artifact), so the
   forward clock starts 2026-11-01; and the >=2-positive-years gate is
   first assessable at 121 forward days, i.e. 2027-03-01, which means a
-  90-day look can only KILL (D-055 corrects an earlier 2028-12-31 claim
+  90-day look can only KILL (D-056 corrects an earlier 2028-12-31 claim
   that was simply wrong arithmetic). Runner: tools/forward_b4b.py (Vision
   CDN only, fapi.binance.com is HTTP 451 here). As of 2026-10-24 the
   study is UNDERPOWERED at 0 of 90 forward days: no forward-dated funding
@@ -582,7 +582,7 @@ Meta Muse Spark.
   a mean-reverting series is never credited with extra observations, and
   capped at n/hold_days when the holding period is known) and DSR uses it
   in place of n. B4's dev series under the fix, recomputed and corrected
-  in D-055: n_eff 91.5 -> DSR 0.9464; with the 30-day maximum-hold cap
+  in D-056: n_eff 91.5 -> DSR 0.9464; with the 30-day maximum-hold cap
   n_eff 30.5 -> DSR 0.8211; with N = 10 trials and that cap -- the way
   tools/forward_b4b.py calls it -- DSR 0.8055. B4 therefore still clears
   the 0.80 DSR gate, by 0.0055 at N=10 and 0.0211 at N=9: a thin pass,
@@ -633,18 +633,18 @@ Meta Muse Spark.
   `ruff check src tests` reports 140 pre-existing findings, so the
   blocking lint job is red on the base tree independently of this branch.
   Files touched by this change are lint-clean.
-- D-055 (uv.lock repaired, 2026-10-24): D-054 left the corrupt lock alone.
-  It turned out to block CI's own test job (exit 127: `uv sync --locked`
-  fails, the `|| pip install -e ".[dev]"` fallback installs into the
-  system interpreter, so `.venv/bin/pytest` does not exist), i.e. no
-  branch could be verified at all. Repaired by hand rather than
-  regenerated: the merge had spliced a second `ruff` package entry
-  (0.17.2) into the middle of the 0.17.1 entry's `wheels` array and lost
-  the closing bracket. Deleting the spliced 21 lines and closing the
-  array is the entire diff. Verified: `uv lock --check` resolves 30
-  packages, `uv sync --locked --extra dev` succeeds, and the suite still
-  runs (ruff stays at the 0.17.1 that CI pins). No dependency version was
-  changed by this repair.
+- D-055 (base repairs landed via PR #21, 2026-10-25): D-053/D-054
+  describe the base defects this branch first ran into (the duplicated
+  `session.py` merge fragment, the `cli.py` `timezone.utc`/`UTC`
+  NameErrors, the spliced `uv.lock`). Those were repaired on this branch
+  only so the suite could run at all. After PR #21 merged the real
+  repair into base (live/hardening 0c2ccc4), this branch was rebased onto
+  it and its own three repair commits were DROPPED rather than re-landed:
+  the lock, session and CLI repairs in this history are #21's, not this
+  branch's. Confirm with
+  `git diff origin/live/hardening..HEAD -- src/cryptobot/cli.py
+  src/cryptobot/app/session.py uv.lock`, which is empty. D-053/D-054 are
+  left as written because they record what was true on the pre-#21 tree.
 - D-056 (independent-review fixes to the B4b forward study, 2026-10-25):
   the review found the runner's book was not delta-neutral and that four
   of its guards were unpinned. Fixed, all before any forward read:

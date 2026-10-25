@@ -12,16 +12,33 @@ from pathlib import Path
 import pandas as pd
 
 from cryptobot.research.family_b import (
-    MarketData, signals_b1, signals_b2, signals_b3, signals_b4,
-    signals_b5, signals_b6, signals_b7)
-from cryptobot.research.slow_backtest import (
-    CostModel, SimConfig, simulate_vectorized)
+    MarketData,
+    signals_b1,
+    signals_b2,
+    signals_b3,
+    signals_b4,
+    signals_b5,
+    signals_b6,
+    signals_b7,
+)
+from cryptobot.research.slow_backtest import CostModel, SimConfig, simulate_vectorized
 from cryptobot.research.stats_edge import (
-    anchored_yearly_folds, bootstrap_sharpe_bounds, calendar_year_table,
-    deflated_sharpe_ratio, hansen_spa, hamming_neighbors, max_drawdown,
-    period_sharpe, plateau_fraction, positive_year_count,
-    probability_backtest_overfitting, promotion_failures,
-    regime_sharpe, sharpe_ratio, tail_metrics)
+    anchored_yearly_folds,
+    bootstrap_sharpe_bounds,
+    calendar_year_table,
+    deflated_sharpe_ratio,
+    hamming_neighbors,
+    hansen_spa,
+    max_drawdown,
+    period_sharpe,
+    plateau_fraction,
+    positive_year_count,
+    probability_backtest_overfitting,
+    promotion_failures,
+    regime_sharpe,
+    sharpe_ratio,
+    tail_metrics,
+)
 from cryptobot.research.universe import eligible_universe
 
 EXPECTED_CELLS = {"B1": 12, "B2": 6, "B3": 8, "B4": 9, "B5": 8, "B6": 8,

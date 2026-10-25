@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from datetime import UTC, datetime
 from pathlib import Path
@@ -40,6 +41,11 @@ def _gate_bundle(tmp: Path, verdict: dict) -> dict:
     sha = hashlib.sha256(cfg.read_bytes()).hexdigest()
     verdict["hashes"]["config_sha256_16"] = sha[:16]
     files["state"]["config_sha256"] = sha
+    # Sign last: the bundle above rewrites hashes, so the digest must be
+    # recomputed over the final body or the gate correctly sees tampering.
+    body = {k: v for k, v in verdict.items() if k != "document_sha256"}
+    verdict["document_sha256"] = hashlib.sha256(
+        json.dumps(body, sort_keys=True).encode()).hexdigest()
     (tmp / "verdict.json").write_text(json.dumps(verdict))
     (tmp / "state.json").write_text(json.dumps(files["state"]))
     paths["config"] = str(cfg)
@@ -61,16 +67,20 @@ def _run(paths, out):
 def test_gate_nogo_when_pass_looking_verdict_is_invalidated(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     (tmp_path / "STATE.md").write_text("# closeout test state\n")
-    digest = "b" * 64
-    verdict = {"hypothesis": "B4", "verdict": "PASS",
-               "data_provenance": "SEALED-HOLDOUT",
-               "document_sha256": digest, "hashes": {}}
+    # The gate recomputes the verdict digest, so the fixture must carry a real
+    # one: a fabricated document_sha256 is a tamper and correctly refused.
+    body = {"hypothesis": "B4", "verdict": "PASS",
+            "data_provenance": "SEALED-HOLDOUT",
+            "strategies": ["B4"], "hashes": {}}
+    digest = hashlib.sha256(json.dumps(body, sort_keys=True).encode()).hexdigest()
+    verdict = {**body, "document_sha256": digest}
     paths = _gate_bundle(tmp_path, verdict)
     # Without a chain the same artifact is not invalidated.
     assert _run(paths, tmp_path / "gate-ok.json") == 0
     append_invalidation(tmp_path / "invalidations.json", {
         "action": "invalidate",
-        "verdict_sha256": digest,
+        # bind to the digest the gate actually sees (the bundle re-signs)
+        "verdict_sha256": verdict["document_sha256"],
         "decision": "D-042",
         "hypothesis": "B4",
         "holdout": "BURNED",
@@ -118,7 +128,8 @@ def test_autopilot_refuses_invalidated_screen(tmp_path):
     verdicts.mkdir()
     (verdicts / "B4.json").write_text(json.dumps({
         "hypothesis": "B4", "verdict": "SCREEN_PASS",
-        "data_provenance": "SEALED-HOLDOUT", "document_sha256": digest}))
+        "data_provenance": "SEALED-HOLDOUT", "strategies": ["B4"],
+        "document_sha256": digest}))
     # Point the autopilot root's parent at this verdicts dir.
     # Autopilot looks at root.parent / verdicts_b. root is tmp/auto,
     # parent is tmp, so place the file at tmp/verdicts_b (done) and

@@ -2,14 +2,16 @@
 from __future__ import annotations
 
 import json
-import os
-import stat
-from pathlib import Path
 
 import pytest
 
 from cryptobot.research.calibration import (
-    FillSample, fit_cost_model, parse_fills, relaxations, update_cost_model)
+    FillSample,
+    fit_cost_model,
+    parse_fills,
+    relaxations,
+    update_cost_model,
+)
 from cryptobot.risk.clock_guard import ClockGuard
 from cryptobot.security import CredentialError, credential_readiness, load_credentials
 

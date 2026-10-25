@@ -13,7 +13,6 @@ pytest.importorskip("pandas")
 def test_sharpe_known_scale():
     from cryptobot.research.stats_edge import period_sharpe, sharpe_ratio
 
-    rng = np.random.default_rng(0)
     # Deterministic two-point series: mean 0.01, sample std known.
     r = np.array([0.02, 0.0] * 50)
     # mean = 0.01, sample std of alternating 0.02/0.0:
@@ -23,8 +22,7 @@ def test_sharpe_known_scale():
 
 
 def test_deflated_sharpe_hand_moments_and_trial_penalty():
-    from cryptobot.research.stats_edge import (
-        deflated_sharpe_ratio, expected_maximum_sharpe)
+    from cryptobot.research.stats_edge import deflated_sharpe_ratio, expected_maximum_sharpe
 
     # Strong signal, single trial: DSR against a zero benchmark is ~1.
     rng = np.random.default_rng(1)
@@ -87,7 +85,10 @@ def test_spa_rejects_noise_and_flags_a_real_column():
 
 def test_plateau_and_folds():
     from cryptobot.research.stats_edge import (
-        anchored_yearly_folds, hamming_neighbors, plateau_fraction)
+        anchored_yearly_folds,
+        hamming_neighbors,
+        plateau_fraction,
+    )
 
     cells = [
         {"id": "a", "L": 20, "V": 20},
@@ -110,8 +111,7 @@ def test_plateau_and_folds():
 
 
 def test_promotion_and_screen_gates():
-    from cryptobot.research.stats_edge import (
-        holdout_screen_failures, promotion_failures)
+    from cryptobot.research.stats_edge import holdout_screen_failures, promotion_failures
 
     ok = dict(oos_sharpe=0.8, adverse_sharpe=0.4, dsr=0.9, pbo=0.2,
               positive_years=3, plateau=0.8, max_dd=0.2, turnover=2.0,

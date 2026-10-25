@@ -725,10 +725,17 @@ class Session:
             if _ts is not None:
                 mark_age = max(
                     0.0, (self.now_utc() - _ts).total_seconds() * 1000.0)
+        # Real money: the daily-loss cap and equity floor must measure the
+        # venue's own equity, marked to market. Our ledger is a
+        # reconstruction; one missed or duplicated fill and the cap would
+        # police a fiction while real money moves. In prod the venue figure
+        # wins whenever it is readable; a failed read leaves the local
+        # number (and the audit trail says so).
+        net_liq = self._equity_for_cap(mark, close_bps)
         return AccountSnapshot(
             reconciled_equity=self.ledger.marked_equity(mark),
             marked_equity=self.ledger.marked_equity(mark),
-            net_liquidation=self.ledger.net_liquidation(mark, close_bps),
+            net_liquidation=net_liq,
             net_realised_global=self.ledger.net_realised(),
             open_position=self.ledger.has_position() or self._position is not None,
             flows_cumulative=self.ledger.total_flows(),
@@ -736,6 +743,63 @@ class Session:
             fee_buffer_usdt=fee_buffer,
             inflight_exposure_usdt=self._inflight_exposure_usdt(mark),
             mark_age_ms=mark_age)
+
+    def _venue_equity(self) -> float | None:
+        """Marked-to-market venue equity, or None when it cannot be trusted.
+
+        Only the prod route has a venue to ask; paper/emulator runs keep the
+        ledger figure. The figure must include unrealized PnL
+        (totalMarginBalance); the wallet leg alone means a position bleeding
+        through the emergency threshold never moves the number the cap
+        polices. An incomplete or non-finite snapshot is treated as unknown
+        rather than silently equated with the local book.
+        """
+        if getattr(self.config, "mode", "paper") != "prod":
+            return None
+        snap_fn = getattr(self.engine, "account_snapshot", None)
+        if not callable(snap_fn):
+            return None
+        try:
+            acct = snap_fn()
+        except Exception:  # noqa: BLE001 - 429/timeout => unknown
+            return None
+        # ``complete`` is the adapter's flag (False when a balance leg is
+        # missing or a position row failed to parse). Defaulting it to False
+        # keeps this fail-closed for snapshots that cannot say.
+        if acct is None or not getattr(acct, "complete", False):
+            return None
+        equity = getattr(acct, "margin_balance_usdt", None)
+        if equity is None:
+            # Older snapshots carry no margin leg: wallet + unrealized is the
+            # same quantity, and unknown unrealized stays unknown.
+            wallet = getattr(acct, "wallet_equity_usdt", None)
+            unreal = getattr(acct, "unrealized_pnl_usdt", None)
+            if wallet is None or unreal is None:
+                return None
+            try:
+                equity = float(wallet) + float(unreal)
+            except (TypeError, ValueError):
+                return None
+        try:
+            equity = float(equity)
+        except (TypeError, ValueError):
+            return None
+        if equity <= 0 or equity != equity or equity in (float("inf"),):
+            return None
+        return equity
+
+    def _equity_for_cap(self, mark: float, close_bps: float) -> float:
+        """The one equity figure the loss cap and the day roll both use.
+
+        They must not disagree on units: a day-start baseline in marked
+        ledger units compared against a venue margin-balance figure turns a
+        mid-flight day roll into a phantom PnL the size of the open
+        position's unrealized.
+        """
+        venue = self._venue_equity()
+        if venue is not None:
+            return venue
+        return self.ledger.net_liquidation(mark, close_bps)
 
     def _inflight_exposure_usdt(self, mark: float) -> float:
         """One budget across pending/open/unresolved exposure (V-008).
@@ -1344,7 +1408,7 @@ class Session:
             entry_ref = (intent.entry_high if intent.side.value == "LONG"
                          else intent.entry_low)
             try:
-                brackets = brackets_fn(intent.instrument)
+                brackets = self._bracket_rows(brackets_fn(intent.instrument))
                 notional = abs(executable * entry_ref)
                 maint = maintenance_margin(notional, brackets)
                 isolated = notional / max(1.0, float(
@@ -1397,8 +1461,7 @@ class Session:
                 except NotImplementedError:
                     pre_id = self.engine.submit(order)
         except Exception as exc:  # noqa: BLE001 — classify, never die
-            from cryptobot.adapters.binance_live import (
-                UnknownOutcomeError, classify_exception)
+            from cryptobot.adapters.binance_live import UnknownOutcomeError, classify_exception
             # A1/A2 (adversarial review): the old narrow catch let an
             # UNKNOWN submit or a deterministic reject escape the run,
             # leaving an unsupervised venue order and a leaked hold.
@@ -1444,10 +1507,8 @@ class Session:
                 self._save_position_shell()
                 return
             if isinstance(exc, (ValueError, PermissionError, OverflowError)):
-                try:
+                with contextlib.suppress(ValueError, KeyError):
                     self.store.update_command(cmd_id, "failed")
-                except (ValueError, KeyError):
-                    pass
                 self.policy.release(verdict.reservation_id)
                 reason = f"execution:submit-rejected:{type(exc).__name__}"
                 self._note_reject(reason, intent.strategy, intent.instrument,
@@ -1459,10 +1520,8 @@ class Session:
                 return
             policy = classify_exception(exc)
             if policy.action in ("reject_intent", "retry_backoff"):
-                try:
+                with contextlib.suppress(ValueError, KeyError):
                     self.store.update_command(cmd_id, "failed")
-                except (ValueError, KeyError):
-                    pass
                 self.policy.release(verdict.reservation_id)
                 reason = f"execution:submit-rejected:{type(exc).__name__}"
                 self._note_reject(reason, intent.strategy, intent.instrument,
@@ -1645,6 +1704,19 @@ class Session:
         if notional > cfg.leverage_cap * snapshot.reconciled_equity:
             return "leverage:cap-exceeded"
         return None
+
+    @staticmethod
+    def _bracket_rows(data: Any) -> Any:
+        """Bracket rows from the tiered contract (dict) or a bare list.
+
+        ``leverage_brackets`` serves the tiered F0.4a document
+        (``{"brackets", "observed_ms", "now_ms", "stale"}``) that the
+        bracket admission gate needs; the liquidation gate only wants the
+        rows, so it unwraps here instead of assuming either shape.
+        """
+        if isinstance(data, dict):
+            return data.get("brackets")
+        return data
 
     def _bracket_admission(self, intent: Any, qty: float) -> str | None:
         """Reject live entries whose liquidation sits inside the stop.
@@ -2166,13 +2238,80 @@ class Session:
                 with contextlib.suppress(ValueError, KeyError):
                     self.store.update_command(cmd["cmd_id"], "resolved")
 
+    def _relink_command(self, cmd: dict[str, Any],
+                        pending: list[dict[str, Any]]) -> str | None:
+        """Engine id for a command row whose id was never recorded.
+
+        The intention is persisted before the submit and the engine id is
+        recorded after it returns, so a crash in between leaves an id-less
+        row. The adapter journals every client id it issues BEFORE the venue
+        call, so such a row can be re-linked from that journal. Only an
+        unambiguous match is adopted: guessing an id would attribute real
+        exposure to the wrong reservation, so a tie stays unknown.
+        """
+        ids_fn = getattr(self.engine, "journal_client_ids", None)
+        if not callable(ids_fn):
+            return None
+        try:
+            journaled = list(ids_fn())
+        except (ValueError, KeyError, AttributeError, TypeError):
+            return None
+        if not journaled:
+            return None
+        claimed = {c.get("engine_client_id") for c in pending
+                   if c.get("engine_client_id")}
+        res_fn = getattr(self.engine, "journal_reservation", None)
+        payload = cmd.get("payload") or {}
+        rid = payload.get("reservation_id")
+        role = payload.get("role")
+        instrument = payload.get("instrument")
+        qty = payload.get("qty")
+        matches: list[tuple[str, bool]] = []
+        for cid in journaled:
+            if not cid or cid in claimed:
+                continue
+            if callable(res_fn):
+                try:
+                    if str(res_fn(cid) or "") != str(rid or ""):
+                        continue
+                except (ValueError, KeyError, AttributeError, TypeError):
+                    continue
+            try:
+                status = self.engine.order_status(cid)
+            except (ValueError, KeyError, AttributeError):
+                status = None
+            role_match = True
+            if status is not None:
+                if instrument and getattr(status, "instrument", instrument) \
+                        not in (instrument, "?"):
+                    continue
+                if qty is not None:
+                    try:
+                        if abs(float(status.qty) - float(qty)) > 1e-9:
+                            continue
+                    except (TypeError, ValueError):
+                        continue
+                role_match = not role or getattr(status, "role", role) == role
+            matches.append((cid, role_match))
+        if not matches:
+            return None
+        if len(matches) > 1:
+            # Ambiguous: prefer a single role-exact match, else stay unknown.
+            exact = [cid for cid, ok in matches if ok]
+            if len(exact) != 1:
+                return None
+            return exact[0]
+        return matches[0][0]
+
     def _reconcile_commands(self) -> None:
         """Reconcile open commands against tracked order truth (v1 §4).
 
         Terminal orders resolve their commands; live ones stay
-        submitted (adopted-known); commands with no engine id (crash
-        inside submit: possibly executed) go unknown and block new
-        entries until their outcome is proven by id.
+        submitted (adopted-known). A command with no engine id (crash
+        inside submit: possibly executed) is first re-linked from the
+        adapter journal, which issues ids before the venue call; only a
+        row that cannot be re-linked goes unknown and blocks new entries
+        until its outcome is proven by id.
         """
         try:
             pending = self.store.open_commands(self.run_id)
@@ -2180,11 +2319,30 @@ class Session:
             return
         for cmd in pending:
             eid = cmd.get("engine_client_id")
+            relinked = False
             if not eid:
-                if cmd.get("status") != "unknown":
-                    with contextlib.suppress(ValueError, KeyError):
-                        self.store.update_command(cmd["cmd_id"], "unknown")
-                continue
+                eid = self._relink_command(cmd, pending)
+                if not eid:
+                    if cmd.get("status") != "unknown":
+                        with contextlib.suppress(ValueError, KeyError):
+                            self.store.update_command(cmd["cmd_id"], "unknown")
+                    continue
+                relinked = True
+                cmd["engine_client_id"] = eid
+                with contextlib.suppress(ValueError, KeyError):
+                    self.store.checkpoint(self.run_id, "command-relinked",
+                                          {"cmd_id": cmd["cmd_id"],
+                                           "engine_client_id": eid,
+                                           "reservation_id":
+                                               (cmd.get("payload") or {}).get(
+                                                   "reservation_id")})
+                # Re-linking proves WHICH order the row refers to, not what
+                # happened to it: the order may still be working. Until its
+                # state is terminal by id, keep the row blocking admission
+                # (and resume blocked) exactly like an id-less row.
+                with contextlib.suppress(ValueError, KeyError):
+                    self.store.update_command(cmd["cmd_id"], "unknown",
+                                              engine_client_id=eid)
             real = eid
             try:
                 resolved = self.engine.resolve(eid)
@@ -2199,6 +2357,13 @@ class Session:
                     "filled", "rejected", "cancelled", "expired"):
                 with contextlib.suppress(ValueError, KeyError):
                     self.store.update_command(cmd["cmd_id"], "resolved")
+            elif relinked:
+                with contextlib.suppress(ValueError, KeyError):
+                    self.store.checkpoint(self.run_id, "command-relink-unproven",
+                                          {"cmd_id": cmd["cmd_id"],
+                                           "engine_client_id": eid,
+                                           "state": getattr(status, "state",
+                                                            None)})
 
     def _fill_reservation(self, client_order_id: str) -> str | None:
         """Reservation a fill books under, or None when foreign/unknown.
@@ -2454,7 +2619,13 @@ class Session:
             return max(net, coverable if coverable is not None else net)
         if entry.state in ("filled", "rejected", "cancelled", "expired"):
             return net
-        return net
+        # A live entry can still fill what it has not filled yet, so the stop
+        # must cover the whole order — not the booked net. Sizing to filled
+        # qty only left the fillable remainder naked between fills.
+        live_qty = float(getattr(entry, "qty", 0.0) or 0.0)
+        if coverable is not None:
+            live_qty = min(live_qty, float(coverable))
+        return max(net, live_qty)
 
     def _pending_fillable(self, pos: dict[str, Any],
                           statuses: dict[str, Any]) -> float:
@@ -2587,6 +2758,14 @@ class Session:
         if need <= 1e-9:
             # Vacuous: nothing to cover — cancel live tracked legs and
             # stay quiet (flat inference clears; no checkpoint spam).
+            # Never while the entry is still live: an unbooked fill reads
+            # as a flat local net, and cancelling then strips real cover
+            # from an order that can still fill.
+            entry = statuses.get(pos.get("entry_id") or "")
+            if entry is not None \
+                    and entry.state not in ("filled", "rejected",
+                                            "cancelled", "expired"):
+                return
             self._cancel_tracked(pos, statuses, "protection-vacuous")
             return
         stop = statuses.get((pos.get("legs") or [None])[0] or "")
@@ -2706,6 +2885,11 @@ class Session:
         """
         need = self._protection_need(pos, statuses)
         if need <= 1e-9:
+            entry = statuses.get(pos.get("entry_id") or "")
+            if entry is not None \
+                    and entry.state not in ("filled", "rejected",
+                                            "cancelled", "expired"):
+                return  # live entry: an unbooked fill is not a flat book.
             self._cancel_tracked(pos, statuses, "protection-vacuous")
             return
         stop = statuses.get((pos.get("legs") or [None])[0] or "")
@@ -3496,8 +3680,13 @@ class Session:
                 with contextlib.suppress(Exception):  # cancel requested; booking stands till confirmed.
                     self.engine.cancel(status.client_order_id, "stop-action")
         if "reduce_exposure" in actions:
-            with contextlib.suppress(ValueError, KeyError, RuntimeError):  # reduction retried next tick; exposure retained.
+            # A rate limit or venue error must not end the loop with exposure
+            # still open: log it and retry on the next tick.
+            try:
                 self._flatten("stop-action")
+            except Exception as exc:  # noqa: BLE001
+                self.store.checkpoint(self.run_id, "stop-reduce-deferred",
+                                      {"reason": f"{type(exc).__name__}: {exc}"})
         if self._stop_alerted or self.policy.emergency_active():
             # A latch stood: probe reconciled recovery only when no
             # exposure actions remain (cheap bool gate off the hot path).
@@ -3718,14 +3907,18 @@ class Session:
     def _roll_day_if_needed(self) -> None:
         today = accounting_date(self.now_utc()).isoformat()
         if self._day is not None and today != self._day:
-            marked = self.ledger.marked_equity(self._reference_mark())
-            self.policy.reconcile_day(marked, self.ledger.total_flows())
+            # Same accessor as _snapshot_account: the day-start baseline and
+            # the running figure compared against it must share units, or an
+            # open position's unrealized becomes phantom day PnL.
+            equity = self._equity_for_cap(self._reference_mark(),
+                                          self.config.taker_bps)
+            self.policy.reconcile_day(equity, self.ledger.total_flows())
             self._release_all_exit_only("day-reconciled")
             if not self._exit_only_reasons:
                 self._set_state("ready", "day-reconciled")
             self._sample_equity("day-roll", force=True)
             self.store.checkpoint(self.run_id, "day-roll",
-                                  {"day": today, "marked": marked})
+                                  {"day": today, "equity": equity})
         self._day = today
 
     def _refresh_filters_if_stale(self) -> None:
@@ -4211,10 +4404,48 @@ class Session:
             return "duration-elapsed"
         return None
 
+    def _supervise_account(self, now_mono: float) -> AccountSnapshot | None:
+        """Account snapshot for timer-driven stop evaluation.
+
+        monitor_tick(account=None) deliberately skips halt/floor evaluation,
+        so passing None here let a stalled feed or a blocked REST call suspend
+        loss monitoring. The snapshot is refreshed at most every 5s: a stop
+        cannot wait for market traffic, but it must not cost a REST call per
+        tick either. A failed read returns None, which still rolls the day and
+        reports latched blocks.
+        """
+        cached = getattr(self, "_supervise_snap", None)
+        at = getattr(self, "_supervise_snap_at", None)
+        if cached is not None and at is not None and now_mono - at < 5.0:
+            return cached
+        try:
+            snap = self._snapshot_account()
+        except Exception:  # noqa: BLE001 - unknown account, not zero loss
+            # Never fail open: returning None here discarded the cached
+            # snapshot and monitor_tick(account=None) skips halt/floor/mark
+            # checks entirely, so a blocked REST call suspended loss
+            # monitoring exactly when it mattered. Latch a loud reason and
+            # keep evaluating stops on the last snapshot we could trust;
+            # staleness is bounded by the policy's mark-age gate.
+            self._halt_entries("account:unreadable")
+            self._set_state("halted", "account:unreadable")
+            return cached
+        self._release_exit_only("account:unreadable")
+        if self._exit_only_reasons:
+            # Engines that keep one bool: re-assert a surviving reason so a
+            # heal cannot clear another subsystem's halt.
+            setter = getattr(self.engine, "set_exit_only", None)
+            if callable(setter):
+                setter(True, sorted(self._exit_only_reasons)[0])
+        self._supervise_snap = snap
+        self._supervise_snap_at = now_mono
+        return snap
+
     def _supervise(self, ctx: dict[str, Any],
                    now_mono: float) -> str | None:
         """Position + risk supervision shared by the loop and control_tick."""
-        tick = self.policy.monitor_tick(account=None)
+        tick = self.policy.monitor_tick(
+            account=self._supervise_account(now_mono))
         if not tick.ok:
             self._halt_entries(";".join(tick.reasons))
             self._set_state("halted", ";".join(tick.reasons))

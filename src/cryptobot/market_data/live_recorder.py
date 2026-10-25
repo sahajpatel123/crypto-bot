@@ -29,6 +29,7 @@ injected fakes.
 """
 from __future__ import annotations
 
+import contextlib
 import gzip
 import hashlib
 import json
@@ -38,10 +39,11 @@ import random
 import threading
 import time
 import urllib.request
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from collections.abc import Callable, Iterable
+from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Callable, Iterable
+from typing import Any
 
 FAPI_BASE = "https://fapi.binance.com"
 BYBIT_WS = "wss://stream.bybit.com/v5/public/linear"
@@ -55,7 +57,7 @@ BINANCE_STREAMS = ("aggTrade", "bookTicker", "depth@100ms",
 
 
 def _utc_now() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def _sha256_file(path: Path) -> str:
@@ -244,7 +246,7 @@ class RecorderWriter:
     def _open_chunk(self) -> None:
         self._chunk_start_ms = int(self._now() * 1000)
         stamp = datetime.fromtimestamp(
-            self._chunk_start_ms / 1000, tz=timezone.utc).strftime(
+            self._chunk_start_ms / 1000, tz=UTC).strftime(
                 "%Y%m%dT%H%M%SZ")
         self._raw_path = self.chunk_dir / (
             f"rec-{self._chunk_index:06d}-{stamp}.jsonl.gz")
@@ -325,10 +327,8 @@ class RecorderWriter:
 
     def close(self, timeout_s: float = 30.0) -> list[dict]:
         self._stop.set()
-        try:
+        with contextlib.suppress(queue.Full):
             self.queue.put_nowait(None)
-        except queue.Full:
-            pass
         self._thread.join(timeout=timeout_s)
         return self.sealed
 

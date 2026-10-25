@@ -37,9 +37,7 @@ def test_manifest_chain_seals_and_detects_tamper(tmp_path):
 def test_recorder_writer_overflow_is_counted_and_flagged(tmp_path):
     import queue as _queue
 
-    from cryptobot.market_data.live_recorder import (ManifestChain,
-                                                     RecorderConfig,
-                                                     RecorderWriter)
+    from cryptobot.market_data.live_recorder import ManifestChain, RecorderConfig, RecorderWriter
 
     cfg = RecorderConfig(out_dir=str(tmp_path), queue_max=1)
     writer = RecorderWriter(cfg, manifest=ManifestChain(
@@ -82,8 +80,7 @@ def test_classify_binance_messages():
 
 
 def test_venue_plugins_are_opt_in_and_addressable():
-    from cryptobot.market_data.live_recorder import (
-        subscription_messages, venue_stream_url)
+    from cryptobot.market_data.live_recorder import subscription_messages, venue_stream_url
 
     assert "binance.com/stream" in venue_stream_url(
         "binance", ["BTCUSDT"], ["aggTrade"])
@@ -97,8 +94,7 @@ def test_venue_plugins_are_opt_in_and_addressable():
 
 
 def test_integrity_report_detects_gap_and_bad_chunk(tmp_path):
-    from cryptobot.market_data.live_recorder import (
-        ManifestChain, integrity_report)
+    from cryptobot.market_data.live_recorder import ManifestChain, integrity_report
 
     rows = [
         {"type": "trade", "stream": "aggTrade", "trade_id": 1,
@@ -131,8 +127,7 @@ def test_integrity_report_detects_gap_and_bad_chunk(tmp_path):
 
 
 def test_disk_budget():
-    from cryptobot.market_data.live_recorder import (
-        RecorderConfig, check_disk_budget)
+    from cryptobot.market_data.live_recorder import RecorderConfig, check_disk_budget
 
     cfg = RecorderConfig(out_dir="/tmp/does-not-matter",
                          disk_budget_mb=100)

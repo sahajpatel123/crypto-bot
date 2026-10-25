@@ -6,7 +6,11 @@ import math
 import pytest
 
 from cryptobot.research.cost_model_v2 import (
-    CostModel, breakeven_row, breakeven_table, required_win_rate)
+    CostModel,
+    breakeven_row,
+    breakeven_table,
+    required_win_rate,
+)
 
 
 def ev(p: float, target: float, stop: float, cost: float) -> float:

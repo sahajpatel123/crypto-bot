@@ -10,7 +10,9 @@ from hypothesis import strategies as st
 
 from cryptobot.execution.fill_realism import PaperFillParameters
 from cryptobot.risk.margin import (
-    bracket_admission_check, liquidation_price_isolated, maintenance_margin)
+    bracket_admission_check,
+    maintenance_margin,
+)
 from cryptobot.risk.rounding import ceil_to_tick, floor_to_step, floor_to_tick
 
 BRACKETS = [

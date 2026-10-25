@@ -10,7 +10,7 @@ from __future__ import annotations
 import itertools
 import math
 import random
-from typing import Callable
+from collections.abc import Callable
 
 import numpy as np
 import pandas as pd
@@ -381,7 +381,7 @@ def plateau_fraction(cell_sharpes: dict) -> float:
     keys = list(cell_sharpes)
     best = max(keys, key=lambda k: cell_sharpes[k])
     neigh = [k for k in keys if k != best and sum(
-        1 for a, b in zip(k, best) if a != b) == 1]
+        1 for a, b in zip(k, best, strict=True) if a != b) == 1]
     if not neigh:
         return 1.0
     return sum(1 for k in neigh if cell_sharpes[k] > 0) / len(neigh)
