@@ -4,7 +4,9 @@ This process is deliberately independent of the trading process: it may
 keep recording while the bot is stopped, restarted or armed. It captures
 Binance USD-M public streams for the configured symbols:
 
-  aggTrade, bookTicker, depth@100ms, markPrice@1s, forceOrder
+  trade (aggregated per second), bookTicker, depth@100ms
+  -- the names this endpoint delivers; aggTrade, markPrice@1s and
+  forceOrder handshake and then stay silent (BINANCE_SILENT_STREAMS)
   plus REST polling for openInterest, fundingRate, premiumIndex and
   periodic depth snapshots.
 
@@ -50,8 +52,43 @@ FORMAT = "cryptobot-recorder/2"
 SYNTHETIC = "SYNTHETIC"
 OBSERVED = "observed-public"
 
-BINANCE_STREAMS = ("aggTrade", "bookTicker", "depth@100ms",
-                   "markPrice@1s", "forceOrder")
+# Streams the public fstream endpoint actually *delivers* to this host.
+#
+# Measured 2026-10-25 from the owner's Mac (DoH shim on, raw sockets, both
+# /ws/<name> and /stream?streams=): `trade`, `bookTicker` and `depth@100ms`
+# deliver frames; `aggTrade`, `markPrice@1s` and `forceOrder` complete the
+# handshake and then send zero bytes for the whole window -- no close, no
+# error, so a recorder subscribed to them loses the data silently. The
+# recorder consequently held no trade print, no mark price and no
+# liquidation for the entire 18 Oct -> 25 Oct run.
+#
+# `aggTrade` and `trade` carry the same economic content (price, qty, maker
+# flag); `trade` is the name this endpoint serves, so it is the default.
+# Mark price is still captured every 60 s by the REST premiumIndex poll.
+BINANCE_STREAMS = ("trade", "bookTicker", "depth@100ms")
+# Names that handshake but stay silent on the same path; still subscribable
+# via RecorderConfig.streams for venues/hosts where they do deliver.
+BINANCE_SILENT_STREAMS = ("aggTrade", "markPrice@1s", "forceOrder")
+
+# One stream name is satisfied by the other: they carry the same content,
+# so a request for either is served if records of the other arrive. This
+# mapping is applied to the stream name only, never to the whole symbol --
+# a live trade stream must not exempt a dead depth@100ms on the same
+# symbol, or the silence alert below would be unreachable in the one case
+# it exists to catch.
+_STREAM_ALIASES = {"trade": "aggTrade", "aggTrade": "trade"}
+# A single-stream connection (/ws/<name>) has no stream field, so its
+# records are named by bare event type. Recognise those instead of
+# alerting on every chunk -- but only for the one-symbol, one-stream shape
+# such a connection exists in, because a bare token is symbol-agnostic and
+# would otherwise let one symbol silence the rest (see _silent_streams).
+_BARE_EVENT_NAMES = {
+    "trade": ("trade",),
+    "aggTrade": ("aggTrade",),
+    "bookTicker": ("bookTicker",),
+    "depth@100ms": ("depth", "depthUpdate"),
+    "depth": ("depth", "depthUpdate"),
+}
 
 
 def _utc_now() -> str:
@@ -146,10 +183,19 @@ class RecorderConfig:
     reconnect_max_s: float = 30.0
     input_class: str = OBSERVED
     stop_file: str | None = None
+    # Empty means BINANCE_STREAMS. Set it to request other stream names.
+    streams: tuple[str, ...] = ()
+    # Aggregate trade prints into per-second order-flow buckets; 0 keeps
+    # raw prints (which do not fit the disk budget -- see DECISIONS.md).
+    trade_aggregate_s: int = 1
 
     def __post_init__(self) -> None:
         if self.input_class not in (OBSERVED, SYNTHETIC):
             raise ValueError("input_class must be observed-public or SYNTHETIC")
+        if not self.streams:
+            self.streams = BINANCE_STREAMS
+        if self.trade_aggregate_s < 0:
+            raise ValueError("trade_aggregate_s must be >= 0")
         if self.queue_max < 1:
             raise ValueError("queue_max must be positive")
         if self.chunk_seconds < 1:
@@ -284,6 +330,34 @@ class RecorderWriter:
             os.fsync(self._fh.fileno())
         self._since_fsync = 0
 
+    def _silent_streams(self, entry: dict) -> list[str]:
+        """Requested binance streams with no record in this chunk."""
+        expected: set[str] = set()
+        if "binance" in self.config.venues:
+            for symbol in self.config.symbols:
+                for stream in self.config.streams:
+                    expected.add(f"{symbol.lower()}@{stream}")
+        seen = set(entry.get("streams", []))
+        # A bare name can only arrive from a /ws/<name> connection, which is
+        # only ever opened for one symbol and one stream. Accepting bare
+        # names on a full run would make a symbol-agnostic token satisfy
+        # every symbol's stream of that type, masking a dead one.
+        bare_ok = (len(self.config.symbols) == 1
+                   and len(self.config.streams) == 1)
+        missing = []
+        for name in expected:
+            if name in seen:
+                continue
+            symbol, _, stream = name.partition("@")
+            alias = _STREAM_ALIASES.get(stream)
+            if alias is not None and f"{symbol}@{alias}" in seen:
+                continue
+            if bare_ok and any(token in seen
+                               for token in _BARE_EVENT_NAMES.get(stream, ())):
+                continue
+            missing.append(name)
+        return sorted(missing)
+
     def _rotate(self) -> None:
         if self._gz is None or self._raw_path is None:
             return
@@ -294,6 +368,13 @@ class RecorderWriter:
             self._raw_path, first_ms=self._chunk_start_ms,
             last_ms=int(self._now() * 1000), records=self.records,
             streams=sorted(self._streams), gaps=1 if self.gapped else 0)
+        silent = self._silent_streams(entry)
+        if silent:
+            # A stream we subscribed to produced nothing this chunk. The
+            # endpoint closes the handshake and then stays quiet, so this is
+            # the only signal that data is being lost.
+            self._alert("stream-silent", {"chunk": entry["chunk"],
+                                          "streams": silent})
         self.sealed.append(entry)
         self.records = 0
         self._streams = set()
@@ -361,9 +442,11 @@ def classify_message(venue: str, payload: dict[str, Any]) -> list[dict]:
         stream = payload.get("stream", str(data.get("e", "unknown")))
         out = []
         e = data.get("e")
-        if e == "aggTrade":
+        if e in ("trade", "aggTrade"):
+            # `trade` (raw stream) carries the id in `t`; `aggTrade` in `a`.
             out.append({"type": "trade", "stream": stream, "venue": venue,
-                        "symbol": data.get("s"), "trade_id": data.get("a"),
+                        "symbol": data.get("s"),
+                        "trade_id": data.get("a", data.get("t")),
                         "price": data.get("p"), "qty": data.get("q"),
                         "event_ms": data.get("E"), "trade_ms": data.get("T"),
                         "maker": data.get("m")})
@@ -544,6 +627,7 @@ class Recorder:
         self._sleep = sleep
         self.writer = RecorderWriter(config)
         self.continuity: dict[str, StreamContinuity] = {}
+        self._buckets: dict[tuple[str, str, int], dict] = {}
         self._stop = threading.Event()
         self._rest_thread: threading.Thread | None = None
         self.status = {"state": "starting", "started_utc": _utc_now(),
@@ -581,7 +665,73 @@ class Recorder:
             if isinstance(rec.get("event_ms"), int) \
                     and not cont.observe_time(int(rec["event_ms"])):
                 rec["out_of_order"] = True
+            if rec.get("type") == "trade" \
+                    and self.config.trade_aggregate_s > 0:
+                self._aggregate_trade(rec)
+                continue
             self.writer.submit(rec)
+
+    def _aggregate_trade(self, rec: dict) -> None:
+        """Fold one trade print into its per-second order-flow bucket.
+
+        Raw prints are ~65% of the whole feed and do not fit the 4 GB disk
+        budget; one bucket per (symbol, second) keeps buy/sell volume, count
+        and VWAP, which is what the order-flow work actually reads. Anything
+        malformed falls back to writing the raw record.
+        """
+        width_ms = max(1, int(self.config.trade_aggregate_s)) * 1000
+        try:
+            ts = int(rec.get("trade_ms") or rec.get("event_ms"))
+            qty = float(rec.get("qty"))
+            price = float(rec.get("price"))
+        except (TypeError, ValueError):
+            self.writer.submit(rec)
+            return
+        sec = ts - (ts % width_ms)
+        key = (str(rec.get("venue")), str(rec.get("symbol")), sec)
+        bucket = self._buckets.get(key)
+        if bucket is None:
+            bucket = {"type": "trade_agg", "stream": rec.get("stream"),
+                      "venue": rec.get("venue"), "symbol": rec.get("symbol"),
+                      "event_ms": sec, "bucket_ms": width_ms,
+                      "buy_qty": 0.0, "sell_qty": 0.0, "trades": 0,
+                      "notional": 0.0, "gap": rec.get("gap"),
+                      "out_of_order": rec.get("out_of_order", False),
+                      "first_trade_id": None, "last_trade_id": None}
+            self._buckets[key] = bucket
+        # A gap or out-of-order print can land on a second whose bucket
+        # already exists; without this the flag would be dropped and the
+        # aggregate would read as clean.
+        bucket["gap"] = bucket["gap"] or rec.get("gap")
+        bucket["out_of_order"] = (bucket["out_of_order"]
+                                  or rec.get("out_of_order", False))
+        trade_id = rec.get("trade_id")
+        if isinstance(trade_id, int):
+            first = bucket["first_trade_id"]
+            last = bucket["last_trade_id"]
+            if first is None or trade_id < first:
+                bucket["first_trade_id"] = trade_id
+            if last is None or trade_id > last:
+                bucket["last_trade_id"] = trade_id
+        if rec.get("maker"):
+            bucket["sell_qty"] += qty
+        else:
+            bucket["buy_qty"] += qty
+        bucket["trades"] += 1
+        bucket["notional"] += qty * price
+        self._flush_buckets(before_ms=sec)
+
+    def _flush_buckets(self, before_ms: int | None = None) -> None:
+        for key in sorted(self._buckets):
+            if before_ms is not None and key[2] >= before_ms:
+                continue
+            bucket = self._buckets.pop(key)
+            qty = bucket["buy_qty"] + bucket["sell_qty"]
+            bucket["vwap"] = (round(bucket["notional"] / qty, 8)
+                              if qty else None)
+            for part in ("buy_qty", "sell_qty", "notional"):
+                bucket[part] = round(bucket[part], 8)
+            self.writer.submit(bucket)
 
     def _rest_poll(self, venue: str) -> None:
         while not self._stop.is_set():
@@ -635,6 +785,8 @@ class Recorder:
             self._stop.set()
             if self._rest_thread is not None:
                 self._rest_thread.join(timeout=5.0)
+            # Flush the open per-second trade buckets before sealing.
+            self._flush_buckets()
             self.writer.close()
             self.status.update({"state": "stopped", "stopped_utc": _utc_now(),
                                 "records": self.writer.records,
@@ -647,7 +799,8 @@ class Recorder:
 
     def _run_venue(self, venue: str, deadline: float | None) -> None:
         backoff = 1.0
-        url = venue_stream_url(venue, self.config.symbols)
+        url = venue_stream_url(venue, self.config.symbols,
+                               self.config.streams)
         while not self._stop.is_set():
             if deadline is not None and time.monotonic() >= deadline:
                 return
