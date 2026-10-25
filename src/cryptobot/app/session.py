@@ -318,7 +318,7 @@ class Session:
         """Atomic watchdog heartbeat: loop alive + current exposure truth."""
         try:
             doc = {"ts_utc": self.now_utc().isoformat(),
-                   "wall_ts_utc": datetime.now(timezone.utc).isoformat(),
+                   "wall_ts_utc": datetime.now(UTC).isoformat(),
                    "has_exposure": bool(self.ledger.has_position()
                                         or self._position is not None),
                    "run_id": self.run_id, "pid": self._pid}
@@ -1105,7 +1105,7 @@ class Session:
             return "config:prod-gate-not-go"
         try:
             expiry = datetime.fromisoformat(str(gate.get("expires_utc", "")))
-            if expiry < datetime.now(timezone.utc):
+            if expiry < datetime.now(UTC):
                 return "config:prod-gate-expired"
             digest = hashlib.sha256(gate_path.read_bytes()).hexdigest()
         except (ValueError, OSError):
@@ -3509,11 +3509,6 @@ class Session:
                     self._release_all_exit_only("emergency-recovered")
                     if not self._exit_only_reasons:
                         self._set_state("ready", "emergency-recovered")
-                    and "reduce_exposure" not in actions and self.policy.recover_from_emergency(
-                    self._snapshot_account()):
-                self._stop_alerted = False
-                self._release_all_exit_only("emergency-recovered")
-                self._set_state("ready", "emergency-recovered")
 
     def _stop_refresh(self) -> None:
         """Stop the background official-source refresher, if running."""
