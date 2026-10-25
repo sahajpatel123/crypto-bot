@@ -728,12 +728,17 @@ Meta Muse Spark.
   stream name. With trade flowing by default that made the alert
   unreachable in the one case it exists to catch -- one stream dying
   while the symbol others keep flowing -- and the test that shipped with
-  it fed the empty seen set, so it could not fail. The equivalence now
+  it fed a seen set holding only bookTicker records, so it could not fail. The equivalence now
   applies only to its own stream name; a single-stream (/ws/<name>)
   connection, whose records carry no stream field, is recognised by bare
   event name instead of alerting on every chunk; and trade_agg keeps the
   first/last trade id so a replayed or duplicated print can be
-  de-duplicated downstream. Two known limits are recorded rather than
+  de-duplicated downstream. The bare-name tolerance is scoped to a
+  one-symbol, one-stream configuration, the only shape in which such
+  a connection exists, so on a full run one symbol's bare records
+  cannot silence another. A trade-id gap or out-of-order print that
+  lands on a second whose bucket already exists is now carried on
+  the bucket instead of being dropped. Two known limits are recorded rather than
   papered over: a print arriving for a second whose bucket was already
   flushed re-opens that second, so one (symbol, second) can carry two
   partial trade_agg records that must be summed; and the second still

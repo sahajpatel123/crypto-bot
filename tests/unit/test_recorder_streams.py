@@ -145,11 +145,27 @@ def test_trade_alias_covers_only_its_own_stream(tmp_path):
     assert quiet == []          # aggTrade satisfies the default trade stream
 
 
-def test_bare_stream_names_do_not_alarm(tmp_path):
+def test_bare_stream_names_do_not_alarm_on_a_single_stream_probe(tmp_path):
     """A /ws/<name> connection names records by event type, not by stream."""
+    rec = _recorder(tmp_path, symbols=("BTCUSDT",), streams=("trade",))
+    assert rec.writer._silent_streams({"streams": ["trade"]}) == []
+
+
+def test_bare_names_do_not_exempt_streams_on_a_full_run(tmp_path):
+    """A bare token is symbol-agnostic, so on a multi-stream run it must not
+    silence another symbol's stream of the same type."""
+    rec = _recorder(tmp_path, symbols=("BTCUSDT", "ETHUSDT"))
+    silent = rec.writer._silent_streams({"streams": ["trade", "depth"]})
+    assert "btcusdt@bookTicker" in silent
+    assert "btcusdt@trade" in silent
+    assert "ethusdt@trade" in silent
+
+
+def test_trade_alias_does_not_exempt_the_other_streams(tmp_path):
+    """An aggTrade-only chunk still proves nothing about bookTicker/depth."""
     rec = _recorder(tmp_path, symbols=("BTCUSDT",))
-    assert rec.writer._silent_streams(
-        {"streams": ["trade", "bookTicker", "depth"]}) == []
+    silent = rec.writer._silent_streams({"streams": ["btcusdt@aggTrade"]})
+    assert silent == ["btcusdt@bookTicker", "btcusdt@depth@100ms"]
 
 
 def test_trade_agg_keeps_the_trade_id_range(tmp_path):
@@ -178,3 +194,20 @@ def test_aggregate_falls_back_to_raw_on_bad_payload(tmp_path):
     path = tmp_path / "chunks" / Path(rec.writer.sealed[0]["chunk"]).name
     types = [r.get("type") for r in _records(path)]
     assert "trade" in types
+
+
+def test_mid_second_gap_survives_an_existing_bucket(tmp_path):
+    """A gap seen on a later print must reach the bucket, not be dropped."""
+    rec = _recorder(tmp_path, symbols=("BTCUSDT",))
+    for trade_id in (10, 40):          # 11..39 missing -> trade-id gap
+        rec._record_stream("binance", {
+            "stream": "btcusdt@trade",
+            "data": {"e": "trade", "E": 1000, "T": 1000, "s": "BTCUSDT",
+                     "t": trade_id, "p": "100", "q": "1", "m": False}})
+    rec._flush_buckets()
+    rec.writer.close()
+    path = tmp_path / "chunks" / Path(rec.writer.sealed[0]["chunk"]).name
+    (agg,) = [r for r in _records(path) if r.get("type") == "trade_agg"]
+    assert agg["gap"] == "trade-id"
+    assert agg["trades"] == 2
+    assert (agg["first_trade_id"], agg["last_trade_id"]) == (10, 40)

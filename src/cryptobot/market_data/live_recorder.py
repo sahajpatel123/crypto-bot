@@ -81,7 +81,9 @@ BINANCE_SILENT_STREAMS = ("aggTrade", "markPrice@1s", "forceOrder")
 _STREAM_ALIASES = {"trade": "aggTrade", "aggTrade": "trade"}
 # A single-stream connection (/ws/<name>) has no stream field, so its
 # records are named by bare event type. Recognise those instead of
-# alerting on every chunk.
+# alerting on every chunk -- but only for the one-symbol, one-stream shape
+# such a connection exists in, because a bare token is symbol-agnostic and
+# would otherwise let one symbol silence the rest (see _silent_streams).
 _BARE_EVENT_NAMES = {
     "trade": ("trade",),
     "aggTrade": ("aggTrade",),
@@ -338,6 +340,12 @@ class RecorderWriter:
                 for stream in self.config.streams:
                     expected.add(f"{symbol.lower()}@{stream}")
         seen = set(entry.get("streams", []))
+        # A bare name can only arrive from a /ws/<name> connection, which is
+        # only ever opened for one symbol and one stream. Accepting bare
+        # names on a full run would make a symbol-agnostic token satisfy
+        # every symbol's stream of that type, masking a dead one.
+        bare_ok = (len(self.config.symbols) == 1
+                   and len(self.config.streams) == 1)
         missing = []
         for name in expected:
             if name in seen:
@@ -346,8 +354,8 @@ class RecorderWriter:
             alias = _STREAM_ALIASES.get(stream)
             if alias is not None and f"{symbol}@{alias}" in seen:
                 continue
-            if any(token in seen
-                   for token in _BARE_EVENT_NAMES.get(stream, ())):
+            if bare_ok and any(token in seen
+                               for token in _BARE_EVENT_NAMES.get(stream, ())):
                 continue
             missing.append(name)
         return sorted(missing)
@@ -691,6 +699,12 @@ class Recorder:
                       "out_of_order": rec.get("out_of_order", False),
                       "first_trade_id": None, "last_trade_id": None}
             self._buckets[key] = bucket
+        # A gap or out-of-order print can land on a second whose bucket
+        # already exists; without this the flag would be dropped and the
+        # aggregate would read as clean.
+        bucket["gap"] = bucket["gap"] or rec.get("gap")
+        bucket["out_of_order"] = (bucket["out_of_order"]
+                                  or rec.get("out_of_order", False))
         trade_id = rec.get("trade_id")
         if isinstance(trade_id, int):
             first = bucket["first_trade_id"]
