@@ -14,3 +14,37 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+
+import pytest  # noqa: E402
+
+
+def _tree_bytes(root: Path) -> int:
+    total = 0
+    for p in root.rglob("*"):
+        try:
+            if p.is_file() and not p.is_symlink():
+                total += p.stat().st_size
+        except OSError:
+            pass
+    return total
+
+
+@pytest.hookimpl(wrapper=True, tryfirst=True)
+def pytest_sessionfinish(session, exitstatus):
+    """Print how much pytest scratch this run left behind (visibility only).
+
+    Runs as the outermost wrapper, so the measurement is taken AFTER pytest's
+    own retention-policy cleanup: it is the residual size on disk.
+    """
+    try:
+        return (yield)
+    finally:
+        try:
+            factory = getattr(session.config, "_tmp_path_factory", None)
+            base = getattr(factory, "_basetemp", None)
+            if base is not None and Path(base).exists():
+                mb = _tree_bytes(Path(base)) / 1e6
+                print(f"\n[pytest scratch left in {base}: {mb:.1f} MB]")
+        except Exception:  # never let a diagnostic break a run
+            pass
