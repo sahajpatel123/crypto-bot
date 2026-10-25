@@ -151,14 +151,50 @@ def parse_answer(payload) -> tuple:
     return addresses, max(TTL_MIN_S, min(ttl, TTL_MAX_S))
 
 
+def _read_http_body(reply) -> bytes:
+    """Read a bounded DoH body without letting slow-drip reads outlive the deadline."""
+    http_reply = getattr(reply, "fp", reply)
+    read1 = getattr(http_reply, "read1", None)
+    stream = getattr(http_reply, "fp", None)
+    raw = getattr(stream, "raw", None)
+    sock = getattr(raw, "_sock", None)
+    if not callable(read1) or not callable(getattr(sock, "settimeout", None)):
+        raise OSError("DoH response does not expose a bounded socket reader")
+
+    body = bytearray()
+    while True:
+        deadline = getattr(_tls, "deadline", None)
+        if deadline is None:
+            timeout = HTTP_TIMEOUT_S
+        else:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise TimeoutError("DoH response read deadline exceeded")
+            timeout = min(HTTP_TIMEOUT_S, remaining)
+        sock.settimeout(timeout)
+
+        # Read one sentinel byte beyond the retained limit so oversized bodies are rejected,
+        # rather than silently parsing a truncated JSON prefix.
+        size = min(8192, MAX_REPLY_BYTES + 1 - len(body))
+        chunk = read1(size)
+        if not chunk:
+            return bytes(body)
+        body.extend(chunk)
+        if len(body) > MAX_REPLY_BYTES:
+            raise ValueError(f"DoH reply exceeds {MAX_REPLY_BYTES} bytes")
+
+
 def _http_get_json(url: str):
     request = urllib.request.Request(
         url, headers={"accept": "application/dns-json", "user-agent": "cryptobot-netguard/1"})
     context = ssl.create_default_context()
     left = getattr(_tls, "deadline", None)
-    timeout = HTTP_TIMEOUT_S if left is None else max(0.2, min(HTTP_TIMEOUT_S, left - time.monotonic()))
+    timeout = HTTP_TIMEOUT_S if left is None else left - time.monotonic()
+    if timeout <= 0:
+        raise TimeoutError("DoH request deadline exceeded")
+    timeout = min(HTTP_TIMEOUT_S, timeout)
     with urllib.request.urlopen(request, timeout=timeout, context=context) as reply:  # noqa: S310
-        return json.loads(reply.read(MAX_REPLY_BYTES).decode("utf-8"))
+        return json.loads(_read_http_body(reply).decode("utf-8"))
 
 
 def doh_lookup(name: str, fetch: Callable | None = None) -> tuple:

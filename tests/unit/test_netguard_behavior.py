@@ -21,6 +21,7 @@ import threading
 import time
 import urllib.request
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -404,6 +405,48 @@ def test_concurrent_failures_do_not_queue_serially(rig):
     assert len(rig.lookup_calls) == 1
 
 
+def test_timed_gate_waiter_falls_back_to_system_resolver(rig, ng, monkeypatch):
+    started = threading.Event()
+    release = threading.Event()
+    worker_results: list[list[str]] = []
+    worker_errors: list[Exception] = []
+
+    def blocked_lookup(_name):
+        started.set()
+        if not release.wait(2):
+            raise TimeoutError("test lookup was not released")
+        return [REAL_A], 60
+
+    monkeypatch.setattr(ng, "DOH_DEADLINE_S", 0.02)
+    monkeypatch.setattr(ng, "HTTP_TIMEOUT_S", 0.02)
+    rig.lookup = blocked_lookup
+    rig.install()
+
+    def refresh():
+        try:
+            worker_results.append(rig.addresses(family=socket.AF_INET,
+                                                type=socket.SOCK_STREAM))
+        except Exception as exc:  # noqa: BLE001
+            worker_errors.append(exc)
+
+    thread = threading.Thread(target=refresh)
+    thread.start()
+    try:
+        assert started.wait(1)
+        t0 = time.monotonic()
+        fallback = rig.addresses(family=socket.AF_INET, type=socket.SOCK_STREAM)
+        elapsed = time.monotonic() - t0
+    finally:
+        release.set()
+        thread.join(2)
+
+    assert not thread.is_alive() and not worker_errors
+    assert fallback == [SINKHOLE_V4]
+    assert elapsed < 0.5
+    assert worker_results == [[REAL_A]]
+    assert any(call[0] == "fapi.binance.com" for call in rig.system_calls)
+
+
 def test_doh_lookup_has_an_overall_deadline(ng, monkeypatch):
     import types
     monkeypatch.setattr(ng, "DOH_DEADLINE_S", 0.5)
@@ -665,6 +708,36 @@ def _a(ip, ttl=60):
     return {"name": "x.", "type": 1, "TTL": ttl, "data": ip}
 
 
+class _FakeDoHSocket:
+    def __init__(self):
+        self.timeout = None
+        self.timeouts: list[float] = []
+
+    def settimeout(self, timeout):
+        self.timeout = timeout
+        self.timeouts.append(timeout)
+
+
+class _FakeDoHHTTPResponse:
+    def __init__(self, sock, read1):
+        self.fp = SimpleNamespace(raw=SimpleNamespace(_sock=sock))
+        self._read1 = read1
+
+    def read1(self, size):
+        return self._read1(size)
+
+
+class _FakeDoHURLResponse:
+    def __init__(self, sock, read1):
+        self.fp = _FakeDoHHTTPResponse(sock, read1)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_args):
+        return None
+
+
 def test_parse_answer_basic_and_ttl_min(ng):
     assert ng.parse_answer(_answer(_a(REAL_A, 120), _a(REAL_B, 45))) == ([REAL_A, REAL_B], 45)
     assert ng.parse_answer(_answer(_a(REAL_A, 1)))[1] == 30
@@ -728,6 +801,64 @@ def test_default_doh_path_ignores_private_answers_end_to_end(rig, ng, monkeypatc
     monkeypatch.setattr(ng, "_http_get_json", lambda url: _answer(_a("127.0.0.1"), _a("10.1.1.1")))
     ng.install(real_getaddrinfo=rig.system, clock=rig.clock)
     assert rig.addresses(family=socket.AF_INET, type=socket.SOCK_STREAM) == [SINKHOLE_V4]
+
+
+def test_slow_drip_http_body_obeys_the_absolute_doh_deadline(ng, monkeypatch):
+    now = [0.0]
+    monkeypatch.setattr(ng, "DOH_DEADLINE_S", 1.0)
+    monkeypatch.setattr(ng, "time", SimpleNamespace(monotonic=lambda: now[0]))
+    sock = _FakeDoHSocket()
+    read_sizes: list[int] = []
+    urlopen_timeouts: list[float] = []
+
+    def slow_read(size):
+        read_sizes.append(size)
+        delay = 0.6
+        if delay > sock.timeout:
+            now[0] += sock.timeout
+            raise TimeoutError("slow drip exceeded socket timeout")
+        now[0] += delay
+        return b"{"
+
+    response = _FakeDoHURLResponse(sock, slow_read)
+
+    def urlopen(_request, *, timeout, **_kwargs):
+        urlopen_timeouts.append(timeout)
+        return response
+
+    monkeypatch.setattr(ng.urllib.request, "urlopen", urlopen)
+    with pytest.raises(OSError, match="deadline"):
+        ng.doh_lookup("fapi.binance.com")
+
+    assert urlopen_timeouts == [1.0]
+    assert read_sizes == [8192, 8192]
+    assert sock.timeouts == pytest.approx([1.0, 0.4])
+    assert now[0] == pytest.approx(1.0)
+
+
+def test_oversized_doh_http_reply_is_capped(ng, monkeypatch):
+    now = [0.0]
+    monkeypatch.setattr(ng, "time", SimpleNamespace(monotonic=lambda: now[0]))
+    sock = _FakeDoHSocket()
+    read_sizes: list[int] = []
+    total_read = [0]
+
+    def oversized_read(size):
+        read_sizes.append(size)
+        total_read[0] += size
+        return b"x" * size
+
+    response = _FakeDoHURLResponse(sock, oversized_read)
+    monkeypatch.setattr(ng.urllib.request, "urlopen", lambda *_a, **_k: response)
+    ng._tls.deadline = 10.0
+    try:
+        with pytest.raises(ValueError, match="exceeds 65536 bytes"):
+            ng._http_get_json("https://1.1.1.1/dns-query")
+    finally:
+        ng._tls.deadline = None
+
+    assert total_read[0] == ng.MAX_REPLY_BYTES + 1
+    assert max(read_sizes) <= 8192
 
 
 # ------------------------------------------------- import-time behaviour (no network)

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import socket
+from types import SimpleNamespace
 
 import pytest
 
@@ -98,6 +99,27 @@ def test_time_budget_is_inconclusive():
     row = dns_sinkhole_check(system_resolver=lambda h: [SINK], doh_resolver=lambda h: [REAL],
                              connector=lambda *a: False, budget_s=-1.0)
     assert row["status"] == "PASS" and "time budget" in row["detail"]
+
+
+def test_budget_expiring_before_all_system_addresses_is_inconclusive(monkeypatch):
+    now = [0.0]
+    monkeypatch.setattr(host_check, "time", SimpleNamespace(monotonic=lambda: now[0]))
+    system_addresses = [SINK, "49.44.79.237", "49.44.79.238"]
+    doh_calls: list[str] = []
+    connect_calls: list[str] = []
+
+    def connector(address, _port, _timeout):
+        connect_calls.append(address)
+        if address != REAL:
+            now[0] += 2.0  # the first failed system probe consumes the entire budget
+        return address == REAL
+
+    row = dns_sinkhole_check(
+        hosts=("fapi.binance.com",), system_resolver=lambda _h: system_addresses,
+        doh_resolver=lambda h: doh_calls.append(h) or [REAL], connector=connector, budget_s=1.0)
+    assert row["status"] == "PASS" and "inconclusive" in row["detail"]
+    assert "time budget" in row["detail"]
+    assert len(connect_calls) == 1 and doh_calls == []
 
 
 def test_https_proxy_does_not_skip_the_direct_probe(monkeypatch):
