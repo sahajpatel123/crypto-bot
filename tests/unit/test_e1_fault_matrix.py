@@ -20,7 +20,11 @@ only about the engine's belief. Matrix rows (see E1_MATRIX in the PR body):
 """
 from __future__ import annotations
 
+import os
+import subprocess
+import sys
 import time
+from pathlib import Path
 
 import pytest
 
@@ -435,3 +439,233 @@ def test_f_listen_key_expiry_reopens_a_key_and_heals(emu):
         assert len(h.journal(engine, "fill-adopted")) == 1
     finally:
         stream.close()
+
+
+# ----------------------------------------- g: crash mid-entry / restart
+def test_g_killed_process_entry_is_adopted_once_after_restart(emu):
+    """Kill a separate process after its signed entry POST reaches MockEx
+    but while the response is stalled. A fresh engine recovers by
+    clientOrderId; venue exposure is never duplicated."""
+    journal = emu.tmp / "process-kill.jsonl"
+    emu.fault("POST:order", "stall", delay_s=1.0)
+    root = Path(__file__).resolve().parents[2]
+    child = """\
+import os
+from cryptobot.adapters.binance_live import BinanceLiveEngine, UrllibTransport
+from cryptobot.app.engine import EngineOrder
+base = os.environ["E1_BASE"]
+engine = BinanceLiveEngine(
+    api_key=os.environ["E1_KEY"], api_secret=os.environ["E1_SECRET"],
+    journal_path=os.environ["E1_JOURNAL"], expected_leverage=3,
+    run_tag="e1", live_enable=True, demo=False, base_url=base,
+    transport=UrllibTransport(base, timeout_s=5.0))
+engine._ensure_ready("BTCUSDT")
+engine.submit(EngineOrder("BTCUSDT", "BUY", 0.002, "MARKET",
+                          reservation_id="crash-r", role="entry"))
+"""
+    env = {
+        "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
+        "PYTHONPATH": str(root / "src"),
+        "E1_BASE": emu.base,
+        "E1_KEY": emu.key,
+        "E1_SECRET": emu.secret,
+        "E1_JOURNAL": str(journal),
+    }
+    proc = subprocess.Popen([sys.executable, "-c", child], env=env,
+                            stdout=subprocess.DEVNULL,
+                            stderr=subprocess.DEVNULL)
+    deadline = time.monotonic() + 10.0
+    while time.monotonic() < deadline and not emu.requests(
+            "POST", "/fapi/v1/order"):
+        if proc.poll() is not None:
+            pytest.fail("worker exited before entering the venue request")
+        time.sleep(0.01)
+    assert emu.requests("POST", "/fapi/v1/order"), \
+        "worker never entered the venue request"
+    assert proc.poll() is None, "worker completed before it was killed mid-entry"
+    assert journal.exists() and "submit-intent" in journal.read_text()
+    proc.kill()
+    proc.wait(timeout=5)
+    time.sleep(1.2)  # the request was already received; let MockEx finish it
+    assert emu.position() == pytest.approx(0.002)
+    restarted = emu.engine("process-kill")
+    restarted._ensure_ready(h.BTC)
+    cid = restarted.journal_client_ids()[0]
+    restarted.stream_reconnected()
+    status = restarted.order_status(cid)
+    assert status.state == "filled" and status.filled_qty == pytest.approx(0.002)
+    assert restarted.filled_qty(cid) == pytest.approx(emu.position())
+    assert not restarted.unknown_ids()
+    assert len(emu.venue.orders) == 1 and not emu.open_orders()
+
+
+# ---------------------------------------------- h: venue error refusals
+@pytest.mark.parametrize("code", [-2010, -2019, -4164, -1013, -2022, -4061])
+def test_h_each_deterministic_venue_rejection_is_clean(emu, code):
+    """Venue refuses each safety/filter/mode code; state is terminal,
+    auditable, and exposure remains unchanged."""
+    engine = emu.ready_engine()
+    emu.fault("POST:order", "http-error", status=400, code=code,
+              msg=f"scripted Binance code {code}")
+    with pytest.raises(VenueRejectedError) as info:
+        engine.submit(h.market_buy())
+    assert info.value.code == code
+    cid = engine.journal_client_ids()[0]
+    assert engine.order_status(cid).state == "rejected"
+    assert not engine.unknown_ids() and emu.position() == 0.0
+    assert not emu.venue.orders and emu.order_posts() == 1
+    assert h.journal(engine, "submit-rejected")
+
+
+def test_h_venue_margin_rejection_is_clean(emu):
+    """The emulator enforces -2019 against its actual available margin."""
+    engine = emu.ready_engine()
+    with pytest.raises(VenueRejectedError) as info:
+        engine.submit(EngineOrder(h.BTC, "BUY", 1.0, "MARKET",
+                                  reservation_id="r1", role="entry"))
+    assert info.value.code == -2019
+    cid = engine.journal_client_ids()[0]
+    assert engine.order_status(cid).state == "rejected"
+    assert not emu.venue.orders and emu.position() == 0.0
+
+
+def test_h_venue_hedge_mode_rejects_orders_without_fabricating_state(emu):
+    """The emulator returns -4061 after position mode flips after startup."""
+    engine = emu.ready_engine()
+    emu.venue.dual_side = True
+    with pytest.raises(VenueRejectedError) as info:
+        engine.submit(h.market_buy())
+    assert info.value.code == -4061
+    cid = engine.journal_client_ids()[0]
+    assert engine.order_status(cid).state == "rejected"
+    assert not emu.venue.orders and emu.position() == 0.0
+
+
+def test_h_reduce_only_without_position_is_refused_cleanly(emu):
+    """A reduce-only close with no position returns -2022 without exposure."""
+    engine = emu.ready_engine()
+    with pytest.raises(VenueRejectedError) as info:
+        engine.submit(EngineOrder(
+            h.BTC, "SELL", 0.002, "MARKET", reduce_only=True,
+            reservation_id="r1", role="target"))
+    assert info.value.code == -2022
+    cid = engine.journal_client_ids()[0]
+    assert engine.order_status(cid).state == "rejected"
+    assert not emu.venue.orders and emu.position() == 0.0
+
+
+# ------------------------------------------- i: transient -2013 race
+def test_i_transient_unknown_order_miss_does_not_void_or_duplicate(emu):
+    """One -2013 for an existing fill is inside the grace window; a retry
+    resolves the order and adopts the same trade exactly once."""
+    engine = emu.ready_engine()
+    cid = engine.submit(h.market_buy())
+    emu.fault("GET:order", "void-lookup")
+    first = engine.lookup(cid)
+    assert first is not None and first.state == "filled"
+    assert not [r for r in h.journal(engine, "lookup-void")
+                if r.get("client_id") == cid]
+    second = engine.lookup(cid)
+    assert second.state == "filled" and second.filled_qty == pytest.approx(0.002)
+    assert emu.position() == pytest.approx(0.002)
+    assert len([r for r in h.journal(engine, "fill-adopted")
+                if r.get("client_id") == cid]) == 1
+
+
+# ----------------------------------------- k: clock step during a run
+def test_k_clock_step_mid_run_resyncs_without_duplicate_entry(emu):
+    """A backwards wall-clock step after a successful order produces one
+    -1021 refusal, resyncs, and executes one next order."""
+    engine = emu.ready_engine()
+    first = engine.submit(h.market_buy())
+    assert emu.position() == pytest.approx(0.002)
+    emu.clock.step(-12.0)
+    second = engine.submit(h.market_buy(reservation="r2"))
+    refused = [r for r in emu.mock.refusals
+               if r["path"] == "/fapi/v1/order" and r["code"] == -1021]
+    assert len(refused) == 1
+    assert engine.order_status(first).state == "filled"
+    assert engine.order_status(second).state == "filled"
+    assert emu.position() == pytest.approx(0.004)
+    assert len(emu.venue.orders) == 2
+    assert len(h.journal(engine, "clock-resync")) == 1
+
+
+def test_a_retry_after_window_survives_engine_restart(emu):
+    """E1-a mutation case: restart cannot erase the venue's 418 ban."""
+    engine = emu.ready_engine()
+    emu.fault("POST:order", "rate-limit-418", retry_after_s=3600)
+    with pytest.raises(RateLimitedError):
+        engine.submit(h.market_buy())
+    sent = len(emu.venue.log)
+    engine.close()
+    restarted = emu.engine("e")  # same journal, process-local state is new
+    assert restarted._rate_limited_until_ms > restarted._now_ms()
+    with pytest.raises(RateLimitedError):
+        restarted.submit(h.market_buy())
+    assert len(emu.venue.log) == sent
+    rate = h.journal(restarted, "rate-limited")[-1]
+    assert rate["until_ms"] > restarted._now_ms()
+
+
+def test_f_cancelled_partial_fill_is_adopted_after_socket_gap(emu):
+    """E1-f: a partial TRADE is lost, the remainder is cancelled, then the
+    socket drops. Reconnect must REST-reconcile the terminal partial fill."""
+    engine = emu.ready_engine()
+    stream, sockets = _stream(emu, engine)
+    try:
+        stream.poll_once()
+        cid = _partial_entry(emu, engine)
+        assert emu.position() == pytest.approx(0.001)
+        emu.venue.stream_queue.clear()  # lost partial TRADE
+        engine.cancel(cid, "partial-gap-cancel")
+        assert engine.order_status(cid).state == "cancelled"
+        sockets[0][1].events.append(ConnectionError("scripted socket drop"))
+        assert stream.poll_once() == "healed"
+        assert len(sockets) == 2 and not stream.halted
+        assert engine.filled_qty(cid) == pytest.approx(0.001)
+        assert engine.filled_qty(cid) == pytest.approx(emu.position())
+        assert cid not in engine._gap_orders
+        assert len([r for r in h.journal(engine, "fill-adopted")
+                    if r.get("client_id") == cid]) == 1
+    finally:
+        stream.close()
+
+
+def test_f_cancelled_partial_fill_recovery_survives_restart(emu):
+    """A cancel acknowledgement must persist a REST-recovery watch across
+    process restart when its DELETE response omits the raced partial fill."""
+    engine = emu.ready_engine()
+    stream, _ = _stream(emu, engine)
+    try:
+        stream.poll_once()
+        cid = _partial_entry(emu, engine)
+        emu.venue.stream_queue.clear()
+        engine.cancel(cid, "restart-after-partial-cancel")
+        assert cid in engine._gap_orders
+    finally:
+        stream.close()
+    engine.close()
+
+    restarted = emu.engine("e")
+    restarted._ensure_ready(h.BTC)
+    assert cid in restarted._gap_orders
+    restarted.stream_reconnected()
+    assert restarted.filled_qty(cid) == pytest.approx(0.001)
+    assert restarted.filled_qty(cid) == pytest.approx(emu.position())
+    assert len([r for r in h.journal(restarted, "fill-adopted")
+                if r.get("client_id") == cid]) == 1
+
+
+def test_numeric_fault_request_counter_fires_on_exact_request(emu):
+    """Documented numeric ``at`` values select one global request number."""
+    engine = emu.ready_engine()
+    target = emu.venue.request_no + 1
+    emu.venue.cfg.faults.entries.append({
+        "op": "POST:order", "action": "reject", "at": target})
+    with pytest.raises(VenueRejectedError) as info:
+        engine.submit(h.market_buy())
+    assert info.value.code == -2010
+    hit = emu.venue._fault_hits[-1]
+    assert hit["request_no"] == target
+    assert emu.order_posts() == 1 and emu.position() == 0.0

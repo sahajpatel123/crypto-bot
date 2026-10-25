@@ -59,12 +59,9 @@ FUNDING_DAY_MS = [0, 8 * 3600_000, 16 * 3600_000]  # UTC boundaries.
 class FaultScript:
     """Scripted venue faults, applied in request order (logged).
 
-    Each entry: {"op": <path suffix or "stream" or "submit:<n>">,
-    "action": "rate-limit" | "rate-limit-418" | "unknown" |
-    "gateway-502" | "gateway-504" | "timeout" | "reject" |
-    "partial-legs" | "reorder" | "dupe" | "die" | "expire-key" |
-    "void-lookup",
-    "at": <1-based request counter, or "always"/"once">}.
+    Each entry: {"op": <path suffix or "stream" or "submit:<n>"},
+    "action": one of the supported scripted faults,
+    "at": <1-based request number, "always", or "once">}.
     """
     entries: list[dict[str, Any]] = field(default_factory=list)
 
@@ -155,8 +152,21 @@ class SandboxVenue:
                    phase: str = "before") -> dict[str, Any] | None:
         for entry in self.cfg.faults.entries:
             at = entry.get("at", "always")
-            if at != "always" and at != "once":
-                continue
+            numeric_at: int | None = None
+            if at not in ("always", "once"):
+                if isinstance(at, bool):
+                    continue
+                try:
+                    numeric_at = int(at)
+                except (TypeError, ValueError):
+                    continue
+                if numeric_at < 1 or (not isinstance(at, int)
+                                      and str(at).strip() != str(numeric_at)):
+                    continue
+                if self.request_no != numeric_at:
+                    continue
+                if entry.get("_last_request_no") == self.request_no:
+                    continue
             if entry.get("op") not in (op, "*"):
                 continue
             if entry.get("phase", "before") != phase:
@@ -167,10 +177,12 @@ class SandboxVenue:
             entry["_seen"] = seen + 1
             if seen < int(entry.get("after", 0)):
                 continue
-            if at == "once" and int(entry.get("_fired", 0)) >= int(
+            if at != "always" and int(entry.get("_fired", 0)) >= int(
                     entry.get("times", 1)):
                 continue
             entry["_fired"] = int(entry.get("_fired", 0)) + 1
+            if numeric_at is not None:
+                entry["_last_request_no"] = self.request_no
             self._fault_hits.append({"op": op, "action": entry["action"],
                                      "request_no": self.request_no})
             return entry

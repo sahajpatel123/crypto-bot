@@ -1,0 +1,5 @@
+reconcile /home/runner/.reason/workspace/sessions/8af52624-83f0-480a-a15e-de2d1de78e79/.ara-state/tmp/e1-demo-rehearsal-lxucenat/demo-loopback.toml (host=http://127.0.0.1:36861 account=36c4be0b0ac2):
+  wallet=10000.00 available=10000.00 USDT
+  positions: 0 open
+  open orders: 0
+reconcile: FLAT (read-only; nothing submitted)

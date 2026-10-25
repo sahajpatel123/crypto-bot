@@ -457,7 +457,21 @@ class BinanceLiveEngine:
                 self._symbols[cid] = str(record.get("symbol", ""))
         for record in self._read_journal():
             event, cid = record.get("event"), record.get("client_id")
-            if event == "submit-intent" and cid:
+            if event == "rate-limited":
+                # Persisted absolute epoch deadline survives process restart.
+                # Legacy rows only had duration + timestamp; reconstruct them.
+                until = record.get("until_ms")
+                try:
+                    if until is None:
+                        stamp = datetime.fromisoformat(
+                            str(record.get("ts_utc", ""))).timestamp()
+                        until = int((stamp + float(
+                            record.get("backoff_s", 0.0))) * 1000)
+                    self._rate_limited_until_ms = max(
+                        self._rate_limited_until_ms, int(until))
+                except (TypeError, ValueError, OverflowError, OSError):
+                    pass
+            elif event == "submit-intent" and cid:
                 cid = str(cid)
                 self._roles[cid] = str(record.get("role", "entry"))
                 res = record.get("reservation_id")
@@ -630,7 +644,8 @@ class BinanceLiveEngine:
         self._rate_limited_until_ms = max(self._rate_limited_until_ms, until)
         self._journal("rate-limited",
                       {"status": exc.status, "code": exc.code,
-                       "backoff_s": backoff})
+                       "backoff_s": backoff,
+                       "until_ms": self._rate_limited_until_ms})
         self._orders_cache = None
         return RateLimitedError(exc.status, exc.code, exc.msg, backoff)
 
@@ -923,14 +938,9 @@ class BinanceLiveEngine:
                                      {"order_id": view.get("orderId"),
                                       "state": self._states[cid]})
         self._orders_cache = None
-        # A FILLED acknowledgement can arrive before its websocket TRADE
-        # event. Mark the cumulative execution as a reconciliation gap so a
-        # later stream reconnect revisits this terminal order instead of
-        # skipping it forever if the event was lost.
-        if (not is_algo and self._states.get(cid) == "filled"
-                and self._listen_key is None):
-            # No user stream was open at acknowledgement time: there is no
-            # delivery path for the FILLED event, so reconnect must reconcile.
+        # Without a user stream, even a terminal partial fill has no delivery
+        # path; the next REST reconciliation must revisit it.
+        if not is_algo and self._listen_key is None:
             executed = float(view.get("executedQty", 0.0) or 0.0)
             if executed > 0:
                 self._reconcile_fill_gap(cid, executed)
@@ -1159,7 +1169,8 @@ class BinanceLiveEngine:
                           {"client_id": client_id, "executed_qty": exec_qty,
                            "tape_qty": booked})
 
-    def _reconcile_fill_gap(self, client_id: str, exec_qty: float) -> None:
+    def _reconcile_fill_gap(self, client_id: str,
+                            exec_qty: float | None) -> None:
         """Track cumulative-vs-tape fills still missing (R2).
 
         A lookup that leaves executedQty above the adopted tape
@@ -1168,6 +1179,13 @@ class BinanceLiveEngine:
         once each (never per-lookup spam).
         """
         adopted = self._adopted_qty.get(client_id, 0.0)
+        if exec_qty is None:
+            if client_id not in self._gap_orders:
+                self._gap_orders.add(client_id)
+                self._journal("fill-gap", {"client_id": client_id,
+                                           "executed_qty": None,
+                                           "adopted_qty": adopted})
+            return
         if exec_qty > adopted + 1e-9:
             if client_id not in self._gap_orders:
                 self._gap_orders.add(client_id)
@@ -1272,6 +1290,9 @@ class BinanceLiveEngine:
         self._states[client_order_id] = "cancelled"
         self._journal_transition("cancel-acked", client_order_id,
                                  {"reason": reason})
+        # DELETE replies do not consistently include executedQty. Watch the
+        # terminal order until a GET reconciles any fill raced with the cancel.
+        self._reconcile_fill_gap(client_order_id, None)
         self._maybe_emit_terminal(client_order_id, symbol,
                                   f"cancel-acked:{reason}")
         self._orders_cache = None
@@ -1435,6 +1456,11 @@ class BinanceLiveEngine:
         self._states[cid] = _local_state(str(order["X"]))
         self._journal_transition("user-order-state", cid,
                                  {"state": self._states[cid]})
+        cumulative = float(order.get("z", 0.0) or 0.0)
+        if cumulative > 0:
+            self._reconcile_fill_gap(cid, cumulative)
+        elif self._states[cid] in ("cancelled", "expired"):
+            self._reconcile_fill_gap(cid, None)
         if str(order["x"]) != "TRADE":
             self._maybe_emit_terminal(cid, str(order["s"]),
                                       f"stream:{order['x']}")
@@ -1465,6 +1491,8 @@ class BinanceLiveEngine:
             self._adopted_exec.add(exec_id)
             self._unacked[exec_id] = cid
             self._adopted_qty[cid] = self._adopted_qty.get(cid, 0.0) + last_qty
+        self._reconcile_fill_gap(
+            cid, cumulative if cumulative > 0 else self._adopted_qty.get(cid, 0.0))
         self._emit(EngineEvent(
             "fill",
             EngineFill(execution_id=exec_id,
@@ -1536,13 +1564,17 @@ class BinanceLiveEngine:
         return f"{ws}/ws/{listen_key}"
 
     def mark_stream_gap(self) -> None:
-        """Mark filled orders needing REST reconciliation after a socket gap."""
+        """Mark terminal executions that may have lost their TRADE event."""
         for cid, state in tuple(self._states.items()):
-            if state != "filled":
-                continue
-            expected = float(self._submitted_qty.get(cid, 0.0) or 0.0)
-            if expected > self._adopted_qty.get(cid, 0.0) + 1e-9:
-                self._reconcile_fill_gap(cid, expected)
+            adopted = self._adopted_qty.get(cid, 0.0)
+            if state == "filled":
+                expected = float(self._submitted_qty.get(cid, 0.0) or 0.0)
+                if expected > adopted + 1e-9:
+                    self._reconcile_fill_gap(cid, expected)
+            elif state in ("cancelled", "expired"):
+                # A terminal partial entry can have a fill despite zero
+                # adopted quantity; only REST distinguishes that from none.
+                self._reconcile_fill_gap(cid, None)
 
     def stream_reconnected(self) -> None:
         """Heal a user-stream gap: look up every journaled non-terminal

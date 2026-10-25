@@ -1,0 +1,16 @@
+readiness /home/runner/.reason/workspace/sessions/8af52624-83f0-480a-a15e-de2d1de78e79/.ara-state/tmp/e1-demo-rehearsal-lxucenat/demo-loopback.toml:
+  [PASS] config-loads: mode=paper
+  [PASS] live-engine: kind=live demo=True
+  [FAIL] host-pinned-demo: base_url=http://127.0.0.1:36861
+  [PASS] no-inline-secrets: clean
+  [PASS] submission-default-off: observe-only
+  [PASS] creds-from-env: BINANCE_DEMO_KEY=set BINANCE_DEMO_SECRET=set (values never shown)
+  [PASS] venue-connect: host=http://127.0.0.1:36861 account=36c4be0b0ac2
+  [PASS] clock-skew: 9ms
+  [PASS] permissions: can_trade=True fee_tier=0
+  [PASS] position-mode: one-way
+  [PASS] fees-BTCUSDT: taker=5.00bps maker=5.00bps
+  [PASS] filters-BTCUSDT: TRADING
+  [PASS] open-positions: 0 open
+  [PASS] open-orders: 0 open
+  [PASS] balances: wallet=10000.00 available=10000.00 USDT

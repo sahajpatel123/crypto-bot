@@ -1,0 +1,28 @@
+{
+ "created_utc": "2026-10-25T07:25:00.844358+00:00",
+ "drill": "demo-drill-live",
+ "note": "demo/testnet only; never proof of live edge",
+ "sha256": "2b386b24449f04b192217dfdcfe5c9af372208a0156a5ea205f39192e2669b80",
+ "steps": [
+  {
+   "detail": {
+    "leverage": 3,
+    "margin_type": "ISOLATED",
+    "multi_assets": false,
+    "position_mode": "one-way",
+    "symbols": [
+     "BTCUSDT"
+    ]
+   },
+   "latency_ms": 13.662,
+   "status": "PASS",
+   "step": "auth+modes"
+  },
+  {
+   "error": "KeyError: 'BTCUSDT'",
+   "status": "FAIL",
+   "step": "drill"
+  }
+ ],
+ "verdict": "FAIL"
+}
