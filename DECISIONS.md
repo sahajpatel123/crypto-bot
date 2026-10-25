@@ -746,3 +746,50 @@ Meta Muse Spark.
   manifest streams list is not exhaustive for its sealing second
   (records are keyed by event_ms). No preregistered threshold, scored
   dataset, verdict or holdout file is touched.
+
+- D-059 (C2-FWD point-in-time membership and listing policy, 2026-10-25):
+  without a historical public exchangeInfo source, freeze membership from the
+  latest exchangeInfo snapshot observed on the decision UTC date and no more
+  than 8 hours before its close; require the documented complete response and
+  serverTime within 15 minutes of the local UTC clock. Store the exchange
+  serverTime as the observation time and use it to reject unfinished candles;
+  a server time before 00:05 UTC or outside the requested day refuses booking.
+  A post-close snapshot may confirm a missing next candle as a retirement but
+  never changes signal membership. Require 36 consecutive daily mark closes
+  spanning 35 completed calendar-day intervals, and at least 35 calendar days
+  since listing, matching C2's minimum-history requirement and exceeding the
+  30-day liquidity window; rank Monday candidates only from 30
+  complete quote-volume candles finalized after close. Refuse missing/stale snapshots,
+  incomplete volume, unresolved halts, or backfills with no contemporaneous
+  snapshot; never infer aliases or reconstruct old membership from current
+  exchangeInfo. The frozen preregistration remains unchanged and the gate stays
+  NO-GO pending owner review of the policy interpretation.
+
+- D-060 (C2-FWD bootstrap precision, 2026-10-25): use the preregistered
+  week-block estimator with fixed seed 7 and 50,000 rounds at each exact look.
+  This gives Monte Carlo resolution 1/50,001 before the first OBF bound; record
+  the count and seed in every look report. The round count changes precision
+  only, not the estimator, data, boundary, or stop rule.
+
+- D-061 (C2-FWD independent-review hardening, 2026-10-25): when a complete
+  post-close exchangeInfo snapshot confirms retirement but the next candle is
+  absent, use the last available decision close as the terminal mark, charge a
+  separate forced-exit leg, and record its mark day/turnover. Before a later
+  look, bind every prior report to its look index, exact day count, ledger-prefix
+  hash, frozen scoring parameters, and deterministic recomputation of its
+  primary verdict. This adds no hypothesis or threshold; frozen preregistration
+  remains unchanged and the gate stays NO-GO.
+
+- D-062 (C2-FWD listing age and volume, 2026-10-25): follow the frozen
+  preregistration's weekly universe literally: do not add a listing-age cutoff;
+  all TRADING USD-M USDT perpetuals are candidates for trailing-30-day-volume
+  ranking. For a symbol listed inside that window, pre-listing dates contribute
+  structural zero volume, while every daily candle from its onboard date through
+  the decision date must be present and complete; any post-listing gap refuses
+  the snapshot. Keep a young contract in the ranked top-30 universe, but do not
+  trade it until its 36 consecutive mark closes (35 completed intervals) exist.
+  This supersedes only D-059's 35-day listing-age clause, resolving that
+  interpretation in favor of the frozen preregistration without changing it.
+  Do not silently prune candidates; refuse incomplete records rather than rank
+  a partial history. The gate remains
+  NO-GO pending owner review of eligible evidence.

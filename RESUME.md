@@ -1,6 +1,6 @@
 # RESUME — crypto-bot state
 
-Snapshot: **2026-10-25 10:10Z**, base `origin/live/hardening` @ `8961364` (#46).
+Snapshot: **2026-10-25 10:40Z**, base `origin/live/hardening` @ `4b57100` (#51).
 `origin/release/v1` (the tree the recorder actually runs) is **`ef744a2`** — #44 + #45 merged there —
 and it is now **deployed in the edge tree with exactly one controlled restart done**: the recorder
 stream fix is **live**. The 10:00Z line this replaces ("no restart has been performed") was true when
@@ -25,8 +25,9 @@ not a fix (§5). **Binance is not geo-blocked from the Mac** — Reliance Jio's
 DNS sinkholes it, and the opt-in DoH fallback for that is merged as #26. The recorder is running on
 the owner's Mac (one pid, heartbeat fresh) and is the single point of failure for every forward
 verdict; nothing that touches the exchange can run on Reason Cloud (§6). The fifth: **D1's evaluator
-is not on the release branch** — #37 merged into a stale stacked branch, so D1 has no executable path
-and the D1 owner is re-landing it (§3). That is a deployment gap, not a result.
+is now on the release branch** — #43 re-landed it against `live/hardening` and merged as `6d76902`,
+so D1 has one executable command (`research d1-eval`). It still cannot PASS: `N_TRIALS` is unset,
+so no DSR is emitted (§3, §5). Landing the evaluator changed no verdict.
 
 ## 2. Done and merged into `live/hardening`
 
@@ -46,31 +47,82 @@ Read from GitHub while writing this file, not from notes.
 | #31 | [G1] audit gate statistics on synthetic data | `cc6c1bf` | squash `7582fce` |
 | #32 | fix(e1): complete emulator rehearsal and safety rails | `dc41e54` | squash `856c0b9` |
 | #38 | B4b: make the frozen forward verdict executable as one command | `a0acd92` | squash `5eed674` |
-| #39 | docs(resume): this file's refresh (stale PR rows) | `fe3ce0e` | squash `fcad78f` = **current base** |
+| #39 | docs(resume): this file's refresh (stale PR rows) | `fe3ce0e` | squash `fcad78f` |
+| #42 | fix(research): harden C2-FWD booking and scoring | `8585b25` | squash `6aad6b3` |
+| #43 | research(d1): forward evaluator with the frozen universe, cutoff and fail-closed DSR | `1bdf675` | squash `6d76902` |
 
-All thirteen merged with `lint` + `typecheck` + `test` green. `research/prereg/D1-amendment-3.md` is on
-the base and is the **sole source** for `N_TRIALS` (§5). **#36 supersedes #33's alert granularity**: it
-now alerts per silent *stream*, not per silent *symbol*.
+Every row above merged with `lint` + `typecheck` + `test` green. For #43 that is run **239** on
+`6d76902`: unit **1976 passed, 3 skipped** (1339 s) and acceptance **180 passed** — against
+**1935 passed** in run 229 on the pre-merge base `2120a9f`, a delta of exactly **41**, the D1 suite's
+own size, so the evaluator's tests ran in CI and passed.
 
-## 3. In progress — nothing is open, except the D1 evaluator gap
+`research/prereg/D1-amendment-3.md` is on the base and is the **sole source** for `N_TRIALS` (§5).
+**#36 supersedes #33's alert granularity**: it now alerts per silent *stream*, not per silent *symbol*.
 
-Read from GitHub at 2026-10-25 10:10Z: **no pull request is open** — #30 through #39 are all merged. Do
-not trust an older note for a head SHA.
+## 3. In progress — evaluator landed; the open D1 item is #49
 
-**The one open piece of work is the D1 evaluator, and it is not on the release branch.** #37
-("research(d1): single-command forward evaluator that reads the frozen prereg") merged with its base set
-to **`reason/r2-family-d-prereg-oi-fl-134e1b4c`, a stale stacked branch**, not to `live/hardening`.
-Verified with git against `live/hardening` @ `fcad78f0`:
+Read from GitHub while writing this file: **no D1 pull request is open**. #42 (C2-FWD booking/scoring
+hardening) merged as `6aad6b3` and does not touch D1. The open D1 item is issue **#49** — the two
+recorder inputs below. Do not trust an older note for a head SHA.
 
-- `src/cryptobot/research/d1_eval.py` — **absent**
-- `src/cryptobot/research/d1_trials.py` — **absent**
-- `tests/unit/test_d1_eval.py` — **absent**
-- #37's head `6f4ea0a` is **not an ancestor** of the base.
+**The D1 evaluator is on the release branch.** #43 ("research(d1): forward evaluator with the frozen
+universe, cutoff and fail-closed DSR") merged into `live/hardening` as squash **`6d76902`**, from head
+`1bdf675`, and it went **straight onto `live/hardening`** — no stacked base this time. The three files
+and their sha256, re-read with `sha256sum` against `8961364` while writing this file:
 
-So the evaluator is **not deployed**. D1 status: **prereg text merged (#29), evaluator being re-landed on
-`live/hardening` by the D1 evaluator's owner, `N_TRIALS` still unset.** Nothing here changes a gate
-verdict, a prereg threshold, a holdout file or CI; when it does land it must keep the fail-closed rule
-below (refuse a DSR verdict while `N_TRIALS` is unset).
+| Path | sha256 |
+|---|---|
+| `src/cryptobot/research/d1_eval.py` | `15bd4393d9f5e4cfd992a4c35c171087abf632ac328617bccf0df7d4f5dc9209` |
+| `src/cryptobot/research/d1_trials.py` | `974179bde58647e7ba0df713f9e93817b8aa5a1793aa02c5d975a901f32be058` |
+| `tests/unit/test_d1_eval.py` | `46cb9e963b52cb960b405e9fa2c2c96e43d9af4becb3a5e1454059db6dd4e666` |
+
+`cryptobot research d1-eval` is the one command (in `src/cryptobot/cli.py`, beside #38's `forward b4b`),
+taking `--recorder-root`, `--prereg-dir`, `--repo-root`, `--start`, `--end`, `--json-out` and an
+audit-only `--no-verify-chunks`. There is **no flag for a trial count**, by design (§5): the grid and the
+penalty cannot be re-parameterised from a shell.
+
+**Why #43 exists: #37 was reviewed and rejected, and the second landing answers the review.** The
+rejections were that the frozen universe rule was parsed and echoed but never applied; that a named
+guard test and its mutation harness were missing; that the holdout refusal ran after the chunk was
+decompressed; that entries the prereg forbids were booked; that funding eligibility was tested against
+the bar/OI/funding minimum rather than the funding window; that Stage 0 was neither first nor per the
+no-overlap rule; that `INSUFFICIENT_FORWARD_DATA` stood where the prereg says `UNDERPOWERED`; that DSR
+was reachable through an `--n-trials` argument; and that no code hash was bound into the output.
+Re-read in the merged source, not taken from that PR body:
+
+- **The frozen universe is real code.** `monthly_rankings()` sums `quote_volume` over the previous full
+  calendar month M-1, requires **every** day of it (`if any(day not in item.daily_quote_volume ...)`),
+  ranks the top `universe_size`, and applies `universe_min_age_days` plus `universe_active_hhmm`
+  (`active_hour, active_minute = rules.universe_active_hhmm`). A month with no whole M-1 takes no
+  signals, and `universe_shortfall()` stops the run rather than scoring whatever symbols the recorder
+  happens to carry.
+- **Stage 0 runs before any trade** and counts only what the no-overlap rule can enter
+  (`overlap_filtered()`); `eligible_cells == 0` yields **`UNDERPOWERED`**, the prereg's own word
+  (`D1-oi-flush-reversal.md`: "if no cell reaches 300 events the verdict is `UNDERPOWERED`").
+  `INSUFFICIENT_FORWARD_DATA` survives only for missing recorder coverage — a stream shortfall or a
+  universe shortfall — and never for a data-complete short sample.
+- **`code_sha256`** hashes `d1_eval.py` and `d1_trials.py` into every output document
+  (`_code_hashes()`), so a verdict is bound to the code that produced it.
+- **DSR fails closed.** `N_TRIALS: int | None = None` in `d1_trials.py`; `trial_count_ready()` returns a
+  refusal naming the exact missing file when the constant is unset, when the amendment is missing, or
+  when the constant is set but the amendment is not there.
+
+**What still stops D1 is two recorder inputs, not the evaluator.** `d1-eval` reads the recorder chain and
+refuses by naming what is absent. Given the stream vocabulary the deployed recorder actually writes
+(`trade`, `book_ticker`, `depth`, `open_interest`, `premium_index`, `depth_snapshot`, `header`), the
+merged `stream_shortfalls()` returns exactly two — reproduced by calling it with those names while
+writing this file:
+
+- **`funding_settlements`** — no settled `fundingRate` record exists anywhere. The 60 s `premiumIndex`
+  poll carries a *next-rate estimate*, and the evaluator refuses it as a proxy on purpose: D1 charges
+  the rate actually paid at 00:00/08:00/16:00 UTC.
+- **`universe_daily_klines`** — no `kline_1d` (`quote_volume`) record exists, so the frozen universe
+  cannot be ranked **at all**. `monthly_rankings()` needs every day of M-1 for the candidate listing;
+  with no daily klines no month ever qualifies, so waiting does not fix it.
+
+The exact refusal text is in **#49**, which is the open D1 work. Until settled funding and the daily
+klines are recorded, D1's forward clock **has not started**: a December 2026 signal month is not
+reachable by leaving the recorder running. `N_TRIALS` unset remains the third, independent guard.
 
 ## 4. Next steps, in priority order
 
@@ -82,15 +134,18 @@ below (refuse a DSR verdict while `N_TRIALS` is unset).
    Each Reason child session leaves ~1.2 GB under `~/.reason/workspace/sessions/`; there were six at
    08:11Z (≈7.2 GB) and guard's free-space samples swung 12,632 → 9,906 MB inside ten minutes. Never
    delete the folder of a session with a turn running.
-3. **Re-land the D1 evaluator on `live/hardening`.** #37 went to a stale stacked branch, so
-   `d1_eval.py`, `d1_trials.py` and `test_d1_eval.py` are not on the base (§3). That is the only open
-   code work; it must keep the fail-closed rule — no DSR verdict, and no D1 PASS, while `N_TRIALS` is
-   unset.
-4. **Deploy verification is complete for the stream fix — do not redo it as if it were pending.**
-   Closed chunk `rec-000449-20261025T095957Z` holds **559 `trade_agg`**, so the deploy took. The
-   per-stream silent alert (#36) was **not** exercised on the live deploy; that one part of the check
-   is still outstanding. Chunks sealed before the deploy keep their gap — that is history, not a
-   regression.
+3. **D1's evaluator is merged — the D1 blocker is data, and it is #49.** #43 is on the base as `6d76902`
+   (§3), but the recorder records neither a settled funding rate nor daily klines, so `d1-eval` refuses
+   with those two shortfalls named (§3). Closing them means a recorder change on the tree launchd runs,
+   plus a decision on how wide the daily-kline pull has to be — the universe rule needs the candidate
+   listing, not the two subscribed symbols. `N_TRIALS` frozen by its owner remains the third guard. Keep
+   the fail-closed rule — no DSR verdict and no D1 PASS while `N_TRIALS` is unset.
+4. **After any recorder deploy, verify it actually took:** a newly sealed chunk must contain `trade_agg`
+   records, and a deliberately silent stream must raise the per-stream alert (#36). Chunks sealed before
+   the deploy keep their gap — that is history, not a regression. **That check is complete for the
+   2026-10-25 stream-fix deploy** — closed chunk `rec-000449-20261025T095957Z` holds **559 `trade_agg`**,
+   so the deploy took; the restart did not crash-loop. The per-stream silent alert (#36) was **not**
+   exercised on the live deploy, so that one part of the check is still outstanding.
 5. **C2-FWD.** Leave it running; scoring reads 365/730/1095 rows only, so nothing is readable yet.
    Never look at its P&L before then.
 6. **Do not re-open Family B or C and do not rescore B4.** The holdout is spent.
@@ -136,16 +191,20 @@ Amendment 3 states plainly that **1406 is not an `N_max` and must not be used by
 also **rejects `N = 1187`**: the arithmetic was confirmed, but 1187 is not a provable upper bound.
 Neither number is the penalty.
 
-### D1 evaluator: merged to the wrong branch
+### D1 evaluator: merged and executable, and still unable to emit a verdict
 
-#37's evaluator files are not on `live/hardening` (§3). Until its owner re-lands them there, D1 has no
-executable path at all — that is a *deployment* gap, not an evaluation result, and it must not be read as
-evidence for or against D1. The one command that exists is `tools/forward_b4b.py` for B4b (#38); do not
-point it at D1's prereg.
+#43's evaluator files are on `live/hardening` as `6d76902` (§3), so D1 has an executable path:
+`cryptobot research d1-eval`. Merging it changed **no** verdict and is **not** evidence for or against
+D1 — it is the instrument, not a reading from it. Three independent guards keep it silent: the two
+recorder inputs it needs and does not have (`funding_settlements`, `universe_daily_klines` — #49); a
+sample whose every cell is under the frozen event floor (`UNDERPOWERED`); and `N_TRIALS` unset, which by
+itself makes any DSR verdict impossible.
 
 **So, the rule to follow.** `N_TRIALS` remains `None`. **Do not compute or emit a DSR verdict, and do
-not allow a D1 PASS while it is unset.** The evaluator must fail closed when the constant is unset —
-refusing is correct behaviour, not a bug to work around.
+not allow a D1 PASS while it is unset.** The evaluator fails closed when the constant is unset, and a
+refusal is correct behaviour, not a bug to work around. The old `--n-trials` escape hatch is gone on
+purpose: re-adding one, or reading a count out of the environment, would make the DSR bypassable again
+and is the one change this section forbids outright.
 
 ### Gate: NO-GO
 
@@ -154,7 +213,7 @@ refusing is correct behaviour, not a bug to work around.
 | B4 delta-neutral basis (backtest) | **KILLED on turnover** | turnover **17.05** (`17.05060731836767`, `research/autopilot_b/state/B4.json`) against the frozen cap **12** (`research/prereg/B4-delta-neutral-basis.md`: "turnover ≤ 12×. Any miss KILLS B4"). Holdout burned; nothing rescored. |
 | B4b forward basis | **UNDERPOWERED** | **0 of 90** forward days, **0 of 20** round trips (`research/prereg/B4b-forward-basis.md` requires both). Forward clock starts 2026-11-01. |
 | C2 XSMOM replication | **KILLED on replication** | replication **p = 0.080** against the bar **p ≤ 0.01** (holdout p = 0.154). `research/DATA_LEDGER.md`, `RESEARCH_VERDICTS.md`. Family C closed. |
-| D1 open-interest flush | **UNEVALUATED** | Prereg + amendment 3 merged (#29); **evaluator not on the release branch** (#37 landed on a stale stacked branch, §3). `N_TRIALS` unset, so DSR cannot be emitted. |
+| D1 open-interest flush | **UNEVALUATED** | Prereg + amendment 3 merged (#29), evaluator merged (#43, `6d76902`, §3). Blocked on data, not code: the recorder carries neither a settled `fundingRate` nor `kline_1d` records, so the frozen universe cannot be ranked and funding cannot be charged (#49). `N_TRIALS` is also unset, so no DSR is emitted (§5). |
 
 B4b costs, unchanged: 49 bps round trip plus `0.5·σ·√(Q/ADV20)` impact per fill.
 **A 90-day look can only KILL**: the ≥2-positive-calendar-years gate needs 121 forward days, so
@@ -252,7 +311,8 @@ deploy recorded at the end of this section.
 So **#33 being merged on `live/hardening` changes no recorder behaviour**, and **restarting the
 recorder is a no-op** until the edge tree carries the change. Landing the fix there and updating
 `edge/src` is an **owner decision**; record it, do not do it. Only one controlled restart follows it,
-with rollback to `6ad62b4`. **No restart has been performed.**
+with rollback to `6ad62b4`. **No restart had been performed when this paragraph was written** — the
+2026-10-25 10:10Z update at the end of this section records the deploy that did it.
 
 **UPDATE 2026-10-25 10:00Z — the fix is now on `release/v1`, and the edge tree still is not.** Two
 pull requests were opened against `release/v1` (not `live/hardening`, and `release/v1` was **not**

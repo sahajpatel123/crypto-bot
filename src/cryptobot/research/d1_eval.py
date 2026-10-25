@@ -1639,22 +1639,22 @@ class Gates:
 
 def evaluate_cells(trades_by_cell: Mapping[Cell, Sequence[Trade]], rules: Rules, *,
                    n_trials: int | None, n_trials_problem: str | None = None,
-                   trial_count_trusted: bool = False,
                    window: tuple[int, int] | None = None,
                    calendar_days: Sequence[str] | None = None) -> dict[str, Any]:
     """Apply the immediate-kill rule, cell selection and the eight gates.
 
-    ``n_trials`` is honoured only when ``trial_count_trusted`` is set, which
-    :func:`evaluate_forward` does exactly once, from
-    :func:`d1_trials.trial_count_ready`. There is no CLI switch and no other
-    caller: a DSR number can only come from the frozen constant plus its
-    amending document, never from an argument someone typed.
+    A DSR number can only come from the frozen constant plus its amending
+    document, never from an argument someone typed: ``n_trials`` must be
+    ``None`` or exactly :data:`d1_trials.N_TRIALS`. There is no CLI switch, no
+    permissive flag and no override; a number that is not the frozen constant
+    is refused rather than used (amendments 2 and 3).
     """
-    if n_trials is not None and not trial_count_trusted:
+    if n_trials is not None and n_trials != d1_trials.N_TRIALS:
         raise D1Error(
             "refusing an unverified trial count: N_TRIALS comes only from "
             "src/cryptobot/research/d1_trials.py plus its amending document, "
-            "and amendment 2 forbids substituting any other number"
+            "and amendments 2 and 3 forbid substituting any other number "
+            f"(asked for {n_trials!r}, frozen value is {d1_trials.N_TRIALS!r})"
         )
     cells = list(rules.cells)
     day_series = {cell: daily_means(trades_by_cell.get(cell, ())) for cell in cells}
@@ -1887,11 +1887,17 @@ def _concentration_gate(trades: Sequence[Trade], rules: Rules) -> dict[str, Any]
 
 
 def evaluate_forward(root: Path, *, prereg_dir: Path | None = None,
-                     n_trials: int | None = None,
-                     n_trials_problem: str | None = None,
+                     repo_root: Path | None = None,
                      start_ms: int | None = None, end_ms: int | None = None,
                      verify_chunks: bool = True) -> dict[str, Any]:
-    """Run D1 over forward recorder data and return the verdict document."""
+    """Run D1 over forward recorder data and return the verdict document.
+
+    The trial count is not an argument: it is resolved here, once, from
+    :func:`d1_trials.trial_count_ready`, so no caller can hand the DSR gate a
+    number of its own (amendments 2 and 3).
+    """
+    n_trials, n_trials_problem = d1_trials.trial_count_ready(
+        Path(repo_root) if repo_root is not None else REPO_ROOT)
     rules = load_rules(prereg_dir)
     store = scan_store(Path(root), rules)
     store_start, store_end = store.coverage_ms(store.entries)
@@ -2067,7 +2073,6 @@ def evaluate_forward(root: Path, *, prereg_dir: Path | None = None,
                             for trade in trades_by_cell[cell]})
     result = evaluate_cells(trades_by_cell, rules, n_trials=n_trials,
                             n_trials_problem=n_trials_problem,
-                            trial_count_trusted=True,
                             window=(window_start, window_end),
                             calendar_days=calendar_days)
     doc.update(result)
@@ -2182,13 +2187,11 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     # The only way a DSR number can exist: the frozen constant plus its
     # amending document. There is deliberately no flag to supply one.
-    n_trials, problem = d1_trials.trial_count_ready(Path(args.repo_root))
     try:
         doc = evaluate_forward(
             Path(args.recorder_root),
             prereg_dir=Path(args.prereg_dir) if args.prereg_dir else None,
-            n_trials=n_trials,
-            n_trials_problem=problem,
+            repo_root=Path(args.repo_root),
             start_ms=_instant(args.start),
             end_ms=_instant(args.end),
             verify_chunks=not args.no_verify_chunks,

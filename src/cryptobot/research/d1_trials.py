@@ -42,6 +42,13 @@ from pathlib import Path
 N_TRIALS: int | None = None
 
 #: The pre-evaluation amendment that freezes ``N_TRIALS`` (R2 owns this file).
+#:
+#: Obligation on whoever freezes the count: write it in *this* file, in the same
+#: commit as the constant.  A new ``D1-amendment-4.md`` would leave this path
+#: naming amendment 3, whose own text still says ``N_TRIALS`` remains ``None``;
+#: this function only proves the file exists, so the binding is held by
+#: ``test_amendment_3_is_bound_and_every_candidate_number_is_absent`` instead.
+#: The fix in that case is to update this path, never to weaken the check.
 N_TRIALS_AMENDMENT = "research/prereg/D1-amendment-3.md"
 
 
