@@ -123,7 +123,8 @@ def _patched_prereg(destination: Path, **substitutions: str) -> Path:
 
 
 def _market_records(*, symbol: str, days: int, flushes_per_day: int = 3,
-                    oi_lag_minutes: int = 0, drift_after_flush: float = -0.0001,
+                    oi_lag_minutes: int = 0, continuation_minutes: int = 30,
+                    continuation_rate: float = -0.0006,
                     with_funding: bool = True) -> list[dict]:
     """A synthetic 1m market: oscillation plus scheduled flushes.
 
@@ -136,18 +137,28 @@ def _market_records(*, symbol: str, days: int, flushes_per_day: int = 3,
     open_interest = np.empty(total, dtype=float)
     price = 100.0
     oi = 1.0e6
-    flush_minutes = {(2 * 60, 0), (10 * 60, 0), (18 * 60, 0)}
+    # (hour, minute) instants: the loop below tests flattened clock pairs, so a
+    # set of raw minute counts would never match and no flush would exist.
+    flush_minutes = {(2, 0), (10, 0), (18, 0)}
     flush_minutes = set(sorted(flush_minutes)[:flushes_per_day])
+    continuing = 0
     for minute in range(total):
         minute_of_day = minute % 1440
         if (minute_of_day // 60, minute_of_day % 60) in flush_minutes:
+            # The cascade: a sharp price fall with a simultaneous OI collapse.
             price *= 1.0 - 0.02
             oi *= 0.97
+            continuing = continuation_minutes
         else:
             price *= 1.0 + 0.0004 * math.sin(minute / 37.0)
             oi *= 1.0 + 0.0001 * math.cos(minute / 53.0)
-        if (minute_of_day // 60, minute_of_day % 60) in flush_minutes:
-            price *= 1.0 + drift_after_flush
+            if continuing:
+                # The flush keeps going: forced flow is not exhausted after the
+                # trigger bar, so a fade keeps losing. This is what the
+                # immediate-kill fixture has to contain to test the rule.
+                price *= 1.0 + continuation_rate
+                oi *= 1.0 - 0.0002
+                continuing -= 1
         prices[minute] = price
         open_interest[minute] = oi
 
@@ -737,7 +748,10 @@ def test_trial_count_refuses_when_only_one_half_is_present(tmp_path: Path,
 # 8. End to end on a fully synthetic forward chunk chain
 # --------------------------------------------------------------------------
 
-KILL_DAYS = 106
+# The frozen sigma lookback is 7 days, so the first week of any fixture is
+# warm-up and cannot produce an event; the power gate then needs >=100
+# distinct event days, so the window must be materially longer than 107.
+KILL_DAYS = 120
 
 
 @pytest.fixture(scope="module")
