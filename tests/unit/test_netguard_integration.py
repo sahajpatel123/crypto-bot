@@ -39,23 +39,50 @@ HOSTS = ["fapi.binance.com", "fstream.binance.com", "demo-fapi.binance.com", "ap
 
 @pytest.fixture
 def shim(monkeypatch):
-    """netguard installed with DoH answering 127.0.0.1; name-checking guards lifted."""
+    """netguard installed with DoH answering 127.0.0.1; name-checking guards lifted.
+
+    Order-independent on purpose: every process-global these tests lean on is reset before
+    the assertion, so the file gives the same answer whichever file ran first.
+
+    * A shim an earlier test left installed is uninstalled first. ``install()`` is a no-op
+      that returns False while one is active, so without this the new ``lookup`` would
+      never be consulted and the transport would dial the real venue.
+    * ``urllib`` builds its opener once per process and caches it in ``_opener``, baking in
+      whatever proxy the environment had at that moment; deleting the proxy variables is
+      therefore not enough once an earlier test has called ``urlopen``.
+    """
     for var in ("http_proxy", "https_proxy", "all_proxy", "HTTP_PROXY", "HTTPS_PROXY",
                 "ALL_PROXY"):
         monkeypatch.delenv(var, raising=False)
     monkeypatch.setenv("NO_PROXY", "*")
+    monkeypatch.setenv("no_proxy", "*")
     monkeypatch.setattr(socket, "create_connection", _CREATE_CONNECTION)
     monkeypatch.setattr(urllib.request, "urlopen", _URLOPEN)
     monkeypatch.setattr(urllib.request.OpenerDirector, "open", _OPENER_OPEN)
+    monkeypatch.setattr(urllib.request, "_opener", None)
     asked: list = []
 
     def lookup(name):
         asked.append(name)
         return ["127.0.0.1"], 60
 
+    netguard.uninstall()  # a leftover install would starve `lookup` below
     assert netguard.install(lookup=lookup) is True
     yield asked
     netguard.uninstall()
+
+
+def test_a_shim_left_installed_by_an_earlier_test_does_not_starve_the_next_one():
+    """Regression for the v1.1.1 order-dependent failure.
+
+    ``tests/unit/test_net_guard.py`` used to leave the process-global DoH shim installed, so
+    the next ``shim`` fixture got a stale install (``install()`` returns False while one is
+    active) and the real venue was dialled instead of 127.0.0.1. This test leaves exactly
+    that state behind on purpose; the fixture's pre-install ``netguard.uninstall()`` is what
+    clears it, and every test below re-installs with its own lookup.
+    """
+    assert netguard.install(lookup=lambda _name: (["203.0.113.99"], 60)) is True
+    assert netguard.is_installed() is True
 
 
 def _serve(handler) -> tuple:

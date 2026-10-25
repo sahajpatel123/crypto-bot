@@ -13,9 +13,22 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import pytest
 
+from cryptobot import netguard as doh_shim
 from net_guard import ExternalNetworkBlocked, Guard, host_allowed
 
 TEST_NET = "192.0.2.1"  # RFC 5737 TEST-NET-1: never routed, needs no internet.
+
+
+@pytest.fixture(autouse=True)
+def _never_leave_the_doh_shim_installed():
+    """Never leak the process-global DoH shim out of this file (v1.1.1 test isolation).
+
+    ``tests/net_guard.py`` restores its own patches per test, but ``cryptobot.netguard`` is a
+    separate process-global. Once it is left installed, another file's ``install()`` returns
+    False and that file dials the real venue, so the suite's result depended on file order.
+    """
+    yield
+    doh_shim.uninstall()
 
 
 def test_host_allowlist_predicate():
