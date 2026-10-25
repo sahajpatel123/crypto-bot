@@ -29,6 +29,9 @@ def _now() -> str:
 
 
 def main(argv: list[str] | None = None) -> int:
+    from cryptobot import netguard  # opt-in DNS-sinkhole fallback (CRYPTOBOT_DOH=1)
+
+    netguard.install_from_env()
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", default="configs/demo.toml")
     ap.add_argument("--out", default="drill.json")

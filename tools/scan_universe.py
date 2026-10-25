@@ -20,6 +20,9 @@ from cryptobot.market_data.universe import scan_and_select  # noqa: E402
 
 
 def main(argv: list[str] | None = None) -> int:
+    from cryptobot import netguard  # opt-in DNS-sinkhole fallback (CRYPTOBOT_DOH=1)
+
+    netguard.install_from_env()
     ap = argparse.ArgumentParser(description="Universe scan + selection.")
     ap.add_argument("--config", default=ROOT / "configs" / "paper.toml",
                     type=Path)

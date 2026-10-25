@@ -99,6 +99,9 @@ def cmd_capture(args: argparse.Namespace) -> int:
 
 
 def main() -> int:
+    from cryptobot import netguard  # opt-in DNS-sinkhole fallback (CRYPTOBOT_DOH=1)
+
+    netguard.install_from_env()
     parser = argparse.ArgumentParser(description="Capture public Binance USD-M data")
     parser.add_argument("--base-url", default=FAPI_BASE_URL)
     parser.add_argument("--timeout-s", type=float, default=15.0)
