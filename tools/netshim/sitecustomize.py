@@ -424,6 +424,17 @@ _getaddrinfo._cryptobot_matches = matches  # type: ignore[attr-defined]
 _getaddrinfo._cryptobot_real = _real  # type: ignore[attr-defined]  # updated by install()
 
 
+def _existing_shim_is_active(callback) -> bool:
+    """Respect live state when wrappers carry copied static shim markers."""
+    probe = getattr(callback, "_cryptobot_active", None)
+    if callable(probe):
+        try:
+            return bool(probe())
+        except Exception:  # noqa: BLE001 - install must tolerate foreign wrappers
+            return False
+    return bool(getattr(callback, "_cryptobot_netguard", False))
+
+
 def is_installed() -> bool:
     return _installed
 
@@ -442,7 +453,7 @@ def install(*, suffixes=None, lookup: Callable | None = None,
     """
     global _installed, _suffixes, _real, _previous, _lookup, _clock, _first_real
     with _lock:
-        if _installed or getattr(socket.getaddrinfo, "_cryptobot_netguard", False):
+        if _installed or _existing_shim_is_active(socket.getaddrinfo):
             return False
         if suffixes is None:
             _suffixes = DEFAULT_SUFFIXES

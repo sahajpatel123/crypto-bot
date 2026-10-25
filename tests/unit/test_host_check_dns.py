@@ -195,6 +195,11 @@ def test_wraps_copy_cannot_report_uninstalled_shim_as_mitigated(monkeypatch):
     row, _ = _check([SINK], [REAL], {REAL})
     assert row["status"] == "FAIL" and "mitigated" not in row["detail"]
 
+    # A copied marker from an uninstalled shim must not block a fresh install.
+    assert netguard.install(real_getaddrinfo=original)
+    assert netguard.is_installed()
+    assert netguard.uninstall()
+
 
 def test_not_mitigated_when_the_suffix_list_excludes_the_host(monkeypatch):
     monkeypatch.setattr(socket, "getaddrinfo", _shim(lambda h: h.endswith("okx.com")))
