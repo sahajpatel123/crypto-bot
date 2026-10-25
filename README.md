@@ -154,3 +154,23 @@ submit an order.
 - Recorder writer overflow is counted and flagged, never silent.
 - `data/captures/campaign-1day-*` is untouched confirmation data; only its
   metadata was read.
+
+## Running tests on a laptop
+
+Run the full suite (`tests/unit`, `tests/acceptance`) in CI or on a cloud
+machine, not on a laptop. A few `bench_run` tests (`test_bench_run_multi.py`
+and `test_bench_run.py` modeled-bars tests) each write ~70-290 MB of
+`rejections.jsonl`; the complete `test_bench_run_multi.py` file peaks at about
+1.5 GB, and a full unit run used 1.2-2.1 GB per run.
+
+`pyproject.toml` sets `tmp_path_retention_policy = "failed"` and
+`tmp_path_retention_count = 1`: passing tests delete their directories
+immediately; only failing tests keep artifacts, and only for the last run. At
+the end of every run `conftest.py` prints `[pytest scratch left in ...: N MB]`.
+
+Run only the files you touched, with scratch you remove afterwards:
+
+    .venv/bin/pytest tests/unit/test_x.py --basetemp=/tmp/bt && rm -rf /tmp/bt
+
+Clean leftovers from older runs with `rm -rf "${TMPDIR:-/tmp}"/pytest-of-$USER`
+(on macOS: `$(python3 -c 'import tempfile;print(tempfile.gettempdir())')`).

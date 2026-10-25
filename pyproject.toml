@@ -23,6 +23,11 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# Laptop safety: a few bench_run tests write ~140 MB each of rejections.jsonl.
+# Keep tmp dirs only for FAILED tests, and only the last run's, so a passing
+# run leaves nothing behind (pytest >= 7.3; lock pins 9.x).
+tmp_path_retention_policy = "failed"
+tmp_path_retention_count = 1
 
 # T0.3: lint + type gates. Ruff applies everywhere; mypy is strict ONLY on
 # the money-handling packages (risk/, execution/, adapters/, app/) per the
