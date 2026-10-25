@@ -1,15 +1,18 @@
 # D1 — Open-interest flush reversal (intraday, 5-minute)
 
 Status: FROZEN-BEFORE-EVALUATION. Family D, hypothesis 1 of 1. Committed
-before any D1 return, forward price change, P&L or cell statistic has been
-computed on any data. DEV data only (DEV = [2019-09-01, 2024-01-01) per
+before any D1 return, forward price change, P&L or event count has been
+computed. DEV data only (DEV = [2019-09-01, 2024-01-01) per
 `research/prereg/SPLIT.md`). The holdout stays sealed: no file dated
-2024-01-01 or later may be listed-for-decode, decoded or scored by D1.
+2024-01-01 or later may be opened or decoded by D1. S3 object names may
+be listed as metadata only to enforce the filename split; no content is
+read for any date >= 2024-01-01.
 
-Prior: LOW. Every intraday family so far (S, X1, H1-H5, B5) died on costs;
-H2 was killed on 4.7 years of unseen history; B5 tested the same mechanism
-at daily resolution and died. A clean KILL is a good outcome. Nothing in
-this document may be rescued by post-hoc tuning.
+Prior: LOW. The S-family taker scalps failed on costs; H2 was killed on
+4.7 years of unseen history; B5 tested a related extreme-move/OI mechanism
+at daily resolution and was killed. H1 and H5 book studies remain
+underpowered rather than cost-killed. A clean KILL is a good outcome.
+Nothing in this document may be rescued by post-hoc tuning.
 
 ## Economic mechanism
 
@@ -41,20 +44,23 @@ shock-scaled slippage is of the same order as the expected reversion;
 (F3) the effect, if any, accrues to makers, who are not modelled as a
 strategy here beyond the diagnostic variant below.
 
-## Point-in-time convention of the 5-minute metrics rows (PROVEN, not assumed)
+## Metrics timestamp convention (empirically established; live availability unverified)
 
 File: `data/futures/um/daily/metrics/<SYM>/<SYM>-metrics-YYYY-MM-DD.zip`,
-288 rows per day, column `create_time` ("YYYY-MM-DD HH:MM:SS", UTC).
+Normally 288 unique time points per day, column `create_time`
+("YYYY-MM-DD HH:MM:SS", UTC); some early files contain identical
+duplicate rows, so uniqueness is enforced below rather than assumed.
 
 Binance's own documentation does not settle this: the
 `/futures/data/openInterestHist` page gives a bare `timestamp` field and
 does not say whether it labels the start or the end of the 5-minute
 period, and the `binance-public-data` README does not describe the
 `metrics` files at all. The convention below is therefore established from
-the file contents. The probe used only the 8 files listed in
+the file contents. The initial probe used the 8 files listed in
 `research/DATA_LEDGER.md` (BTCUSDT and ETHUSDT, 2022-03-10 and
-2023-06-15, with their same-day 1m klines), and computed no return,
-forward change or P&L.
+2023-06-15, with their same-day 1m klines); an independent recheck used
+4 additional BTCUSDT files for 2020-10-15 and 2021-06-15. These probes
+computed no returns, forward changes or P&L.
 
 1. Taker ratio (column `sum_taker_long_short_vol_ratio`), 2023-06-15.
    For each row stamped T, the ratio was recomputed from the 1m klines
@@ -75,24 +81,44 @@ forward change or P&L.
    off, and T+1m is 3.1 and 6.1 bps off. So the open-interest value is a
    SNAPSHOT taken at the instant T (at the open of minute T), not an
    average over a later period and not a value from T-5m.
-3. Therefore row T carries information up to and including instant T and
-   nothing later. (The taker ratio in 2022-03-10 rows is blank, so
-   evidence 1 comes from 2023 only; D1 does not use any taker or long/short
-   ratio column.)
+3. The independent recheck reproduced the `[T-5m,T)` taker ratio in
+   574/574 available rows (BTCUSDT, 2020-10-15) and 287/287 rows
+   (BTCUSDT, 2021-06-15); the OI-implied price was closest to the open
+   of minute T on both dates. The 2020-10-15 file had 576 rows: 288 unique
+   timestamps duplicated twice with identical values. The 2022-03-10
+   taker-ratio field is blank, so the initial taker-ratio evidence comes
+   from 2023 only. D1 does not use any taker or long/short ratio column.
+   The row timestamp labels an OI snapshot at instant T and a taker-flow
+   interval ending at T. The archive does NOT establish when a live client
+   could first receive the row; Binance's documentation is silent on
+   publication latency. The historical results must therefore be
+   described as timestamp-aligned research, not proof of live point-in-time
+   availability.
 
-Lag rule (frozen). A row stamped T is treated as known at instant T. The
-first order that can act on it is the open of the 1m bar starting at
-T + 1 minute (a deliberate one-bar latency; the price at instant T itself
-is not tradable by a decision that needs the whole row). No price or OI
-information stamped after T may enter the signal, the trailing sigmas, the
-universe or the entry price. A pipeline whose metrics are shifted by one
-bar (+5 minutes, i.e. using the row of the NEXT interval as if it were
-known) must change the event set and must fail a named unit test in PR #2
-(`test_metrics_shift_lookahead_is_detected`).
+Lag rule (frozen). Treat the row as usable only at T+5 minutes (one full
+metrics interval after its timestamp); enter at the open of the 1m bar
+starting T+6 minutes. This is a conservative fixed latency assumption,
+not a measured service-level guarantee. No price or OI information
+stamped after T may enter the signal or its trailing sigmas. Monthly
+universe rankings use completed daily files from M-1 and become active
+only at 00:06 UTC on the SECOND calendar day of M, allowing one full day
+for the previous-month files to publish; no signals are taken on the
+first day of M. Actual live publication latency remains unverified. A
+pipeline that uses a metrics row before T+5m, or labels the next row's
+T+5m observation as if it were the T observation, must fail the named unit
+test in PR #2 (`test_metrics_shift_lookahead_is_detected`). The mutation
+proof shifts the metrics values one 5-minute row forward while retaining
+the earlier signal timestamp, creating lookahead.
 
 Only `sum_open_interest` and `sum_open_interest_value` are used. Rows with
 a blank, non-positive or unparsable `sum_open_interest` are missing, and a
-window that contains a missing row yields no event.
+window that contains a missing row yields no event. Normalize metrics input
+before any windows: exact duplicate rows with the same symbol, timestamp
+and values are collapsed to one row; two or more different rows for the
+same symbol/timestamp invalidate that symbol-day. Do not select one
+conflicting row by order. PR #2 must test identical-row idempotence
+(`test_identical_metrics_duplicates_are_deduplicated`) and conflicting-row
+rejection (`test_conflicting_metrics_duplicates_invalidate_day`).
 
 ## Universe (computed from DEV data only; frozen rule, no list is frozen here)
 
@@ -107,29 +133,48 @@ and the rule is fixed here before any backtest.
 
 - Candidate set: every USD-M perpetual whose symbol is `<BASE>USDT` with no
   underscore, taken from the S3 listing of
-  `data/futures/um/daily/klines/` AS IT IS, including contracts that have
-  since been delisted (delivery contracts such as `BTCUSDT_231229` and
-  non-USDT quotes are excluded). The listing shows delisted symbols
-  (LUNAUSDT, SRMUSDT, FTTUSDT, BTSUSDT, HNTUSDT, RAYUSDT were present in
-  the metrics listing when checked), so delisted contracts are in the
-  universe while they were liquid. A symbol's life is the date range of
-  its own files.
-- Monthly reconstitution on the first UTC day of each month M, using only
-  data dated before M: rank candidates by their summed 1d-kline
-  `quote_volume` over the previous full calendar month M-1; take the top
-  N = 30 (a symbol must have all days of M-1 present to be ranked);
-  require listing age >= 90 days at the start of M (age = days since the
-  symbol's first 1d kline file). The ranking is frozen for all of M.
-- First reconstitution is 2020-10-01 (metrics start 2020-09-01, so the
-  first ranking month, September 2020, is the first month with OI). No
-  events are generated before 2020-10-01. Later reconstitutions through
-  2024-01-01 (exclusive) use only DEV months.
+  `data/futures/um/daily/klines/`, including contracts that have since
+  been delisted (delivery contracts such as `BTCUSDT_231229` and non-USDT
+  quotes are excluded). Before stage 0, snapshot the full candidate
+  listing (metadata only), record its retrieval time, symbol/date manifest
+  and SHA-256 in the output and DATA_LEDGER, and verify that it contains
+  historical delisted symbols. The metrics listing showed LUNAUSDT,
+  SRMUSDT, FTTUSDT, BTSUSDT, HNTUSDT and RAYUSDT; this is not by itself
+  proof that the kline candidate listing is exhaustive. If the kline
+  listing cannot demonstrate coverage of delisted USD-M USDT perps, report
+  survivorship as unresolved and do not claim an unbiased universe. A
+  symbol's life is the date range of its own files.
+- Monthly reconstitution uses only data dated before M: rank candidates
+  by their summed 1d-kline `quote_volume` over the previous full calendar
+  month M-1; take the top N = 30 (a symbol must have all days of M-1
+  present to be ranked); require listing age >= 90 days at the start of M
+  (age = days since the symbol's first 1d kline file). The ranking is
+  frozen for all of M. Binance's [public-data README](https://raw.githubusercontent.com/binance/binance-public-data/master/README.md)
+  says daily files become available the next day but gives no release
+  time; the ranking therefore becomes active at 00:06 UTC on the second
+  calendar day of M, with no signals on the first day of M.
+- First ranking is for 2020-10 (metrics start 2020-09-01), active
+  2020-10-02 00:06 UTC. Later rankings use only DEV months.
 - A symbol that is delisted mid-month stays in the universe until its
-  data ends; its open positions at data end are closed at the last bar
-  open at the same costs (no free exit). A symbol with a missing 1m bar at
-  the needed entry or exit minute produces no trade (not a free fill).
-- Symbols must also have the metrics file for the day; otherwise the
-  symbol-day yields no events.
+  data ends. A missing entry bar means no entry. Once entered, never erase
+  a trade because its scheduled exit bar is missing: exit at the open of
+  the first later available 1m bar within DEV, booking funding through
+  that actual exit and full taker costs. If no later bar exists before the
+  symbol's data ends, close at the last available DEV bar close with full
+  costs and flag `forced_exit_data_end`; this terminal-price convention
+  cannot price an unobserved post-delisting move and must be disclosed.
+- An entry is forbidden if its scheduled exit time is >= 2024-01-01
+  00:00 UTC. All actual entry, exit and funding timestamps must be
+  strictly before the DEV cutoff; no row dated 2024-01-01 or later may be
+  opened. If an entered trade's exit bar is missing near the cutoff, use
+  the last available DEV bar close by the rule above.
+- Funding is charged at every crossed settlement. If a funding record is
+  missing, do not drop the trade: charge an adverse funding debit equal to
+  the largest absolute funding rate for that symbol in the 365 days
+  preceding entry, with both LONG and SHORT paying that debit. If no full
+  trailing year is available, the symbol is ineligible at entry. This
+  fallback is point-in-time, reported as `imputed_funding`, and doubled at
+  2x stress. A symbol-day without a metrics file yields no events.
 
 ## Exact event definition
 
@@ -166,9 +211,10 @@ window is made of whole 5-minute steps.
 
 ## Entry and exit
 
-- Entry: taker at the OPEN of the 1m bar starting at T + 1 minute
-  (entry price `P(T+1m)`).
-- Exit: taker at the OPEN of the 1m bar starting at (T + 1m + H), H the
+- Entry: row T becomes usable at T+5m under the frozen latency rule;
+  taker at the OPEN of the 1m bar starting at T + 6 minutes (entry price
+  `P(T+6m)`).
+- Exit: taker at the OPEN of the 1m bar starting at (T + 6m + H), H the
   fixed holding period in minutes (grid parameter). Time exit only; there
   is no stop, no target and no re-entry on the same event. (A protective
   stop is deliberately omitted: one more tuned parameter on a 5-minute
@@ -183,8 +229,8 @@ window is made of whole 5-minute steps.
 | 5, 15 | 3, 4 | 15, 60 |
 
 Fixed (not gridded): OI condition `z_g <= -2.0`; sigma lookback 7 days;
-universe N = 30, age >= 90 days; entry latency 1 minute; one position per
-symbol; time exit only. 2 x 2 x 2 = 8 cells. The grid is frozen. No cell
+universe N = 30, age >= 90 days; metrics availability lag 5 minutes;
+entry at T+6 minutes; one position per symbol; time exit only. 2 x 2 x 2 = 8 cells. The grid is frozen. No cell
 is added, removed, edited or re-parameterised after the first return is
 computed; any addition is a new preregistration and its cells are added to
 the program trial count.
@@ -202,12 +248,13 @@ Per side (entry and exit each pay it):
 Round trip at 1x = 2 * (5.0 + 1.0 + 1.0 + 0.05*|r_W|_bps) = 14.0 +
 0.1*|r_W|_bps bps, before funding.
 
-Funding: charged from the `fundingRate` monthly archive for every funding
-settlement instant (00:00, 08:00, 16:00 UTC) with `entry_time < settlement
-<= exit_time`; a LONG pays `+rate`, a SHORT receives it (cost =
-`s_pay * rate * 10^4` bps, `s_pay = +1` for LONG, `-1` for SHORT). Missing
-funding data for a crossed settlement -> the trade is dropped and counted
-in an `excluded_no_funding` field (never booked as zero funding).
+Funding: charge from the `fundingRate` monthly archive at every UTC
+settlement (00:00, 08:00, 16:00) with `entry_time < settlement <=
+exit_time`; a LONG pays `+rate`, a SHORT receives it (cost =
+`s_pay * rate * 10^4` bps, `s_pay = +1` for LONG, `-1` for SHORT). If a
+funding record is missing, keep the trade and apply the adverse trailing
+365-day max-absolute-rate debit described in the data-gap rule; never book
+missing funding as zero.
 
 2x stress: every fee, spread and slippage component is doubled, funding
 debits are doubled and funding credits are set to zero.
@@ -219,15 +266,16 @@ re-estimated after the fact.
 ### Optional maker-entry variant (diagnostic only, 8 more cells counted)
 
 Same events, same exit. Entry replaces the taker market order with a
-passive limit order at `P(T+1m)` in the fade direction (buy for LONG, sell
-for SHORT), time-to-live 5 minutes from T+1m. Conservative queue model,
-NO credit for touches: the order fills only if a 1m bar from T+1m through
-T+5m, inclusive, trades STRICTLY THROUGH the limit by at least 1 bp (LONG:
+passive limit order at `P(T+6m)` in the fade direction (buy for LONG, sell
+for SHORT), time-to-live 5 minutes from T+6m. Conservative queue model,
+NO credit for touches: the order fills only if a 1m bar from T+6m through
+T+10m, inclusive, trades STRICTLY THROUGH the limit by at least 1 bp (LONG:
 `low <= limit * (1 - 0.0001)`; SHORT: `high >= limit * (1 + 0.0001)`),
 and then fills at the limit price at that bar's close time; the holding
 period H runs from the next 1m bar open after the filling bar, with a
 taker exit. Maker fee 2.0 bps, half-spread 0 on the entry side, exit side
-as taker (5.0 + 1.0 + slippage on the exit-time shock `|r_W|`). Unfilled
+as taker (5.0 + 1.0 + slippage computed from the original signal-time
+shock `|r_W(T)|`; do not recompute an exit-time shock). Unfilled
 orders are not trades and are not replaced, so the traded sample is the
 adverse-selected sample by construction. Fill rate is reported. The
 variant can never turn a KILLED verdict into a pass and has no gates of
@@ -236,9 +284,12 @@ program trial count N below.
 
 ## Gates (every gate applies to the SELECTED cell; any miss = FAIL)
 
-The selected cell is the grid cell with the largest 1x net Sharpe (defined
-below) among cells with >= 300 events; if no cell has >= 300 events the
-verdict is UNDERPOWERED. All 8 cells are reported whatever the selection.
+Eligible cells have both >= 300 events AND >= 100 distinct event days.
+Select the eligible taker cell with the largest 1x net Sharpe (defined
+below); if no cell is eligible, the verdict is UNDERPOWERED. Break exact
+Sharpe ties by lexicographically smallest `(W,K,H)` tuple. All 8 cells are
+reported whatever the selection. Optional maker cells are diagnostic only
+and are never eligible for selection or for reviving D1.
 
 Sharpe unit used everywhere in D1: group trades by UTC entry day; for each
 day that has at least one trade, `x_d` = mean net trade return of that
@@ -250,64 +301,103 @@ NOT annualised.
 2. Mean net return per trade > 0 at 2x costs.
 3. Day-block bootstrap (UTC day blocks, 5,000 resamples, seed 7) 95%
    confidence interval of the mean net trade return at 1x: lower bound > 0.
-4. Deflated Sharpe ratio DSR >= 0.80, with the PROGRAM-LEVEL trial count
-   (below), `SR0 = sqrt(V) * [(1 - g) * Phi^-1(1 - 1/N) + g *
-   Phi^-1(1 - 1/(N*e))]`, `g = 0.5772156649`, `V` = sample variance
-   (ddof=1) of the 8 grid cells' event-day Sharpes in the unit above, `N`
-   = the program-level count; `DSR = Phi( (SR - SR0) * sqrt(n_d - 1) /
-   sqrt(1 - skew*SR + (kurt-1)/4*SR^2) )` with `n_d` the number of event
-   days (already day-clustered, so no further effective-n adjustment),
-   skew and (Pearson) kurtosis of `x_d`.
-5. PBO <= 0.30 by CSCV over the 8 cells on the calendar-day series of
-   mean net daily return (days with no trade = 0), 8 partitions of
-   consecutive days, seed 7.
+4. DSR >= 0.80 by this explicitly custom D1 calculation (not
+   `slow_stats.dsr_detail`): for each of the 8 taker cells, compute
+   `SR_j = mean(x_d,j)/sd(x_d,j)` in the unannualized event-day units
+   above. `V = sample variance (ddof=1) of those 8 SR_j`; the expected
+   maximum is `SR0 = sqrt(V) * [(1-g)*Phi^-1(1-1/N) +
+   g*Phi^-1(1-1/(N*e))]`, `g=0.5772156649`, `N` = the exact frozen
+   program-level configuration count. D1 deliberately estimates the trial
+   dispersion from its own 8 frozen cells and uses the program-wide N to
+   penalize prior searches; this exchangeability approximation is a
+   limitation, not a claim that cell dispersion is program-wide. For the
+   selected cell, `DSR = Phi((SR-SR0)*sqrt(n_d-1) /
+   sqrt(1-skew*SR+(kurt-1)/4*SR^2))`, with `n_d` event days, skew and
+   Pearson kurtosis of that cell's `x_d`. No autocorrelation adjustment
+   is applied beyond day aggregation. PR #2 must test fixed intermediate
+   values (`V`, `SR0`, `n_d`, skew, kurtosis and DSR) against a synthetic
+   fixture before evaluation.
+5. PBO <= 0.30 by CSCV over the 8 cells on the full calendar-day series
+   of mean net daily return (days with no trade = 0). Split chronological
+   calendar days into 8 consecutive partitions with `numpy.array_split`
+   semantics (remainder days go to the earliest partitions). For each of
+   the 70 ways to choose 4 partitions in-sample, the other 4 are OOS;
+   select the highest in-sample daily Sharpe, breaking exact ties by
+   lexicographically smallest `(W,K,H)`. Let `lambda` be the OOS rank
+   fraction of the selected cell, defined as the number of the other 7
+   cells with strictly lower OOS Sharpe divided by 7 (`0` = worst,
+   `1` = best). For OOS ties, assign the selected cell the lowest rank
+   within its tie group; ties do not count as lower-scoring competitors.
+   Thus an all-tied OOS set has `lambda = 0`. `PBO` is the fraction of
+   splits with `lambda < 0.5`. This deterministic calculation has no
+   random seed.
 6. >= 60% positive months: of the calendar months 2020-10 .. 2023-12
    (39 months), the fraction whose mean net 1x trade return is > 0 must be
    >= 0.60. A month with no trade counts as NOT positive.
 7. >= 3 of the 4 DEV years positive at 1x: 2020 (October-December), 2021,
    2022, 2023; a year is positive if its mean net trade return is > 0 and
    it has >= 30 trades (fewer = not positive).
-8. Concentration: excluding the single symbol with the largest total net
-   1x contribution, the pooled mean net 1x trade return is still > 0.
-   (H2 died with edge concentrated in 3 symbols; no post-hoc symbol
-   dropping is ever allowed, so concentration is a gate, not an option.)
+8. Concentration: remove the three symbols with the largest total net 1x
+   contribution (ties broken by symbol name); the pooled mean net return
+   among all remaining trades must still be > 0. This is a fixed gate,
+   not permission to drop symbols from the reported whole-universe result.
 
 All eight must pass for the verdict `PASS_DEV`. PASS_DEV is not a
 trading approval: it only permits the orchestrator to consider a one-shot
 holdout screen; the sealed holdout is not touched by D1.
 
-### Program-level trial count N (frozen: N = 427)
+### Program-level trial count N (frozen: N = 428)
 
-DSR deflates for every trial the program has ever run, not just D1's.
-Counted from the repository's preregistrations and records (cells x
-hypotheses; the count is a floor, never padded downward):
+The DSR count unit is a distinct frozen strategy configuration (signal,
+universe, execution and parameter values). Re-scoring the same unchanged
+configuration on a new data window is not another configuration; changing
+the universe or strategy rule is. Count every preregistered grid cell even
+if not run, plus every distinct fixed configuration already scored. The
+inventory below maps all current source studies to that unit; no known
+configuration is omitted or counted twice.
 
-| Source | Trials |
+| Source file(s) / record | Configurations |
 |---|---:|
-| Family A H1-H6 prereg grids (27+27+27+18+27+27) | 153 |
-| Family B B1-B7 grids (12+6+8+9+8+8+8) | 59 |
-| B4b forward cell | 1 |
-| Family C daily C1-C4 | 4 |
-| C1 DEV-sanity grid | 4 |
-| C2 forward cell | 1 |
-| Pre-prereg: taker-scalp pilot S (14 cells), X1 (24 cells), H-R2 (1), EXP-001/EXP-002 executed trials (150) | 189 |
-| D1 taker grid | 8 |
-| D1 maker-entry variant cells (counted even if never run) | 8 |
-| **Program total N** | **427** |
+| `research/prereg/H1-maker-ofi-scalp.md`, `H2-trend-vol-regime.md`, `H3-funding-skew-tilt.md`, `H4-cross-venue-lead-lag.md`, `H5-liquidation-cascade-fade.md`, `H6-vol-shock-regime-filter.md` — all grid cells | 153 |
+| `research/prereg/B1-vol-scaled-trend.md` through `B7-low-vol-tilt.md` — all grid cells | 59 |
+| `research/prereg/H2-history-falsification.md` — alternate 28-symbol universe B (universe A reuses an H2 grid configuration) | 1 |
+| `research/prereg/H4-vol-ranked-trend.md` — separate fixed hypothesis | 1 |
+| `research/prereg/H5-alt-maker-ofi.md` — separate fixed hypothesis | 1 |
+| `research/prereg/C-family-daily.md` — C1-C4 | 4 |
+| `research/prereg/C1-b4b-carry.md` — all DEV-sanity cells; its forward setting is one of these | 4 |
+| Pre-prereg records in `RESEARCH_VERDICTS.md` and `DECISIONS.md`: pilot S (14), X1 (24), H-R2 (1), EXP-001/002 executed trials (150) | 189 |
+| `research/prereg/D1-oi-flush-reversal.md` — taker grid | 8 |
+| `research/prereg/D1-oi-flush-reversal.md` — maker diagnostic grid (counted whether run or not) | 8 |
+| **Program total N** | **428** |
 
-Sensitivity (reported, not gating): the same DSR with N = 238 (preregistered
-cells only, excluding the 189 pre-prereg trials). The gate uses 427.
+Crosswalk for separately recorded evaluations: `H1-book-capture.md` uses
+an H1 configuration already represented in its 27-cell grid. In
+`H2-history-falsification.md`, universe A reuses an H2 grid configuration;
+universe B is the additional configuration above. The H2 2026 extension
+reuses its existing H2 rule. `C2-forward.md`, its amendment, and the C2
+holdout/replication use the unchanged C2 rule already counted in
+`C-family-daily.md`; data windows do not create new configurations.
+`B4b-forward-basis.md` uses the `k=1.5, drift_band=0.05` configuration
+already counted in `C1-b4b-carry.md`. The C-family amendments and
+`ADJUDICATION.md` alter reporting/protocol, not strategy configurations.
+The inventory covers all current preregistration files and the separately
+reported fixed hypotheses above; each counted cell is one distinct
+configuration. No additional changed-parameter evaluations appear in the
+repository's current preregistration and verdict records; the listed
+repeated evaluations were reconciled to their unchanged configurations. The sum is
+`153+59+1+1+1+4+4+189+8+8 = 428`; the D1 gate uses 428.
 
 ## Immediate-kill rule (no tuning, no appeal)
 
-For each grid cell compute the GROSS price expectancy (mean gross trade
-return, before fees, spread, slippage and funding) and that cell's mean 1x
-round-trip cost (fees + spread + slippage only). If the highest gross
-expectancy over the 8 cells is BELOW the mean 1x cost of its own cell, D1
-is KILLED immediately: no further gate is evaluated for selection, no
-parameter is changed, no cell is added, no subset of symbols or years is
-re-examined, and the maker variant cannot revive it. If a cell's gross
-expectancy is below its 1x cost it cannot be selected.
+For each taker grid cell i compute GROSS price expectancy (mean gross
+trade return before fees, spread, slippage or funding) minus its mean 1x
+all-in cost (fees, spread, slippage and signed funding cost; credits reduce
+1x cost, while missing funding uses the adverse imputation rule). If
+`max_i(gross_i - all_in_cost_i) < 0`, D1 is KILLED immediately: no further
+gate is evaluated for selection, no parameter is changed, no cell is
+added, no subset of symbols or years is re-examined, and the maker variant
+cannot revive it. Any cell with negative gross-minus-all-in-cost cannot
+be selected.
 
 ## Power analysis (event COUNTS only; no return is used)
 
@@ -323,10 +413,11 @@ events the verdict is `UNDERPOWERED` and the rest of the pipeline does not
 run. Stage 0 may not change the grid, the thresholds or the universe.
 
 Planning arithmetic (assumptions, not measurements): with a one-sided 5%
-test and 80% power the minimum detectable mean, in units of the per-trade
-standard deviation of net return, is `(1.645 + 0.842) / sqrt(n_eff)`;
-here `n_eff` is the number of independent day blocks, because events
-cluster by day. The per-trade standard deviation is NOT estimated here.
+test and 80% power the minimum detectable mean, in units of the standard
+deviation of independent day-block mean returns, is
+`(1.645 + 0.842) / sqrt(n_eff)`; `n_eff` is the number of independent day
+blocks because events cluster by day. This is not per-trade standard
+deviation. No return variance is estimated here.
 
 | independent day blocks n_eff | minimum detectable mean (sd units) |
 |---:|---:|
@@ -337,10 +428,10 @@ cluster by day. The per-trade standard deviation is NOT estimated here.
 Raw events are not independent blocks, so 300 events on 100 days is
 treated as 100 blocks. The 1x cost hurdle (about 14 bps plus 0.1 x the
 shock) is a fixed bps number, so whether a given minimum detectable effect
-is smaller than the hurdle cannot be known before returns are seen; the
-point of the table is that the gates (n >= 300, >= 100 event days) are
-not set so loosely that a noise cell can pass: at the floor (100 blocks)
-only effects of about a quarter of one per-trade sd are detectable.
+is smaller than the hurdle cannot be known before returns are seen. The
+table is only a normal-approximation planning calculation in units of the
+standard deviation of independent day-block means; it does not establish
+power for the actual clustered, fat-tailed series.
 Expected count scale for planning only: 30 symbols x 288 five-minute
 steps x ~1,185 days is ~10 million symbol-steps, and the joint event is a
 tail event in both price and OI, so the count is expected to be in the
