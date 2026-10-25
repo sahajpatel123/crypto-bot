@@ -2466,6 +2466,63 @@ def build_parser() -> argparse.ArgumentParser:
     b4b.add_argument("--json", action="store_true",
                      help="emit the whole document as JSON")
     b4b.set_defaults(func=cmd_forward)
+
+    # Trade-ready operational commands. Registered last, and their handlers
+    # live in the owning modules, so this block stays disjoint from cli_extra.
+    from cryptobot.ops.daily_pnl import cmd_pnl
+    from cryptobot.ops.verdict_watch import cmd_verdict_watch
+    from cryptobot.risk.ladder_controller import cmd_ladder
+
+    p = sub.add_parser("ladder", help="capital ladder (evidence-gated promotion)")
+    ladder_sub = p.add_subparsers(dest="ladder_cmd", required=True)
+    for name, help_text in (
+            ("status", "print the rung, reasons and history tail"),
+            ("promote", "promote exactly one rung from cited evidence"),
+            ("demote", "operator demotion; the halt is recorded")):
+        ladder_p = ladder_sub.add_parser(name, help=help_text)
+        ladder_p.add_argument("--state", default="runs/ladder/state.json")
+        ladder_p.add_argument("--assumed-slippage-bps", type=float, default=5.0)
+        ladder_p.set_defaults(func=cmd_ladder)
+    ladder_status = ladder_sub.choices["status"]
+    ladder_status.add_argument("--evidence", default=None,
+                               help="dry-run the promotion rule on this file")
+    ladder_promote = ladder_sub.choices["promote"]
+    ladder_promote.add_argument("--evidence", default=None,
+                                help="evidence document the promotion cites")
+    ladder_promote.add_argument("--commit", default=None,
+                                help="git commit (default: HEAD of --repo-root)")
+    ladder_promote.add_argument("--repo-root", default=None)
+    ladder_promote.add_argument("--root", default=None,
+                                help="journal root, to derive the evidence")
+    ladder_promote.add_argument("--backtest", default=None,
+                                help="backtest reference document, to derive it")
+    ladder_promote.add_argument("--risk-state", default=None,
+                                help="ladder state holding slippage attribution")
+    ladder_promote.add_argument("--study", default="unlabelled")
+    ladder_promote.add_argument("--evidence-out", default=None)
+    ladder_sub.choices["demote"].add_argument("--reason", required=True)
+
+    p = sub.add_parser("pnl", help="daily P&L from the run journals")
+    pnl_sub = p.add_subparsers(dest="pnl_cmd", required=True)
+    daily = pnl_sub.add_parser("daily", help="one day of realised/funding/marks")
+    daily.add_argument("--root", default="runs",
+                       help="directory holding run journals (ledger.json etc.)")
+    daily.add_argument("--date", default=None, help="YYYY-MM-DD (default today UTC)")
+    daily.add_argument("--json", action="store_true", help="emit JSON")
+    daily.add_argument("--out", default=None, help="write the JSON document here")
+    daily.set_defaults(func=cmd_pnl)
+
+    p = sub.add_parser("verdict-watch",
+                       help="record when a forward study's verdict lands")
+    p.add_argument("--once", action="store_true",
+                   help="run both studies once (idiomatic for cron)")
+    p.add_argument("--out-dir", default="reports/verdicts")
+    p.add_argument("--b4b-root", default=None,
+                   help="B4b forward data root (default data/forward_b4b)")
+    p.add_argument("--recorder-root", default=None,
+                   help="recorder root (default data/recorder)")
+    p.add_argument("--repo-root", default=None)
+    p.set_defaults(func=cmd_verdict_watch)
     return parser
 
 
