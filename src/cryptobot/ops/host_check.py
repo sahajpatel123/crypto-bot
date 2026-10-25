@@ -15,10 +15,16 @@ import subprocess
 import sys
 import time
 import urllib.request
+from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
 
 FAPI_TIME = "https://fapi.binance.com/fapi/v1/time"
+SINKHOLE_HOSTS = ("fapi.binance.com", "fstream.binance.com", "api.binance.com",
+                  "demo-fapi.binance.com")
+SINKHOLE_REMEDY = ("export CRYPTOBOT_DOH=1 (opt-in DNS-over-HTTPS for exchange hostnames; "
+                   "see tools/netshim/README.md), or set a public DNS (1.1.1.1 / 8.8.8.8) "
+                   "in the OS network settings")
 
 
 def _row(name: str, status: str, detail: str) -> dict:
@@ -91,11 +97,82 @@ def venue_rtt_and_skew(*, samples: int = 3,
                  f"offset_ms={offsets[-1]:.1f}"))
 
 
+def _system_addresses(host: str) -> list[str]:
+    """The OS resolver's IPv4 answer, bypassing netguard (which hides the problem)."""
+    from cryptobot import netguard
+
+    infos = netguard.system_getaddrinfo()(host, 443, socket.AF_INET, socket.SOCK_STREAM)
+    return sorted({str(info[4][0]) for info in infos})
+
+
+def _doh_addresses(host: str) -> list[str]:
+    from cryptobot import netguard
+
+    return sorted(netguard.doh_lookup(host)[0])
+
+
+def _tcp_connects(address: str, port: int, timeout_s: float) -> bool:
+    try:
+        socket.create_connection((address, port), timeout=timeout_s).close()
+    except OSError:
+        return False
+    return True
+
+
+def dns_sinkhole_check(hosts: tuple[str, ...] = SINKHOLE_HOSTS, *,
+                       system_resolver: Callable[[str], list[str]] | None = None,
+                       doh_resolver: Callable[[str], list[str]] | None = None,
+                       connector: Callable[[str, int, float], bool] | None = None,
+                       timeout_s: float = 3.0, port: int = 443) -> dict:
+    """Detect an ISP resolver that sinkholes exchange hostnames (observed: Jio, India).
+
+    FAIL only on proof: the system answer differs from the DoH answer AND no system
+    address accepts a TCP connect AND a DoH address does. A host whose system address
+    connects is PASS without any DoH traffic. A sinkhole that this process already
+    works around (netguard installed, CRYPTOBOT_DOH=1) is reported as PASS, mitigated.
+    Resolvers and the connector are injectable so tests need no network.
+    """
+    from cryptobot import netguard
+
+    system = system_resolver or _system_addresses
+    doh = doh_resolver or _doh_addresses
+    connect = connector or _tcp_connects
+    sinkholed: list[str] = []
+    unknown: list[str] = []
+    for host in hosts:
+        try:
+            system_addrs = list(system(host))
+            if any(connect(a, port, timeout_s) for a in system_addrs[:3]):
+                continue
+            doh_addrs = list(doh(host))
+            if sorted(doh_addrs) == sorted(system_addrs):
+                continue  # answers agree: unreachable, but not a DNS sinkhole (venue-rtt says so)
+            if any(connect(a, port, timeout_s) for a in doh_addrs[:3]):
+                sinkholed.append(f"{host} system={','.join(system_addrs) or 'none'} "
+                                 f"(connect failed) doh={','.join(doh_addrs)} (connects)")
+            else:
+                unknown.append(f"{host}: neither system nor DoH address connects")
+        except Exception as exc:  # noqa: BLE001 — a check must report, never crash host-check
+            unknown.append(f"{host}: {type(exc).__name__}: {exc}")
+    if sinkholed:
+        if netguard.is_installed():
+            return _row("dns-sinkhole", "PASS",
+                        "ISP DNS sinkholes " + "; ".join(sinkholed)
+                        + " -- mitigated in this process (CRYPTOBOT_DOH=1 active)")
+        return _row("dns-sinkhole", "FAIL",
+                    "ISP DNS sinkholes exchange hostnames: " + "; ".join(sinkholed)
+                    + ". Remedy: " + SINKHOLE_REMEDY)
+    if unknown:
+        return _row("dns-sinkhole", "UNKNOWN", "inconclusive: " + "; ".join(unknown))
+    return _row("dns-sinkhole", "PASS", f"no sinkhole detected for {len(hosts)} hosts")
+
+
 def run_host_check(*, min_free_gb: float = 20.0,
                    max_clock_skew_ms: int = 250,
                    check_network: bool = True,
                    out: str | None = None,
-                   free_gb: float | None = None) -> dict:
+                   free_gb: float | None = None,
+                   dns_check: Callable[[], dict] | None = None) -> dict:
     rows = [python_check(), ulimit_check(),
             disk_check(".", min_free_gb)]
     if free_gb is not None:
@@ -113,9 +190,11 @@ def run_host_check(*, min_free_gb: float = 20.0,
                 skew["status"] = "FAIL"
                 skew["detail"] += f" required<={max_clock_skew_ms}"
         rows.extend([rtt, skew])
+        rows.append((dns_check or dns_sinkhole_check)())
     else:
         rows.append(_row("venue-rtt", "UNKNOWN", "network check disabled"))
         rows.append(_row("clock-skew", "UNKNOWN", "network check disabled"))
+        rows.append(_row("dns-sinkhole", "UNKNOWN", "network check disabled"))
     verdict = "PASS" if all(r["status"] == "PASS" for r in rows) else "FAIL"
     doc = {"check": "host-check", "verdict": verdict,
            "generated_utc": datetime.now(UTC).isoformat(),
@@ -128,5 +207,5 @@ def run_host_check(*, min_free_gb: float = 20.0,
     return doc
 
 
-__all__ = ["run_host_check", "venue_rtt_and_skew", "time_sync_check",
+__all__ = ["run_host_check", "venue_rtt_and_skew", "dns_sinkhole_check", "time_sync_check",
            "disk_check", "ulimit_check", "python_check"]

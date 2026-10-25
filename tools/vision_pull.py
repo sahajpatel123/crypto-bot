@@ -612,7 +612,18 @@ def _cmd_plan(args: argparse.Namespace) -> int:
     return 0
 
 
+def _install_netguard() -> None:
+    """Opt-in (CRYPTOBOT_DOH=1): re-resolve ISP-sinkholed exchange hostnames over DoH."""
+    src = str(Path(__file__).resolve().parents[1] / "src")
+    if src not in sys.path:
+        sys.path.append(src)
+    from cryptobot import netguard
+
+    netguard.install_from_env()
+
+
 def main(argv: list[str] | None = None) -> int:
+    _install_netguard()
     args = build_parser().parse_args(argv)
     return int(args.func(args))
 

@@ -218,6 +218,9 @@ def score_look(root: Path, out_dir: Path, look: int) -> dict:
 
 
 def main() -> int:
+    from cryptobot import netguard  # opt-in DNS-sinkhole fallback (CRYPTOBOT_DOH=1)
+
+    netguard.install_from_env()
     ap = argparse.ArgumentParser()
     ap.add_argument("cmd", choices=("record", "health", "score"))
     ap.add_argument("--root", default="data/forward_c2")
