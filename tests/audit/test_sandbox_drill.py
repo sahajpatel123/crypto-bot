@@ -121,17 +121,36 @@ def test_rate_limit_refuse_fast_no_order(tmp_path):
         [r for r in _journal(engine)
          if r.get("event") == "submit-intent"][0]["client_id"]) == 0.0
     # The engine now refuse-fasts inside its 60s window (no transport
-    # call at all); a fresh engine on the same venue recovers.
+    # call at all).
     calls_before = len(venue.log)
     with pytest.raises(RateLimitedError):
         engine.submit(EngineOrder(SYMBOL, "BUY", 0.01, "MARKET",
                                   reservation_id="r-guard"))
     assert len(venue.log) == calls_before
-    engine2, _ = _engine(tmp_path, seed=8)
-    engine2._transport.venue = venue  # same venue, fresh guard.
-    cid = engine2.submit(EngineOrder(SYMBOL, "BUY", 0.01, "MARKET",
-                                     reservation_id="r2"))
-    assert engine2.order_status(cid).state == "filled"  # recovers.
+
+    # The deadline is persisted on purpose: `_note_rate_limit` journals
+    # `until_ms` and startup replays it. A 429/418 is the venue asking us to
+    # back off, and restarting the process is not new information, so an
+    # engine restarted on the SAME journal must keep refusing without
+    # touching the transport.
+    restarted, _ = _engine(tmp_path, seed=8)
+    restarted._transport.venue = venue  # same venue, same journal.
+    calls_before = len(venue.log)
+    with pytest.raises(RateLimitedError):
+        restarted.submit(EngineOrder(SYMBOL, "BUY", 0.01, "MARKET",
+                                     reservation_id="r-restart"))
+    assert len(venue.log) == calls_before
+    assert venue.orders == {}
+
+    # A genuinely new run (fresh journal) is not poisoned by that window:
+    # the guard is per-journal, not global process state.
+    fresh = tmp_path / "fresh-run"
+    fresh.mkdir()
+    recovered, _ = _engine(fresh, seed=9)
+    recovered._transport.venue = venue
+    cid = recovered.submit(EngineOrder(SYMBOL, "BUY", 0.01, "MARKET",
+                                       reservation_id="r2"))
+    assert recovered.order_status(cid).state == "filled"  # recovers.
 
 
 def test_unknown_then_lookup_resolves_no_duplicate(tmp_path):

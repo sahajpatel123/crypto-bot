@@ -74,9 +74,19 @@ def _pytest_subset(files: list[str], label: str,
             [sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider",
              *files],
             cwd=root, capture_output=True, text=True, timeout=600)
-        tail = (proc.stdout or proc.stderr).strip().splitlines()[-1:] or [""]
+        body = (proc.stdout or "") + (proc.stderr or "")
+        # Report the failing test, not the last line of output. The last line
+        # of a pytest run here is conftest's disk diagnostic, which hid the
+        # real failure behind "pytest scratch left in ...: 0.0 MB".
+        failed_lines = [ln.strip() for ln in body.splitlines()
+                        if ln.startswith("FAILED ")]
+        summary = [ln.strip() for ln in body.splitlines()
+                   if " passed" in ln or " failed" in ln]
+        fallback = (body.strip().splitlines() or [""])[-1]
+        detail = (failed_lines[0] if failed_lines
+                  else summary[-1] if summary else fallback)
         _check(f"acceptance-{label}", proc.returncode == 0,
-               tail[0][:160], results)
+               detail[:160], results)
     except subprocess.TimeoutExpired:
         _check(f"acceptance-{label}", False, "timeout", results)
 
