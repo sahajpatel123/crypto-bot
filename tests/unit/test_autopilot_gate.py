@@ -7,8 +7,16 @@ import json
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
+import pytest
+
 from cryptobot import cli
 from cryptobot.research.autopilot import Autopilot
+
+# Every marker cmd_arm refuses on (cli.cmd_arm). A runner exports more than
+# CI: GitHub Actions sets GITHUB_ACTIONS=true, so clearing only CI left the
+# interactive call refused and this test only passed off a runner.
+CI_MARKERS = ("CI", "GITHUB_ACTIONS", "GITLAB_CI", "JENKINS_URL",
+              "BUILDKITE", "TF_BUILD")
 
 
 def _root(tmp_path: Path) -> Path:
@@ -196,13 +204,28 @@ def test_arm_requires_tty_and_ci_absence(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr("sys.stdin.isatty", lambda: False)
     assert cli.cmd_arm(_arm_args(tmp_path, gate)) == 2
     monkeypatch.setattr("sys.stdin.isatty", lambda: True)
-    monkeypatch.setenv("CI", "1")
+    for name in CI_MARKERS:
+        monkeypatch.setenv(name, "1")
     assert cli.cmd_arm(_arm_args(tmp_path, gate)) == 2
-    monkeypatch.delenv("CI")
+    for name in CI_MARKERS:
+        monkeypatch.delenv(name, raising=False)
     monkeypatch.setattr("builtins.input", lambda _prompt: cli.ARM_ACK_PHRASE)
     assert cli.cmd_arm(_arm_args(tmp_path, gate)) == 0
     armed = json.loads((tmp_path / "armed.json").read_text())
     assert armed["armed"] is True and armed["canary_trades"] == 10
+
+
+@pytest.mark.parametrize("marker", CI_MARKERS)
+def test_arm_refuses_each_ci_marker(tmp_path, monkeypatch, marker):
+    """The owner's final switch refuses under every marker the CLI knows."""
+    monkeypatch.setenv("CRYPTOBOT_ARM_ACK", cli.ARM_ACK_PHRASE)
+    gate = _valid_gate(tmp_path)
+    monkeypatch.setattr("sys.stdin.isatty", lambda: True)
+    for name in CI_MARKERS:
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv(marker, "1")
+    assert cli.cmd_arm(_arm_args(tmp_path, gate)) == 2
+    assert not (tmp_path / "armed.json").exists()
 
 
 def test_arm_refuses_expired_gate_even_interactive(tmp_path, monkeypatch):

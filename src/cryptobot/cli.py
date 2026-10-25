@@ -1720,14 +1720,6 @@ def cmd_arm(args: argparse.Namespace) -> int:
         print("arm: REFUSED (typed confirmation mismatch)",
               file=sys.stderr)
         return 2
-    doc = {"armed": True, "capital_usdt": args.capital_usdt,
-           "max_daily_loss": args.max_daily_loss,
-           "canary_trades": 10,
-           "gate_sha256": _sha256_file(args.gate_json),
-           "gate_expires_utc": gate.get("expires_utc"),
-           "hypothesis": gate.get("hypothesis"),
-           "code_commit": _current_commit(),
-           "armed_utc": datetime.now(UTC).isoformat()}
     doc = {"armed": True, "capital_usdt": capital,
            "max_daily_loss": max_loss, "canary_trades": 10,
            "gate_sha256": gate.get("gate_sha256"),
