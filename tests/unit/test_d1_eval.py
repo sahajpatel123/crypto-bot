@@ -875,8 +875,10 @@ def test_amendment_3_is_bound_and_every_candidate_number_is_absent() -> None:
     value, problem = d1_trials.trial_count_ready(REPO)
     assert value is None
     assert problem is not None and d1_trials.N_TRIALS_AMENDMENT in problem
-    # No source file carries any of them as a constant to substitute.
-    for path in sorted((REPO / "src").rglob("*.py")):
+    # No source file a user can run carries any of them as a substitute, not
+    # only the package: a helper script is just as much a place to hide one.
+    scanned = [(REPO / area).rglob("*.py") for area in ("src", "tools", "scripts")]
+    for path in sorted(path for files in scanned for path in files):
         body = path.read_text(encoding="utf-8")
         for number in FORBIDDEN_TRIAL_COUNTS:
             assert str(number) not in body, f"{path} carries {number}"
@@ -1137,14 +1139,19 @@ def test_frozen_constant_is_the_only_way_the_dsr_gate_evaluates(
     calendar = sorted({trade.entry_day for rows in trades.values() for trade in rows})
     assert d1_trials.N_TRIALS is None
     monkeypatch.setattr(d1_trials, "N_TRIALS", 1000)
+    # Read the constant back instead of repeating the literal at the call site: a
+    # copy of this test must not become a way to hand the gate a number that the
+    # constant does not actually hold.
+    frozen = d1_trials.N_TRIALS
+    assert frozen == 1000
     amendment = tmp_path / d1_trials.N_TRIALS_AMENDMENT
     amendment.parent.mkdir(parents=True, exist_ok=True)
     amendment.write_text("frozen for this test only\n", encoding="utf-8")
-    assert d1_trials.trial_count_ready(tmp_path) == (1000, None)
-    doc = D.evaluate_cells(trades, rules, n_trials=1000, calendar_days=calendar)
+    assert d1_trials.trial_count_ready(tmp_path) == (frozen, None)
+    doc = D.evaluate_cells(trades, rules, n_trials=frozen, calendar_days=calendar)
     gate4 = {item["gate"]: item for item in doc["gates"]}[4]
     assert gate4["status"] in {"pass", "fail"}
-    assert gate4["n_trials"] == 1000 and gate4["dsr"] is not None
+    assert gate4["n_trials"] == frozen and gate4["dsr"] is not None
     for number in FORBIDDEN_TRIAL_COUNTS:
         with pytest.raises(D.D1Error, match="unverified trial count"):
             D.evaluate_cells(trades, rules, n_trials=number, calendar_days=calendar)
