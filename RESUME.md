@@ -1,6 +1,7 @@
 # RESUME — crypto-bot state
 
-Snapshot: **2026-10-25 15:05Z**, base `origin/live/hardening` @ `640dff4` (#60).
+Snapshot: **2026-10-25 15:05Z**, base `origin/live/hardening` @ `36774a7` (#61), which is
+**`v1.1.0`** — the annotated tag `.github/workflows/release-tag.yml` created at that commit.
 `origin/release/v1` (the tree the recorder actually runs) is **`ef744a2`** — #44 + #45 merged there —
 and it is now **deployed in the edge tree with exactly one controlled restart done**: the recorder
 stream fix is **live**. The 10:00Z header this replaces ("no restart has been performed") was true when
@@ -71,6 +72,7 @@ Read from GitHub while writing this file, not from notes.
 | #58 | feat(keys): secret-safe credential store, pre-trade permission gate and one-command setup | `e4a3898` | squash `3be9388` |
 | #59 | audit(live-safety): wire operator alerts to sinks, prove reconcile fails closed (10-row matrix) | `88990ed` | squash `3324754` |
 | #60 | docs(release): v1.1.0 notes, frozen-recorder resume, green one-command install | `e23433e` | squash `640dff4` |
+| #61 | docs(release): v1.1.0 ships operator alerts after all, and tags itself | `301c98f` | squash `36774a7` (`v1.1.0`) |
 
 CI, re-read on each landed commit for this refresh — not carried from the previous version of this
 file, and the `test` job is **not** green everywhere:
@@ -96,6 +98,11 @@ file, and the `test` job is **not** green everywhere:
   polling against a 12-22 minute baseline), which is why that revision recorded its content as
   absent from `v1.1.0`; it then went green and squash-landed as `3324754`, one commit below this
   release's own `640dff4`.
+- **#61 is not in that green list, and this file does not claim it is.** It landed as `36774a7`
+  with `lint` and `typecheck` successful; its two `test` legs were still `in_progress` when it
+  merged, and the post-merge run on `36774a7` was still running `test` when this line was written.
+  Read the conclusion from GitHub before citing the tag commit as green. Its content is docs only:
+  the operator-alerts bullet restored to `RELEASE-v1.1.0.md` after #59 landed below it.
 
 After #50, the D1 unit file holds **44** tests, not 41 (`44 passed in 16.23s` at `4b57100`).
 
