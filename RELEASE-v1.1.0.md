@@ -54,6 +54,11 @@ gate closed is the release's most important property.
   D1 evaluators, records each study's status and code hashes, and exits 10 the moment a
   study's verdict changes — so a look happens when data permits, not when someone
   remembers.
+- **Alerts that are actually delivered.** The alert sinks existed but nothing called
+  them, so a stream outage, an order rejection or a daily-loss breach was silent. One
+  `Session._alert()` seam now records the alert as a durable run checkpoint and delivers
+  it through an optional sink, swallowing sink failures so alerting can never kill the
+  bot. `docs/LIVE_SAFETY_MATRIX.md` carries the ten-row evidence.
 - **A green `selftest --all`.** It was red at the previous tip because an audit test
   asserted that restarting the engine clears a Binance 429 window, while the shipped code
   deliberately persists that deadline across restarts. The safer behaviour stayed and the
@@ -67,6 +72,8 @@ gate closed is the release's most important property.
 | Selftest | `cryptobot selftest --all` | `{"commands": 69, "failed": 0, "passed": 164, "verdict": "PASS"}`, exit 0 |
 | Focused suites | `pytest` on credentials, keys check, setup script, ladder promotion, daily P&L, verdict watch | `139 passed`, exit 0 |
 | Fresh install | fresh clone + `./setup.sh` | exit 0, doctor READY, selftest PASS |
+| Alert delivery | `pytest tests/unit/test_safety_alerts.py -q` | `7 passed`, exit 0 |
+| Safety matrix | `docs/LIVE_SAFETY_MATRIX.md` rows 1-10 | ten rows, each naming its code path, test, command and verdict |
 | Gate | `cryptobot gate` | `NO-GO`, `strategies: []` |
 | Arming | `cryptobot arm --capital-usdt 120 --max-daily-loss 6` | refused (no unexpired GO gate), exit 2 |
 | Demo drill without keys | `tools/demo_drill_live.py` | `BLOCKED`, exit 2, no traceback |
