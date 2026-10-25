@@ -20,6 +20,7 @@ import copy
 import itertools
 import json
 import os
+import subprocess
 import threading
 import time
 from collections import deque
@@ -48,6 +49,20 @@ SYM = "BTCUSDT"
 MARK = 100.0
 RUN_TAG = "matrix"
 ROOT = Path(__file__).resolve().parent.parent.parent
+
+
+def _committed_demo_config() -> str:
+    """configs/demo.toml from the git object, never a mutable working copy.
+
+    F0.2: a systematic test must not depend on a repo file that is dirty in
+    the current checkout (this one changes with the credential profile work).
+    """
+    try:
+        return subprocess.run(
+            ["git", "-C", str(ROOT), "show", "HEAD:configs/demo.toml"],
+            check=True, capture_output=True, text=True).stdout
+    except (OSError, subprocess.CalledProcessError) as exc:  # pragma: no cover
+        pytest.skip(f"git object configs/demo.toml unavailable: {exc}")
 
 # Venue trade ids are globally unique: a per-rig counter restarting at
 # 777001 collides across crash phases, and the cross-phase twin books
@@ -455,7 +470,7 @@ class Rig:
                  script, *, shots=1, run_id="matrix-1", hook=None,
                  journal_extra=None, time_exit_s=600, tail=None,
                  cooldown_s=None, max_mark_age_ms=None):
-        text = (ROOT / "configs" / "demo.toml").read_text()
+        text = _committed_demo_config()
         text = text.replace('dir = "runs"',
                             f'dir = "{tmp_path / "runs"}"', 1)
         text = text.replace("warmup_bars = 130", "warmup_bars = 3", 1)

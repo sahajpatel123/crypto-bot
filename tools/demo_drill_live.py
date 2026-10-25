@@ -15,7 +15,6 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import os
 import sys
 import time
 from datetime import datetime, timezone
@@ -47,14 +46,26 @@ def main(argv: list[str] | None = None) -> int:
     if not config.engine_demo:
         print("demo-drill-live: REFUSED config is not demo", file=sys.stderr)
         return 2
-    key = os.environ.get("BINANCE_DEMO_KEY", "")
-    secret = os.environ.get("BINANCE_DEMO_SECRET", "")
+    # Credentials: the demo profile only. `cryptobot keys set --profile demo`
+    # stores CRYPTOBOT_DEMO_KEY/SECRET in the Keychain or the git-ignored
+    # dotenv file; the previously documented BINANCE_DEMO_KEY/SECRET keep
+    # working as an environment fallback. A production key never satisfies
+    # this drill, because the profiles are disjoint names.
+    from cryptobot.ops import credentials as _creds
+
+    resolved = _creds.load_credentials(profile=_creds.PROFILE_DEMO)
     steps: list[dict] = []
-    if not key or not secret:
+    if not resolved.complete:
         steps.append({"step": "credentials", "status": "BLOCKED",
-                      "detail": "BINANCE_DEMO_KEY/SECRET not set"})
+                      "detail": "demo credentials not set: "
+                                + ", ".join(resolved.missing)
+                                + "; store them with `cryptobot keys set "
+                                  "--profile demo` (BINANCE_DEMO_KEY/SECRET "
+                                  "are still accepted)"})
         _write(args.out, "BLOCKED", steps)
         return 2
+    key_obj, secret_obj = resolved.require()
+    key, secret = key_obj.reveal(), secret_obj.reveal()
     if not args.execute_orders:
         steps.append({"step": "read-only", "status": "PASS",
                       "detail": "credentials present; pass --execute-orders "

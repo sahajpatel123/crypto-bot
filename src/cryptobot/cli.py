@@ -716,7 +716,8 @@ def _build_live_engine(config, key: str, secret: str, journal: Path,
         demo=config.engine_demo, base_url=config.engine_base_url, **kw)
 
 
-def _run_prod(args: argparse.Namespace, _engine_factory=None) -> int:
+def _run_prod(args: argparse.Namespace, _engine_factory=None,
+              _permission_transport=None) -> int:
     """Production route: observe-only until fully armed, then live.
 
     Guards, signed reads and venue seeding always run first. Order
@@ -763,6 +764,21 @@ def _run_prod(args: argparse.Namespace, _engine_factory=None) -> int:
         return 3
     print(f"  [PASS] creds-from-env: {key_env}=set {secret_env}=set "
           f"(values never shown)")
+    # Pre-trade permission gate (D2): a key that can withdraw, transfer, or
+    # reach the venue from any IP is refused before the order path is even
+    # built. Reads the venue's own apiRestrictions answer with the shared
+    # signer; the transport is injectable so the guard is unit-testable.
+    from cryptobot.ops import keys as _keys
+    quota = _keys.prod_gate(key, secret, transport=_permission_transport)
+    print("prod credential permissions:")
+    for name, state, detail in ((r.name, r.status, r.detail)
+                                for r in quota.rows):
+        print(f"  [{state}] {name}: {detail}")
+    if quota.exit_code != 0:
+        print(f"prod: REFUSED (credential permission check: "
+              f"{quota.outcome}; run `cryptobot keys check` for the "
+              f"full table)", file=sys.stderr)
+        return 2
     storage = Path(config.storage_dir)
     journal = storage / "prod_engine_journal.jsonl"
     factory = _engine_factory or _build_live_engine
@@ -2449,6 +2465,61 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--state", default="runs/owner-wizard.json")
     p.add_argument("--step", default=None)
     p.set_defaults(func=cli_extra.cmd_owner)
+    from cryptobot.ops import keys as keys_cmd
+    p = sub.add_parser("keys",
+                       help="secret-safe credential storage and the "
+                            "pre-trade permission check")
+    keys_sub = p.add_subparsers(dest="keys_cmd", required=True)
+    kset = keys_sub.add_parser(
+        "set", help="store the API key and secret (input is never echoed)")
+    kset.add_argument("--backend", choices=keys_cmd.BACKENDS,
+                      default=None,
+                      help="keychain (macOS) or dotenv (default by platform)")
+    kset.add_argument("--env", default=None,
+                      help="dotenv file to write (default: .env at the "
+                           "repo root; it must be git-ignored)")
+    kset.add_argument("--from-stdin", action="store_true",
+                      help="read two lines instead of prompting: API key, "
+                           "then API secret")
+    kset.add_argument("--force", action="store_true",
+                      help="overwrite an existing entry without asking")
+    kset.add_argument("--profile", choices=keys_cmd.credentials.PROFILES,
+                      default=keys_cmd.credentials.PROFILE_PROD,
+                      help="prod stores CRYPTOBOT_API_KEY/SECRET; demo stores "
+                           "CRYPTOBOT_DEMO_KEY/SECRET (default: prod)")
+    kset.set_defaults(func=keys_cmd.cmd_keys_set)
+    kstat = keys_sub.add_parser(
+        "status", help="which credentials exist and where (booleans only)")
+    kstat.add_argument("--env", default=None)
+    kstat.add_argument("--profile",
+                       choices=keys_cmd.credentials.PROFILES,
+                       default=keys_cmd.credentials.PROFILE_PROD,
+                       help="which profile the exit verdict refers to "
+                            "(both are always reported)")
+    kstat.add_argument("--json", action="store_true")
+    kstat.set_defaults(func=keys_cmd.cmd_keys_status)
+    kchk = keys_sub.add_parser(
+        "check", help="pre-trade API permission check (one signed GET)")
+    kchk.add_argument("--market", choices=keys_cmd.MARKETS,
+                      default=keys_cmd.DEFAULT_MARKET,
+                      help="required trading permission (default: futures)")
+    kchk.add_argument("--require-ip", dest="require_ip", action="store_true",
+                      default=True,
+                      help="fail when the key is not IP-restricted "
+                           "(default: on)")
+    kchk.add_argument("--no-require-ip", dest="require_ip",
+                      action="store_false",
+                      help="report ipRestrict without failing on it")
+    kchk.add_argument("--env", default=None)
+    kchk.add_argument("--profile", choices=keys_cmd.credentials.PROFILES,
+                      default=keys_cmd.credentials.PROFILE_PROD,
+                      help="prod checks production permissions; demo checks "
+                           "the demo profile against the demo host")
+    kchk.add_argument("--base-url", default=None,
+                      help=f"REST host (default: {keys_cmd.SPOT_REST_URL} for "
+                           f"prod, {keys_cmd.DEMO_REST_URL} for demo)")
+    kchk.add_argument("--json", action="store_true")
+    kchk.set_defaults(func=keys_cmd.cmd_keys_check)
     p = sub.add_parser("certify", help="write the completion certificate")
     p.add_argument("--out", default=None)
     p.add_argument("--matrix-out", default=None)

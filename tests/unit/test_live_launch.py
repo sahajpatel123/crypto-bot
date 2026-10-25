@@ -115,6 +115,7 @@ def test_expired_gate_invalid(tmp_path):
 def test_prod_armed_layers_refuse_in_order(tmp_path, monkeypatch, capsys):
     """Switch ON but no gate/armed: prod still refuses (never trades)."""
     from tests.unit.test_cli_readiness import (
+        _clean_permissions,
         _prod_config,
         _stub_factory,
         _stub_venue_status,
@@ -129,7 +130,8 @@ def test_prod_armed_layers_refuse_in_order(tmp_path, monkeypatch, capsys):
         "allow_live_submission = false", "allow_live_submission = true")
     cfg_path.write_text(text)
     rc = cli._run_prod(argparse.Namespace(
-        config=str(cfg_path), run_id="prod-armed-1"), _stub_factory)
+        config=str(cfg_path), run_id="prod-armed-1"), _stub_factory,
+        _permission_transport=_clean_permissions())
     assert rc == 2
     assert "need a valid GO gate" in capsys.readouterr().err
 
@@ -179,12 +181,13 @@ def _armed_prod(tmp_path, monkeypatch):
 
 def test_prod_refuses_strategies_without_verdict(tmp_path, monkeypatch, capsys):
     """A GO gate for HX never authorises the config's S1-S5 live."""
-    from tests.unit.test_cli_readiness import _stub_factory
+    from tests.unit.test_cli_readiness import _clean_permissions, _stub_factory
 
     cfg_path, gate_path, armed_path = _armed_prod(tmp_path, monkeypatch)
     rc = cli._run_prod(argparse.Namespace(
         config=str(cfg_path), run_id="prod-armed-2",
-        gate_json=str(gate_path), armed_json=str(armed_path)), _stub_factory)
+        gate_json=str(gate_path), armed_json=str(armed_path)), _stub_factory,
+        _permission_transport=_clean_permissions())
     assert rc == 2
     assert "have no PASS verdict behind this gate" in capsys.readouterr().err
 
