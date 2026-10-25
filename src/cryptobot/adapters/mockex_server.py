@@ -91,6 +91,9 @@ class MockEx:
         self.transport = SandboxTransport(self.venue)
         self.api_secret = api_secret.encode("utf-8")
         self.clock_offset_ms = int(clock_offset_ms)
+        # Requests refused at the door (bad signature / recvWindow) BEFORE
+        # reaching the venue: {"method","path","code"}.
+        self.refusals: list[dict] = []
         self.httpd: ThreadingHTTPServer | None = None
         self._thread: threading.Thread | None = None
 
@@ -127,6 +130,9 @@ class MockEx:
                 try:
                     params = owner._verified_params(raw)
                 except VenueHttpError as exc:
+                    owner.refusals.append({"method": self.command,
+                                           "path": parts.path,
+                                           "code": exc.code})
                     self._error(exc)
                     return
                 try:
@@ -163,7 +169,10 @@ class MockEx:
                 self.send_header("Content-Type", "application/json")
                 self.send_header("X-Cryptobot-Provenance", EMULATED)
                 if status in (418, 429):
-                    self.send_header("Retry-After", "1")
+                    hint = getattr(exc, "retry_after_s", None)
+                    self.send_header(
+                        "Retry-After",
+                        "1" if hint is None else str(int(hint)))
                 self.send_header("Content-Length", str(len(payload)))
                 self.end_headers()
                 self.wfile.write(payload)

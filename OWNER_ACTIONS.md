@@ -79,17 +79,35 @@ On failure bring back: `cryptobot readiness --config configs/demo.toml`
 
 ```sh
 export BINANCE_DEMO_KEY=... BINANCE_DEMO_SECRET=...   # demo only
+# Stop if readiness exits 3/UNVERIFIED; confirm withdrawals are disabled.
+uv run --locked cryptobot readiness --config configs/demo.toml
 uv run --locked python tools/demo_drill_live.py \
   --config configs/demo.toml --execute-orders --out drill.json
-uv run --locked cryptobot readiness --config configs/demo.toml
 uv run --locked cryptobot reconcile --config configs/demo.toml --expect-flat
 ```
 
 Expected: `tools/demo_drill_live.py` writes `"verdict": "PASS"` with
 measured auth/filter/leverage/entry/protection/flatten latencies;
-readiness all PASS; reconcile FLAT.
-Pass criteria: drill PASS, flat after the drill, no unknown orders.
+reconcile reports FLAT. The venue's account `canWithdraw` flag does not
+prove the API-key restriction, so readiness reports withdrawals UNVERIFIED
+(exit 3) even when that account flag is false. A reported `canWithdraw=true`
+fails readiness. Confirm the API key is trade-only and withdrawals are
+disabled in the demo UI before continuing.
+Pass criteria: drill PASS, flat after the drill, no unknown orders, and
+demo-key withdrawals confirmed disabled in the demo UI.
 If the drill fails, flatten in the demo UI and bring back `drill.json`.
+
+### Verify during the owner's demo drill
+
+- Confirm real demo-host 429/418 Retry-After headers, backoff duration,
+  and no order burst.
+- Confirm real -1003/-1021 details and resync; test 5xx, reset, or read
+  timeout after submission without creating duplicate exposure.
+- Confirm private-stream disconnect/listenKey expiry, partial-fill/cancel
+  reporting, REST recovery, and protective-stop resizing.
+- Confirm withdrawal permission is disabled; if the API omits the field,
+  readiness must say UNVERIFIED and the demo UI is the manual source of truth.
+
 Note: the offline `cryptobot demo-drill` command is intentionally
 BLOCKED; it is a scaffold, not the credentialed drill.
 

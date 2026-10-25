@@ -480,6 +480,19 @@ def _signed_rows(engine, config) -> list[tuple[str, str, str]]:
         rows.append(("permissions", "PASS" if status["can_trade"] else "FAIL",
                      f"can_trade={status['can_trade']} "
                      f"fee_tier={status['fee_tier']}"))
+        account_can_withdraw = status.get("account_can_withdraw")
+        if account_can_withdraw is True:
+            rows.append(("withdrawals", "FAIL",
+                         "account reports canWithdraw=true; fail closed "
+                         "and disable withdrawals in the demo UI"))
+        elif account_can_withdraw is False:
+            rows.append(("withdrawals", "UNVERIFIED",
+                         "account canWithdraw=false does not verify the "
+                         "API-key restriction; confirm it in the demo UI"))
+        else:
+            rows.append(("withdrawals", "UNVERIFIED",
+                         "venue omitted account canWithdraw; confirm the "
+                         "API-key restriction in the demo UI"))
         rows.append(("position-mode",
                      "PASS" if status["position_mode"] == "one-way"
                      else "FAIL", status["position_mode"]))
@@ -604,6 +617,10 @@ def cmd_readiness(args: argparse.Namespace) -> int:
     if "BLOCKED" in states:
         print("signed venue checks BLOCKED on credentials in the "
               "owner's environment (unsigned checks stand).")
+        return 3
+    if "UNVERIFIED" in states:
+        print("readiness: UNVERIFIED (manual permission check required; "
+              "no orders submitted)")
         return 3
     print("readiness: READY (read-only checks passed; no orders submitted)")
     return 0

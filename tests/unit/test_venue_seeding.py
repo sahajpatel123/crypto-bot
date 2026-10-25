@@ -90,6 +90,7 @@ def test_verify_account_modes_sets_and_fails_closed(tmp_path):
     import venue_fixtures as venues
     from cryptobot.adapters.binance_live import VenueRejectedError
 
+    ready = venues.ready_fixture()
     script = [
         ("GET", "/fapi/v1/positionSide/dual", None,
          ("ok", {"dualSidePosition": True})),
@@ -100,18 +101,44 @@ def test_verify_account_modes_sets_and_fails_closed(tmp_path):
          ("ok", {"multiAssetsMargin": False})),
         ("POST", "/fapi/v1/marginType", {"symbol": "BTCUSDT"},
          ("ok", {"code": 200})),
-        ("POST", "/fapi/v1/leverage", {"symbol": "BTCUSDT"},
-         ("ok", {"leverage": 3})),
+        ("POST", "/fapi/v1/leverage", {"symbol": "BTCUSDT",
+                                         "leverage": 3},
+         ("ok", ready["leverage"])),
+    ] + venues.ready_script(ready) + [
+        ("GET", "/fapi/v1/premiumIndex", {"symbol": "BTCUSDT"},
+         ("ok", {"markPrice": "60000.0"})),
     ]
     engine, transport = venues.make_engine(tmp_path, script)
     out = engine.verify_account_modes(["BTCUSDT"], leverage_cap=3.0)
     assert out["position_mode"] == "one-way"
+    assert "BTCUSDT" in engine._filters
+    assert engine.valuation_mark("BTCUSDT") == 60000.0
     transport.assert_empty()
     # Leverage above cap fails before any venue call.
     engine2, transport2 = venues.make_engine(tmp_path / "b", [])
     with pytest.raises(VenueRejectedError, match="cap"):
         engine2.verify_account_modes(["BTCUSDT"], leverage_cap=2.0)
     transport2.assert_empty()
+
+
+def test_venue_status_keeps_missing_withdraw_permission_unverified(tmp_path):
+    import venue_fixtures as venues
+
+    ready = venues.ready_fixture()
+    script = [
+        ("GET", "/fapi/v1/time", None, ("ok", ready["time"])),
+        ("GET", "/fapi/v2/account", None, ("ok", ready["account"])),
+        ("GET", "/fapi/v1/positionSide/dual", None,
+         ("ok", {"dualSidePosition": False})),
+        ("GET", "/fapi/v1/exchangeInfo", None,
+         ("ok", ready["exchangeInfo"])),
+        ("GET", "/fapi/v1/commissionRate", {"symbol": "BTCUSDT"},
+         ("ok", ready["commissionRate"])),
+        ("GET", "/fapi/v1/openOrders", None, ("ok", [])),
+    ]
+    engine, transport = venues.make_engine(tmp_path, script)
+    assert engine.venue_status(["BTCUSDT"])["account_can_withdraw"] is None
+    transport.assert_empty()
 
 
 def test_seed_from_venue_refuses_unknown_order(tmp_path):

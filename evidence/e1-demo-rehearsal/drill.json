@@ -1,0 +1,49 @@
+{
+ "created_utc": "2026-10-25T07:49:43.654783+00:00",
+ "drill": "demo-drill-live",
+ "note": "demo/testnet only; never proof of live edge",
+ "sha256": "d79876a542f124eeefc55047de0483a58705bf326a4a76145e05dbefaeb07a79",
+ "steps": [
+  {
+   "detail": {
+    "leverage": 3,
+    "margin_type": "ISOLATED",
+    "multi_assets": false,
+    "position_mode": "one-way",
+    "symbols": [
+     "BTCUSDT"
+    ]
+   },
+   "latency_ms": 17.054,
+   "status": "PASS",
+   "step": "auth+modes"
+  },
+  {
+   "client_id": "drill-531e35bd57-000001",
+   "latency_ms": 2.32,
+   "status": "PASS",
+   "step": "tiny-entry-ack"
+  },
+  {
+   "qty": 0.001,
+   "status": "PASS",
+   "step": "tiny-entry-fill"
+  },
+  {
+   "latency_ms": 5.413,
+   "legs": [
+    "drill-531e35bd57-000002",
+    "drill-531e35bd57-000003"
+   ],
+   "status": "PASS",
+   "step": "protection-attach"
+  },
+  {
+   "close_id": "drill-531e35bd57-000004",
+   "latency_ms": 3.371,
+   "status": "PASS",
+   "step": "sigterm-flatten-equivalent"
+  }
+ ],
+ "verdict": "PASS"
+}
