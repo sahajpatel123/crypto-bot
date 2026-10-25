@@ -36,7 +36,7 @@ class FakeFetcher:
                 "quote_volume_30d": {s: 1.0 for s in self.closes}
                 if include_volume else {}}
 
-    def quote_volume_30d(self, symbol, end_day):
+    def quote_volume_30d(self, symbol, end_day, *, listing_date=None):
         return 1.0
 
     def mark_closes(self, symbol, start, end):
@@ -44,6 +44,9 @@ class FakeFetcher:
 
     def funding(self, symbol, start, end):
         return {d: v for d, v in self.fund[symbol].items() if start <= d <= end}
+
+    def funding_interval_hours(self, symbol):
+        return 8
 
     def funding_events(self, symbol, start_day, end_day):
         total = self.fund[symbol].get(start_day, 0.0)

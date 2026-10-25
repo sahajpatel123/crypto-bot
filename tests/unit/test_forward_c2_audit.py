@@ -49,7 +49,7 @@ class AuditFetcher:
                 "source": "synthetic", "symbols": symbols,
                 "quote_volume_30d": volumes}
 
-    def quote_volume_30d(self, symbol, end_day):
+    def quote_volume_30d(self, symbol, end_day, *, listing_date=None):
         if symbol in self.fail_volume:
             raise OSError("synthetic partial outage")
         return float(int(symbol[1:3]) + 1)
@@ -62,6 +62,9 @@ class AuditFetcher:
         if symbol in self.missing_funding:
             return {}
         return {d: v for d, v in self.funds[symbol].items() if start <= d <= end}
+
+    def funding_interval_hours(self, symbol):
+        return 8
 
     def funding_events(self, symbol, start_day, end_day):
         if symbol in self.missing_funding:
@@ -145,15 +148,14 @@ def test_refuses_low_coverage_missing_funding_and_volume_outage(tmp_path):
                      next_snapshot=_snapshot(fetcher, DAYS[60], close=True))
 
 
-def test_listing_age_cutoff_is_35_calendar_days_inclusive():
+def test_universe_has_no_unpreregistered_listing_age_exclusion():
     fetcher = AuditFetcher(n=31)
     day = DAYS[63]
     snapshot = _snapshot(fetcher, day, include_volume=True)
-    snapshot["symbols"]["S29USDT"]["onboard_date"] = fwd._shift(day, -35)
-    snapshot["symbols"]["S30USDT"]["onboard_date"] = fwd._shift(day, -34)
+    snapshot["symbols"]["S30USDT"]["onboard_date"] = fwd._shift(day, -10)
     universe = fwd._universe(snapshot, day)
-    assert "S29USDT" in universe  # exactly 35 calendar days is eligible
-    assert "S30USDT" not in universe  # 34 days is too young
+    assert "S30USDT" in universe  # highest volume, despite being newly listed
+    assert "S00USDT" not in universe
     assert len(universe) == 30
 
 
@@ -464,6 +466,18 @@ def test_mark_fetch_rejects_unfinished_candle_and_incomplete_volume_window(monke
         volume.quote_volume_30d("S00USDT", day)
 
 
+def test_listing_volume_history_starts_at_onboard_date(monkeypatch):
+    day = DAYS[20]
+    listing_day = fwd._shift(day, -5)
+    expected_days = [fwd._shift(listing_day, offset) for offset in range(6)]
+    rows = [[fwd._ms(item), 1, 1, 1, 1, 0,
+             fwd._ms(item) + 86_399_999, 2.0] for item in expected_days]
+    fetcher = fwd.RestFetcher(now=lambda: dt.datetime.combine(
+        dt.date.fromisoformat(fwd._shift(day, 1)), dt.time(0, 5), tzinfo=dt.UTC))
+    monkeypatch.setattr(fetcher, "_get", lambda *args, **kwargs: rows)
+    assert fetcher.quote_volume_30d("S00USDT", day, listing_date=listing_day) == 12.0
+
+
 def test_candle_completion_uses_exchange_server_time_not_ahead_local_clock(monkeypatch):
     day = DAYS[20]
     start = fwd._shift(day, -29)
@@ -503,6 +517,21 @@ def test_funding_requires_full_settlement_coverage(monkeypatch):
         lambda path, **kwargs: [] if path.endswith("fundingInfo") else events[:2])
     with pytest.raises(fwd.RefusedToBook, match="funding coverage"):
         fetcher.funding_events("S10USDT", day, fwd._shift(day, 1))
+
+
+def test_twelve_hour_funding_interval_is_accepted_by_coverage_guard(monkeypatch):
+    day = DAYS[63]
+    start = fwd._ms(day)
+    info = [{"symbol": "S10USDT", "fundingIntervalHours": 12}]
+    events = [{"fundingTime": start + hours * 3_600_000,
+               "fundingRate": "0.0001"} for hours in (12, 24)]
+    fetcher = fwd.RestFetcher()
+    monkeypatch.setattr(
+        fetcher, "_get",
+        lambda path, **kwargs: info if path.endswith("fundingInfo") else events)
+    parsed = fwd._funding_events(fetcher, "S10USDT", day, fwd._shift(day, 1))
+    assert [stamp for stamp, _ in parsed] == [start + 12 * 3_600_000,
+                                             start + 24 * 3_600_000]
 
 
 def test_four_hour_funding_refuses_a_missing_settlement(monkeypatch):

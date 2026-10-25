@@ -779,3 +779,17 @@ Meta Muse Spark.
   hash, frozen scoring parameters, and deterministic recomputation of its
   primary verdict. This adds no hypothesis or threshold; frozen preregistration
   remains unchanged and the gate stays NO-GO.
+
+- D-062 (C2-FWD listing age and volume, 2026-10-25): follow the frozen
+  preregistration's weekly universe literally: do not add a listing-age cutoff;
+  all TRADING USD-M USDT perpetuals are candidates for trailing-30-day-volume
+  ranking. For a symbol listed inside that window, pre-listing dates contribute
+  structural zero volume, while every daily candle from its onboard date through
+  the decision date must be present and complete; any post-listing gap refuses
+  the snapshot. Keep a young contract in the ranked top-30 universe, but do not
+  trade it until its 36 consecutive mark closes (35 completed intervals) exist.
+  This supersedes only D-059's 35-day listing-age clause, resolving that
+  interpretation in favor of the frozen preregistration without changing it.
+  Do not silently prune candidates; refuse incomplete records rather than rank
+  a partial history. The gate remains
+  NO-GO pending owner review of eligible evidence.

@@ -31,7 +31,6 @@ from cryptobot.research import c_family, quant  # noqa: E402
 BASE = "https://fapi.binance.com"
 UNIVERSE_SIZE = 30
 HISTORY_DAYS = c_family.MIN_HISTORY_DAYS
-MIN_LISTING_DAYS = 35
 REPORTS = Path(__file__).resolve().parents[1] / "reports/hypotheses"
 LOOKS = (365, 730, 1095)
 OBF_BOUNDS = (2.973, 2.102, 1.717)
@@ -40,7 +39,6 @@ VM_TARGET_BPS, VM_CAP, VM_WINDOW, VM_WARMUP = 150.0, 2.0, 120, 20
 BOOKING_CUTOFF = dt.time(0, 5, tzinfo=dt.UTC)
 MAX_UNIVERSE_SNAPSHOT_AGE = dt.timedelta(hours=8)
 MAX_EXCHANGE_INFO_CLOCK_SKEW = dt.timedelta(minutes=15)
-_FUNDING_INTERVAL_MS = 8 * 60 * 60 * 1000
 
 
 class RefusedToBook(RuntimeError):
@@ -54,8 +52,10 @@ class LedgerError(RuntimeError):
 class Fetcher(Protocol):
     def universe_snapshot(self, day: str, *, observed_at: dt.datetime,
                           include_volume: bool) -> dict: ...
-    def quote_volume_30d(self, symbol: str, end_day: str) -> float: ...
+    def quote_volume_30d(self, symbol: str, end_day: str, *,
+                         listing_date: str | None = None) -> float: ...
     def mark_closes(self, symbol: str, start: str, end: str) -> dict[str, float]: ...
+    def funding_interval_hours(self, symbol: str) -> int: ...
     def funding_events(self, symbol: str, start_day: str,
                        end_day: str) -> list[tuple[int, float]]: ...
 
@@ -165,14 +165,25 @@ class RestFetcher:
                 "source": "exchangeInfo", "symbols": symbols,
                 "quote_volume_30d": {}, "volume_observed_at_utc": None}
 
-    def quote_volume_30d(self, symbol: str, end_day: str) -> float:
+    def quote_volume_30d(self, symbol: str, end_day: str, *,
+                         listing_date: str | None = None) -> float:
         start = _shift(end_day, -29)
+        if listing_date is not None:
+            try:
+                dt.date.fromisoformat(listing_date)
+            except (TypeError, ValueError) as exc:
+                raise RefusedToBook(f"invalid listing date for {symbol}") from exc
+            if listing_date > end_day:
+                raise RefusedToBook(f"listing date is after volume window for {symbol}")
+            start = max(start, listing_date)
+        expected = [_shift(start, i)
+                    for i in range((dt.date.fromisoformat(end_day)
+                                    - dt.date.fromisoformat(start)).days + 1)]
         rows = self._get("/fapi/v1/klines", symbol=symbol, interval="1d",
                          startTime=_ms(start), endTime=_ms(end_day) + 86_399_999,
-                         limit=30)
-        if not isinstance(rows, list) or len(rows) != 30:
+                         limit=len(expected))
+        if not isinstance(rows, list) or len(rows) != len(expected):
             raise RefusedToBook(f"incomplete 30-day volume window for {symbol}")
-        expected = [_shift(start, i) for i in range(30)]
         got: list[str] = []
         volumes: list[float] = []
         now_ms = self._data_time_ms()
@@ -236,6 +247,9 @@ class RestFetcher:
                 intervals[row_symbol] = hours
             self._funding_intervals = intervals
         return self._funding_intervals.get(symbol, 8)
+
+    def funding_interval_hours(self, symbol: str) -> int:
+        return self._funding_interval_hours(symbol)
 
     def funding_events(self, symbol: str, start_day: str,
                        end_day: str) -> list[tuple[int, float]]:
@@ -412,10 +426,10 @@ def _finalize_volume_snapshot(fetcher: Fetcher, root: Path, day: str,
             continue
         onboard = meta.get("onboard_date")
         if onboard is None:
-            raise RefusedToBook(f"listing age unavailable for {sym}")
-        if (asof - dt.date.fromisoformat(onboard)).days < MIN_LISTING_DAYS:
-            continue
-        value = fetcher.quote_volume_30d(sym, day)
+            raise RefusedToBook(f"listing date unavailable for {sym}")
+        if dt.date.fromisoformat(onboard) > asof:
+            raise RefusedToBook(f"listing date is after volume window for {sym}")
+        value = fetcher.quote_volume_30d(sym, day, listing_date=onboard)
         if not _finite(value) or value < 0:
             raise RefusedToBook(f"invalid 30-day quote volume for {sym}")
         volumes[sym] = float(value)
@@ -434,17 +448,10 @@ def _universe(snapshot: dict, day: str) -> list[str]:
     if not snapshot.get("volume_observed_at_utc"):
         raise RefusedToBook(f"completed 30-day volume snapshot unavailable for {day}")
     rows: list[tuple[float, str]] = []
-    asof = dt.date.fromisoformat(day)
     symbols = snapshot["symbols"]
     volumes = snapshot["quote_volume_30d"]
     for sym, meta in sorted(symbols.items()):
         if meta["status"] != "TRADING":
-            continue
-        onboard = meta.get("onboard_date")
-        if onboard is None:
-            raise RefusedToBook(f"listing age unavailable for {sym}")
-        age = (asof - dt.date.fromisoformat(onboard)).days
-        if age < MIN_LISTING_DAYS:
             continue
         if sym not in volumes or not _finite(volumes[sym]) or volumes[sym] < 0:
             raise RefusedToBook(f"unreadable 30-day volume for {sym}")
@@ -486,11 +493,16 @@ def _funding_events(fetcher: Fetcher, symbol: str, start_day: str,
         if not isinstance(stamp, int) or not _finite(rate):
             raise RefusedToBook(f"invalid funding event for {symbol}")
         normalized.append((stamp, float(rate)))
+    interval_method = getattr(fetcher, "funding_interval_hours", None)
+    interval_hours = interval_method(symbol) if callable(interval_method) else None
+    if (not isinstance(interval_hours, int) or isinstance(interval_hours, bool)
+            or interval_hours <= 0 or 24 % interval_hours):
+        raise RefusedToBook(f"funding interval unavailable for {symbol}")
     start_ms, end_ms = _ms(start_day), _ms(end_day)
-    required = (start_ms + _FUNDING_INTERVAL_MS,
-                start_ms + 2 * _FUNDING_INTERVAL_MS, end_ms)
+    interval_ms = interval_hours * 60 * 60 * 1000
+    required = set(range(start_ms + interval_ms, end_ms + 1, interval_ms))
     times = [stamp for stamp, _ in normalized]
-    if len(times) != len(set(times)) or not set(required).issubset(times) \
+    if len(times) != len(set(times)) or set(times) != required \
             or any(not start_ms < stamp <= end_ms for stamp in times):
         raise RefusedToBook(f"funding coverage incomplete for {symbol}")
     return normalized
@@ -527,15 +539,22 @@ def book_day(fetcher: Fetcher, state: dict, t_day: str, *,
     days = [_shift(start, k) for k in range(HISTORY_DAYS + 2)]
     t = days.index(t_day)
 
+    history_days = days[t - HISTORY_DAYS:t + 1]
     for sym in active_universe:
         series = closes.get(sym, {})
-        history_days = days[t - HISTORY_DAYS:t + 1]
-        if any(day not in series or not _finite(series[day]) or series[day] <= 0
-               for day in history_days):
+        missing = [day for day in history_days
+                   if day not in series or not _finite(series[day]) or series[day] <= 0]
+        if not missing:
+            continue
+        onboard = statuses[sym].get("onboard_date")
+        if onboard is None:
+            raise RefusedToBook(f"listing date unavailable for {sym}")
+        onboard_date = dt.date.fromisoformat(onboard)
+        if any(dt.date.fromisoformat(day) >= onboard_date for day in missing):
             raise RefusedToBook(f"stale or partial candle history for {sym}")
+    # A recently listed top-30 contract remains in the preregistered universe,
+    # but cannot enter the signal until its required close history exists.
     eligible = [s for s in _eligible_at(closes, days, t) if s in active_universe]
-    if len(eligible) != len(active_universe):
-        raise RefusedToBook("stale or partial signal candles")
 
     # Any symbol dropped from this week's active universe is closed at t_day.
     held = {s: w for s, w in previous_held.items() if s in eligible}
