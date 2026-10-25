@@ -30,8 +30,13 @@ from tests.unit.test_release_contract import (
 )
 
 import venue_fixtures as venues
-from cryptobot.adapters.binance_live import VenueRejectedError
-from cryptobot.app.engine import EngineOrder, EngineOrderStatus
+from cryptobot.adapters.binance_live import UnknownOutcomeError, VenueRejectedError
+from cryptobot.app.engine import (
+    AccountPosition,
+    AccountSnapshot,
+    EngineOrder,
+    EngineOrderStatus,
+)
 
 T0MS = venues.T0MS
 NOW = venues.NOW
@@ -50,7 +55,13 @@ def _submit_market(engine, qty=0.002):
 
 
 def test_idless_command_relinks_from_engine_journal(tmp_path):
-    """Crash inside submit: the journal knows the id the row lost."""
+    """Crash inside submit: the journal knows the id the row lost.
+
+    Re-linking proves WHICH order the row refers to, not what happened to it.
+    A relinked row whose venue state is not terminal must keep blocking
+    admission exactly like an id-less row; only terminal state by id resolves
+    it.
+    """
     engine = _ContractEngine()
     session, store = _session(tmp_path, engine)
     try:
@@ -70,7 +81,14 @@ def test_idless_command_relinks_from_engine_journal(tmp_path):
         row = store.open_commands("rel")[0]
         assert row["cmd_id"] == cmd
         assert row["engine_client_id"] == cid, "journal-known id not re-linked"
-        assert row["status"] == "submitted", "row stuck unknown blocks entry"
+        assert row["status"] == "unknown", "unproven relink admitted entries"
+        assert session._admission_hold() == "reconcile:unknown-commands"
+
+        # Proved by id: the same row resolves and admission lifts.
+        engine.states[cid] = EngineOrderStatus(
+            cid, "BTCUSDT", "filled", 0.05, 0.05, "r-1", "entry")
+        session._reconcile_commands()
+        assert store.open_commands("rel") == []
         assert session._admission_hold() is None
     finally:
         store.close()
@@ -155,6 +173,40 @@ def test_consecutive_misses_over_the_grace_window_void(tmp_path):
     clock["now"] = clock["now"] + timedelta(seconds=10)
     transport.append(miss())
     assert engine.lookup(cid) is None, "venue never saw it: must void"
+    assert engine.order_status(cid).state == "cancelled"
+    transport.assert_empty()
+
+
+def test_cancel_not_found_does_not_void_a_live_entry(tmp_path):
+    """A -2013 on DELETE is not proof the order is gone.
+
+    Entry cancels happen before the venue indexes the id and before fills are
+    adopted, so ``filled_qty == 0`` is not evidence of a dead order. Voiding
+    mapped a live order to CANCELLED (zero fill), let ``_release_agrees``
+    release the reservation and let the bot re-enter while the order still
+    worked. The cancel must journal CANCEL_UNKNOWN and keep blocking.
+    """
+    ready, orders = _ready(), _orders()
+    engine, transport = _live(
+        tmp_path, _ready_script(ready) + [
+            ("POST", "/fapi/v1/order", {"type": "MARKET"},
+             ("ok", orders["orderAck"]))])
+    cid = _submit_market(engine)
+    transport.append(("DELETE", "/fapi/v1/order",
+                      {"origClientOrderId": cid},
+                      ("err", 400, -2013, "Order does not exist.")))
+    with pytest.raises(UnknownOutcomeError):
+        engine.cancel(cid, "stale")
+    assert engine.order_status(cid).state == "unknown", (
+        "a single cancel miss voided a live order")
+    assert engine.unknown_ids() == (cid,), "cancel miss stopped blocking"
+
+    # The grace gate still voids when absence is PROVEN over the window.
+    engine.VOID_MISS_REQUIRED, engine.VOID_GRACE_MS = 1, 0
+    transport.append(("GET", "/fapi/v1/order",
+                      {"origClientOrderId": cid},
+                      ("err", 400, -2013, "Order does not exist.")))
+    assert engine.lookup(cid) is None
     assert engine.order_status(cid).state == "cancelled"
     transport.assert_empty()
 
@@ -285,6 +337,69 @@ def test_vacuous_cover_is_still_cancelled_for_a_dead_entry(tmp_path):
         assert engine.cancelled == ["stop-1"]
     finally:
         store.close()
+
+
+def test_protection_legs_clamp_to_the_venue_position(tmp_path):
+    """A leg cannot exceed the live position, or -2022 kills protection.
+
+    The venue position can be smaller than the order (a fill the adapter has
+    not adopted yet). Sizing to status.qty then asking reduce-only for more
+    than the position makes the venue refuse -2022, which the Session counts
+    as a protection failure and answers by market-flattening a healthy
+    partially-filled entry.
+    """
+    ready, orders = _ready(), _orders()
+    engine, transport = _live(
+        tmp_path, _ready_script(ready) + [
+            ("POST", "/fapi/v1/order", {"type": "MARKET"},
+             ("ok", orders["orderAck"]))])
+    entry = _submit_market(engine)
+    engine._account_cache = AccountSnapshot(
+        wallet_equity_usdt=1000.0, available_margin_usdt=1000.0,
+        positions=(AccountPosition("BTCUSDT", 0.001),))
+    transport.append(
+        ("GET", "/fapi/v1/order", {"origClientOrderId": entry},
+         ("ok", dict(_PARTIAL, origClientOrderId=entry))),
+        ("GET", "/fapi/v1/userTrades", {"orderId": 12345},
+         ("ok", _PARTIAL_TRADES)),
+        ("POST", "/fapi/v1/algoOrder",
+         {"type": "STOP_MARKET", "quantity": "0.001", "reduceOnly": "true"},
+         ("ok", orders["algoAck"])))
+    engine.attach_protection(entry, 59990.0, None)
+    transport.assert_empty()
+
+
+def test_protection_leg_clamps_and_retries_on_2022(tmp_path):
+    """-2022 clamps to the venue position and retries exactly once."""
+    ready, orders = _ready(), _orders()
+    account = dict(ready["account"])
+    account.update({
+        "totalWalletBalance": "1000.0", "availableBalance": "1000.0",
+        "totalMarginBalance": "960.0", "totalUnrealizedProfit": "-40.0",
+        "positions": [{"symbol": "BTCUSDT", "positionAmt": "0.001",
+                       "entryPrice": "60000.0",
+                       "unRealizedProfit": "-40.0"}]})
+    engine, transport = _live(
+        tmp_path, _ready_script(ready) + [
+            ("POST", "/fapi/v1/order", {"type": "MARKET"},
+             ("ok", orders["orderAck"]))])
+    entry = _submit_market(engine)
+    transport.append(
+        ("GET", "/fapi/v1/order", {"origClientOrderId": entry},
+         ("ok", dict(_PARTIAL, origClientOrderId=entry))),
+        ("GET", "/fapi/v1/userTrades", {"orderId": 12345},
+         ("ok", _PARTIAL_TRADES)),
+        # First leg asks for the whole entry: the venue holds only half.
+        ("POST", "/fapi/v1/algoOrder",
+         {"type": "STOP_MARKET", "quantity": "0.002", "reduceOnly": "true"},
+         ("err", 400, -2022, "ReduceOnly Order is rejected.")),
+        ("GET", "/fapi/v2/account", None, ("ok", account)),
+        ("POST", "/fapi/v1/algoOrder",
+         {"type": "STOP_MARKET", "quantity": "0.001", "reduceOnly": "true"},
+         ("ok", orders["algoAck"])))
+    legs = engine.attach_protection(entry, 59990.0, None)
+    assert len(legs) == 1
+    transport.assert_empty()
 
 
 # -- 5. one leverage-brackets contract for both admission gates -------------

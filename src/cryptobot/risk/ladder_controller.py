@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 import math
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from .ladder import demotion_reasons
@@ -53,7 +53,7 @@ class LadderController:
                 or not math.isfinite(float(net_bps)):
             raise ValueError("trade attribution must be finite")
         self.state["trades"].append({
-            "ts_utc": ts_utc or datetime.now(timezone.utc).isoformat(),
+            "ts_utc": ts_utc or datetime.now(UTC).isoformat(),
             "predicted_slippage_bps": predicted,
             "realized_slippage_bps": float(realized_slippage_bps),
             "slippage_ratio": float(realized_slippage_bps) / predicted,
@@ -89,7 +89,7 @@ class LadderController:
                 if reason not in self.state["reasons"]:
                     self.state["reasons"].append(reason)
             self.state["history"].append({
-                "ts_utc": datetime.now(timezone.utc).isoformat(),
+                "ts_utc": datetime.now(UTC).isoformat(),
                 "reasons": list(reasons)})
         self._save()
 
@@ -125,7 +125,7 @@ class LadderController:
         self.state["demoted"] = False
         self.state["reasons"] = []
         self.state["history"].append({
-            "ts_utc": datetime.now(timezone.utc).isoformat(),
+            "ts_utc": datetime.now(UTC).isoformat(),
             "manual_promote": True})
         self._save()
 

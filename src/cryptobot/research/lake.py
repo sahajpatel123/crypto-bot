@@ -15,7 +15,7 @@ import hashlib
 import json
 import os
 import zipfile
-from datetime import timezone
+from datetime import UTC
 from pathlib import Path
 from typing import Any
 
@@ -187,8 +187,9 @@ def _write_parquet(df: pd.DataFrame, dest: Path) -> None:
 
 def _build_one_klines(args) -> dict | None:
     dataset, iv_name, sym, zips, lake_s = args
-    import pandas as _pd
     from pathlib import Path as _P
+
+    import pandas as _pd
     lake = _P(lake_s)
     frames = [read_klines_zip(z) for z in sorted(zips)]
     if not frames:
@@ -207,8 +208,9 @@ def _build_one_klines(args) -> dict | None:
 
 def _build_one_aux(args) -> dict | None:
     dataset, sym, zips, lake_s = args
-    import pandas as _pd
     from pathlib import Path as _P
+
+    import pandas as _pd
     lake = _P(lake_s)
     reader = read_funding_zip if dataset == "fundingRate" else read_metrics_zip
     key = "calc_time" if dataset == "fundingRate" else "create_time"
@@ -293,7 +295,7 @@ def build_lake(raw_dir: str | Path, lake_dir: str | Path, *,
                 entries.append(res["entry"])
     mp = lake / "manifest.json"
     kept: list[dict] = []
-    created = datetime.now(timezone.utc).isoformat()
+    created = datetime.now(UTC).isoformat()
     if mp.exists():
         old = json.loads(mp.read_text(encoding="utf-8"))
         problems = _chain_verify(old)
@@ -310,7 +312,7 @@ def build_lake(raw_dir: str | Path, lake_dir: str | Path, *,
         "format": MANIFEST_FORMAT, "schema_version": SCHEMA_VERSION,
         "provenance": PROVENANCE, "chain_head": "genesis", "entries": [],
         "created_utc": created,
-        "updated_utc": datetime.now(timezone.utc).isoformat()}
+        "updated_utc": datetime.now(UTC).isoformat()}
     # Re-link the whole chain from sorted entries: staged builds stay
     # a single self-consistent tamper-evident record.
     for e in sorted(kept + entries, key=lambda x: x["path"]):

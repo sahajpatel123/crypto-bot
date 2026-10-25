@@ -11,7 +11,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -80,7 +80,7 @@ def ingest_fixtures(source: str | Path, dest: str | Path,
         entry = {"name": path.name, "sha256": digest,
                  "bytes": path.stat().st_size,
                  "provenance": "demo-recorded",
-                 "ingested_utc": datetime.now(timezone.utc).isoformat()}
+                 "ingested_utc": datetime.now(UTC).isoformat()}
         if target.exists() and not force:
             old = hashlib.sha256(
                 json.dumps(json.loads(target.read_text(encoding="utf-8")),
@@ -97,7 +97,7 @@ def ingest_fixtures(source: str | Path, dest: str | Path,
     index = {
         "format": "cryptobot-recorded-fixtures/1",
         "source": str(src),
-        "installed_utc": datetime.now(timezone.utc).isoformat(),
+        "installed_utc": datetime.now(UTC).isoformat(),
         "fixtures": entries,
     }
     index_path = out / "index.json"

@@ -18,10 +18,11 @@ import hashlib
 import json
 import math
 import statistics
+from collections.abc import Iterable
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 MODEL_FORMAT = "cryptobot-cost-model/2"
 
@@ -101,7 +102,7 @@ def fit_cost_model(samples: list[FillSample], *,
     model = {
         "format": MODEL_FORMAT,
         "version": 0,
-        "created_utc": datetime.now(timezone.utc).isoformat(),
+        "created_utc": datetime.now(UTC).isoformat(),
         "source": source,
         "samples": len(samples),
         "days": len({s.day for s in samples if s.day}) or 1,

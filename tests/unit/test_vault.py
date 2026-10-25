@@ -93,7 +93,7 @@ def test_tampered_registry_and_chunk_are_detected(tmp_path):
     from cryptobot.data.vault import Vault
 
     vault = Vault(tmp_path / "vault")
-    chunk = vault.seal_chunk(_chunk(tmp_path / "d.gz", [{"x": 1}]))
+    vault.seal_chunk(_chunk(tmp_path / "d.gz", [{"x": 1}]))
     registry = json.loads((tmp_path / "vault" / "registry.json").read_text())
     registry["entries"][0]["records"] = 999
     (tmp_path / "vault" / "registry.json").write_text(

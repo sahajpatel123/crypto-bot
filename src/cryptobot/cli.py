@@ -1324,7 +1324,9 @@ def cmd_verdict(args: argparse.Namespace) -> int:
     if getattr(args, "holdout_screen", False):
         return _cmd_verdict_holdout(args)
     from cryptobot.research.invalidation import (
-        load_chain, sibling_chain, verdict_consumption,
+        load_chain,
+        sibling_chain,
+        verdict_consumption,
     )
     prior = sibling_chain(getattr(args, "out", None))
     if prior is not None:
@@ -1586,7 +1588,9 @@ def cmd_gate(args: argparse.Namespace) -> int:
     provenance = str(verdict.get("data_provenance", "UNKNOWN")).upper()
     auto_prov = str(autopilot.get("provenance", "UNKNOWN")).upper()
     from cryptobot.research.invalidation import (
-        load_chain, sibling_chain, verdict_consumption,
+        load_chain,
+        sibling_chain,
+        verdict_consumption,
     )
     inv_arg = getattr(args, "invalidations_json", None)
     inv_path = Path(inv_arg) if inv_arg else sibling_chain(
@@ -1767,8 +1771,7 @@ def cmd_demo_drill(args: argparse.Namespace) -> int:
 
 def cmd_recorder(args: argparse.Namespace) -> int:
     """Standalone public-data recorder: start|stop|status|verify (F3.6)."""
-    from cryptobot.market_data.live_recorder import (
-        RecorderConfig, integrity_report, run_recorder)
+    from cryptobot.market_data.live_recorder import RecorderConfig, integrity_report, run_recorder
 
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
@@ -1857,8 +1860,12 @@ def cmd_vault(args: argparse.Namespace) -> int:
 def cmd_calibrate(args: argparse.Namespace) -> int:
     """F2.2: fit a versioned, monotonic cost model from recorded fills."""
     from cryptobot.research.calibration import (
-        fit_cost_model, load_model, parse_fills, update_cost_model,
-        write_model)
+        fit_cost_model,
+        load_model,
+        parse_fills,
+        update_cost_model,
+        write_model,
+    )
 
     rows = [json.loads(line) for line in Path(args.fills).read_text(
         encoding="utf-8").splitlines() if line.strip()]
@@ -1993,7 +2000,8 @@ def _hypothesis_rows() -> list[dict]:
 
 def cmd_adjudicate(args: argparse.Namespace) -> int:
     """Idempotent project decision. Does not write a gate or arm file."""
-    from datetime import datetime, timezone
+    from datetime import datetime
+
     from cryptobot.research.adjudicate import run_adjudication
     rows = _hypothesis_rows()
     t0 = None

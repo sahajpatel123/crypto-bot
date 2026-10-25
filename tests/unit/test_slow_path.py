@@ -2,8 +2,13 @@
 from __future__ import annotations
 
 from cryptobot.research.slow_path import (
-    PortfolioLimits, apply_risk, fractional_kelly, no_trade, paper_attribute,
-    twap_slices)
+    PortfolioLimits,
+    apply_risk,
+    fractional_kelly,
+    no_trade,
+    paper_attribute,
+    twap_slices,
+)
 
 
 def test_daily_loss_flattens():

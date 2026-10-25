@@ -37,7 +37,11 @@ def _funding(symbols, idx, rate=0.0):
 
 def test_differential_vectorized_vs_event():
     from cryptobot.research.slow_backtest import (
-        CostModel, SimConfig, simulate_event, simulate_vectorized)
+        CostModel,
+        SimConfig,
+        simulate_event,
+        simulate_vectorized,
+    )
 
     daily, idx = _panel()
     funding = _funding(daily, idx, rate=0.0001)
@@ -57,8 +61,7 @@ def test_differential_vectorized_vs_event():
 
 
 def test_hand_computed_costs_and_funding():
-    from cryptobot.research.slow_backtest import (
-        CostModel, SimConfig, simulate_vectorized)
+    from cryptobot.research.slow_backtest import CostModel, SimConfig, simulate_vectorized
 
     daily, idx = _panel(symbols=("A",), days=12, seed=1, drift=0.0)
     daily["A"]["quote_volume"] = 1e12  # impact -> 0, slip floor binds
@@ -85,8 +88,7 @@ def test_hand_computed_costs_and_funding():
 
 
 def test_min_notional_drops_dust_loudly():
-    from cryptobot.research.slow_backtest import (
-        SimConfig, simulate_vectorized)
+    from cryptobot.research.slow_backtest import SimConfig, simulate_vectorized
 
     daily, idx = _panel(symbols=("A",), days=10)
     r = simulate_vectorized({idx[0]: {"A": 0.003}}, daily,
@@ -97,8 +99,7 @@ def test_min_notional_drops_dust_loudly():
 
 
 def test_step_flooring_and_leverage_cap():
-    from cryptobot.research.slow_backtest import (
-        SimConfig, simulate_vectorized)
+    from cryptobot.research.slow_backtest import SimConfig, simulate_vectorized
 
     daily, idx = _panel(symbols=("A", "B"), days=10)
     for col in ("open", "high", "low", "close"):
@@ -114,8 +115,7 @@ def test_step_flooring_and_leverage_cap():
 
 
 def test_delisting_exits_at_last_close():
-    from cryptobot.research.slow_backtest import (
-        SimConfig, simulate_vectorized)
+    from cryptobot.research.slow_backtest import SimConfig, simulate_vectorized
 
     daily, idx = _panel(symbols=("A", "B"), days=40)
     daily["B"] = daily["B"].iloc[:30].reset_index(drop=True)  # delists day 30
@@ -127,8 +127,7 @@ def test_delisting_exits_at_last_close():
 
 
 def test_liq_proxy_force_closes():
-    from cryptobot.research.slow_backtest import (
-        SimConfig, simulate_vectorized)
+    from cryptobot.research.slow_backtest import SimConfig, simulate_vectorized
 
     daily, idx = _panel(symbols=("A",), days=10)
     daily["A"].loc[:, ["open", "high", "low", "close"]] = 100.0
@@ -153,8 +152,7 @@ def test_capital_sweep_reports_feasibility():
 
 
 def test_shift_earlier_improves_later_degrades():
-    from cryptobot.research.slow_backtest import (
-        SimConfig, shift_targets, simulate_vectorized)
+    from cryptobot.research.slow_backtest import SimConfig, shift_targets, simulate_vectorized
 
     idx = pd.date_range("2023-01-01", periods=60, freq="D", tz="UTC")
     closes = 100.0 * (1.002 ** np.arange(60))  # pure drift, zero noise
@@ -173,8 +171,7 @@ def test_shift_earlier_improves_later_degrades():
 
 
 def test_label_shuffle_kills_timing_edge():
-    from cryptobot.research.slow_backtest import (
-        SimConfig, shuffle_labels, simulate_vectorized)
+    from cryptobot.research.slow_backtest import SimConfig, shuffle_labels, simulate_vectorized
 
     # Planted regime: days 100-130 drift +2%/day, else flat + noise.
     rng = np.random.default_rng(5)
@@ -199,8 +196,7 @@ def test_label_shuffle_kills_timing_edge():
 
 
 def test_sharpe3_autoflag():
-    from cryptobot.research.slow_backtest import (
-        SimConfig, simulate_vectorized)
+    from cryptobot.research.slow_backtest import SimConfig, simulate_vectorized
 
     daily, idx = _panel(symbols=("A",), days=60, seed=9, drift=0.05)
     targets = {d: {"A": 1.0} for d in idx}
@@ -211,8 +207,7 @@ def test_sharpe3_autoflag():
 
 
 def test_missing_keys_flatten_on_rebalance_dates():
-    from cryptobot.research.slow_backtest import (
-        SimConfig, simulate_event, simulate_vectorized)
+    from cryptobot.research.slow_backtest import SimConfig, simulate_event, simulate_vectorized
 
     daily, idx = _panel(symbols=("A", "B"), days=20)
     fund = _funding(("A", "B"), idx)
@@ -225,8 +220,7 @@ def test_missing_keys_flatten_on_rebalance_dates():
 
 
 def test_liq_triggers_on_wick():
-    from cryptobot.research.slow_backtest import (
-        SimConfig, simulate_vectorized)
+    from cryptobot.research.slow_backtest import SimConfig, simulate_vectorized
 
     daily, idx = _panel(symbols=("A",), days=10)
     daily["A"].loc[:, ["open", "close"]] = 100.0
@@ -240,8 +234,7 @@ def test_liq_triggers_on_wick():
 
 
 def test_turnover_gate():
-    from cryptobot.research.slow_backtest import (
-        SimConfig, check_turnover, simulate_vectorized)
+    from cryptobot.research.slow_backtest import SimConfig, check_turnover, simulate_vectorized
 
     daily, idx = _panel(symbols=("A",), days=60)
     churn = {d: {"A": 0.5 if i % 2 == 0 else -0.5}
@@ -254,7 +247,11 @@ def test_turnover_gate():
 
 def test_differential_with_stops_and_spot():
     from cryptobot.research.slow_backtest import (
-        CostModel, SimConfig, simulate_event, simulate_vectorized)
+        CostModel,
+        SimConfig,
+        simulate_event,
+        simulate_vectorized,
+    )
 
     daily, idx = _panel(symbols=("A",), days=20, seed=13, drift=-0.01)
     hrs = pd.date_range("2023-01-01", periods=20 * 24, freq="h", tz="UTC")
@@ -277,7 +274,12 @@ def test_index_parity_with_dict_paths():
     import pandas as pd
 
     from cryptobot.research.slow_backtest import (
-        MarketIndex, _bar_on, _settle, _settle_window, _trail_stats)
+        MarketIndex,
+        _bar_on,
+        _settle,
+        _settle_window,
+        _trail_stats,
+    )
 
     rng = np.random.default_rng(4)
     idx = pd.date_range("2023-01-01", periods=60, freq="D", tz="UTC")
@@ -310,8 +312,7 @@ def test_index_parity_with_dict_paths():
 
 
 def test_stops_by_day_override_static_per_date():
-    from cryptobot.research.slow_backtest import (
-        SimConfig, simulate_event, simulate_vectorized)
+    from cryptobot.research.slow_backtest import SimConfig, simulate_event, simulate_vectorized
 
     daily, idx = _panel(symbols=("A",), days=10)
     daily["A"].loc[:, ["open", "high", "low", "close"]] = 100.0
@@ -335,8 +336,7 @@ def test_stops_by_day_override_static_per_date():
 
 
 def test_liq_fills_at_wick_not_close():
-    from cryptobot.research.slow_backtest import (
-        SimConfig, simulate_vectorized)
+    from cryptobot.research.slow_backtest import SimConfig, simulate_vectorized
 
     daily, idx = _panel(symbols=("A",), days=10)
     daily["A"].loc[:, ["open", "high", "low", "close"]] = 100.0
@@ -353,8 +353,7 @@ def test_liq_fills_at_wick_not_close():
 
 
 def test_stopped_position_skips_later_settlements():
-    from cryptobot.research.slow_backtest import (
-        SimConfig, simulate_event, simulate_vectorized)
+    from cryptobot.research.slow_backtest import SimConfig, simulate_event, simulate_vectorized
 
     daily, idx = _panel(symbols=("A",), days=4)
     daily["A"].loc[:, ["open", "high", "low", "close"]] = 100.0

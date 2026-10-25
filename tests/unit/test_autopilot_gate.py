@@ -4,10 +4,8 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
-
-import pytest
 
 from cryptobot import cli
 from cryptobot.research.autopilot import Autopilot
@@ -65,7 +63,7 @@ def test_autopilot_full_path_and_idempotence(tmp_path):
     # Fast-forward the paper clock (test-only state edit).
     state = bot.read_state("H1")
     state["paper_started_utc"] = (
-        datetime.now(timezone.utc) - timedelta(days=15)).isoformat()
+        datetime.now(UTC) - timedelta(days=15)).isoformat()
     bot.state_path("H1").write_text(json.dumps(state))
     _write(root / "paper" / "H1.json",
            {"trades": _trades(100, 8.0), "tolerance_bps": 5.0})
@@ -120,7 +118,7 @@ def _gate_artifacts(tmp_path: Path, *, synthetic=False):
     config = tmp_path / "h1.toml"
     config.write_text("x=1\n")
     cfg_sha = hashlib.sha256(config.read_bytes()).hexdigest()[:16]
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
     verdict = _sign({"verdict": "PASS", "data_provenance": "SEALED-CONFIRM",
                      "strategies": ["H1"],
                      "hashes": {"config_sha256_16": cfg_sha,
@@ -169,7 +167,7 @@ def test_gate_go_on_complete_evidence_and_rejects_synthetic(tmp_path):
 
 def test_gate_rejects_stale_cost_and_missing_heartbeat(tmp_path):
     paths = _gate_artifacts(tmp_path)
-    old = (datetime.now(timezone.utc) - timedelta(days=40)).isoformat()
+    old = (datetime.now(UTC) - timedelta(days=40)).isoformat()
     _write(Path(paths["cost"]), {"version": 1, "created_utc": old})
     assert _run_gate(paths, tmp_path / "g1.json") == 2
     (tmp_path / "fresh").mkdir(exist_ok=True)
@@ -212,14 +210,13 @@ def test_arm_refuses_expired_gate_even_interactive(tmp_path, monkeypatch):
     monkeypatch.setattr("sys.stdin.isatty", lambda: True)
     gate = tmp_path / "expired.json"
     _write(gate, {"gate": "GO",
-                  "expires_utc": (datetime.now(timezone.utc)
+                  "expires_utc": (datetime.now(UTC)
                                   - timedelta(hours=1)).isoformat()})
     assert cli.cmd_arm(_arm_args(tmp_path, gate)) == 2
     assert not (tmp_path / "armed.json").exists()
 
 
 def test_gate_family_b_screen_pass_holdout_coupling(tmp_path):
-    import shutil
 
     paths = _gate_artifacts(tmp_path)
     verdict = json.loads(Path(paths["verdict"]).read_text())

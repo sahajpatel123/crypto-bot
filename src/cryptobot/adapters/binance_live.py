@@ -261,6 +261,18 @@ def _side_venue(side: str) -> str:
     return side
 
 
+def _unrealized(view: dict) -> float | None:
+    """totalUnrealizedProfit from an account view, or None when absent.
+
+    None is not zero: a missing leg leaves the equity figure unknowable,
+    and the loss cap must fall back rather than assume a flat book.
+    """
+    try:
+        return float(view["totalUnrealizedProfit"])
+    except (KeyError, TypeError, ValueError):
+        return None
+
+
 def _local_state(venue_status: str) -> str:
     return {"NEW": "open", "PARTIALLY_FILLED": "partial", "FILLED": "filled",
             "CANCELED": "cancelled", "CANCELLED": "cancelled",
@@ -1210,11 +1222,19 @@ class BinanceLiveEngine:
                     raise ValueError(
                         f"venue reports {client_order_id} never existed "
                         f"but fills were adopted: reconcile manually") from None
-                self._states[client_order_id] = "void"
-                self._journal_transition("cancel-void", client_order_id, {})
-                self._maybe_emit_terminal(client_order_id, symbol,
-                                          "cancel-void:venue-never-saw")
-                return
+                # -2013 also answers for an id the venue has not indexed yet
+                # (or one whose fills are not adopted yet). Voiding here maps
+                # a live order to CANCELLED with zero fill, which lets the
+                # reservation be released and the bot re-enter while the
+                # order is still working. Journal CANCEL_UNKNOWN and keep
+                # blocking; lookup grace-proves a real void.
+                self._states[client_order_id] = "CANCEL_UNKNOWN"
+                self._journal_transition(
+                    "cancel-unknown", client_order_id,
+                    {"reason": "venue-not-found", "code": -2013})
+                raise UnknownOutcomeError(
+                    client_order_id,
+                    "cancel -2013: venue has not indexed the id yet") from None
             raise
         except VenueHttpError as exc:
             if exc.status in UNKNOWN_HTTP_STATUSES:
@@ -1638,7 +1658,8 @@ class BinanceLiveEngine:
                 margin_balance_usdt=(
                     float(margin_raw) if margin_raw is not None else None),
                 positions=positions,
-                asof_utc=now, complete=False)
+                asof_utc=now, complete=False,
+                unrealized_pnl_usdt=_unrealized(view))
             self._store_account_cache(snap, view)
             return snap
         try:
@@ -1653,7 +1674,8 @@ class BinanceLiveEngine:
             available_margin_usdt=available,
             margin_balance_usdt=margin,
             positions=positions,
-            asof_utc=now, complete=complete)
+            asof_utc=now, complete=complete,
+            unrealized_pnl_usdt=_unrealized(view))
         self._store_account_cache(snap, view)
         return snap
 
@@ -1885,25 +1907,87 @@ class BinanceLiveEngine:
         # A live entry can still fill its remainder. Legs are reduce-only, so
         # sizing them to the whole entry covers fills that land after attach
         # instead of leaving the still-fillable portion naked; a terminal
-        # entry retires its remainder and keeps the filled size.
+        # entry retires its remainder and keeps the filled size. The venue
+        # position can still be smaller than the order (partial fill not yet
+        # adopted), and a reduce-only leg bigger than it is refused -2022.
         live = str(status.state) not in TERMINAL_STATES
         cover_qty = status.qty if live and status.qty > 1e-12 \
             else status.filled_qty
+        venue_qty = self._venue_position_qty(symbol)
+        if venue_qty is not None and venue_qty > 0:
+            cover_qty = min(cover_qty, venue_qty)
         protect_qty = floor_to_step(min(cover_qty, status.qty), step)
         if protect_qty <= 0:
             raise ValueError(f"protect qty below LOT_SIZE step for {symbol}")
         side = "SELL" if self._venue_side_of(entry_client_id) == "BUY" else "BUY"
-        legs = [self.submit(EngineOrder(
-            instrument=symbol, side=side, qty=protect_qty,
-            kind="STOP_MARKET", stop_price=stop_price, reduce_only=True,
-            reservation_id=status.reservation_id, role="stop"))]
+        legs = [self._submit_protection_leg(
+            symbol, side, "STOP_MARKET", stop_price, protect_qty,
+            status, step, "stop")]
         if target_price is not None:
-            legs.append(self.submit(EngineOrder(
-                instrument=symbol, side=side, qty=protect_qty,
-                kind="TAKE_PROFIT_MARKET", stop_price=target_price,
-                reduce_only=True, reservation_id=status.reservation_id,
-                role="target")))
+            legs.append(self._submit_protection_leg(
+                symbol, side, "TAKE_PROFIT_MARKET", target_price,
+                protect_qty, status, step, "target"))
         return legs
+
+    def _submit_protection_leg(self, symbol: str, side: str, kind: str,
+                               price: float, qty: float, status: Any,
+                               step: float, role: str) -> str:
+        """One reduce-only leg, clamped and retried once on -2022.
+
+        -2022 means the reduce-only leg exceeds the live position (a fill
+        the adapter has not adopted yet). Propagating it makes the Session
+        count protection attempts and eventually market-flatten an entry
+        that is merely partially filled, so clamp to the venue position and
+        retry exactly once; anything else still surfaces.
+        """
+        order = EngineOrder(
+            instrument=symbol, side=side, qty=qty, kind=kind,
+            stop_price=price, reduce_only=True,
+            reservation_id=status.reservation_id, role=role)
+        try:
+            return self.submit(order)
+        except VenueRejectedError as exc:
+            if exc.code != -2022:
+                raise
+            venue_qty = self._venue_position_qty(symbol, fresh=True)
+            if venue_qty is None:
+                raise
+            clamped = floor_to_step(min(qty, venue_qty), step)
+            if clamped <= 1e-12 or clamped >= qty - 1e-12:
+                raise
+            self._journal("protection-clamp", {
+                "symbol": symbol, "role": role, "requested": qty,
+                "venue_qty": venue_qty, "clamped": clamped,
+                "reason": "-2022"})
+            return self.submit(EngineOrder(
+                instrument=symbol, side=side, qty=clamped, kind=kind,
+                stop_price=price, reduce_only=True,
+                reservation_id=status.reservation_id, role=role))
+
+    def _venue_position_qty(self, symbol: str, *,
+                            fresh: bool = False) -> float | None:
+        """Absolute venue position size for a symbol, or None when unknown.
+
+        Defaults to the cached account snapshot so sizing does not add a
+        REST read to every attach; ``fresh`` is for the -2022 retry path,
+        where the cached view is exactly what was wrong.
+        """
+        snap = None if fresh else self._account_cache
+        if fresh:
+            try:
+                snap = self.account_snapshot()
+            except VenueHttpError:
+                return None
+        if snap is None or not getattr(snap, "complete", False):
+            return None
+        sym = symbol.upper()
+        for pos in getattr(snap, "positions", ()) or ():
+            if str(getattr(pos, "instrument", "")).upper() == sym:
+                try:
+                    return abs(float(getattr(pos, "qty", 0.0) or 0.0))
+                except (TypeError, ValueError):
+                    return None
+        return 0.0
 
     @property
     def _exit_only(self) -> bool:

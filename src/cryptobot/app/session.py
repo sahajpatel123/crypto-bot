@@ -726,13 +726,12 @@ class Session:
                 mark_age = max(
                     0.0, (self.now_utc() - _ts).total_seconds() * 1000.0)
         # Real money: the daily-loss cap and equity floor must measure the
-        # venue's own equity. Our ledger is a reconstruction; one missed or
-        # duplicated fill and the cap would police a fiction while real money
-        # moves. In prod the venue figure wins whenever it is readable; a
-        # failed read leaves the local number (and the audit trail says so).
-        venue_equity = self._venue_equity()
-        net_liq = (venue_equity if venue_equity is not None
-                   else self.ledger.net_liquidation(mark, close_bps))
+        # venue's own equity, marked to market. Our ledger is a
+        # reconstruction; one missed or duplicated fill and the cap would
+        # police a fiction while real money moves. In prod the venue figure
+        # wins whenever it is readable; a failed read leaves the local
+        # number (and the audit trail says so).
+        net_liq = self._equity_for_cap(mark, close_bps)
         return AccountSnapshot(
             reconciled_equity=self.ledger.marked_equity(mark),
             marked_equity=self.ledger.marked_equity(mark),
@@ -746,11 +745,14 @@ class Session:
             mark_age_ms=mark_age)
 
     def _venue_equity(self) -> float | None:
-        """Wallet equity from the venue, or None when it cannot be trusted.
+        """Marked-to-market venue equity, or None when it cannot be trusted.
 
         Only the prod route has a venue to ask; paper/emulator runs keep the
-        ledger figure. An incomplete or non-finite snapshot is treated as
-        unknown rather than silently equated with the local book.
+        ledger figure. The figure must include unrealized PnL
+        (totalMarginBalance); the wallet leg alone means a position bleeding
+        through the emergency threshold never moves the number the cap
+        polices. An incomplete or non-finite snapshot is treated as unknown
+        rather than silently equated with the local book.
         """
         if getattr(self.config, "mode", "paper") != "prod":
             return None
@@ -761,9 +763,23 @@ class Session:
             acct = snap_fn()
         except Exception:  # noqa: BLE001 - 429/timeout => unknown
             return None
-        if acct is None or getattr(acct, "incomplete", False):
+        # ``complete`` is the adapter's flag (False when a balance leg is
+        # missing or a position row failed to parse). Defaulting it to False
+        # keeps this fail-closed for snapshots that cannot say.
+        if acct is None or not getattr(acct, "complete", False):
             return None
-        equity = getattr(acct, "wallet_equity_usdt", None)
+        equity = getattr(acct, "margin_balance_usdt", None)
+        if equity is None:
+            # Older snapshots carry no margin leg: wallet + unrealized is the
+            # same quantity, and unknown unrealized stays unknown.
+            wallet = getattr(acct, "wallet_equity_usdt", None)
+            unreal = getattr(acct, "unrealized_pnl_usdt", None)
+            if wallet is None or unreal is None:
+                return None
+            try:
+                equity = float(wallet) + float(unreal)
+            except (TypeError, ValueError):
+                return None
         try:
             equity = float(equity)
         except (TypeError, ValueError):
@@ -771,6 +787,19 @@ class Session:
         if equity <= 0 or equity != equity or equity in (float("inf"),):
             return None
         return equity
+
+    def _equity_for_cap(self, mark: float, close_bps: float) -> float:
+        """The one equity figure the loss cap and the day roll both use.
+
+        They must not disagree on units: a day-start baseline in marked
+        ledger units compared against a venue margin-balance figure turns a
+        mid-flight day roll into a phantom PnL the size of the open
+        position's unrealized.
+        """
+        venue = self._venue_equity()
+        if venue is not None:
+            return venue
+        return self.ledger.net_liquidation(mark, close_bps)
 
     def _inflight_exposure_usdt(self, mark: float) -> float:
         """One budget across pending/open/unresolved exposure (V-008).
@@ -1432,8 +1461,7 @@ class Session:
                 except NotImplementedError:
                     pre_id = self.engine.submit(order)
         except Exception as exc:  # noqa: BLE001 — classify, never die
-            from cryptobot.adapters.binance_live import (
-                UnknownOutcomeError, classify_exception)
+            from cryptobot.adapters.binance_live import UnknownOutcomeError, classify_exception
             # A1/A2 (adversarial review): the old narrow catch let an
             # UNKNOWN submit or a deterministic reject escape the run,
             # leaving an unsupervised venue order and a leaked hold.
@@ -1479,10 +1507,8 @@ class Session:
                 self._save_position_shell()
                 return
             if isinstance(exc, (ValueError, PermissionError, OverflowError)):
-                try:
+                with contextlib.suppress(ValueError, KeyError):
                     self.store.update_command(cmd_id, "failed")
-                except (ValueError, KeyError):
-                    pass
                 self.policy.release(verdict.reservation_id)
                 reason = f"execution:submit-rejected:{type(exc).__name__}"
                 self._note_reject(reason, intent.strategy, intent.instrument,
@@ -1494,10 +1520,8 @@ class Session:
                 return
             policy = classify_exception(exc)
             if policy.action in ("reject_intent", "retry_backoff"):
-                try:
+                with contextlib.suppress(ValueError, KeyError):
                     self.store.update_command(cmd_id, "failed")
-                except (ValueError, KeyError):
-                    pass
                 self.policy.release(verdict.reservation_id)
                 reason = f"execution:submit-rejected:{type(exc).__name__}"
                 self._note_reject(reason, intent.strategy, intent.instrument,
@@ -2295,6 +2319,7 @@ class Session:
             return
         for cmd in pending:
             eid = cmd.get("engine_client_id")
+            relinked = False
             if not eid:
                 eid = self._relink_command(cmd, pending)
                 if not eid:
@@ -2302,9 +2327,7 @@ class Session:
                         with contextlib.suppress(ValueError, KeyError):
                             self.store.update_command(cmd["cmd_id"], "unknown")
                     continue
-                with contextlib.suppress(ValueError, KeyError):
-                    self.store.update_command(cmd["cmd_id"], "submitted",
-                                              engine_client_id=eid)
+                relinked = True
                 cmd["engine_client_id"] = eid
                 with contextlib.suppress(ValueError, KeyError):
                     self.store.checkpoint(self.run_id, "command-relinked",
@@ -2313,6 +2336,13 @@ class Session:
                                            "reservation_id":
                                                (cmd.get("payload") or {}).get(
                                                    "reservation_id")})
+                # Re-linking proves WHICH order the row refers to, not what
+                # happened to it: the order may still be working. Until its
+                # state is terminal by id, keep the row blocking admission
+                # (and resume blocked) exactly like an id-less row.
+                with contextlib.suppress(ValueError, KeyError):
+                    self.store.update_command(cmd["cmd_id"], "unknown",
+                                              engine_client_id=eid)
             real = eid
             try:
                 resolved = self.engine.resolve(eid)
@@ -2327,6 +2357,13 @@ class Session:
                     "filled", "rejected", "cancelled", "expired"):
                 with contextlib.suppress(ValueError, KeyError):
                     self.store.update_command(cmd["cmd_id"], "resolved")
+            elif relinked:
+                with contextlib.suppress(ValueError, KeyError):
+                    self.store.checkpoint(self.run_id, "command-relink-unproven",
+                                          {"cmd_id": cmd["cmd_id"],
+                                           "engine_client_id": eid,
+                                           "state": getattr(status, "state",
+                                                            None)})
 
     def _fill_reservation(self, client_order_id: str) -> str | None:
         """Reservation a fill books under, or None when foreign/unknown.
@@ -3870,14 +3907,18 @@ class Session:
     def _roll_day_if_needed(self) -> None:
         today = accounting_date(self.now_utc()).isoformat()
         if self._day is not None and today != self._day:
-            marked = self.ledger.marked_equity(self._reference_mark())
-            self.policy.reconcile_day(marked, self.ledger.total_flows())
+            # Same accessor as _snapshot_account: the day-start baseline and
+            # the running figure compared against it must share units, or an
+            # open position's unrealized becomes phantom day PnL.
+            equity = self._equity_for_cap(self._reference_mark(),
+                                          self.config.taker_bps)
+            self.policy.reconcile_day(equity, self.ledger.total_flows())
             self._release_all_exit_only("day-reconciled")
             if not self._exit_only_reasons:
                 self._set_state("ready", "day-reconciled")
             self._sample_equity("day-roll", force=True)
             self.store.checkpoint(self.run_id, "day-roll",
-                                  {"day": today, "marked": marked})
+                                  {"day": today, "equity": equity})
         self._day = today
 
     def _refresh_filters_if_stale(self) -> None:
@@ -4380,7 +4421,22 @@ class Session:
         try:
             snap = self._snapshot_account()
         except Exception:  # noqa: BLE001 - unknown account, not zero loss
-            return None
+            # Never fail open: returning None here discarded the cached
+            # snapshot and monitor_tick(account=None) skips halt/floor/mark
+            # checks entirely, so a blocked REST call suspended loss
+            # monitoring exactly when it mattered. Latch a loud reason and
+            # keep evaluating stops on the last snapshot we could trust;
+            # staleness is bounded by the policy's mark-age gate.
+            self._halt_entries("account:unreadable")
+            self._set_state("halted", "account:unreadable")
+            return cached
+        self._release_exit_only("account:unreadable")
+        if self._exit_only_reasons:
+            # Engines that keep one bool: re-assert a surviving reason so a
+            # heal cannot clear another subsystem's halt.
+            setter = getattr(self.engine, "set_exit_only", None)
+            if callable(setter):
+                setter(True, sorted(self._exit_only_reasons)[0])
         self._supervise_snap = snap
         self._supervise_snap_at = now_mono
         return snap

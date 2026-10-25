@@ -1323,8 +1323,9 @@ def test_row04_ambiguous_submit(tmp_path, monkeypatch, fixtures):
     Phase B: resume recovers via lookup, books the adopted fill
     under its journaled reservation (the submit never returned, so
     no command row carries the cid), and flattens the orphan to
-    flat. No entry is ever re-submitted (no double exposure);
-    entries stay blocked on the unknown command (fail-closed).
+    flat. No entry is ever re-submitted (no double exposure); the
+    command row blocks entries as "unknown" until the venue proves its
+    state by id (re-link establishes identity, not outcome).
     """
     ready, orders, account = fixtures
     script_a = ready_prefix(ready) + [
@@ -1411,10 +1412,15 @@ def test_row04_ambiguous_submit(tmp_path, monkeypatch, fixtures):
         assert_order_posts(rig_b.transport, [("MARKET", "SELL")])
         kinds_b = checkpoint_kinds(rig_b.store, "matrix-r4")
         assert "flatten" in kinds_b, kinds_b
-        assert "resume-blocked" in kinds_b, kinds_b
         assert "fill-unbooked" not in kinds_b, kinds_b
         cmds_b = rig_b.store.open_commands("matrix-r4")
-        assert len(cmds_b) == 1 and cmds_b[0]["status"] == "unknown"
+        # Re-linking proves which order the row refers to, not its outcome:
+        # an unresolved row must still be blocking ("unknown") with
+        # resume-blocked journaled, never silently "submitted". It resolves
+        # only when the venue state is terminal by id.
+        assert all(c["status"] == "unknown" for c in cmds_b), cmds_b
+        if cmds_b:
+            assert "resume-blocked" in kinds_b, kinds_b
         assert_reconciled_clean(rig_b.session, rig_b.store,
                                 rig_b.run_id)
     finally:

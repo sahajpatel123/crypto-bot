@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -85,7 +85,7 @@ def test_b_forward_paper_compare_gate_ready(tmp_path):
             "metrics": {"point_sharpe": 0.9}})
     bot.run_once()
     bot.run_once()
-    started = (datetime.now(timezone.utc) - timedelta(days=61)).isoformat()
+    started = (datetime.now(UTC) - timedelta(days=61)).isoformat()
     _write(bot.root / "forward" / "B1.json",
            {"paper_started_utc": started, "rebalances": 40,
             "realized_sharpe": 0.6, "max_dd": 0.2, "turnover": 3.0,
@@ -103,7 +103,7 @@ def test_b_forward_incomplete_blocks(tmp_path):
             "metrics": {"point_sharpe": 0.9}})
     bot.run_once()
     bot.run_once()
-    started = (datetime.now(timezone.utc) - timedelta(days=10)).isoformat()
+    started = (datetime.now(UTC) - timedelta(days=10)).isoformat()
     _write(bot.root / "forward" / "B1.json",
            {"paper_started_utc": started, "rebalances": 40,
             "realized_sharpe": 0.6, "max_dd": 0.2, "turnover": 3.0,
@@ -127,7 +127,7 @@ def test_family_isolation(tmp_path):
 
 
 def test_b_synthetic_dev_refused(tmp_path):
-    bot = _to_frozen(tmp_path)  # frozen first...
+    _to_frozen(tmp_path)  # frozen first...
     # ...then a synthetic forward artifact is refused (regression shape:
     # use a fresh hypothesis to test the dev guard instead).
     bot2 = _bot(tmp_path / "r2")

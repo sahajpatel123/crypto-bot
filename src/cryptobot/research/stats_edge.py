@@ -337,10 +337,8 @@ def anchored_yearly_folds(index: pd.DatetimeIndex, test_years: list[int], *,
     year. Train ends ``embargo_days`` before the year starts.
     """
     index = pd.DatetimeIndex(index)
-    if index.tz is None:
-        index = index.tz_localize("UTC")
-    else:
-        index = index.tz_convert("UTC")
+    index = (index.tz_localize("UTC") if index.tz is None
+             else index.tz_convert("UTC"))
     start = pd.Timestamp(train_start, tz="UTC")
     folds: list[Fold] = []
     for year in test_years:
