@@ -156,11 +156,14 @@ def classify_exception(exc: BaseException, *,
 class VenueHttpError(Exception):
     """Transport/HTTP failure. ``status`` 0 = timeout/socket error."""
 
-    def __init__(self, status: int, code: int | None, msg: str) -> None:
+    def __init__(self, status: int, code: int | None, msg: str, *,
+                 retry_after_s: float | None = None) -> None:
         super().__init__(f"venue http {status} code={code}: {msg}")
         self.status = status
         self.code = code
         self.msg = msg
+        # Seconds the venue asked us to stay away (Retry-After on 429/418).
+        self.retry_after_s = retry_after_s
 
 
 class VenueRejectedError(VenueHttpError):
@@ -249,8 +252,12 @@ class UrllibTransport:
                 payload = json.loads(exc.read().decode("utf-8"))
             except Exception:
                 payload = {}
+            retry_after: float | None = None
+            with contextlib.suppress(TypeError, ValueError):
+                retry_after = float(exc.headers.get("Retry-After", ""))
             raise VenueHttpError(
-                exc.code, payload.get("code"), str(payload.get("msg", exc))) from None
+                exc.code, payload.get("code"), str(payload.get("msg", exc)),
+                retry_after_s=retry_after) from None
         except (TimeoutError, urllib.error.URLError, OSError) as exc:
             raise VenueHttpError(0, None, f"transport: {exc}") from None
 
@@ -611,8 +618,16 @@ class BinanceLiveEngine:
         return self._now_ms() < self._rate_limited_until_ms
 
     def _note_rate_limit(self, exc: VenueHttpError) -> RateLimitedError:
+        # Honour the venue's own Retry-After (a 418 IP ban can last minutes
+        # to days; probing inside it extends it). The configured floor still
+        # applies, a window is never shortened by a later, smaller hint, and
+        # the hint is capped at Binance's 3-day maximum ban.
         backoff = self._rate_limit_backoff_s
-        self._rate_limited_until_ms = self._now_ms() + int(backoff * 1000)
+        hint = getattr(exc, "retry_after_s", None)
+        if hint is not None and hint > backoff:
+            backoff = min(float(hint), 3 * 86400.0)
+        until = self._now_ms() + int(backoff * 1000)
+        self._rate_limited_until_ms = max(self._rate_limited_until_ms, until)
         self._journal("rate-limited",
                       {"status": exc.status, "code": exc.code,
                        "backoff_s": backoff})
@@ -908,6 +923,17 @@ class BinanceLiveEngine:
                                      {"order_id": view.get("orderId"),
                                       "state": self._states[cid]})
         self._orders_cache = None
+        # A FILLED acknowledgement can arrive before its websocket TRADE
+        # event. Mark the cumulative execution as a reconciliation gap so a
+        # later stream reconnect revisits this terminal order instead of
+        # skipping it forever if the event was lost.
+        if (not is_algo and self._states.get(cid) == "filled"
+                and self._listen_key is None):
+            # No user stream was open at acknowledgement time: there is no
+            # delivery path for the FILLED event, so reconnect must reconcile.
+            executed = float(view.get("executedQty", 0.0) or 0.0)
+            if executed > 0:
+                self._reconcile_fill_gap(cid, executed)
         self._maybe_emit_terminal(cid, symbol, "submitted-terminal")
         return cid
 
@@ -1508,6 +1534,15 @@ class BinanceLiveEngine:
                 "no user-stream host mapped for base_url "
                 f"{self._base_url!r}")
         return f"{ws}/ws/{listen_key}"
+
+    def mark_stream_gap(self) -> None:
+        """Mark filled orders needing REST reconciliation after a socket gap."""
+        for cid, state in tuple(self._states.items()):
+            if state != "filled":
+                continue
+            expected = float(self._submitted_qty.get(cid, 0.0) or 0.0)
+            if expected > self._adopted_qty.get(cid, 0.0) + 1e-9:
+                self._reconcile_fill_gap(cid, expected)
 
     def stream_reconnected(self) -> None:
         """Heal a user-stream gap: look up every journaled non-terminal
