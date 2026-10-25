@@ -772,3 +772,48 @@ def test_failed_atomic_look_write_leaves_no_report(tmp_path, monkeypatch):
     with pytest.raises(OSError, match="synthetic crash"):
         fwd.score_look(root, out, 1)
     assert not (out / "C2-forward-look1.json").exists()
+
+
+def test_young_listing_is_booked_but_never_signalled_and_post_listing_gap_refuses():
+    day, nxt = DAYS[63], DAYS[64]
+    onboard = DAYS[55]
+
+    def young_fetcher():
+        fetcher = AuditFetcher()
+        for d in DAYS[:55]:
+            fetcher.closes["S11USDT"].pop(d)
+        return fetcher
+
+    fetcher = young_fetcher()
+    snapshot = _snapshot(fetcher, day, include_volume=True)
+    snapshot["symbols"]["S11USDT"]["onboard_date"] = onboard
+    row = fwd.book_day(fetcher, {}, day, snapshot=snapshot,
+                       next_snapshot=_snapshot(fetcher, nxt, close=True))
+    assert "S11USDT" in row["universe"]
+    assert "S11USDT" not in row["weights"]
+
+    fetcher = young_fetcher()
+    fetcher.missing_closes.add(("S11USDT", DAYS[58]))
+    snapshot = _snapshot(fetcher, day, include_volume=True)
+    snapshot["symbols"]["S11USDT"]["onboard_date"] = onboard
+    with pytest.raises(fwd.RefusedToBook, match="stale or partial candle history"):
+        fwd.book_day(fetcher, {}, day, snapshot=snapshot,
+                     next_snapshot=_snapshot(fetcher, nxt, close=True))
+
+
+@pytest.mark.parametrize(("onboard", "message"), [
+    (None, "listing date unavailable"),
+    (DAYS[61], "listing date is after volume window"),
+])
+def test_volume_finalization_refuses_unusable_listing_dates(tmp_path, onboard, message):
+    fetcher = AuditFetcher()
+    day = DAYS[60]
+    snapshot = _snapshot(fetcher, day)
+    snapshot["symbols"]["S11USDT"]["onboard_date"] = onboard
+    path = fwd._snapshot_path(tmp_path, day)
+    path.parent.mkdir(parents=True)
+    path.write_text(json.dumps(snapshot))
+    observed = dt.datetime.combine(dt.date.fromisoformat(DAYS[61]), dt.time(0, 5),
+                                   tzinfo=dt.UTC)
+    with pytest.raises(fwd.RefusedToBook, match=message):
+        fwd._finalize_volume_snapshot(fetcher, tmp_path, day, observed)

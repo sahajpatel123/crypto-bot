@@ -25,6 +25,8 @@ The frozen preregistration defines the weekly universe as all TRADING USD-M USDT
 
 The final review identified two remaining code issues: a 35-day listing-age filter that changed the preregistered candidate universe, and a funding wrapper that hardcoded 8-hour settlements even though the fetcher accepts other day-dividing intervals. Regression tests for both plus onboarding-aware volume history were run against the pre-fix code and failed (**3 failed**); after the fixes they pass (**3 passed**). The full focused set `tests/unit/test_forward_c2.py tests/unit/test_forward_c2_audit.py tests/unit/test_c_family_score_rounds.py` passes (**40 passed**).
 
+The final reviewer also found the young-listing history-gap branch and the volume-finalization listing-date refusals untested. Three tests now cover them; deleting or inverting each guard by hand (4 single-guard mutations: post-listing-gap refusal removed, pre-listing gap made a refusal, missing-onboard refusal removed, listing-after-window refusal removed) made the matching test fail, and the restored code passes.
+
 The earlier audit text claimed 14 deliberate guard-deletion mutations were killed, but no corresponding mutation harness or per-mutation evidence was checked in. That claim is withdrawn; the tests are regression tests, and the three review corrections above have explicit before/after results. `ruff check src tests` and `git diff --check` are the repository checks for this follow-up; CI supplies the full suite.
 
 ## Remaining limits
