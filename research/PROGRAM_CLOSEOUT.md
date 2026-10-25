@@ -194,7 +194,8 @@ frozen archive:
    B4b (90/121 forward days), C1-b4b carry (90 forward days), C2-FWD (365
    recorded days), D1 (a measurable event sample *and* a frozen `N_TRIALS`).
    The archive is seven days long, with a 4.9-day hole and only 17 chunks of
-   trade flow; it cannot substitute for any of them.
+   trade flow (operator inventory, section 1); it cannot substitute for any of
+   them.
 3. **D1 is the one line where the gate itself is shut.** Even with unlimited
    future data, the frozen DSR gate cannot emit a number while `N_TRIALS` is
    `None`, and the evaluator must fail closed
@@ -256,7 +257,8 @@ forward days (`C1-b4b-carry.md:73`–`:76`), the Family C DEV floor is ≥300 sc
 days (`C-family-daily.md:50`), and D1 needs ≥300 events and ≥100 event days
 (`D1-oi-flush-reversal.md:299`–`:300`). What the archive can honestly support:
 
-- **Data-quality and plumbing audits** on the 473 chunks: per-chunk stream
+- **Data-quality and plumbing audits** on the 473 chunks (operator inventory,
+  section 1): per-chunk stream
   coverage, the three holes, and the pre/post-fix trade-flow boundary — the same
   kind of count-only evidence `RESUME.md:276`–`:300` already records.
 - **Recorder-health bookkeeping** for C2-FWD, which its own prereg allows
@@ -282,7 +284,8 @@ program (`PROJECT_CLOSEOUT.md:34`).
   changes in this PR are this file and one appended milestone line in
   `RESUME.md`.
 - No return, P&L, expectancy, Sharpe or new statistic is computed here; every
-  figure is quoted from the named committed file.
+  figure is quoted from the named committed file, marked operator-provided
+  (section 1), or shown as arithmetic derived from quoted figures (section 6B).
 - Not verified, and not claimed: the operator's post-12:41Z machine state
   (launchd unload, STOP file, disabled jobs), the byte-level archive inventory
   (473 chunks / 98,371,791 records / ~2.4 GiB / the three holes), and the
