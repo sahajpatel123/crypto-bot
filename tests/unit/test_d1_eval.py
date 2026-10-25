@@ -10,6 +10,7 @@ from __future__ import annotations
 import datetime as dt
 import gzip
 import hashlib
+import inspect
 import json
 import math
 from pathlib import Path
@@ -236,6 +237,19 @@ def _series(symbol: str = "AAAUSDT") -> D.SymbolSeries:
 @pytest.fixture(scope="module")
 def rules() -> D.Rules:
     return D.load_rules(PREREG)
+
+
+# The frozen constant is the only legal source of a trial count. Tests that need
+# the DSR gate to evaluate set it the way R2 will -- by freezing the constant in
+# d1_trials next to its amendment -- and never by passing a number to the
+# evaluator. ``monkeypatch`` restores ``None`` when the test ends.
+FROZEN_TEST_TRIALS = 1000
+
+
+@pytest.fixture
+def frozen_trials(monkeypatch) -> int:
+    monkeypatch.setattr(d1_trials, "N_TRIALS", FROZEN_TEST_TRIALS)
+    return FROZEN_TEST_TRIALS
 
 
 def test_rules_are_the_frozen_ones(rules: D.Rules) -> None:
@@ -493,6 +507,46 @@ def test_missing_funding_is_not_booked_as_zero(rules: D.Rules) -> None:
     assert cost == 0.0
 
 
+def _long_barfill_short_funding() -> tuple[D.SymbolSeries, int, int]:
+    """Bars reach back a year, funding starts ten days before entry."""
+    item = D.SymbolSeries(symbol="AAAUSDT")
+    base = D._utc_ms(2026, 10, 18)
+    entry = base + 400 * DAY  # 400 days of bars, so first_ms looks like a year
+    item.bar_open = {base: 100.0, entry: 100.0, entry + 8 * D.HOUR_MS: 100.0}
+    item.oi = {entry: 1000.0}
+    item.funding = {entry - 10 * DAY: 0.0003}  # only ten days of settlements
+    item.first_ms = base  # the bar/OI clock, not the funding clock
+    item.last_ms = entry + DAY
+    return item, entry, entry + 8 * D.HOUR_MS
+
+
+def test_funding_eligibility_uses_the_funding_clock_not_the_bar_clock(
+        rules: D.Rules) -> None:
+    """Prereg: without a full trailing year of *funding* the symbol is
+    ineligible at entry. A year of klines plus weeks of funding is not one."""
+    item, entry, exit_ms = _long_barfill_short_funding()
+    assert item.first_ms <= entry - 365 * DAY  # the masked, pre-fix reading
+    assert item.funding_first_ms > entry - 365 * DAY
+    cost, stress, imputed, eligible = D._funding_cost(item, entry, exit_ms, +1, rules)
+    assert imputed is True
+    assert eligible is False, "a short funding history must not impute a year"
+    assert (cost, stress) == (0.0, 0.0)
+
+
+def test_mutation_funding_eligibility_on_the_bar_clock_is_caught(
+        rules: D.Rules) -> None:
+    """Mutation of the funding guard: test against ``first_ms`` (bars, OI and
+    funding together) and the short funding history wrongly becomes eligible."""
+    mutant = _mutated_module(
+        "            if not item.funding_first_ms or item.funding_first_ms > span_start:",
+        "            if not item.first_ms or item.first_ms > span_start:")
+    item, entry, exit_ms = _long_barfill_short_funding()
+    _cost, _stress, imputed, eligible = mutant._funding_cost(
+        item, entry, exit_ms, +1, rules)
+    assert imputed is True
+    assert eligible is True, "the mutated rule is what the guard test forbids"
+
+
 # --------------------------------------------------------------------------
 # 4. Structural holdout refusal
 # --------------------------------------------------------------------------
@@ -655,10 +709,10 @@ def _synthetic_cells(rules: D.Rules, *, days: int = 220) -> dict[D.Cell, list[D.
     return trades
 
 
-def test_known_answer_gates_and_verdict(rules: D.Rules) -> None:
+def test_known_answer_gates_and_verdict(rules: D.Rules, frozen_trials: int) -> None:
     trades = _synthetic_cells(rules)
     calendar = sorted({trade.entry_day for rows in trades.values() for trade in rows})
-    doc = D.evaluate_cells(trades, rules, n_trials=1000, trial_count_trusted=True,
+    doc = D.evaluate_cells(trades, rules, n_trials=frozen_trials,
                            calendar_days=calendar)
     gates = {item["gate"]: item for item in doc["gates"]}
     assert doc["verdict"] == "FAIL_DEV"
@@ -698,7 +752,7 @@ def test_immediate_kill_when_no_cell_covers_cost(rules: D.Rules) -> None:
     for cell in rules.cells:
         trades[cell] = [_trade(cell, "AAAUSDT", day, float(-5.0 + rng.normal(0, 0.5)))
                         for day in range(120)]
-    doc = D.evaluate_cells(trades, rules, n_trials=1000, trial_count_trusted=True)
+    doc = D.evaluate_cells(trades, rules, n_trials=None)
     assert doc["verdict"] == "KILL"
     assert doc["immediate_kill"]["fired"] is True
     margin = doc["immediate_kill"]["per_cell"][str(rules.cells[0])]
@@ -713,7 +767,7 @@ def test_one_covering_cell_stops_the_kill(rules: D.Rules) -> None:
     }
     good = rules.cells[0]
     trades[good] = [_trade(good, "AAAUSDT", day, 20.0) for day in range(120)]
-    doc = D.evaluate_cells(trades, rules, n_trials=1000, trial_count_trusted=True)
+    doc = D.evaluate_cells(trades, rules, n_trials=None)
     assert doc["immediate_kill"]["fired"] is False
     assert doc["verdict"] != "KILL"
 
@@ -863,14 +917,15 @@ def _dev_calendar_trades(rules: D.Rules) -> dict[D.Cell, list[D.Trade]]:
     return trades
 
 
-def test_pass_is_impossible_while_the_trial_count_is_unset(rules: D.Rules) -> None:
+def test_pass_is_impossible_while_the_trial_count_is_unset(rules: D.Rules,
+                                                           frozen_trials: int) -> None:
     trades = _dev_calendar_trades(rules)
     calendar = sorted({trade.entry_day for rows in trades.values() for trade in rows})
 
     # With a number the fixture is a clean PASS: the guard below is the only
     # thing standing between it and a PASS_DEV verdict.
-    frozen = D.evaluate_cells(trades, rules, n_trials=1000,
-                              trial_count_trusted=True, calendar_days=calendar)
+    frozen = D.evaluate_cells(trades, rules, n_trials=frozen_trials,
+                              calendar_days=calendar)
     assert frozen["verdict"] == "PASS_DEV"
     assert {item["gate"]: item["status"] for item in frozen["gates"]}[4] == "pass"
 
@@ -1044,21 +1099,55 @@ def test_holdout_record_without_a_timestamp_is_refused(tmp_path: Path,
 
 
 def test_dsr_cannot_be_forced_by_an_argument(rules: D.Rules) -> None:
-    """Amendment 2: no evaluator may substitute a number -- not through a call
-    argument, not through a command-line flag."""
+    """Amendments 2 and 3: no evaluator may substitute a number -- not through a
+    call argument, not through a keyword escape hatch, not through a flag."""
     trades = {cell: [_trade(cell, "AAAUSDT", day, 5.0) for day in range(320)]
               for cell in rules.cells}
-    with pytest.raises(D.D1Error, match="unverified trial count"):
-        D.evaluate_cells(trades, rules, n_trials=470)
-    with pytest.raises(D.D1Error, match="unverified trial count"):
-        D.evaluate_cells(trades, rules, n_trials=1406)
+    for number in FORBIDDEN_TRIAL_COUNTS:
+        with pytest.raises(D.D1Error, match="unverified trial count"):
+            D.evaluate_cells(trades, rules, n_trials=number)
     with pytest.raises(SystemExit):
         D.main(["--recorder-root", ".", "--n-trials", "470"])
+    # The forward path has no trial-count parameter at all, and the cells path
+    # has no permissive flag: the count is resolved from the frozen constant.
+    forward_params = inspect.signature(D.evaluate_forward).parameters
+    assert "n_trials" not in forward_params
+    assert "n_trials_problem" not in forward_params
+    cells_params = inspect.signature(D.evaluate_cells).parameters
+    assert "trial_count_trusted" not in cells_params
+    with pytest.raises(TypeError):
+        D.evaluate_forward(Path("."), n_trials=470)
     # Without the frozen constant the gate is not evaluable, whatever the data.
     doc = D.evaluate_cells(trades, rules, n_trials=None,
                            n_trials_problem="trial count not frozen: test")
     gate4 = {item["gate"]: item for item in doc["gates"]}[4]
     assert gate4["status"] == "not_evaluable" and gate4["dsr"] is None
+
+
+def test_frozen_constant_is_the_only_way_the_dsr_gate_evaluates(
+        rules: D.Rules, tmp_path: Path, monkeypatch) -> None:
+    """Prove the guard is the constant's value, not a disabled code path.
+
+    R2 freezes the count by setting ``N_TRIALS`` in ``d1_trials`` next to the
+    amendment. This test does exactly that (and reverses it) to show gate 4
+    comes alive with that value -- then shows a different number is still
+    refused while it is frozen.
+    """
+    trades = _synthetic_cells(rules)
+    calendar = sorted({trade.entry_day for rows in trades.values() for trade in rows})
+    assert d1_trials.N_TRIALS is None
+    monkeypatch.setattr(d1_trials, "N_TRIALS", 1000)
+    amendment = tmp_path / d1_trials.N_TRIALS_AMENDMENT
+    amendment.parent.mkdir(parents=True, exist_ok=True)
+    amendment.write_text("frozen for this test only\n", encoding="utf-8")
+    assert d1_trials.trial_count_ready(tmp_path) == (1000, None)
+    doc = D.evaluate_cells(trades, rules, n_trials=1000, calendar_days=calendar)
+    gate4 = {item["gate"]: item for item in doc["gates"]}[4]
+    assert gate4["status"] in {"pass", "fail"}
+    assert gate4["n_trials"] == 1000 and gate4["dsr"] is not None
+    for number in FORBIDDEN_TRIAL_COUNTS:
+        with pytest.raises(D.D1Error, match="unverified trial count"):
+            D.evaluate_cells(trades, rules, n_trials=number, calendar_days=calendar)
 
 
 def _mutated_module(original: str, mutation: str):
