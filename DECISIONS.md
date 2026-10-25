@@ -756,8 +756,9 @@ Meta Muse Spark.
   a server time before 00:05 UTC or outside the requested day refuses booking.
   A post-close snapshot may confirm a missing next candle as a retirement but
   never changes signal membership. Require 35 complete mark candles and at least
-  35 calendar days since listing; rank Monday candidates only from 30 complete
-  quote-volume candles finalized after close. Refuse missing/stale snapshots,
+  35 calendar days since listing, matching C2's minimum-history requirement and
+  exceeding the 30-day liquidity window; rank Monday candidates only from 30
+  complete quote-volume candles finalized after close. Refuse missing/stale snapshots,
   incomplete volume, unresolved halts, or backfills with no contemporaneous
   snapshot; never infer aliases or reconstruct old membership from current
   exchangeInfo. The frozen preregistration remains unchanged and the gate stays
