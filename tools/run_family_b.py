@@ -162,6 +162,7 @@ def evaluate_hypothesis(hypothesis: str, lake: Path, *,
         per_cell[key] = {"oos": [float(x) for x in oos],
                          "turnover": float(to), "dd": float(dd),
                          "years": ev["years"],
+                         "flags": list(ev["result"].flags),
                          "n_rebalances": ev["n_rebalances"]}
         oos_matrix[key] = [float(x) for x in oos]
     # Best cell by pooled OOS Sharpe; 2x-cost rerun decides the adverse leg.
@@ -175,15 +176,23 @@ def evaluate_hypothesis(hypothesis: str, lake: Path, *,
                               gap_days=gap)
     pbo = pbo_cscv_safe([oos_matrix[k] for k in sorted(oos_matrix, key=repr)])
     years = [per_cell[best]["years"][y] for y in TEST_YEARS]
+    # Backtest flags survive into the gate document (D-042 lesson: a gate
+    # must not read clean when the engine warned about the result).
+    cell_flags = {str(k): sorted(set(v["flags"])) for k, v in per_cell.items()}
+    all_flags = sorted({f for v in cell_flags.values() for f in v})
     gates = promotion_gates(
         hypothesis, {k: {"oos": v["oos"], "turnover": v["turnover"],
                          "dd": v["dd"]} for k, v in per_cell.items()},
         years=years, turnover_budget=float(cfg["grid"]["turnover_budget"]),
-        sharpe_2x=ST.sharpe(list(oos2)), pbo=pbo)
+        sharpe_2x=ST.sharpe(list(oos2)), pbo=pbo,
+        flags=all_flags, hold_days=MAX_HOLD_D[hypothesis])
+    gates["cell_flags"] = cell_flags
+    gates["best_cell_flags"] = cell_flags.get(str(best), [])
     return {"hypothesis": hypothesis, "config_sha256": digest,
             "n_trials": len(cells), "best_cell": dict(best_combo),
-            "gates": gates, "cell_sharpes": {str(k): v for k, v in
-                                             sharpes.items()},
+            "gates": gates, "flags": all_flags,
+            "cell_sharpes": {str(k): v for k, v in
+                             sharpes.items()},
             "cell_turnover": {str(k): v["turnover"] for k, v in
                               per_cell.items()},
             "evaluated_utc": _utc_now(), "equity": equity}
@@ -203,6 +212,7 @@ def write_dev_artifact(root: Path, result: dict) -> Path:
            "promotes": bool(result["gates"]["pass"]),
            "gates": result["gates"], "best_cell": result["best_cell"],
            "n_trials": result["n_trials"],
+           "flags": result["gates"].get("flags", []),
            "cell_sharpes": result["cell_sharpes"],
            "cell_turnover": result["cell_turnover"],
            "config_sha256": result["config_sha256"],

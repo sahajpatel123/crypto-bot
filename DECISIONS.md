@@ -547,3 +547,141 @@ Meta Muse Spark.
   `background status` projects ~16 days of disk against ~103 days to
   adjudication (`disk_alert: true`); that is recorded as
   BLOCKED-OWNER resource work.
+- D-051 (B4 turnover-kill audit; only a FORWARD test of the carry can
+  answer it, 2026-10-24): the sole failing B4 bullet (one-way annualized
+  turnover 17.05 > frozen budget 12) is not a valid capacity test. Every
+  fill in the B4 P&L already pays the full 53 bps round trip, so a
+  turnover cap charges the same cost twice; turnover is dimensionless
+  (x equity/yr, no ADV term) so it cannot say whether the book could be
+  traded; and "one-way" was never defined in the prereg (under the
+  half-round-trip convention B4 = 8.53 and passes the same budget). The
+  budget is NOT retro-softened: B4 stays KILLED, its holdout stays BURNED
+  (release/holdout-reconcile.json, three decodes), and no B4 result is
+  reused or rescored. The replacement is a forward study under
+  research/prereg/B4b-forward-basis.md, committed before any forward
+  read: per-fill square-root impact (0.5*sigma*sqrt(Q/ADV20), the 1 bp
+  floor removed), legs capped at 1% of ADV20, participation gates instead
+  of a turnover gate, and all ten B4/B4b cells counted in DSR (N=10).
+  Two consequences are stated in the prereg rather than discovered later:
+  the 14 days 2026-10-18..2026-10-31 cannot be scored without decoding
+  the 2026-10 monthly funding file (a holdout-dated artifact), so the
+  forward clock starts 2026-11-01; and the >=2-positive-years gate is
+  first assessable at 121 forward days, i.e. 2027-03-01, which means a
+  90-day look can only KILL (D-056 corrects an earlier 2028-12-31 claim
+  that was simply wrong arithmetic). Runner: tools/forward_b4b.py (Vision
+  CDN only, fapi.binance.com is HTTP 451 here). As of 2026-10-24 the
+  study is UNDERPOWERED at 0 of 90 forward days: no forward-dated funding
+  file exists yet (Vision publishes funding monthly), and the first
+  tradeable decision also needs 20 forward days of bars for ADV20/sigma.
+- D-052 (two statistics repairs; both overstated confidence, 2026-10-24):
+  (a) deflated_sharpe used n = daily observations on a series that is 75%
+  exact zeros with ACF(1)=0.46, which is why B4 recorded DSR 0.9999998
+  while a Newey-West t(30) on the same series is 2.20 (iid t 6.96).
+  slow_stats.autocorr_adjusted_n now estimates an effective sample size
+  (Bartlett/Newey-West variance inflation, 30-day lag window, floored so
+  a mean-reverting series is never credited with extra observations, and
+  capped at n/hold_days when the holding period is known) and DSR uses it
+  in place of n. B4's dev series under the fix, recomputed and corrected
+  in D-056: n_eff 91.5 -> DSR 0.9464; with the 30-day maximum-hold cap
+  n_eff 30.5 -> DSR 0.8211; with N = 10 trials and that cap -- the way
+  tools/forward_b4b.py calls it -- DSR 0.8055. B4 therefore still clears
+  the 0.80 DSR gate, by 0.0055 at N=10 and 0.0211 at N=9: a thin pass,
+  not the clean 0.9999998 it appeared to be, and not the failure an
+  earlier version of this entry claimed. adjust_n=False reproduces the
+  old number exactly, which is how the fix is pinned in tests. A
+  "22.5-bet / DSR 0.7838" row previously quoted here was withdrawn: it
+  requires hold_days=40.7, longer than B4's own 30-day maximum hold, and
+  no code path produces it. (b)
+  slow_backtest already appends "leak-investigate" when Sharpe > 3.0 but
+  run_family_b threw the flags away, so a suspiciously good artifact read
+  clean. promotion_gates now records flags, per-cell flags and a
+  flags_clean bullet, and a blocking flag fails promotion. No frozen
+  artifact was edited.
+- D-053 (base-tree defects found while validating this change,
+  2026-10-24): `main` (and origin/live/hardening) could not be imported:
+  src/cryptobot/app/session.py held a duplicated merge fragment
+  (lines 3512-3516, a stray `and "reduce_exposure" ...`) that is a
+  SyntaxError, so 31 test modules failed at collection. Repaired by
+  deleting the duplicated fragment only; the surviving block (3504-3511)
+  is the more careful variant that also guards on `_exit_only_reasons`,
+  and no logic was added or reinterpreted. Separately, the committed
+  uv.lock is corrupted (two ruff package entries merged at line 779), so
+  `uv sync --locked` fails; CI survives on its `|| pip install -e
+  ".[dev]"` fallback and the local venv was built the same way. The lock
+  was NOT regenerated here (a lock rewrite is a separate, reviewable
+  change).
+- D-054 (validation of D-051..D-053 on this tree, 2026-10-24): the two
+  repairs in D-053 were required before anything could run, and only those
+  two were made. `cli.py` carried the same autofix damage (8 leftover
+  `timezone.utc` uses with `UTC` imported); those are NameErrors on
+  `cryptobot gate/arm` paths and were fixed the same way. With those, the
+  suite collects and runs: 1745 passed, and the failures that remain are
+  PRE-EXISTING, not caused by this change -- proven by checking out the
+  base commit 3ccbd14 in a clean worktree, applying only those same two
+  import repairs, and reproducing the identical failures there
+  (test_live_launch, test_autopilot_gate, test_invalidation,
+  test_hardening_batch, test_lifecycle_matrix, test_emulator_hardening,
+  test_operational). Their signature is schema drift in the GO/NO-GO gate
+  (`verdict_names_strategies`/`verdict_pass` false on fixtures the gate
+  used to accept) plus emulator timing, i.e. someone else's in-flight
+  ledger/gate work, not research code; repairing it means choosing between
+  two competing gate semantics and was left alone. Also observed and left
+  alone: `src/cryptobot/cli.py` defines `cmd_gate` twice (line 1539 is a
+  docstring-only stub from the same bad merge, shadowed by the real
+  definition at 1552 -- harmless at runtime, still an artifact), the
+  committed uv.lock is corrupt (two ruff entries merged at line 779), and
+  `ruff check src tests` reports 140 pre-existing findings, so the
+  blocking lint job is red on the base tree independently of this branch.
+  Files touched by this change are lint-clean.
+- D-055 (base repairs landed via PR #21, 2026-10-25): D-053/D-054
+  describe the base defects this branch first ran into (the duplicated
+  `session.py` merge fragment, the `cli.py` `timezone.utc`/`UTC`
+  NameErrors, the spliced `uv.lock`). Those were repaired on this branch
+  only so the suite could run at all. After PR #21 merged the real
+  repair into base (live/hardening 0c2ccc4), this branch was rebased onto
+  it and its own three repair commits were DROPPED rather than re-landed:
+  the lock, session and CLI repairs in this history are #21's, not this
+  branch's. Confirm with
+  `git diff origin/live/hardening..HEAD -- src/cryptobot/cli.py
+  src/cryptobot/app/session.py uv.lock`, which is empty. D-053/D-054 are
+  left as written because they record what was true on the pre-#21 tree.
+- D-056 (independent-review fixes to the B4b forward study, 2026-10-25):
+  the review found the runner's book was not delta-neutral and that four
+  of its guards were unpinned. Fixed, all before any forward read:
+  (a) CRITICAL -- `tools/forward_b4b.py` accrued spot mark-to-market into
+  cash while equity already marked the spot position, so the "delta-
+  neutral" book was long 1x spot for the whole hold (equity = E0 +
+  q*(s_t - s_entry) + funding - costs). Measured on the trend fixture:
+  +169% of equity for a +1%/day trend against +28% carry. The spot
+  accrual is deleted; only the perp (a derivative) moves cash, and at
+  every fill it settles to that fill's own price so the gap between the
+  last daily mark and the trade is booked. Equity is now exactly
+  E0 + funding - costs when spot and perp marks are equal, asserted for
+  trend +1%/day, 0 and -1%/day. (b) The prereg claimed the turnover
+  budget was "the only gate change" while silently dropping B4's plateau
+  >=70%; plateau is now a declared structural null with its reason (no
+  parameter grid to walk), and the years restatement is stated explicitly
+  instead of inherited by implication. (c) The claim that the years gate
+  was unassessable before 2028-12-31 was wrong arithmetic: 2026 supplies
+  61 forward days and 2027 reaches 60 on 2027-03-01, i.e. forward day 121.
+  Corrected, and the consequence is now stated in the prereg, the verdict
+  document and the CLI: a 90-day look can only KILL, a PASS first becomes
+  possible at 121 forward days, and the recorder reports
+  `years_assessable_from_forward_day`/`years_assessable_from`/
+  `forward_days_to_first_possible_pass`. (d) The research record's DSR
+  numbers were wrong in the estimator's own terms; corrected to 0.9464
+  (n_eff 91.5), 0.8211 (30-day cap) and 0.8055 (N=10 + cap, the runner's
+  convention), and the unreproducible "22.5 bets / 0.7838" row deleted.
+  B4 still clears the 0.80 DSR gate by 0.0055 -- thinly, which is the
+  honest reading. (e) Data integrity: every file is checksum-verified
+  against its published .CHECKSUM on every run including resumed files
+  (the CLI printed "checksums verified" while never comparing), every row
+  must fall inside its own file's date window (a 2026-10 file renamed
+  2026-11 would otherwise import the 14 permanently-excluded holdout
+  days), and a forward day now needs bars as well as funding, so dropping
+  10 days of bars lowers the day count by 10 instead of scoring stale
+  marks. (f) Rebalances now execute at the next bar open like entry and
+  exit, not at the prior close. Each fix has a test that fails when the
+  guard is deleted (nine guard-deletions verified). No frozen threshold
+  changed: Sharpe 0.70, 2x 0.30, DSR 0.80, PBO 0.30, DD 35%, 2 years,
+  1%/5% participation, bootstrap > 0, NW t 2.0 all stand.
