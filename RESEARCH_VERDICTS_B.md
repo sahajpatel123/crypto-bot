@@ -51,15 +51,25 @@ n / holding period), so the recorded numbers above are restated:
 | Basis | n_eff | DSR |
 |---|---:|---:|
 | naive n = 915 (old code) | 915 | 1.000 |
-| Newey-West, 30d lag window | 91.5 | 0.946 |
-| capped by 30-day max hold | 30.5 | 0.821 |
-| the ~23-bet estimate the audit argues for | 22.5 | 0.784 |
+| Newey-West, 30d lag window | 91.5 | 0.9464 |
+| capped at n/30 (B4's maximum hold) | 30.5 | 0.8211 |
+| N = 10 trials and the n/30 cap (how `tools/forward_b4b.py` calls it) | 30.5 | 0.8055 |
 
-The B4 verdict does not change (it was killed on turnover, which D-051
-argues is the wrong bullet), but the DSR bullet was not the clean pass it
-appeared to be: at the bet count this strategy actually has, B4 fails
-DSR 0.8 as well. `deflated_sharpe(..., adjust_n=False)` still reproduces
-the old 0.9999998 exactly, so nothing is hidden.
+**B4 still passes the DSR 0.8 gate.** By 0.0055 at N = 10 and 0.0211 at
+N = 9. What the repair removes is the appearance of a *clean* pass:
+0.9999998 was noise-free confidence, and 0.8055 is a margin of half a
+percentage point on a series that is 75% exact zeros. The B4 verdict does
+not change (it was killed on turnover, which D-051 argues is the wrong
+bullet) and this correction does not rescue it.
+
+An earlier version of this table carried a "~23-bet / DSR 0.7838" row.
+It has been deleted: it implies a 40.7-day holding period, longer than
+B4's own 30-day maximum hold, and no code path produces it. The numbers
+above are the ones the estimator actually returns, pinned in
+`tests/unit/test_stats_confidence.py`.
+
+`deflated_sharpe(..., adjust_n=False)` still reproduces the old 0.9999998
+exactly, so nothing is hidden.
 
 The engine's own warning was also being dropped: `slow_backtest` appends
 `leak-investigate` above Sharpe 3.0, and `run_family_b` discarded the

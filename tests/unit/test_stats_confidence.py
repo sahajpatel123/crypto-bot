@@ -115,10 +115,19 @@ def test_dsr_naive_matches_the_recorded_b4_number():
     adj = dsr_detail(oos, trials)
     assert adj["acf1"] == pytest.approx(0.464, abs=0.01)
     assert adj["n_eff"] < 200
-    assert adj["dsr"] < 0.96            # was 0.9999998 under the naive count
+    # Exact values, not a loose ceiling: the record quotes these numbers and
+    # B4 clears the 0.80 DSR gate by only 0.0055 at the runner's convention.
+    assert adj["dsr"] == pytest.approx(0.94642, abs=1e-5)      # was 0.9999998
     capped = dsr_detail(oos, trials, hold_days=30)
     assert capped["n_eff"] == pytest.approx(915 / 30, rel=0.01)
+    assert capped["dsr"] == pytest.approx(0.82114, abs=1e-5)
     assert capped["dsr"] < adj["dsr"]
+    # N = 10 (the 9 dev cells plus this forward cell) with the 30-day cap is
+    # how tools/forward_b4b.py scores it: B4 passes 0.80, thinly.
+    gate_as_called = dsr_detail(oos, trials + [adj["sr_ann"]], hold_days=30)
+    assert gate_as_called["n_trials"] == 10
+    assert gate_as_called["dsr"] == pytest.approx(0.80548, abs=1e-5)
+    assert gate_as_called["dsr"] >= 0.80
 
 
 # -- (b) backtest flags reach the gate document -----------------------------

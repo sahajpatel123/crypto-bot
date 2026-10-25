@@ -106,7 +106,14 @@ GATE_BOOTSTRAP_LOWER_Q = 0.20
 YEARS_NEEDED = 2
 YEAR_MIN_DAYS = 60
 # Gates that are null for structural reasons and cannot block a pass.
-STRUCTURAL_NULL_GATES = frozenset({"pbo"})
+#
+# "pbo": CSCV needs a cross-section of competing trials on one timeline;
+#   a single preregistered cell has no IS/OOS ranking to invert.
+# "plateau": plateau_fraction walks Hamming-1 neighbours of the winning
+#   cell in a parameter grid; a single frozen forward cell has no grid,
+#   so there are no neighbours to walk.
+# Every other null gate -- notably "years" -- blocks a PASS.
+STRUCTURAL_NULL_GATES = frozenset({"pbo", "plateau"})
 
 B4_DEV_ARTIFACT = ROOT / "research/autopilot_b/dev/B4.json"
 VERDICT_DIR = ROOT / "reports/hypotheses"
@@ -212,12 +219,23 @@ class VisionClient:
                 return out
 
     def download_verified(self, key: str, dest: Path) -> dict:
-        """Download ``key`` and verify its sibling .CHECKSUM (sha256)."""
+        """Download ``key`` and verify its sibling .CHECKSUM (sha256).
+
+        The published digest is fetched and compared on *every* call,
+        including when the file is already on disk. A resumed path that
+        trusted local bytes would let a corrupted, truncated or replaced
+        file pass as verified while the caller printed "checksums
+        verified" -- exactly the assurance the prereg relies on.
+        """
         url = f"{VISION}/{urllib.parse.quote(key, safe='/')}"
-        if dest.exists():
-            return {"key": key, "path": str(dest), "resumed": True,
-                    "sha256": _sha256_file(dest)}
         want = self.get(url + ".CHECKSUM").decode().split()[0]
+        if dest.exists():
+            local = _sha256_file(dest)
+            if local == want:
+                return {"key": key, "path": str(dest), "resumed": True,
+                        "sha256": local, "verified": True}
+            # Local copy is not the published artifact: re-fetch it.
+            dest.unlink()
         blob = self.get(url)
         got = hashlib.sha256(blob).hexdigest()
         if got != want:
@@ -228,7 +246,7 @@ class VisionClient:
         tmp.write_bytes(blob)
         os.replace(tmp, dest)
         return {"key": key, "path": str(dest), "sha256": got,
-                "bytes": len(blob), "resumed": False}
+                "bytes": len(blob), "resumed": False, "verified": True}
 
 
 def _sha256_file(path: Path) -> str:
@@ -342,6 +360,42 @@ def _assert_forward_frame(df: pd.DataFrame, stamp_col: str, src: Path) -> None:
             f"{CUTOFF_DAY.isoformat()}")
 
 
+def file_row_window(name: str) -> tuple[pd.Timestamp, pd.Timestamp]:
+    """The half-open ``[start, end)`` of a Vision file's own date stamp.
+
+    A daily file may only carry rows inside its own UTC day; a monthly file
+    only rows inside its own month. A forward-only study cannot rely on the
+    file *name* alone: a holdout-dated file renamed to a forward date would
+    otherwise smuggle pre-window rows past the filename rule.
+    """
+    kind, stamp = file_window(name)
+    start = pd.Timestamp(stamp, tz="UTC")
+    if kind == "day":
+        return start, start + pd.Timedelta(days=1)
+    return start, start + pd.offsets.MonthBegin(1)
+
+
+def _assert_rows_in_file_window(df: pd.DataFrame, stamp_col: str,
+                                name: str) -> None:
+    """Every row must fall inside its own file's date window.
+
+    The earliest-row-only check was not enough: a ``2026-10`` funding file
+    trimmed to 2026-10-18..31 and renamed ``2026-11`` has a forward-looking
+    earliest row and would have passed, importing precisely the 14
+    holdout-dated days this prereg permanently excludes.
+    """
+    if df.empty:
+        return
+    start, end = file_row_window(name)
+    idx = pd.to_datetime(df[stamp_col], unit="ms", utc=True)
+    outside = idx[(idx < start) | (idx >= end)]
+    if len(outside):
+        raise InputBeforeForwardWindow(
+            f"{name}: {len(outside)} of {len(idx)} row(s) fall outside the "
+            f"file's own window [{start.isoformat()}, {end.isoformat()}); "
+            f"first offender {outside.min().isoformat()}")
+
+
 def assert_forward_files(names: list[str]) -> None:
     bad = [n for n in names if not _safe_forward(n)]
     if bad:
@@ -368,7 +422,11 @@ def load_frames(root: Path) -> dict[str, dict[str, pd.DataFrame]]:
             names = [p.name for p in zips]
             assert_forward_files(names)
             if dataset == "funding":
-                parts = [_read_funding_zip(p) for p in zips]
+                parts = []
+                for p in zips:
+                    part = _read_funding_zip(p)
+                    _assert_rows_in_file_window(part, "calc_ms", p.name)
+                    parts.append(part)
                 df = (pd.concat(parts, ignore_index=True)
                       if parts else pd.DataFrame(columns=["calc_ms", "rate"]))
                 if len(df):
@@ -377,7 +435,11 @@ def load_frames(root: Path) -> dict[str, dict[str, pd.DataFrame]]:
                         "calc_ms").reset_index(drop=True)
                 frames["funding"] = df
             else:
-                parts = [_read_kline_zip(p) for p in zips]
+                parts = []
+                for p in zips:
+                    part = _read_kline_zip(p)
+                    _assert_rows_in_file_window(part, "open_ms", p.name)
+                    parts.append(part)
                 df = (pd.concat(parts, ignore_index=True) if parts else
                       pd.DataFrame(columns=["open_ms", "open", "close",
                                             "quote_volume"]))
@@ -446,6 +508,8 @@ class Book:
     fills: list[dict] = field(default_factory=list)
     round_trips: int = 0
     hold_days: list[float] = field(default_factory=list)
+    funding_income: float = 0.0
+    fees_paid: float = 0.0
 
     def cost_of(self, notional: float, venue: str, *, sigma: float,
                 adv: float) -> tuple[float, float]:
@@ -459,12 +523,14 @@ class Book:
         return fee + impact, participation
 
     def fill(self, *, day: str, symbol: str, venue: str, notional: float,
-             sigma: float, adv: float) -> tuple[float, float]:
+             price: float, sigma: float, adv: float) -> tuple[float, float]:
         cost, part = self.cost_of(notional, venue, sigma=sigma, adv=adv)
         self.cash -= cost
+        self.fees_paid += cost
         self.fills.append({"day": day, "symbol": symbol, "venue": venue,
                            "notional": notional, "participation": part,
-                           "cost": cost, "sigma_d": sigma, "adv20": adv})
+                           "cost": cost, "sigma_d": sigma, "adv20": adv,
+                           "price": price})
         return cost, part
 
 
@@ -558,21 +624,30 @@ def _day_has_inputs(prep: dict, day: pd.Timestamp) -> bool:
     The prereg defines a forward day as one where *every* input used to mark
     it comes from a forward-dated file. Bars alone are not a day: without a
     funding settlement there is no carry to measure, so counting it would
-    overstate the forward clock.
+    overstate the forward clock. Funding alone is not a day either: the mark
+    for ``day`` is the last close at or before it, so both venues must have
+    bars inside the preceding forward day. Without that check, dropping days
+    of bars left the day counted and marked off a stale price, which lifted
+    Sharpe 6.957 -> 7.566 on the review sample with no new data at all.
     """
     syms = [s for s, p in prep.items() if not p["perp"].empty]
     if not syms:
         return False
     lo, hi = day - pd.Timedelta(days=1), day
-    funded = 0
+    ok = 0
     for s in syms:
         p = prep[s]
         if p["spot"].empty or p["perp"].empty:
             continue
-        if not p["funding"].empty and len(
-                p["funding"][(p["funding"].index > lo) & (p["funding"].index <= hi)]):
-            funded += 1
-    return funded == len(syms)
+        has_bars = all(
+            len(bars[(bars.index >= lo) & (bars.index < hi)]) > 0
+            for bars in (p["spot"], p["perp"]))
+        has_funding = (not p["funding"].empty and len(
+            p["funding"][(p["funding"].index > lo)
+                          & (p["funding"].index <= hi)]) > 0)
+        if has_bars and has_funding:
+            ok += 1
+    return ok == len(syms)
 
 
 def _trailing_funding(funding: pd.Series, boundary: pd.Timestamp,
@@ -603,14 +678,18 @@ def simulate(frames_by_symbol: dict[str, dict[str, pd.DataFrame]],
             p = prep[symbol]
             s_now = _price_at(p["spot"], day)
             p_now = _price_at(p["perp"], day)
-            s_prev = pos.price_spot
-            p_prev = pos.price_perp
-            book.cash += pos.qty_spot * (s_now - s_prev)
-            book.cash += pos.qty_perp * (p_now - p_prev)
+            # Only the perp is a derivative whose variation margin settles
+            # into cash. The spot leg is a held asset: its P&L is already
+            # the mark (qty_spot * price) added to equity below, so accruing
+            # a spot delta into cash as well counted the spot leg twice and
+            # left the "delta-neutral" book long 1x spot for the whole hold
+            # (equity = E0 + q*(s_t - s_entry) + funding - costs).
+            book.cash += pos.qty_perp * (p_now - pos.price_perp)
             window = p["funding"][(p["funding"].index > day - pd.Timedelta(days=1))
                                   & (p["funding"].index <= day)]
             if len(window) and p_now > 0:
                 book.cash += float(window.sum()) * (-pos.qty_perp) * p_now
+                book.funding_income += float(window.sum()) * (-pos.qty_perp) * p_now
             pos.price_spot, pos.price_perp = s_now, p_now
         equity = book.cash + sum(pos.qty_spot * _price_at(prep[s]["spot"], day)
                                  for s, pos in book.positions.items())
@@ -644,9 +723,11 @@ def simulate(frames_by_symbol: dict[str, dict[str, pd.DataFrame]],
                 qs_px = _fill_bar_price(p["spot"], day)
                 qp_px = _fill_bar_price(p["perp"], day)
                 book.fill(day=str(day.date()), symbol=symbol, venue="spot",
-                          notional=qs * qs_px, sigma=sigma_s, adv=adv_s)
+                          notional=qs * qs_px, price=qs_px, sigma=sigma_s,
+                          adv=adv_s)
                 book.fill(day=str(day.date()), symbol=symbol, venue="perp",
-                          notional=qp * qp_px, sigma=sigma_p, adv=adv_p)
+                          notional=qp * qp_px, price=qp_px, sigma=sigma_p,
+                          adv=adv_p)
                 book.cash -= qs * qs_px
                 book.positions[symbol] = Position(
                     qty_spot=qs, qty_perp=-qp, entry=day,
@@ -662,12 +743,17 @@ def simulate(frames_by_symbol: dict[str, dict[str, pd.DataFrame]],
             if do_exit:
                 s_px = _fill_bar_price(p["spot"], day)
                 p_px = _fill_bar_price(p["perp"], day)
+                # The perp is closed by a trade at p_px, so its variation
+                # margin runs to that price; otherwise the gap between the
+                # last daily mark and the exit fill is never booked and the
+                # two legs stop cancelling on the exit day.
+                book.cash += pos.qty_perp * (p_px - pos.price_perp)
                 book.fill(day=str(day.date()), symbol=symbol, venue="spot",
-                          notional=abs(pos.qty_spot) * s_px, sigma=sigma_s,
-                          adv=adv_s)
+                          notional=abs(pos.qty_spot) * s_px, price=s_px,
+                          sigma=sigma_s, adv=adv_s)
                 book.fill(day=str(day.date()), symbol=symbol, venue="perp",
-                          notional=abs(pos.qty_perp) * p_px, sigma=sigma_p,
-                          adv=adv_p)
+                          notional=abs(pos.qty_perp) * p_px, price=p_px,
+                          sigma=sigma_p, adv=adv_p)
                 book.cash += pos.qty_spot * s_px
                 book.positions.pop(symbol)
                 book.round_trips += 1
@@ -675,17 +761,22 @@ def simulate(frames_by_symbol: dict[str, dict[str, pd.DataFrame]],
                 continue
             if not (sigma_s > 0 and sigma_p > 0 and adv_s > 0 and adv_p > 0):
                 continue
-            s_px = _price_at(p["spot"], day)
-            p_px = _price_at(p["perp"], day)
+            # Rebalances execute where entry and exit execute: the open of
+            # the next 1h bar after the decision (prereg, execution rule).
+            # Using the prior close here priced the hedge on a bar the
+            # decision was not allowed to trade.
+            s_px = _fill_bar_price(p["spot"], day)
+            p_px = _fill_bar_price(p["perp"], day)
             drift = abs(pos.qty_spot * s_px - abs(pos.qty_perp) * p_px)
             if equity > 0 and drift / equity > cfg.drift_band:
                 target_spot = pos.qty_spot * s_px
                 target_perp = min(target_spot, cfg.participation_cap * adv_p)
                 delta = abs(pos.qty_perp) - _qty(target_perp, p_px)
                 if abs(delta) * p_px >= cfg.min_notional:
+                    book.cash += pos.qty_perp * (p_px - pos.price_perp)
                     book.fill(day=str(day.date()), symbol=symbol, venue="perp",
-                              notional=abs(delta) * p_px, sigma=sigma_p,
-                              adv=adv_p)
+                              notional=abs(delta) * p_px, price=p_px,
+                              sigma=sigma_p, adv=adv_p)
                     pos.qty_perp = -_qty(target_perp, p_px)
                     pos.price_perp = p_px
         equity = book.cash + sum(pos.qty_spot * _price_at(prep[s]["spot"], day)
@@ -700,6 +791,8 @@ def simulate(frames_by_symbol: dict[str, dict[str, pd.DataFrame]],
         prev_equity = equity
     return {"rows": rows, "fills": book.fills, "book": book,
             "round_trips": book.round_trips,
+            "funding_income": book.funding_income,
+            "fees_paid": book.fees_paid,
             "mean_hold_days": (float(np.mean(book.hold_days))
                                if book.hold_days else 0.0)}
 
@@ -730,6 +823,43 @@ def _participation_stats(fills: list[dict]) -> dict:
         return {"n": 0, "median": None, "max": None}
     return {"n": len(parts), "median": float(np.median(parts)),
             "max": float(max(parts))}
+
+
+def years_assessable_forward_day() -> int:
+    """Forward days needed before gate 6 (>= 2 positive years) exists.
+
+    The clock starts mid-calendar-year, so the first year supplies only the
+    days between ``FORWARD_CLOCK_START`` and 31 Dec, while every eligible
+    year needs ``YEAR_MIN_DAYS`` forward days inside it. Under the
+    2026-11-01 clock: 2026 supplies 61 forward days (so it is eligible once
+    60 accrue), and 2027 reaches 60 forward days on 2027-03-01, which is
+    forward day 61 + 60 = 121.
+
+    Consequences, stated before any forward read: a 90-day look cannot PASS
+    -- at 90 days the only determinate outcome is KILLED -- and a PASS first
+    becomes possible on forward day 121. ``YEAR_MIN_DAYS`` stays at 60
+    because raising it to 180 would make the gate permanently unassessable
+    (2026 can never supply 180 forward days under the 14-day cut above).
+    """
+    cur = pd.Timestamp(FORWARD_CLOCK_START)
+    elapsed = 0
+    eligible = 0
+    for _ in range(50):                      # bounded: a year is <= 366 days
+        year_end = pd.Timestamp(year=cur.year + 1, month=1, day=1)
+        span = int((year_end - cur) / pd.Timedelta(days=1))
+        if span >= YEAR_MIN_DAYS:
+            eligible += 1
+            if eligible >= YEARS_NEEDED:
+                return elapsed + YEAR_MIN_DAYS
+        elapsed += span
+        cur = year_end
+    raise RuntimeError("years gate is unreachable at this YEAR_MIN_DAYS")
+
+
+def years_assessable_on() -> dt.date:
+    """First forward-clock date on which gate 6 can be assessed."""
+    first = pd.Timestamp(FORWARD_CLOCK_START)
+    return (first + pd.Timedelta(days=years_assessable_forward_day() - 1)).date()
 
 
 def _year_gate(rows: list[dict]) -> tuple[bool | None, dict]:
@@ -802,6 +932,7 @@ def evaluate_frames(frames_by_symbol: dict[str, dict[str, pd.DataFrame]],
                            lambda v: v > GATE_SHARPE_2X),
         "dsr": _gate(dsr_doc.get("dsr"), GATE_DSR, lambda v: v >= GATE_DSR),
         "pbo": None,   # single preregistered cell: see prereg, DSR carries it
+        "plateau": None,   # no parameter grid to walk: see prereg
         "drawdown": _gate(stats.get("max_dd"), GATE_DD, lambda v: v <= GATE_DD),
         "years": years_ok,
         "median_participation": _gate(parts["median"],
@@ -818,31 +949,44 @@ def evaluate_frames(frames_by_symbol: dict[str, dict[str, pd.DataFrame]],
     failed = sorted(k for k, v in gates.items() if v is False)
     unknown = sorted(k for k, v in gates.items() if v is None)
     # A null gate that is null BY STRUCTURE is not a blocker: PBO has no
-    # cross-section of trials in a single preregistered cell, so the
-    # selection penalty is carried by DSR at N = 10 instead (prereg).
+    # cross-section of trials and plateau has no parameter grid in a single
+    # preregistered cell, so the selection penalty is carried by DSR at
+    # N = 10 instead (prereg). "years" is NOT structural: it blocks.
     structural_null = [k for k in unknown if k in STRUCTURAL_NULL_GATES]
     blocking_unknown = [k for k in unknown if k not in STRUCTURAL_NULL_GATES]
     if not (powered_days and powered_rt):
         # The stopping rule comes first: before the study is powered, gate
         # values are snapshots, not a verdict. Nothing fires early.
         status = "UNDERPOWERED"
+        reason = "stopping rule: <90 forward days or <20 round trips"
     elif failed:
         status = "KILLED"
+        reason = "failed gate(s): " + ", ".join(failed)
     elif blocking_unknown:
         # e.g. the >=2-positive-years gate before two calendar years exist
         status = "UNDERPOWERED"
+        reason = ("gate(s) not yet assessable: " + ", ".join(blocking_unknown))
     else:
         status = "PASS"
+        reason = "every gate passed"
+    years_from = years_assessable_forward_day()
     return {
         "hypothesis": "B4b-forward-basis",
         "prereg": "research/prereg/B4b-forward-basis.md",
         "as_of_utc": as_of or dt.datetime.now(dt.UTC).isoformat(),
         "status": status,
+        "status_reason": reason,
         "forward_days": forward_days,
         "forward_days_remaining": max(0, MIN_FORWARD_DAYS - forward_days),
         "round_trips": round_trips,
         "round_trips_remaining": max(0, MIN_ROUND_TRIPS - round_trips),
         "powered": bool(powered_days and powered_rt),
+        # The years gate is inherited from B4 and is not structural, so a
+        # PASS is impossible before it can be assessed. Stated in the
+        # prereg; reported here so a 90-day look cannot be misread.
+        "years_assessable_from_forward_day": years_from,
+        "years_assessable_from": str(years_assessable_on()),
+        "forward_days_to_first_possible_pass": max(0, years_from - forward_days),
         "mean_hold_days": base["mean_hold_days"],
         "gates": gates,
         "failed_gates": failed,
@@ -895,6 +1039,7 @@ def status_doc(root: Path) -> dict:
     cov = coverage(frames)
     sim = simulate(frames)
     rows, rt = sim["rows"], sim["round_trips"]
+    years_from = years_assessable_forward_day()
     return {
         "prereg": "research/prereg/B4b-forward-basis.md",
         "forward_clock_start": FORWARD_CLOCK_START,
@@ -907,7 +1052,14 @@ def status_doc(root: Path) -> dict:
         "round_trips_remaining": max(0, MIN_ROUND_TRIPS - rt),
         "powered": bool(len(rows) >= MIN_FORWARD_DAYS
                         and rt >= MIN_ROUND_TRIPS),
-        "note": "coverage and powering counters only; no return statistics",
+        "years_assessable_from_forward_day": years_from,
+        "years_assessable_from": str(years_assessable_on()),
+        "forward_days_to_first_possible_pass": max(0, years_from - len(rows)),
+        # The book is run point-in-time to get the powering counters (a
+        # round trip cannot be counted without it). No return statistic is
+        # computed, reported or written here -- ``evaluate`` does that, once.
+        "note": ("coverage and powering counters only; the book is run for "
+                 "the round-trip count but no return statistic is reported"),
     }
 
 
@@ -921,6 +1073,9 @@ def evaluate(root: Path, *, force: bool = False,
             f"{MIN_ROUND_TRIPS} round trips. "
             f"{doc['forward_days_remaining']} forward day(s) and "
             f"{doc['round_trips_remaining']} round trip(s) still to go. "
+            f"A PASS is impossible before forward day "
+            f"{doc['years_assessable_from_forward_day']} "
+            f"({doc['years_assessable_from']}, the years gate). "
             "The one look does not fire early (prereg stopping rule).")
     out_dir.mkdir(parents=True, exist_ok=True)
     dest = out_dir / VERDICT_NAME

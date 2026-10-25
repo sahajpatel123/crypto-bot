@@ -566,7 +566,9 @@ Meta Muse Spark.
   the 14 days 2026-10-18..2026-10-31 cannot be scored without decoding
   the 2026-10 monthly funding file (a holdout-dated artifact), so the
   forward clock starts 2026-11-01; and the >=2-positive-years gate is
-  unassessable before 2028-12-31. Runner: tools/forward_b4b.py (Vision
+  first assessable at 121 forward days, i.e. 2027-03-01, which means a
+  90-day look can only KILL (D-055 corrects an earlier 2028-12-31 claim
+  that was simply wrong arithmetic). Runner: tools/forward_b4b.py (Vision
   CDN only, fapi.binance.com is HTTP 451 here). As of 2026-10-24 the
   study is UNDERPOWERED at 0 of 90 forward days: no forward-dated funding
   file exists yet (Vision publishes funding monthly), and the first
@@ -579,11 +581,17 @@ Meta Muse Spark.
   (Bartlett/Newey-West variance inflation, 30-day lag window, floored so
   a mean-reverting series is never credited with extra observations, and
   capped at n/hold_days when the holding period is known) and DSR uses it
-  in place of n. B4's dev series under the fix: n_eff 91.5 -> DSR 0.946;
-  with the 30-day max-hold cap n_eff 30.5 -> DSR 0.821; at the ~23-bet
-  estimate the audit argues for, DSR 0.784, i.e. B4's DSR gate was itself
-  an artifact of the inflated count. adjust_n=False reproduces the old
-  number exactly, which is how the fix is pinned in tests. (b)
+  in place of n. B4's dev series under the fix, recomputed and corrected
+  in D-055: n_eff 91.5 -> DSR 0.9464; with the 30-day maximum-hold cap
+  n_eff 30.5 -> DSR 0.8211; with N = 10 trials and that cap -- the way
+  tools/forward_b4b.py calls it -- DSR 0.8055. B4 therefore still clears
+  the 0.80 DSR gate, by 0.0055 at N=10 and 0.0211 at N=9: a thin pass,
+  not the clean 0.9999998 it appeared to be, and not the failure an
+  earlier version of this entry claimed. adjust_n=False reproduces the
+  old number exactly, which is how the fix is pinned in tests. A
+  "22.5-bet / DSR 0.7838" row previously quoted here was withdrawn: it
+  requires hold_days=40.7, longer than B4's own 30-day maximum hold, and
+  no code path produces it. (b)
   slow_backtest already appends "leak-investigate" when Sharpe > 3.0 but
   run_family_b threw the flags away, so a suspiciously good artifact read
   clean. promotion_gates now records flags, per-cell flags and a
@@ -637,3 +645,43 @@ Meta Muse Spark.
   packages, `uv sync --locked --extra dev` succeeds, and the suite still
   runs (ruff stays at the 0.17.1 that CI pins). No dependency version was
   changed by this repair.
+- D-056 (independent-review fixes to the B4b forward study, 2026-10-25):
+  the review found the runner's book was not delta-neutral and that four
+  of its guards were unpinned. Fixed, all before any forward read:
+  (a) CRITICAL -- `tools/forward_b4b.py` accrued spot mark-to-market into
+  cash while equity already marked the spot position, so the "delta-
+  neutral" book was long 1x spot for the whole hold (equity = E0 +
+  q*(s_t - s_entry) + funding - costs). Measured on the trend fixture:
+  +169% of equity for a +1%/day trend against +28% carry. The spot
+  accrual is deleted; only the perp (a derivative) moves cash, and at
+  every fill it settles to that fill's own price so the gap between the
+  last daily mark and the trade is booked. Equity is now exactly
+  E0 + funding - costs when spot and perp marks are equal, asserted for
+  trend +1%/day, 0 and -1%/day. (b) The prereg claimed the turnover
+  budget was "the only gate change" while silently dropping B4's plateau
+  >=70%; plateau is now a declared structural null with its reason (no
+  parameter grid to walk), and the years restatement is stated explicitly
+  instead of inherited by implication. (c) The claim that the years gate
+  was unassessable before 2028-12-31 was wrong arithmetic: 2026 supplies
+  61 forward days and 2027 reaches 60 on 2027-03-01, i.e. forward day 121.
+  Corrected, and the consequence is now stated in the prereg, the verdict
+  document and the CLI: a 90-day look can only KILL, a PASS first becomes
+  possible at 121 forward days, and the recorder reports
+  `years_assessable_from_forward_day`/`years_assessable_from`/
+  `forward_days_to_first_possible_pass`. (d) The research record's DSR
+  numbers were wrong in the estimator's own terms; corrected to 0.9464
+  (n_eff 91.5), 0.8211 (30-day cap) and 0.8055 (N=10 + cap, the runner's
+  convention), and the unreproducible "22.5 bets / 0.7838" row deleted.
+  B4 still clears the 0.80 DSR gate by 0.0055 -- thinly, which is the
+  honest reading. (e) Data integrity: every file is checksum-verified
+  against its published .CHECKSUM on every run including resumed files
+  (the CLI printed "checksums verified" while never comparing), every row
+  must fall inside its own file's date window (a 2026-10 file renamed
+  2026-11 would otherwise import the 14 permanently-excluded holdout
+  days), and a forward day now needs bars as well as funding, so dropping
+  10 days of bars lowers the day count by 10 instead of scoring stale
+  marks. (f) Rebalances now execute at the next bar open like entry and
+  exit, not at the prior close. Each fix has a test that fails when the
+  guard is deleted (nine guard-deletions verified). No frozen threshold
+  changed: Sharpe 0.70, 2x 0.30, DSR 0.80, PBO 0.30, DD 35%, 2 years,
+  1%/5% participation, bootstrap > 0, NW t 2.0 all stand.

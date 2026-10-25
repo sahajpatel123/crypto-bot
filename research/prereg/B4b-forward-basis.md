@@ -36,9 +36,32 @@ for three reasons recorded here before any forward data is read:
 
 B4b therefore swaps the turnover budget for what the budget was standing
 in for: an explicit per-fill market-impact charge and a participation
-limit measured against ADV. This is the only gate change. Every other B4
-gate is inherited verbatim, plus the significance requirements the
-original lacked.
+limit measured against ADV. There is **no turnover gate** here; turnover
+is reported only.
+
+B4b changes exactly three things about B4's gate set, and each is stated
+here rather than left implicit. The first two remove a gate; the third
+restates one for a forward sample.
+
+1. **Turnover budget (12x) removed.** Reason above; replaced by the
+   per-fill impact term and the 1%/5% participation caps.
+2. **Plateau >= 70% becomes a structural `null`, not a soft pass.**
+   `plateau_fraction` walks the Hamming-1 neighbours of the winning cell
+   in a parameter grid. This study scores one frozen cell forward (C1's
+   k=1.5, drift_band=0.05) and therefore has no grid and no neighbours.
+   It is recorded as `null` with this reason in the gate document and in
+   `STRUCTURAL_NULL_GATES`, exactly like PBO.
+3. **Years restated.** B4 required ">= 2 of 3 pooled OOS years", which
+   presumes a dev/holdout year split that a forward-only study does not
+   have. Gate 6 here requires >= 2 positive **calendar** years with at
+   least 60 forward days each. The consequence of that number is stated
+   in the gates section and is not a formality: it is what makes a
+   90-day PASS impossible.
+
+Every other B4 gate -- Sharpe >= 0.70, Sharpe > 0.30 at 2x cost,
+DSR >= 0.80, PBO <= 0.30, max DD <= 35% -- is inherited verbatim, plus
+the significance requirements B4 lacked (participation caps, block
+bootstrap, Newey-West t).
 
 **This file does not license B4's old numbers.** The evidence for B4b is
 forward data only.
@@ -71,9 +94,24 @@ listing before this file was written).
 admissible iff its filename date is strictly greater than 2026-10-17. A
 monthly file is admissible iff its filename month is strictly greater
 than 2026-10. Every input row is additionally required to carry a
-timestamp strictly greater than 2026-10-17T00:00:00Z. The recorder
-refuses to run, loudly, if any admissible set cannot be formed. It never
-"just uses what is available".
+timestamp strictly greater than 2026-10-17T00:00:00Z **and to fall inside
+its own file's date window**: a daily file may only carry rows of its own
+UTC day, a monthly file only rows of its own month. The recorder refuses
+to run, loudly, if any admissible set cannot be formed. It never "just
+uses what is available".
+
+Two integrity rules follow from that, and both are enforced in code:
+
+- **Every file is checksum-verified against its published `.CHECKSUM` on
+every run**, including a file already on disk. A resumed file is verified,
+not trusted: otherwise a corrupted or substituted local copy would be
+reported as "checksums verified".
+- **A forward day needs all of its marks, not just funding.** A day counts
+only if both venues have bars inside the preceding forward day and a
+funding settlement lands in that day. A day whose bars were never fetched
+is dropped from the count instead of being marked off a stale price --
+dropping 10 days of bars must lower the forward-day count by 10, not leave
+it unchanged while Sharpe rises.
 
 ### The 14 days this rule costs us
 
@@ -123,6 +161,25 @@ It was fixed in C1 before any data and is not chosen from a ranking here.
 - Marks: daily at 00:00 UTC from the last 1h close at or before the
   decision time. Funding accrues to the short perp at the observed
   settlements; the spot leg earns none.
+
+### Accounting identity (fixed before any forward read)
+
+Equity is cash plus the marked value of the spot leg:
+`E = cash + qty_spot * spot_mark`. Because the spot leg is a **held
+asset**, its P&L *is* that mark. It is therefore never also accrued into
+cash. Only the perp, a derivative whose variation margin settles, moves
+cash: at each daily mark by `qty_perp * (mark_now - mark_prev)`, and at
+every fill (entry, rebalance, exit) to that fill's own price so the gap
+between the last daily mark and the trade is booked.
+
+With spot and perp marks equal and `qty_spot == qty_perp`, the two legs
+cancel exactly and `E_t = E0 + funding - costs` for the whole hold. That
+identity is asserted in `tests/unit/test_forward_b4b.py` for trend
++1%/day, 0, and -1%/day. An earlier version of the runner accrued spot
+mark-to-market into cash *as well*, which double-counted the spot leg
+and left the book long 1x spot: on that fixture a +1%/day trend read
++139% of equity instead of the +30% the carry alone earns. The bug was
+found in review before any forward data existed.
 
 ### Point-in-time discipline
 
@@ -194,9 +251,10 @@ simple returns of the marked book.
 | 1 | Net Sharpe, annualized (365) | >= 0.70 |
 | 2 | Net Sharpe at 2x cost | > 0.30 |
 | 3 | Deflated Sharpe, N = 10 trials | >= 0.80 |
-| 4 | PBO (CSCV) | <= 0.30 |
+| 4 | PBO (CSCV) | <= 0.30, structural `null` here |
+| 4b | Plateau fraction (inherited from B4) | >= 70%, structural `null` here |
 | 5 | Max drawdown | <= 35% |
-| 6 | Positive years | >= 2 |
+| 6 | Positive calendar years | >= 2 |
 | 7 | Median participation | <= 1% of ADV20 |
 | 8 | Max participation | <= 5% of ADV20 |
 | 9 | 30-day block bootstrap, one-sided 80% lower bound on mean daily net return | > 0 |
@@ -219,22 +277,43 @@ the forward read and applied to all studies, not a thumb on B4b's scale.
 
 ### Gates that cannot be assessed early, stated before the fact
 
-Two gates are structurally not computable on a short sample. They are
-recorded as `null` and the verdict is capped at UNDERPOWERED — never
-silently passed:
+Three gates are structurally not computable on a short sample. They are
+recorded as `null`; only the two **structural** nulls are non-blocking,
+and the verdict is capped at UNDERPOWERED by the third -- never silently
+passed:
 
-- **Gate 6 (>= 2 positive years):** needs 2 calendar years with at least
-  60 forward days each. Under the 2026-11-01 clock that becomes
-  assessable on 2028-12-31 at the earliest.
+- **Gate 6 (>= 2 positive calendar years):** needs 2 calendar years with
+  at least 60 forward days each. Under the 2026-11-01 clock, 2026
+  supplies 61 forward days, so it qualifies once 60 have accrued, and
+  2027 reaches its 60th forward day on **2027-03-01**, which is forward
+  day 61 + 60 = **121**. The gate is therefore first assessable at 121
+  forward days, i.e. on **2027-03-01**. (An earlier draft of this file
+  said 2028-12-31; that was wrong arithmetic and is corrected here
+  before any forward read. Requiring 180 days per eligible year was
+  rejected because 2026 can only ever supply 61 forward days under the
+  14-day cut, which would make the gate permanently unassessable.)
+
+  **This gate is not structural and blocks a PASS.** The consequence,
+  stated plainly: a 90-day look **cannot PASS**. At 121 forward days a
+  PASS first becomes possible. The recorder reports
+  `years_assessable_from_forward_day`, `years_assessable_from` and
+  `forward_days_to_first_possible_pass` in every document so this cannot
+  be misread later.
 - **Gate 4 (PBO):** CSCV needs a cross-section of competing trials on a
   common timeline. This study scores exactly one preregistered cell
   forward; one cell has no IS/OOS ranking to invert. PBO is therefore
-  `null` here, and the selection penalty it is meant to impose is
-  carried by gate 3, whose expected-maximum term is the same
+  `null` here, structurally, and the selection penalty it is meant to
+  impose is carried by gate 3, whose expected-maximum term is the same
   multiple-testing correction in deflated-Sharpe form, at N = 10. If this
   runner were ever pointed at more than one cell, PBO becomes a hard
-  gate. This is a stated limitation of a single-cell forward study, not a
-  gate removed to make passing easier.
+  gate.
+- **Gate 4b (plateau):** B4's plateau >= 70% walks Hamming-1 neighbours
+  of the winning cell in a parameter grid. A single frozen forward cell
+  has no grid, so the gate is `null` structurally. Like PBO it is
+  recorded as a structural null in the gate document rather than
+  dropped, so that the omission is visible in the verdict itself. The
+  compensating evidence is the same as for PBO: nothing here can be
+  re-ranked, because nothing here is selected from alternatives.
 
 ## Stopping rule (one look, no peeking)
 
@@ -246,6 +325,13 @@ silently passed:
   non-UNDERPOWERED verdict; a second look requires a new prereg.
 - Nothing else is a verdict: 90 days with 12 round trips stays
   UNDERPOWERED and the recorder says how many of each it still needs.
+- **A 90-day look can only KILL.** Because gate 6 cannot be assessed
+  before 121 forward days, the only determinate outcome available at 90
+  days is KILLED (or UNDERPOWERED if some other gate is still null). A
+  PASS first becomes possible on forward day 121, i.e. 2027-03-01 under
+  the 2026-11-01 clock. Between 90 and 120 days a non-killing run writes
+  an UNDERPOWERED document that names `years` as the blocking gate; such
+  a document is not a verdict and may be rewritten.
 - A PASS is a pass of *this* cell on forward data. It authorizes a paper
   phase (`FORWARD_PAPER`), not capital.
 
