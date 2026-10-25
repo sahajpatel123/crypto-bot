@@ -94,6 +94,50 @@ def test_setup_sh_refuses_a_tracked_virtualenv():
     assert "refusing to create a virtualenv" in script
 
 
+def _extract_function(name: str) -> str:
+    """Return the shell function `name` verbatim from setup.sh."""
+    lines = _script().splitlines()
+    start = next(i for i, line in enumerate(lines)
+                 if line.startswith(f"{name}() {{"))
+    end = next(i for i in range(start, len(lines)) if lines[i] == "}")
+    return "\n".join(lines[start:end + 1])
+
+
+def test_setup_sh_virtualenv_guard_passes_before_the_directory_exists(
+        tmp_path):
+    """A fresh clone has no `.venv`, and `.venv/` is a directory-only pattern.
+
+    `git check-ignore .venv` returns 1 in that state, so a guard that only
+    asks that spelling refuses every clean checkout at its first run. This runs
+    the function the script actually calls, in a repository shaped like the
+    fresh clone that exposed it.
+    """
+    bash = shutil.which("bash")
+    if bash is None or shutil.which("git") is None:  # pragma: no cover
+        pytest.skip("bash and git are required")
+    guard = _extract_function("venv_is_ignored")
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(["git", "init", "-q"], cwd=str(repo), check=True)
+    script = f'VENV=.venv\n{guard}\nvenv_is_ignored\n'
+
+    # Fresh clone: `.venv/` ignored, no directory on disk yet -> must pass.
+    assert not (repo / ".venv").exists()
+    (repo / ".gitignore").write_text(".venv/\n", encoding="utf-8")
+    fresh = subprocess.run([bash, "-c", script], cwd=str(repo), check=False)
+    assert fresh.returncode == 0, "guard refuses a fresh clone"
+
+    # The directory existing must not be what makes it pass.
+    (repo / ".venv").mkdir()
+    assert subprocess.run([bash, "-c", script], cwd=str(repo),
+                          check=False).returncode == 0
+
+    # A checkout that ignores nothing must still be refused.
+    (repo / ".gitignore").write_text("build/\n", encoding="utf-8")
+    assert subprocess.run([bash, "-c", script], cwd=str(repo),
+                          check=False).returncode == 1
+
+
 def test_setup_sh_prints_the_exact_next_steps():
     script = _script()
     for step in ("keys set", "keys status", "keys check", "demo-drill",

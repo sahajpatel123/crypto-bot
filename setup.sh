@@ -70,11 +70,21 @@ fi
 say "setup: python $("$PYTHON" -V 2>&1) ($PYTHON)"
 
 # --- 4. Never create a virtualenv inside a path git tracks -----------------
+# `.gitignore` carries `.venv/`, a directory-only pattern, and
+# `git check-ignore .venv` does not match a directory-only pattern while the
+# directory does not exist yet - which is precisely the state of a fresh
+# clone. Check both spellings so the guard tests the ignore rule rather than
+# the directory's presence; without the trailing-slash form this refuses every
+# clean checkout at its first run.
+venv_is_ignored() {
+    git check-ignore -q "$VENV" || git check-ignore -q "$VENV/"
+}
+
 if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     if git ls-files --error-unmatch "$VENV" >/dev/null 2>&1; then
         fail "$VENV is tracked by git; refusing to create a virtualenv there"
     fi
-    if ! git check-ignore -q "$VENV"; then
+    if ! venv_is_ignored; then
         fail "$VENV is not git-ignored in this checkout; refusing to create a virtualenv inside the work tree"
     fi
 fi
