@@ -453,15 +453,20 @@ def install(*, suffixes=None, lookup: Callable | None = None,
     """
     global _installed, _suffixes, _real, _previous, _lookup, _clock, _first_real
     with _lock:
-        if _installed or _existing_shim_is_active(socket.getaddrinfo):
+        current = socket.getaddrinfo
+        if _installed or _existing_shim_is_active(current):
             return False
+        stale_marker = bool(getattr(current, "_cryptobot_netguard", False))
+        stale_real = getattr(current, "_cryptobot_real", None)
+        if stale_marker and real_getaddrinfo is None and not callable(stale_real):
+            return False  # cannot safely unwrap a copied marker without its original resolver
         if suffixes is None:
             _suffixes = DEFAULT_SUFFIXES
         else:
             raw = suffixes if isinstance(suffixes, str) else ",".join(suffixes)
             _suffixes = _parse_suffixes(raw) or DEFAULT_SUFFIXES
-        _previous = socket.getaddrinfo
-        _real = real_getaddrinfo or _previous
+        _previous = current
+        _real = real_getaddrinfo or (stale_real if stale_marker else None) or _previous
         if _first_real is None:
             _first_real = _real
         _getaddrinfo._cryptobot_real = _real  # type: ignore[attr-defined]
@@ -485,7 +490,8 @@ def uninstall() -> bool:
         _installed = False  # a wrapper someone chained on top now passes straight through
         if socket.getaddrinfo is _getaddrinfo:
             socket.getaddrinfo = _previous
-            _first_real = None
+            if _previous is _first_real:
+                _first_real = None
         _suffixes = DEFAULT_SUFFIXES
         _lookup = None
         _clock = time.time
