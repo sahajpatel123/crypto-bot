@@ -625,3 +625,15 @@ Meta Muse Spark.
   `ruff check src tests` reports 140 pre-existing findings, so the
   blocking lint job is red on the base tree independently of this branch.
   Files touched by this change are lint-clean.
+- D-055 (uv.lock repaired, 2026-10-24): D-054 left the corrupt lock alone.
+  It turned out to block CI's own test job (exit 127: `uv sync --locked`
+  fails, the `|| pip install -e ".[dev]"` fallback installs into the
+  system interpreter, so `.venv/bin/pytest` does not exist), i.e. no
+  branch could be verified at all. Repaired by hand rather than
+  regenerated: the merge had spliced a second `ruff` package entry
+  (0.17.2) into the middle of the 0.17.1 entry's `wheels` array and lost
+  the closing bracket. Deleting the spliced 21 lines and closing the
+  array is the entire diff. Verified: `uv lock --check` resolves 30
+  packages, `uv sync --locked --extra dev` succeeds, and the suite still
+  runs (ruff stays at the 0.17.1 that CI pins). No dependency version was
+  changed by this repair.
