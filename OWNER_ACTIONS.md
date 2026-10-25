@@ -21,10 +21,28 @@ uv run --locked cryptobot host-check --out host.json
 ```
 
 Expected: `"verdict": "PASS"` with `python`, `open-files`, `disk`,
-`time-sync-daemon`, `venue-rtt`, `clock-skew` all PASS.
+`time-sync-daemon`, `venue-rtt`, `clock-skew`, `dns-sinkhole` all PASS.
 Pass criteria: Python ≥3.12, nofile ≥4096, free disk ≥20GB, NTP
 synchronized, RTT measured, |clock skew| ≤250ms.
 On failure bring back: `host.json`.
+
+## Network: ISP DNS sinkhole (India/Jio)
+
+Some ISP resolvers (observed: Reliance Jio) answer `*.binance.com` / `*.okx.com` with a dead
+address, so every connect times out even though Binance is reachable. This is a DNS problem,
+**not** a VPN or geo-block. It is opt-in and only for networks where host-check proves it:
+
+```sh
+uv run --locked cryptobot host-check --out host.json   # look for the dns-sinkhole row
+# only if dns-sinkhole is FAIL (system address dead, DoH address connects):
+export CRYPTOBOT_DOH=1          # every cryptobot command and network tool then re-resolves
+                                # exchange hostnames over DNS-over-HTTPS
+uv run --locked cryptobot host-check --out host.json   # dns-sinkhole: PASS (mitigated)
+```
+
+Cleaner alternative: set a public DNS (1.1.1.1 / 8.8.8.8) in the OS network settings. For
+launchd/systemd/recorder lines see `tools/netshim/README.md`. Leave `CRYPTOBOT_DOH` unset on a
+healthy network: it is off by default and never needed there.
 
 ## 2. Start the recorder (public data; no keys)
 
@@ -61,17 +79,34 @@ On failure bring back: `cryptobot readiness --config configs/demo.toml`
 
 ```sh
 export BINANCE_DEMO_KEY=... BINANCE_DEMO_SECRET=...   # demo only
+# Stop if readiness exits 3/UNVERIFIED; confirm withdrawals are disabled.
+uv run --locked cryptobot readiness --config configs/demo.toml
 uv run --locked python tools/demo_drill_live.py \
   --config configs/demo.toml --execute-orders --out drill.json
-uv run --locked cryptobot readiness --config configs/demo.toml
 uv run --locked cryptobot reconcile --config configs/demo.toml --expect-flat
 ```
 
 Expected: `tools/demo_drill_live.py` writes `"verdict": "PASS"` with
 measured auth/filter/leverage/entry/protection/flatten latencies;
-readiness all PASS; reconcile FLAT.
-Pass criteria: drill PASS, flat after the drill, no unknown orders.
+readiness reports withdrawals PASS only when `canWithdraw=false`, and
+reconcile reports FLAT. If the venue omits `canWithdraw`, readiness must
+show UNVERIFIED (exit 3), not READY; verify the key in the demo UI before
+continuing. A reported `canWithdraw=true` must fail readiness.
+Pass criteria: drill PASS, flat after the drill, no unknown orders, and
+demo-key withdrawals confirmed disabled (by readiness or the demo UI).
 If the drill fails, flatten in the demo UI and bring back `drill.json`.
+
+### Verify during the owner's demo drill
+
+- Confirm real demo-host 429/418 Retry-After headers, backoff duration,
+  and no order burst.
+- Confirm real -1003/-1021 details and resync; test 5xx, reset, or read
+  timeout after submission without creating duplicate exposure.
+- Confirm private-stream disconnect/listenKey expiry, partial-fill/cancel
+  reporting, REST recovery, and protective-stop resizing.
+- Confirm withdrawal permission is disabled; if the API omits the field,
+  readiness must say UNVERIFIED and the demo UI is the manual source of truth.
+
 Note: the offline `cryptobot demo-drill` command is intentionally
 BLOCKED; it is a scaffold, not the credentialed drill.
 

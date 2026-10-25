@@ -18,6 +18,27 @@ def _scrub(monkeypatch, *names):
         monkeypatch.delenv(name, raising=False)
 
 
+def _ready_venue_status(**updates):
+    status = {
+        "base_url": "https://demo-fapi.binance.com",
+        "account_tag": "abc123",
+        "clock_skew_ms": 120,
+        "can_trade": True,
+        "can_withdraw": False,
+        "fee_tier": 0,
+        "position_mode": "one-way",
+        "fees_bps": {"BTCUSDT": {"taker_bps": 5.0,
+                                    "maker_bps": 2.0}},
+        "filters": {"BTCUSDT": {"status": "TRADING", "filters": {}}},
+        "positions": [],
+        "open_orders": [],
+        "total_wallet_usdt": 100.0,
+        "available_usdt": 99.0,
+    }
+    status.update(updates)
+    return status
+
+
 def test_demo_config_is_credentialed_demo_paper():
     cfg = load_config("configs/demo.toml")
     assert cfg.mode == "paper"
@@ -81,22 +102,7 @@ def test_readiness_signed_ready_with_stub_engine(monkeypatch, tmp_path,
 
         def venue_status(self, symbols):
             assert symbols == ["BTCUSDT"]
-            return {
-                "base_url": "https://demo-fapi.binance.com",
-                "account_tag": "abc123",
-                "clock_skew_ms": 120,
-                "can_trade": True,
-                "fee_tier": 0,
-                "position_mode": "one-way",
-                "fees_bps": {"BTCUSDT": {"taker_bps": 5.0,
-                                         "maker_bps": 2.0}},
-                "filters": {"BTCUSDT": {"status": "TRADING",
-                                        "filters": {}}},
-                "positions": [],
-                "open_orders": [],
-                "total_wallet_usdt": 100.0,
-                "available_usdt": 99.0,
-            }
+            return _ready_venue_status()
 
         def close(self):
             pass
@@ -108,6 +114,40 @@ def test_readiness_signed_ready_with_stub_engine(monkeypatch, tmp_path,
     assert rc == 0, out
     assert "readiness: READY" in out
     assert "[PASS] venue-connect" in out
+    assert "[PASS] withdrawals: canWithdraw=false" in out
+
+
+@pytest.mark.parametrize(
+    ("can_withdraw", "row_state", "exit_code"),
+    [(True, "FAIL", 2), (None, "UNVERIFIED", 3)],
+)
+def test_readiness_refuses_enabled_or_unreported_withdrawals(
+        monkeypatch, capsys, can_withdraw, row_state, exit_code):
+    monkeypatch.setenv("BINANCE_DEMO_KEY", "k")
+    monkeypatch.setenv("BINANCE_DEMO_SECRET", "s")
+
+    class StubEngine:
+        def __init__(self, **_kw):
+            pass
+
+        def venue_status(self, _symbols):
+            return _ready_venue_status(can_withdraw=can_withdraw)
+
+        def close(self):
+            pass
+
+    import cryptobot.adapters.binance_live as live_mod
+    monkeypatch.setattr(live_mod, "BinanceLiveEngine", StubEngine)
+    rc = cli.cmd_readiness(argparse.Namespace(config="configs/demo.toml"))
+    out = capsys.readouterr().out
+    assert rc == exit_code
+    assert f"[{row_state}] withdrawals" in out
+    if can_withdraw is None:
+        assert "readiness: UNVERIFIED" in out
+        assert "readiness: READY" not in out
+    else:
+        assert "canWithdraw=true" in out
+        assert "readiness: READY" not in out
 
 
 def test_readiness_never_echoes_values(monkeypatch, tmp_path, capsys):

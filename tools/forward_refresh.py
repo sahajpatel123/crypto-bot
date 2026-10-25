@@ -24,7 +24,18 @@ def forward_only(plan: dict) -> dict:
     return kept
 
 
+def _install_netguard() -> None:
+    """Opt-in (CRYPTOBOT_DOH=1): re-resolve ISP-sinkholed exchange hostnames over DoH."""
+    src = str(Path(__file__).resolve().parents[1] / "src")
+    if src not in sys.path:
+        sys.path.append(src)
+    from cryptobot import netguard
+
+    netguard.install_from_env()
+
+
 def main() -> int:
+    _install_netguard()
     symbols = ROOT / "data" / "lake" / "forward-symbols.txt"
     symbols.parent.mkdir(parents=True, exist_ok=True)
     if not symbols.exists():

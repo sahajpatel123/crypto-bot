@@ -121,6 +121,26 @@ def test_verify_account_modes_sets_and_fails_closed(tmp_path):
     transport2.assert_empty()
 
 
+def test_venue_status_keeps_missing_withdraw_permission_unverified(tmp_path):
+    import venue_fixtures as venues
+
+    ready = venues.ready_fixture()
+    script = [
+        ("GET", "/fapi/v1/time", None, ("ok", ready["time"])),
+        ("GET", "/fapi/v2/account", None, ("ok", ready["account"])),
+        ("GET", "/fapi/v1/positionSide/dual", None,
+         ("ok", {"dualSidePosition": False})),
+        ("GET", "/fapi/v1/exchangeInfo", None,
+         ("ok", ready["exchangeInfo"])),
+        ("GET", "/fapi/v1/commissionRate", {"symbol": "BTCUSDT"},
+         ("ok", ready["commissionRate"])),
+        ("GET", "/fapi/v1/openOrders", None, ("ok", [])),
+    ]
+    engine, transport = venues.make_engine(tmp_path, script)
+    assert engine.venue_status(["BTCUSDT"])["can_withdraw"] is None
+    transport.assert_empty()
+
+
 def test_seed_from_venue_refuses_unknown_order(tmp_path):
     session = _session(tmp_path)
     with pytest.raises(ValueError, match="order"):

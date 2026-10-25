@@ -1942,6 +1942,9 @@ class BinanceLiveEngine:
                      if float(p.get("positionAmt", 0.0) or 0.0) != 0.0]
         assets = [a for a in account.get("assets", [])
                   if float(a.get("walletBalance", 0.0) or 0.0) != 0.0]
+        can_withdraw = account.get("canWithdraw")
+        if not isinstance(can_withdraw, bool):
+            can_withdraw = None
         return {
             "base_url": self._base_url,
             "demo": self._demo,
@@ -1949,7 +1952,7 @@ class BinanceLiveEngine:
             "server_time_ms": server_ms,
             "clock_skew_ms": server_ms - self._now_ms(),
             "can_trade": bool(account.get("canTrade", False)),
-            "can_withdraw": bool(account.get("canWithdraw", False)),
+            "can_withdraw": can_withdraw,
             "can_deposit": bool(account.get("canDeposit", False)),
             "fee_tier": account.get("feeTier", 0),
             "total_wallet_usdt": float(
