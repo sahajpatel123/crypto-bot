@@ -262,6 +262,8 @@ B4b costs, unchanged: 49 bps round trip plus `0.5·σ·√(Q/ADV20)` impact per 
 **A 90-day look can only KILL**: the ≥2-positive-calendar-years gate needs 121 forward days, so
 earliest possible PASS is 2027-03-01.
 
+**PROGRAM CLOSED 2026-10-25 — `research/PROGRAM_CLOSEOUT.md`:** every gate is ruled either settled-negative (B4 on turnover, C2 on replication, C3/C4 and C1-TSMOM on DEV) or permanently undecidable in-program on the frozen archive (B4b by its own 2026-10-18..31 exclusion, C1-b4b carry's 90 forward days, C2-FWD's 365 recorded rows, D1 because `N_TRIALS` is `None`); no gate, threshold or number changed, and the holdout stays sealed.
+
 ### Recorder (owner's Mac, read-only; `guard.log` 2026-10-25T07:42:05Z and my re-read at 08:11Z)
 
 - Exactly **one** recorder: pid **71989**, launchd `com.cryptobot.recorder`, `caffeinate` wrapper pid
