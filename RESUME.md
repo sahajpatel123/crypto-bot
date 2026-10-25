@@ -1,7 +1,7 @@
 # RESUME — crypto-bot state
 
-Snapshot: **2026-10-25 08:45Z**, base `origin/live/hardening` @ `315bdc0a` (PR #29, D1 prereg + amendment 3;
-#33, the recorder stream fix, was `a2acaba`).
+Snapshot: **2026-10-25 09:05Z**, base `origin/live/hardening` @ `8471a83e` (PR #34, this file; #33 and #29
+underneath it).
 Gate: **NO-GO**, unchanged. Holdout sealed. No orders, no API-key reads, no live money.
 Read this file, then `git log --oneline -5 origin/live/hardening`, then the PR list. That is the whole
 handover — do not re-derive anything below.
@@ -33,14 +33,14 @@ Read from GitHub while writing this file, not from notes.
 | #26 | feat(net): netguard — opt-in DoH fallback for the ISP DNS sinkhole | `4c9a992` | squash `a635315` |
 | #35 | docs: refresh RESUME after netguard merge | `065375e` | squash `d950d78` |
 | #33 | fix(recorder): record trade flow, fail loudly on a silent stream | `5b1688d` | squash `a2acaba` |
-| #29 | research(prereg): D1 OI-flush reversal + amendment 3 (fail-closed trial bound) | `4e7d37b` | squash `315bdc0a` = **current base** |
+| #29 | research(prereg): D1 OI-flush reversal + amendment 3 (fail-closed trial bound) | `4e7d37b` | squash `315bdc0a` |
 
-All seven merged with `lint` + `typecheck` + `test` green. `research/prereg/D1-amendment-3.md` is now on the
+All seven merged with `lint` + `typecheck` + `test` green. `research/prereg/D1-amendment-3.md` is on the
 base and is the **sole source** for `N_TRIALS` (§5).
 
 ## 3. In progress — open PRs, by owner
 
-Read from GitHub at 2026-10-25 08:45Z. Do not trust an older note for a head SHA.
+Read from GitHub at 2026-10-25 08:20Z. Do not trust an older note for a head SHA.
 
 | PR | Owner / topic | Head SHA | Checks I read |
 |---|---|---|---|
@@ -61,11 +61,11 @@ None of these is a gate verdict, and none changes a prereg threshold, a holdout 
    08:11Z (≈7.2 GB) and guard's free-space samples swung 12,632 → 9,906 MB inside ten minutes. Never
    delete the folder of a session with a turn running.
 3. **#32 E1.** Let the re-pushed `test` finish; if red, read the job log and fix it. Draft until green.
-5. **#31, then #30.** #31 audits the gate statistics themselves, so it should land before any
+4. **#31, then #30.** #31 audits the gate statistics themselves, so it should land before any
    evaluator change touches DSR. Mark ready if the conclusions hold.
-6. **C2-FWD.** Leave it running; scoring reads 365/730/1095 rows only, so nothing is readable yet.
+5. **C2-FWD.** Leave it running; scoring reads 365/730/1095 rows only, so nothing is readable yet.
    Never look at its P&L before then.
-7. **Do not re-open Family B or C and do not rescore B4.** The holdout is spent.
+6. **Do not re-open Family B or C and do not rescore B4.** The holdout is spent.
 
 ## 5. Key numbers
 
