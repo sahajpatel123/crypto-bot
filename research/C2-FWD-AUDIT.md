@@ -2,6 +2,14 @@
 
 Status: independent synthetic-fixture audit of the implementation on `live/hardening` at `8f0f106`. No real forward ledger or holdout dataset was opened or scored. The fixtures in `tests/unit/test_forward_c2_audit.py` are generated in memory/on pytest temporary storage. Frozen preregistration files were not changed.
 
+## R1 follow-up disposition
+
+The follow-up addresses findings 1–12 without editing either frozen preregistration. Signal eligibility ends at the decision close; snapshots are point-in-time, fresh and separately retained from post-close retirement evidence; Monday rankings require 30 complete volume histories and exclude listings younger than 35 days; and stale, future, malformed, halted or unexplained missing data refuses a row. Backfills refuse absent historical membership. Funding must cover every settlement interval for each held symbol; turnover/fees are applied per leg. Ledger/state writes are locked and atomic, torn tails are quarantined, and scoring enforces consecutive rows, exact look order/count, early stopping, p=1-safe JSON and atomic reports. C2-VM is tested only after a primary pass.
+
+The independent reviewer then found and we fixed two booking blockers and one scoring blocker: candle freshness and snapshot times use exchange serverTime; a confirmed retirement without a next candle is terminally marked at the last decision close with an added forced-exit leg; and prior reports must match look, count, ledger-prefix hash and frozen parameters, with their primary verdict deterministically recomputed before proceeding. These decisions are additive in D-059–D-061; frozen preregistration and thresholds remain unchanged.
+
+Final focused verification: 37 tests passed; 14 deliberate guard-deletion mutations were killed by named tests; Ruff and `git diff --check` passed. Public exchange responses, production ledger, Mac launchd invocation and holdout were not accessed. Historic membership snapshots that were never captured cannot be recreated; the final gate remains NO-GO pending owner review of the policy interpretation and actual eligible evidence.
+
 ## Findings
 
 ### (i) Can corrupt forward records — fix before another booking

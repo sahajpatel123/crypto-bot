@@ -19,7 +19,7 @@ DAYS = [(D0 + dt.timedelta(days=k)).isoformat() for k in range(90)]
 
 
 class FakeFetcher:
-    def __init__(self, n=12, seed=9):
+    def __init__(self, n=30, seed=9):
         rng = random.Random(seed)
         self.closes, self.fund = {}, {}
         for k in range(n):
@@ -29,8 +29,12 @@ class FakeFetcher:
                 c[d], f[d] = px, rng.gauss(0.0001, 0.0002)
             self.closes[f"S{k:02d}USDT"], self.fund[f"S{k:02d}USDT"] = c, f
 
-    def trading_symbols(self):
-        return sorted(self.closes)
+    def universe_snapshot(self, day, *, observed_at, include_volume):
+        return {"day": day, "observed_at_utc": observed_at.isoformat(),
+                "symbols": {s: {"status": "TRADING", "onboard_date": "2026-01-01"}
+                            for s in self.closes},
+                "quote_volume_30d": {s: 1.0 for s in self.closes}
+                if include_volume else {}}
 
     def quote_volume_30d(self, symbol, end_day):
         return 1.0
@@ -41,13 +45,36 @@ class FakeFetcher:
     def funding(self, symbol, start, end):
         return {d: v for d, v in self.fund[symbol].items() if start <= d <= end}
 
+    def funding_events(self, symbol, start_day, end_day):
+        total = self.fund[symbol].get(start_day, 0.0)
+        start_ms = fwd._ms(start_day)
+        return [(start_ms + 8 * 3_600_000, total / 3),
+                (start_ms + 16 * 3_600_000, total / 3),
+                (fwd._ms(end_day), total / 3)]
+
 
 def test_matches_research_engine(tmp_path):
     f = FakeFetcher()
     first = DAYS[c_family.MIN_HISTORY_DAYS]
-    (tmp_path / "state.json").write_text(json.dumps({"last_booked": first}))
+    (tmp_path / "state.json").write_text(json.dumps({
+        "last_booked": first, "universe": sorted(f.closes), "held": {},
+        "bootstrap_anchor": True}))
     end = DAYS[80]
-    fwd.record(tmp_path, f, today=fwd._shift(end, 1))
+    for k in range(c_family.MIN_HISTORY_DAYS, 80):
+        if c_family._is_monday(DAYS[k]):
+            day = DAYS[k]
+            observed = dt.datetime.combine(dt.date.fromisoformat(day),
+                                           dt.time(18, 0), tzinfo=dt.UTC)
+            path = tmp_path / "universe" / f"{day}.json"
+            path.parent.mkdir(parents=True, exist_ok=True)
+            snapshot = f.universe_snapshot(day, observed_at=observed, include_volume=True)
+            snapshot["volume_observed_at_utc"] = dt.datetime.combine(
+                dt.date.fromisoformat(fwd._shift(day, 1)), dt.time(0, 5),
+                tzinfo=dt.UTC).isoformat()
+            path.write_text(json.dumps(snapshot))
+    now = dt.datetime.combine(dt.date.fromisoformat(fwd._shift(end, 1)),
+                              dt.time(0, 5), tzinfo=dt.UTC)
+    fwd.record(tmp_path, f, today=fwd._shift(end, 1), now=now)
     rows = [json.loads(x) for x in (tmp_path / "ledger.jsonl").read_text().splitlines()]
     ref = c_family.run(c_family.SPECS["C2"], f.closes, f.fund,
                        start=DAYS[0], end=end)
@@ -59,9 +86,24 @@ def test_matches_research_engine(tmp_path):
 
 def test_rerun_same_day_appends_nothing(tmp_path):
     f = FakeFetcher()
-    (tmp_path / "state.json").write_text(json.dumps({"last_booked": DAYS[40]}))
-    assert fwd.record(tmp_path, f, today=DAYS[50]) == 9
-    assert fwd.record(tmp_path, f, today=DAYS[50]) == 0
+    (tmp_path / "state.json").write_text(json.dumps({
+        "last_booked": DAYS[40], "universe": sorted(f.closes), "held": {},
+        "bootstrap_anchor": True}))
+    for k in range(40, 50):
+        if c_family._is_monday(DAYS[k]):
+            day = DAYS[k]
+            observed = dt.datetime.combine(dt.date.fromisoformat(day),
+                                           dt.time(18, 0), tzinfo=dt.UTC)
+            path = tmp_path / "universe" / f"{day}.json"
+            path.parent.mkdir(parents=True, exist_ok=True)
+            snapshot = f.universe_snapshot(day, observed_at=observed, include_volume=True)
+            snapshot["volume_observed_at_utc"] = dt.datetime.combine(
+                dt.date.fromisoformat(fwd._shift(day, 1)), dt.time(0, 5),
+                tzinfo=dt.UTC).isoformat()
+            path.write_text(json.dumps(snapshot))
+    now = dt.datetime.combine(dt.date.fromisoformat(DAYS[50]), dt.time(0, 5), tzinfo=dt.UTC)
+    assert fwd.record(tmp_path, f, today=DAYS[50], now=now) == 9
+    assert fwd.record(tmp_path, f, today=DAYS[50], now=now) == 0
     h = fwd.health(tmp_path)
     assert h["scored_days"] == 9 and h["gaps"] == [] and h["looks_due"] == []
 
@@ -80,7 +122,7 @@ def _ledger(root: Path, n: int, mean: float, seed: int = 4) -> None:
 def test_looks_run_in_order_once_and_only_when_due(tmp_path):
     import pytest
     root, out = tmp_path / "fwd", tmp_path / "rep"
-    _ledger(root, 400, mean=0.0)
+    _ledger(root, 365, mean=0.0)
     assert fwd.health(root)["looks_due"] == [1]
     with pytest.raises(RuntimeError, match="look 1 has not been scored"):
         fwd.score_look(root, out, 2)
@@ -88,8 +130,10 @@ def test_looks_run_in_order_once_and_only_when_due(tmp_path):
     assert doc["days"] == 365 and doc["verdict"] == "CONTINUE"
     with pytest.raises(FileExistsError):
         fwd.score_look(root, out, 1)
-    with pytest.raises(RuntimeError, match="400 of 730"):
+    with pytest.raises(RuntimeError, match="exactly 730"):
         fwd.score_look(root, out, 2)
+    _ledger(root, 730, mean=0.0)
+    assert fwd.score_look(root, out, 2)["days"] == 730
 
 
 def test_a_strong_edge_passes_early_and_a_null_dies_at_the_end(tmp_path):
@@ -97,8 +141,10 @@ def test_a_strong_edge_passes_early_and_a_null_dies_at_the_end(tmp_path):
     strong = fwd.score_look(tmp_path / "s", tmp_path / "rs", 1)
     assert strong["verdict"] == "FORWARD-PASS" and strong["z"] >= fwd.OBF_BOUNDS[0]
     root, out = tmp_path / "n", tmp_path / "rn"
-    _ledger(root, 1095, mean=-5.0)
-    verdicts = [fwd.score_look(root, out, k)["verdict"] for k in (1, 2, 3)]
+    verdicts = []
+    for n, look in zip((365, 730, 1095), (1, 2, 3), strict=True):
+        _ledger(root, n, mean=-5.0)
+        verdicts.append(fwd.score_look(root, out, look)["verdict"])
     assert verdicts == ["CONTINUE", "CONTINUE", "KILLED"]
 
 
