@@ -34,6 +34,7 @@ fails if they drift):
 from __future__ import annotations
 
 import contextlib
+import http.client
 import ipaddress
 import json
 import os
@@ -140,6 +141,70 @@ def parse_answer(payload) -> tuple:
     return addresses, max(TTL_MIN_S, min(ttl, TTL_MAX_S))
 
 
+def _deadline_opener(deadline: float, context):
+    """Build urllib handlers whose sockets are forcibly closed at the absolute deadline."""
+    connections = []
+
+    class DeadlineConnectionMixin:
+        def __init__(self, *args, **kwargs):
+            self._deadline_timer = None
+            connections.append(self)
+            super().__init__(*args, **kwargs)
+            # HTTPConnection stores its factory on the instance, shadowing class methods.
+            self._create_connection = self._connect_with_deadline
+
+        def _connect_with_deadline(self, address, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
+                                   source_address=None):
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise TimeoutError("DoH response deadline exceeded")
+            if timeout is socket._GLOBAL_DEFAULT_TIMEOUT:
+                timeout = remaining
+            else:
+                timeout = min(timeout, remaining)
+            sock = socket.create_connection(address, timeout, source_address)
+            self.sock = sock
+            timer = threading.Timer(max(0.0, deadline - time.monotonic()), self._abort)
+            timer.daemon = True
+            self._deadline_timer = timer
+            timer.start()
+            return sock
+
+        def _abort(self):
+            sock = self.sock
+            if sock is not None:
+                with contextlib.suppress(OSError):
+                    sock.shutdown(socket.SHUT_RDWR)
+                with contextlib.suppress(OSError):
+                    sock.close()
+
+        def close(self):
+            if self._deadline_timer is not None:
+                self._deadline_timer.cancel()
+            return super().close()
+
+    class DeadlineHTTPConnection(DeadlineConnectionMixin, http.client.HTTPConnection):
+        pass
+
+    class DeadlineHTTPSConnection(DeadlineConnectionMixin, http.client.HTTPSConnection):
+        def connect(self):
+            http.client.HTTPConnection.connect(self)
+            server_hostname = self._tunnel_host or self.host
+            self.sock = self._context.wrap_socket(
+                self.sock, server_hostname=server_hostname, do_handshake_on_connect=False)
+            self.sock.do_handshake()
+
+    class DeadlineHTTPHandler(urllib.request.HTTPHandler):
+        def http_open(self, request):
+            return self.do_open(DeadlineHTTPConnection, request)
+
+    class DeadlineHTTPSHandler(urllib.request.HTTPSHandler):
+        def https_open(self, request):
+            return self.do_open(DeadlineHTTPSConnection, request, context=context)
+
+    return urllib.request.build_opener(DeadlineHTTPHandler(), DeadlineHTTPSHandler()), connections
+
+
 def _response_socket(reply):
     """Find urllib's underlying socket so each response read honors the total deadline."""
     for path in (("fp", "fp", "raw", "_sock"), ("fp", "raw", "_sock"),
@@ -165,24 +230,28 @@ def _http_get_json(url: str):
     remaining = deadline - time.monotonic()
     if remaining <= 0:
         raise TimeoutError("DoH response deadline exceeded")
-    with urllib.request.urlopen(request, timeout=min(HTTP_TIMEOUT_S, remaining),
-                                context=context) as reply:  # noqa: S310
-        response_socket = _response_socket(reply)
-        if response_socket is None:
-            raise OSError("cannot enforce DoH response deadline")
-        payload = bytearray()
-        while True:
-            remaining = deadline - time.monotonic()
-            if remaining <= 0:
-                raise TimeoutError("DoH response deadline exceeded")
-            response_socket.settimeout(min(HTTP_TIMEOUT_S, remaining))
-            chunk = reply.read(1)  # check the total deadline even when a peer drips bytes
-            if not chunk:
-                break
-            payload.extend(chunk)
-            if len(payload) > MAX_REPLY_BYTES:
-                raise ValueError("DoH response exceeds size limit")
-        return json.loads(payload.decode("utf-8"))
+    opener, connections = _deadline_opener(deadline, context)
+    try:
+        with opener.open(request, timeout=min(HTTP_TIMEOUT_S, remaining)) as reply:  # noqa: S310
+            response_socket = _response_socket(reply)
+            if response_socket is None:
+                raise OSError("cannot enforce DoH response deadline")
+            payload = bytearray()
+            while True:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise TimeoutError("DoH response deadline exceeded")
+                response_socket.settimeout(min(HTTP_TIMEOUT_S, remaining))
+                chunk = reply.read(1)  # check the total deadline even when a peer drips bytes
+                if not chunk:
+                    break
+                payload.extend(chunk)
+                if len(payload) > MAX_REPLY_BYTES:
+                    raise ValueError("DoH response exceeds size limit")
+            return json.loads(payload.decode("utf-8"))
+    finally:
+        for connection in connections:
+            connection.close()
 
 
 def doh_lookup(name: str, fetch: Callable | None = None) -> tuple:

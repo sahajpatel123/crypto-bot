@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import ast
 import contextlib
+import http.client
 import importlib.util
 import os
 import random
@@ -464,6 +465,14 @@ def test_doh_lookup_has_an_overall_deadline(ng, monkeypatch):
     assert len(calls) == 2  # not all four resolvers
 
 
+def _mock_deadline_opener(monkeypatch, ng, reply):
+    class Opener:
+        def open(self, *_args, **_kwargs):
+            return reply
+
+    monkeypatch.setattr(ng, "_deadline_opener", lambda *_args: (Opener(), []))
+
+
 def test_http_response_deadline_stops_a_slow_drip(ng, monkeypatch):
     from types import SimpleNamespace
 
@@ -500,10 +509,47 @@ def test_http_response_deadline_stops_a_slow_drip(ng, monkeypatch):
             self.offset += len(result)
             return result
 
-    monkeypatch.setattr(ng.urllib.request, "urlopen", lambda *a, **k: Reply())
+    _mock_deadline_opener(monkeypatch, ng, Reply())
     with pytest.raises(TimeoutError):
         ng._http_get_json("https://1.1.1.1/dns-query?name=fapi.binance.com")
     assert now[0] <= ng._tls.deadline
+
+
+def test_http_deadline_covers_slow_response_headers(ng):
+    server = socket.socket()
+    server.bind(("127.0.0.1", 0))
+    server.listen(1)
+    server.settimeout(2)
+    port = server.getsockname()[1]
+    response = (b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n"
+                b"Content-Type: application/json\r\n\r\n")
+    accepted = threading.Event()
+
+    def drip_headers():
+        try:
+            conn, _ = server.accept()
+            accepted.set()
+            with conn:
+                for byte in response:
+                    conn.sendall(bytes((byte,)))
+                    time.sleep(0.03)
+        except OSError:
+            pass
+
+    thread = threading.Thread(target=drip_headers, daemon=True)
+    thread.start()
+    started = time.monotonic()
+    ng._tls.deadline = started + 0.3
+    try:
+        with pytest.raises((OSError, http.client.HTTPException)):
+            ng._http_get_json(f"http://127.0.0.1:{port}/dns-query")
+        elapsed = time.monotonic() - started
+        assert accepted.is_set()
+        assert elapsed < 1.0
+    finally:
+        ng._tls.deadline = None
+        server.close()
+        thread.join(2)
 
 
 def test_http_response_rejects_oversized_body(ng, monkeypatch):
@@ -532,7 +578,7 @@ def test_http_response_rejects_oversized_body(ng, monkeypatch):
             self.offset += len(result)
             return result
 
-    monkeypatch.setattr(ng.urllib.request, "urlopen", lambda *a, **k: Reply())
+    _mock_deadline_opener(monkeypatch, ng, Reply())
     with pytest.raises(ValueError, match="size limit"):
         ng._http_get_json("https://1.1.1.1/dns-query?name=fapi.binance.com")
 
