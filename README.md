@@ -165,7 +165,7 @@ and `test_bench_run.py` modeled-bars tests) each write ~70-290 MB of
 
 `pyproject.toml` sets `tmp_path_retention_policy = "failed"` and
 `tmp_path_retention_count = 1`: passing tests delete their directories
-immediately; only failing tests keep artifacts, and only for the last run. At
+immediately; only tests whose call phase failed keep artifacts (setup/teardown errors do not), and only for the last run: the next pytest run deletes them, so copy what you need first. At
 the end of every run `conftest.py` prints `[pytest scratch left in ...: N MB]`.
 
 Run only the files you touched, with scratch you remove afterwards:

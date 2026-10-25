@@ -25,7 +25,7 @@ where = ["src"]
 testpaths = ["tests"]
 # Laptop safety: a few bench_run tests write ~140 MB each of rejections.jsonl.
 # Keep tmp dirs only for FAILED tests, and only the last run's, so a passing
-# run leaves nothing behind (pytest >= 7.3; lock pins 9.x).
+# run leaves nothing behind (pytest >= 8; lock pins 9.x).
 tmp_path_retention_policy = "failed"
 tmp_path_retention_count = 1
 
