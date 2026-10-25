@@ -3,8 +3,11 @@
 # with demo = true routes orders to Binance demo hosts. Credential-free
 # public-data paper trading uses configs/r2.toml (engine.kind = "nautilus").
 #
-# Credentials come ONLY from BINANCE_DEMO_KEY / BINANCE_DEMO_SECRET in the
-# process environment. Never put keys in this file, chat, or reports.
+# Demo credentials: store them with `cryptobot keys set --profile demo`
+# (environment CRYPTOBOT_DEMO_KEY / CRYPTOBOT_DEMO_SECRET, the Keychain, or a
+# git-ignored dotenv file). The older BINANCE_DEMO_KEY / BINANCE_DEMO_SECRET
+# environment pair is still accepted as a fallback. Never put keys in this
+# file, chat, or reports.
 # Ledger currency is USDT. Asia/Kolkata accounting day.
 #
 # NOTE: demo verifies exchange mechanics only; demo profits do not validate

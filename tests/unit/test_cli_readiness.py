@@ -221,6 +221,37 @@ class _StubEngine:
         pass
 
 
+class _CleanRestrictions:
+    """apiRestrictions answer for a safe, capital-bearing key.
+
+    Injected into `_run_prod` so the pre-trade permission gate never dials a
+    public host from a unit test.
+    """
+
+    DOCUMENT = {
+        "ipRestrict": True,
+        "enableReading": True,
+        "enableWithdrawals": False,
+        "enableInternalTransfer": False,
+        "permitsUniversalTransfer": False,
+        "enableMargin": False,
+        "enableSpotAndMarginTrading": False,
+        "enableFutures": True,
+    }
+
+    def __init__(self, document=None):
+        self.document = dict(document or self.DOCUMENT)
+        self.calls = []
+
+    def request(self, method, path, params, headers):
+        self.calls.append((method, path, dict(params), dict(headers)))
+        return dict(self.document)
+
+
+def _clean_permissions():
+    return _CleanRestrictions()
+
+
 def _prod_config(tmp_path):
     text = Path("configs/prod.toml").read_text()
     text = text.replace('dir = "runs"', f'dir = "{tmp_path / "runs"}"', 1)
@@ -417,7 +448,8 @@ def test_prod_full_driver_refuses_only_at_submission(monkeypatch, tmp_path,
     _StubLiveEngine.status = _stub_venue_status()
     rc = cli._run_prod(argparse.Namespace(config=_prod_config(tmp_path),
                                           run_id="prod-probe-1"),
-                       _stub_factory)
+                       _stub_factory,
+                       _permission_transport=_clean_permissions())
     captured = capsys.readouterr()
     out, err = captured.out, captured.err
     assert rc == 2, out
@@ -430,7 +462,8 @@ def test_prod_signed_failure_refuses(monkeypatch, tmp_path, capsys):
     monkeypatch.setenv("CRYPTOBOT_API_SECRET", "s")
     _StubLiveEngine.status = _stub_venue_status(position_mode="hedge")
     rc = cli._run_prod(argparse.Namespace(config=_prod_config(tmp_path),
-                                          run_id=None), _stub_factory)
+                                          run_id=None), _stub_factory,
+                       _permission_transport=_clean_permissions())
     assert rc == 2
     assert "signed-check failures" in capsys.readouterr().err
 

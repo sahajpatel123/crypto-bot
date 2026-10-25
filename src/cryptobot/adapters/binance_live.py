@@ -198,6 +198,23 @@ class UnknownOutcomeError(Exception):
         self.reason = reason
 
 
+def sign_params(secret: bytes, params: dict[str, Any], *,
+                timestamp_ms: int, recv_window_ms: int) -> dict[str, Any]:
+    """HMAC-SHA256 sign one query (timestamp + recvWindow appended).
+
+    Single signing implementation for every signed call: the engine uses it
+    for its own requests and read-only tooling (``cryptobot keys check``)
+    uses it too, so a probe can never drift from the order path.
+    """
+    body = dict(params)
+    body["timestamp"] = int(timestamp_ms)
+    body["recvWindow"] = int(recv_window_ms)
+    query = urllib.parse.urlencode(body)
+    body["signature"] = hmac.new(
+        secret, query.encode("utf-8"), hashlib.sha256).hexdigest()
+    return body
+
+
 class LiveTransport(Protocol):
     """Synchronous JSON transport (urllib prod / replay test)."""
 
@@ -667,13 +684,9 @@ class BinanceLiveEngine:
 
     # -- signing --------------------------------------------------------------
     def _signed_params(self, params: dict[str, Any]) -> dict[str, Any]:
-        body = dict(params)
-        body["timestamp"] = self._now_ms() + self._offset_ms
-        body["recvWindow"] = self._recv_window
-        query = urllib.parse.urlencode(body)
-        body["signature"] = hmac.new(
-            self._secret, query.encode("utf-8"), hashlib.sha256).hexdigest()
-        return body
+        return sign_params(self._secret, params,
+                           timestamp_ms=self._now_ms() + self._offset_ms,
+                           recv_window_ms=self._recv_window)
 
     def _public(self, method: str, path: str,
                 params: dict[str, Any] | None = None) -> Any:
