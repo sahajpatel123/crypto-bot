@@ -17,16 +17,16 @@ This floor relies on the amendment-1 inventory as an already enumerated minimum.
 
 ## Split/setting crosswalk and unresolved total
 
-The identity key for a count is `(hypothesis/base rule, filter, parameter cell, universe/execution setting, evaluation split or confirmation-window choice)`. Identical full keys count once; different preregistered split or confirmation-window choices count separately when they could inform selection. The source preregistrations expose these schedules and cell counts, but the amendment-1 inventory does not map historical run records to all of these keys. The table therefore records the reproducible registered schedule without pretending its per-key executed crosswalk is complete:
+The identity key for a count is `(hypothesis/base rule, filter, parameter cell, universe/execution setting, evaluation split or confirmation-window choice)`. Identical full keys count once; different preregistered split or confirmation-window choices count separately when they could inform selection. The source preregistrations expose cell counts and fold/confirmation requirements, but the H-family documents do not pin every fold boundary and amendment 1 does not map historical run records to all of these keys. The table records the available registered rule and distinguishes a fold-count requirement from dated split boundaries; it is not a complete realized run crosswalk:
 
-| Source | Grid cells | Registered DEV folds/settings | Confirmation choice |
+| Source | Grid cells | DEV fold/split rule | Confirmation choice |
 |---|---:|---|---|
-| H1 maker OFI | 27 | 3 anchored folds | One-shot, exactly once |
-| H2 trend/vol | 27 | 3 anchored folds | One-shot, exactly once |
-| H3 funding skew | 27 | 3 folds; plus the H3-on-H2 filter trial (counted once by H3 §31) | One-shot, exactly once |
-| H4 cross-venue | 18 | 3 folds | One-shot, exactly once |
-| H5 liquidation cascade | 27 | 3 folds | One-shot, exactly once |
-| H6 volatility filter | 27 parameters; 54 filtered configurations (27 each on H2 and H3) | 3 folds across both bases | One-shot, exactly once |
+| H1 maker OFI | 27 | 3 anchored folds; boundaries not dated | One-shot, exactly once |
+| H2 trend/vol | 27 | 3 anchored folds; boundaries not dated | One-shot, exactly once |
+| H3 funding skew | 27 | 3-fold gate; boundaries not dated; plus the H3-on-H2 filter trial (counted once by H3 §31) | One-shot, exactly once |
+| H4 cross-venue | 18 | 3-fold gate; boundaries not dated | One-shot, exactly once |
+| H5 liquidation cascade | 27 | 3-fold gate; boundaries not dated | One-shot, exactly once |
+| H6 volatility filter | 27 parameters; 54 filtered configurations (27 each on H2 and H3) | 3-fold gate across both bases; boundaries not dated | One-shot, exactly once |
 | B1 vol-scaled trend | 12 | Train through 2020/test 2021; through 2021/test 2022; through 2022/test 2023 | One-shot confirmation screen |
 | B2 x-sec momentum | 6 | Same three B1 splits | One-shot confirmation screen |
 | B3 funding carry | 8 | Same three B1 splits | One-shot confirmation screen |
