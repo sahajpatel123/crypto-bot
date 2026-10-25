@@ -249,15 +249,20 @@ def test_t_plus_one_data_cannot_change_signal_eligibility():
 
 
 def test_signal_eligibility_requires_36_closes_across_35_intervals():
+    assert fwd.HISTORY_DAYS == 35
     fetcher = AuditFetcher()
-    days = DAYS[:fwd.HISTORY_DAYS + 2]
-    t = fwd.HISTORY_DAYS
+    days = DAYS[:37]
+    t = 35
     eligible = fwd._eligible_at(fetcher.closes, days, t)
     assert eligible == sorted(fetcher.closes)
 
     missing_oldest = eligible[0]
-    fetcher.closes[missing_oldest].pop(days[t - fwd.HISTORY_DAYS])
+    fetcher.closes[missing_oldest].pop(days[0])
     assert missing_oldest not in fwd._eligible_at(fetcher.closes, days, t)
+
+    missing_decision_close = eligible[1]
+    fetcher.closes[missing_decision_close].pop(days[t])
+    assert missing_decision_close not in fwd._eligible_at(fetcher.closes, days, t)
 
 
 def test_scoring_rejects_gaps_duplicates_and_bad_look_counts(tmp_path):
