@@ -1965,6 +1965,27 @@ def cmd_research(args: argparse.Namespace) -> int:
                              trades_per_day=args.trades_per_day)
         print(json.dumps(est.as_dict(), indent=1, sort_keys=True))
         return 0
+    if args.research_cmd == "d1-eval":
+        # D1 forward evaluator: the frozen rules are parsed from
+        # research/prereg/D1-*.md at run time, only forward recorder chunks are
+        # read, and the sealed holdout is refused structurally before any byte
+        # of it is decoded. Read-only: no orders, no keys, gate stays NO-GO.
+        from cryptobot.research.d1_eval import main as d1_main
+
+        forward: list[str] = ["--recorder-root", args.recorder_root]
+        if args.repo_root:
+            forward += ["--repo-root", args.repo_root]
+        if args.prereg_dir:
+            forward += ["--prereg-dir", args.prereg_dir]
+        if args.start:
+            forward += ["--start", args.start]
+        if args.end:
+            forward += ["--end", args.end]
+        if args.json_out:
+            forward += ["--json", args.json_out]
+        if args.no_verify_chunks:
+            forward.append("--no-verify-chunks")
+        return d1_main(forward)
     print(f"research: unknown command {args.research_cmd}", file=sys.stderr)
     return 2
 
@@ -2275,7 +2296,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--no-notify", action="store_true")
     p.set_defaults(func=cmd_autopilot)
     p = sub.add_parser("research", help="hypothesis registry / power (F4)")
-    p.add_argument("research_cmd", choices=("register", "power"))
+    p.add_argument("research_cmd", choices=("register", "power", "d1-eval"))
     p.add_argument("--root", default="research/autopilot")
     p.add_argument("--hypothesis", default=None)
     p.add_argument("--prereg", default=None)
@@ -2284,6 +2305,22 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--family-size", type=int, default=6)
     p.add_argument("--trades", default=None)
     p.add_argument("--trades-per-day", type=float, default=1.0)
+    # d1-eval: forward evaluator. Its rules come from the frozen preregistration
+    # and its data from the recorder chain; there is no flag for a trial count,
+    # a threshold or a cell, so the grid cannot be re-parameterised from a shell.
+    p.add_argument("--recorder-root", default="data/recorder",
+                   help="d1-eval: recorder root (manifest.json + chunks/)")
+    p.add_argument("--prereg-dir", default=None,
+                   help="d1-eval: directory holding the frozen D1 preregistration")
+    p.add_argument("--repo-root", default=None,
+                   help="d1-eval: checkout root that holds the trial-count amendment")
+    p.add_argument("--start", default=None,
+                   help="d1-eval: ISO instant; anything earlier is never read")
+    p.add_argument("--end", default=None, help="d1-eval: ISO instant, exclusive")
+    p.add_argument("--json-out", default=None,
+                   help="d1-eval: write the verdict document to this path")
+    p.add_argument("--no-verify-chunks", action="store_true",
+                   help="d1-eval: skip per-chunk sha256 verification (audits only)")
     p.set_defaults(func=cmd_research)
     p = sub.add_parser("demo-drill")
     p.add_argument("--out", default=None)
