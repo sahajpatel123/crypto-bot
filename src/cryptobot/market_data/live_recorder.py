@@ -4,7 +4,9 @@ This process is deliberately independent of the trading process: it may
 keep recording while the bot is stopped, restarted or armed. It captures
 Binance USD-M public streams for the configured symbols:
 
-  aggTrade, bookTicker, depth@100ms, markPrice@1s, forceOrder
+  trade (aggregated per second), bookTicker, depth@100ms
+  -- the names this endpoint delivers; aggTrade, markPrice@1s and
+  forceOrder handshake and then stay silent (BINANCE_SILENT_STREAMS)
   plus REST polling for openInterest, fundingRate, premiumIndex and
   periodic depth snapshots.
 
@@ -67,6 +69,26 @@ BINANCE_STREAMS = ("trade", "bookTicker", "depth@100ms")
 # Names that handshake but stay silent on the same path; still subscribable
 # via RecorderConfig.streams for venues/hosts where they do deliver.
 BINANCE_SILENT_STREAMS = ("aggTrade", "markPrice@1s", "forceOrder")
+
+# One stream name is satisfied by the other: they carry the same content,
+# so a request for either is served if records of the other arrive. This
+# mapping is applied to the stream name only, never to the whole symbol --
+# a live trade stream must not exempt a dead depth@100ms on the same
+# symbol, or the silence alert below would be unreachable in the one case
+# it exists to catch.
+_STREAM_ALIASES = {"trade": "aggTrade", "aggTrade": "trade"}
+# A single-stream connection (/ws/<name>) has no stream field, so its
+# records are named by bare event type. Recognise those instead of
+# alerting on every chunk -- but only for the one-symbol, one-stream shape
+# such a connection exists in, because a bare token is symbol-agnostic and
+# would otherwise let one symbol silence the rest (see _silent_streams).
+_BARE_EVENT_NAMES = {
+    "trade": ("trade",),
+    "aggTrade": ("aggTrade",),
+    "bookTicker": ("bookTicker",),
+    "depth@100ms": ("depth", "depthUpdate"),
+    "depth": ("depth", "depthUpdate"),
+}
 
 
 def _utc_now() -> str:
@@ -316,10 +338,25 @@ class RecorderWriter:
                 for stream in self.config.streams:
                     expected.add(f"{symbol.lower()}@{stream}")
         seen = set(entry.get("streams", []))
-        return sorted(name for name in expected
-                      if name not in seen
-                      and f"{name.split('@')[0]}@aggTrade" not in seen
-                      and f"{name.split('@')[0]}@trade" not in seen)
+        # A bare name can only arrive from a /ws/<name> connection, which is
+        # only ever opened for one symbol and one stream. Accepting bare
+        # names on a full run would make a symbol-agnostic token satisfy
+        # every symbol's stream of that type, masking a dead one.
+        bare_ok = (len(self.config.symbols) == 1
+                   and len(self.config.streams) == 1)
+        missing = []
+        for name in expected:
+            if name in seen:
+                continue
+            symbol, _, stream = name.partition("@")
+            alias = _STREAM_ALIASES.get(stream)
+            if alias is not None and f"{symbol}@{alias}" in seen:
+                continue
+            if bare_ok and any(token in seen
+                               for token in _BARE_EVENT_NAMES.get(stream, ())):
+                continue
+            missing.append(name)
+        return sorted(missing)
 
     def _rotate(self) -> None:
         if self._gz is None or self._raw_path is None:
@@ -659,8 +696,23 @@ class Recorder:
                       "event_ms": sec, "bucket_ms": width_ms,
                       "buy_qty": 0.0, "sell_qty": 0.0, "trades": 0,
                       "notional": 0.0, "gap": rec.get("gap"),
-                      "out_of_order": rec.get("out_of_order", False)}
+                      "out_of_order": rec.get("out_of_order", False),
+                      "first_trade_id": None, "last_trade_id": None}
             self._buckets[key] = bucket
+        # A gap or out-of-order print can land on a second whose bucket
+        # already exists; without this the flag would be dropped and the
+        # aggregate would read as clean.
+        bucket["gap"] = bucket["gap"] or rec.get("gap")
+        bucket["out_of_order"] = (bucket["out_of_order"]
+                                  or rec.get("out_of_order", False))
+        trade_id = rec.get("trade_id")
+        if isinstance(trade_id, int):
+            first = bucket["first_trade_id"]
+            last = bucket["last_trade_id"]
+            if first is None or trade_id < first:
+                bucket["first_trade_id"] = trade_id
+            if last is None or trade_id > last:
+                bucket["last_trade_id"] = trade_id
         if rec.get("maker"):
             bucket["sell_qty"] += qty
         else:
