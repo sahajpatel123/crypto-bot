@@ -16,7 +16,8 @@ import numpy as np
 import pandas as pd
 
 __all__ = ["sharpe", "sortino", "max_drawdown", "stationary_bootstrap_ci",
-           "deflated_sharpe", "pbo_cscv", "reality_check_pvalue",
+           "deflated_sharpe", "dsr_detail", "acf", "autocorr_adjusted_n",
+           "newey_west_tstat", "pbo_cscv", "reality_check_pvalue",
            "walk_forward_splits", "plateau_fraction", "year_breakdown",
            "tail_metrics", "capacity_estimate"]
 
@@ -120,46 +121,166 @@ def _phi_inv(p: float) -> float:
         (((((b[0] * r + b[1]) * r + b[2]) * r + b[3]) * r + b[4]) * r + 1.0)
 
 
+def acf(values, lag: int = 1) -> float:
+    """Sample autocorrelation at ``lag`` (0.0 when undefined)."""
+    v = np.asarray(list(values), dtype=float)
+    v = v[np.isfinite(v)]
+    lag = int(lag)
+    if len(v) <= lag + 1 or lag < 1:
+        return 0.0
+    e = v - v.mean()
+    g0 = float((e * e).mean())
+    if g0 <= 0:
+        return 0.0
+    return float((e[lag:] * e[:-lag]).mean() / g0)
+
+
+def autocorr_adjusted_n(returns, *, max_lag: int = 30,
+                        hold_days: float | None = None,
+                        min_n: float = 2.0) -> float:
+    """Effective sample size of a serially dependent return series.
+
+    A daily series from a carry/basis book is mostly exact zeros with
+    strongly positive autocorrelation: consecutive days are re-measurements
+    of the same open position, not fresh evidence. Counting them as ``n``
+    independent draws inflates every t-statistic and pushes the deflated
+    Sharpe ratio toward 1 (B4's dev series: 915 days, 75% exact zeros,
+    ACF(1)=0.46, iid t=6.96, Newey-West t(30)=2.20, DSR 0.9999998).
+
+    Two estimates are combined, and the smaller wins because the point is
+    never to overstate confidence:
+
+    1. Newey-West variance inflation with Bartlett weights,
+       ``infl = 1 + 2*sum_{k=1..L} (1 - k/(L+1)) * acf(k)``, hence
+       ``n / infl``. The inflation factor is floored at 1.0, so a
+       mean-reverting series is never credited with MORE observations
+       than it has days.
+    2. ``n / hold_days`` when the caller knows the holding period: a
+       30-day hold is at most one independent bet per 30 days, whatever
+       the day-to-day autocorrelation looks like.
+
+    The result is floored at ``min_n`` (a DSR on one bet is meaningless,
+    not small) and capped at ``n``.
+    """
+    v = np.asarray(list(returns), dtype=float)
+    v = v[np.isfinite(v)]
+    n = len(v)
+    if n < 3:
+        return float(n) if n > 0 else 0.0
+    lag = max(1, min(int(max_lag), n - 1))
+    e = v - v.mean()
+    g0 = float((e * e).mean())
+    if g0 <= 0:
+        return float(n)
+    infl = 1.0
+    for k in range(1, lag + 1):
+        gk = float((e[k:] * e[:-k]).mean())
+        infl += 2.0 * (1.0 - k / (lag + 1.0)) * gk / g0
+    infl = max(infl, 1.0)
+    n_eff = n / infl
+    if hold_days is not None and float(hold_days) > 0:
+        n_eff = min(n_eff, n / float(hold_days))
+    return float(min(max(n_eff, min_n), n))
+
+
+def newey_west_tstat(values, *, max_lag: int = 30) -> float:
+    """t-statistic of the mean under serial dependence (Bartlett kernel)."""
+    v = np.asarray(list(values), dtype=float)
+    v = v[np.isfinite(v)]
+    n = len(v)
+    if n < 3:
+        return 0.0
+    m = float(v.mean())
+    e = v - m
+    var = float((e * e).mean())
+    lag = max(1, min(int(max_lag), n - 1))
+    for k in range(1, lag + 1):
+        gk = float((e[k:] * e[:-k]).mean())
+        var += 2.0 * (1.0 - k / (lag + 1.0)) * gk
+    if var <= 0:
+        return 0.0 if m == 0 else math.copysign(math.inf, m)
+    return m / math.sqrt(var / n)
+
+
+def dsr_detail(selected_returns, trial_sharpes_ann,
+               periods_per_year: int = 365, *,
+               max_lag: int = 30, hold_days: float | None = None,
+               adjust_n: bool = True) -> dict:
+    """Deflated Sharpe ratio with its full intermediate arithmetic.
+
+    Returns ``dsr`` plus the numbers a reader needs to check it: the
+    observation count ``n``, the autocorrelation-adjusted ``n_eff`` used
+    in place of ``n``, the non-annualized Sharpe, the expected maximum
+    from ``len(trial_sharpes_ann)`` trials, and the higher-moment term.
+    """
+    r = np.asarray(list(selected_returns), dtype=float)
+    r = r[np.isfinite(r)]
+    n = len(r)
+    out = {"n": int(n), "n_eff": float(n), "acf1": 0.0, "sr": 0.0,
+           "sr_ann": 0.0, "expected_max": 0.0, "inner": 1.0,
+           "skew": 0.0, "kurt": 3.0, "n_trials": 0, "dsr": 0.5}
+    if n < 2:
+        return out
+    mu, sd = float(r.mean()), float(r.std(ddof=1))
+    out["acf1"] = acf(r, 1)
+    if sd <= 0:
+        out["dsr"] = 1.0 if mu > 0 else (0.0 if mu < 0 else 0.5)
+        return out
+    sr = mu / sd
+    out["sr"], out["sr_ann"] = sr, sr * math.sqrt(periods_per_year)
+    scale = math.sqrt(periods_per_year)
+    trials = [float(t) / scale for t in trial_sharpes_ann
+              if math.isfinite(float(t))]
+    k = len(trials)
+    out["n_trials"] = k
+    expected_max = 0.0
+    if k > 1:
+        var_t = float(np.var(trials, ddof=1))
+        if var_t > 0:
+            gamma = 0.5772156649
+            expected_max = math.sqrt(var_t) * (
+                (1 - gamma) * _phi_inv(1 - 1 / k)
+                + gamma * _phi_inv(1 - 1 / (k * math.e)))
+    out["expected_max"] = expected_max
+    z = (r - mu) / sd
+    skew = float((z ** 3).mean())
+    kurt = float((z ** 4).mean())  # Pearson (normal = 3)
+    out["skew"], out["kurt"] = skew, kurt
+    inner = 1.0 - skew * sr + (kurt - 1.0) / 4.0 * sr * sr
+    out["inner"] = inner
+    if inner <= 0:
+        out["dsr"] = 1.0 if sr > expected_max else 0.0
+        return out
+    n_eff = (autocorr_adjusted_n(r, max_lag=max_lag, hold_days=hold_days)
+             if adjust_n else float(n))
+    out["n_eff"] = n_eff
+    stat = (sr - expected_max) * math.sqrt(n_eff - 1) / math.sqrt(inner)
+    out["dsr"] = _phi(stat)
+    return out
+
+
 def deflated_sharpe(selected_returns, trial_sharpes_ann,
-                    periods_per_year: int = 365) -> float:
+                    periods_per_year: int = 365, *,
+                    max_lag: int = 30, hold_days: float | None = None,
+                    adjust_n: bool = True) -> float:
     """Deflated Sharpe ratio (Bailey & Lopez de Prado 2014).
 
     ``trial_sharpes_ann`` are annualized (the same units ``sharpe()``
     returns). The formula itself uses the non-annualized Sharpe
     mean/std: the sqrt(T-1) factor is derived for that scaling.
     Plugging the annualized number in inflates DSR toward 1.
+
+    Since the fix for the B4 overstatement, the sqrt(T-1) factor uses an
+    autocorrelation-adjusted effective sample size
+    (:func:`autocorr_adjusted_n`) instead of the raw observation count:
+    a 30-day carry measured daily is a few dozen bets, not hundreds of
+    independent draws. ``adjust_n=False`` restores the naive count and
+    exists only to reproduce the old, overstated numbers.
     """
-    r = np.asarray(list(selected_returns), dtype=float)
-    r = r[np.isfinite(r)]
-    n = len(r)
-    if n < 2:
-        return 0.5
-    mu, sd = float(r.mean()), float(r.std(ddof=1))
-    if sd <= 0:
-        return 1.0 if mu > 0 else (0.0 if mu < 0 else 0.5)
-    sr = mu / sd
-    scale = math.sqrt(periods_per_year)
-    trials = [float(t) / scale for t in trial_sharpes_ann if math.isfinite(float(t))]
-    k = len(trials)
-    if k <= 1:
-        expected_max = 0.0
-    else:
-        var_t = float(np.var(trials, ddof=1))
-        if var_t <= 0:
-            expected_max = 0.0
-        else:
-            gamma = 0.5772156649
-            expected_max = math.sqrt(var_t) * (
-                (1 - gamma) * _phi_inv(1 - 1 / k)
-                + gamma * _phi_inv(1 - 1 / (k * math.e)))
-    z = (r - mu) / sd
-    skew = float((z ** 3).mean())
-    kurt = float((z ** 4).mean())  # Pearson (normal = 3)
-    inner = 1.0 - skew * sr + (kurt - 1.0) / 4.0 * sr * sr
-    if inner <= 0:
-        return 1.0 if sr > expected_max else 0.0
-    stat = (sr - expected_max) * math.sqrt(n - 1) / math.sqrt(inner)
-    return _phi(stat)
+    return dsr_detail(selected_returns, trial_sharpes_ann,
+                      periods_per_year, max_lag=max_lag,
+                      hold_days=hold_days,
+                      adjust_n=adjust_n)["dsr"]
 
 
 def _sharpe_raw(values) -> float:

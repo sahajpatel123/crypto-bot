@@ -38,3 +38,50 @@ Separately, a BTC hedge at the size seen in the voided book (0.067 BTC
 on 10,000 USDT) scales to about 0.0008 BTC at 120 USDT, which floors
 through the 0.001 quantity step. 120 USDT cannot express that hedge
 even if a future rerun passed.
+
+## Statistics repair after the B4 kill (D-052)
+
+B4's DSR of 1.000 was measured with n = 915 daily observations on a series
+that is 75.2% exact zeros with ACF(1) = 0.46: consecutive days re-measure
+the same open position. The same series has an iid t of 6.96 but a
+Newey-West t(30) of 2.20. `slow_stats.deflated_sharpe` now substitutes an
+autocorrelation-adjusted effective sample size for n (and caps it at
+n / holding period), so the recorded numbers above are restated:
+
+| Basis | n_eff | DSR |
+|---|---:|---:|
+| naive n = 915 (old code) | 915 | 1.000 |
+| Newey-West, 30d lag window | 91.5 | 0.946 |
+| capped by 30-day max hold | 30.5 | 0.821 |
+| the ~23-bet estimate the audit argues for | 22.5 | 0.784 |
+
+The B4 verdict does not change (it was killed on turnover, which D-051
+argues is the wrong bullet), but the DSR bullet was not the clean pass it
+appeared to be: at the bet count this strategy actually has, B4 fails
+DSR 0.8 as well. `deflated_sharpe(..., adjust_n=False)` still reproduces
+the old 0.9999998 exactly, so nothing is hidden.
+
+The engine's own warning was also being dropped: `slow_backtest` appends
+`leak-investigate` above Sharpe 3.0, and `run_family_b` discarded the
+flags before writing the gate document. Flags now travel into the gate
+document (`flags`, `cell_flags`, `best_cell_flags`) and a blocking flag
+fails promotion, so a suspiciously good result cannot be adopted silently.
+
+## B4b forward study (the only surviving test of this mechanism)
+
+`research/prereg/B4b-forward-basis.md` — one cell (C1's k = 1.5,
+drift_band = 0.05), one look, forward data only, committed before any
+forward read. It replaces the turnover budget with per-fill square-root
+impact and a 1% ADV participation cap and keeps no turnover gate at all.
+
+**Status as of 2026-10-24: UNDERPOWERED — 0 of 90 forward days, 0 of 20
+round trips.** There is no forward result to report. Vision publishes
+funding monthly, the 2026-11 monthly file is the first admissible one,
+and the 2026-10 file is a holdout-dated artifact that this study refuses
+to decode, so the forward clock starts 2026-11-01 and the 90-day mark is
+2027-01-29 at the earliest. The first tradeable decision is later still
+(20 forward days of bars are needed for ADV20 and sigma). The binding
+constraint is expected to be the 20 round trips, because entry needs a
+trailing funding APR above 41.45% (median 8h rate above 37.9 bps) — a
+rich regime, not the ordinary one. Running
+`python tools/forward_b4b.py status` prints the live counters.

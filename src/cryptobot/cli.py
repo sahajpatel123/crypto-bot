@@ -1509,8 +1509,8 @@ def _age_days(stamp: object) -> float | None:
     except (TypeError, ValueError):
         return None
     if when.tzinfo is None:
-        when = when.replace(tzinfo=timezone.utc)
-    return (datetime.now(timezone.utc) - when).total_seconds() / 86400.0
+        when = when.replace(tzinfo=UTC)
+    return (datetime.now(UTC) - when).total_seconds() / 86400.0
 
 
 def _sha256_file(path: str | Path) -> str:
@@ -1646,9 +1646,9 @@ def cmd_gate(args: argparse.Namespace) -> int:
            "details": details,
            "hypothesis": getattr(args, "hypothesis", None),
            "expires_utc": datetime.fromtimestamp(
-               datetime.now(timezone.utc).timestamp() + 86400,
-               tz=timezone.utc).isoformat(),
-           "created_utc": datetime.now(timezone.utc).isoformat()}
+               datetime.now(UTC).timestamp() + 86400,
+               tz=UTC).isoformat(),
+           "created_utc": datetime.now(UTC).isoformat()}
     go = all(checks.values())
     doc: dict = {"gate": "GO" if go else "NO-GO", "checks": checks,
                  "evidence_sha256": {
@@ -1721,7 +1721,7 @@ def cmd_arm(args: argparse.Namespace) -> int:
            "gate_expires_utc": gate.get("expires_utc"),
            "hypothesis": gate.get("hypothesis"),
            "code_commit": _current_commit(),
-           "armed_utc": datetime.now(timezone.utc).isoformat()}
+           "armed_utc": datetime.now(UTC).isoformat()}
     doc = {"armed": True, "capital_usdt": capital,
            "max_daily_loss": max_loss, "canary_trades": 10,
            "gate_sha256": gate.get("gate_sha256"),
@@ -1772,7 +1772,7 @@ def cmd_recorder(args: argparse.Namespace) -> int:
     out.mkdir(parents=True, exist_ok=True)
     stop_file = Path(args.stop_file) if args.stop_file else out / "STOP"
     if args.recorder_cmd == "stop":
-        stop_file.write_text(datetime.now(timezone.utc).isoformat() + "\n")
+        stop_file.write_text(datetime.now(UTC).isoformat() + "\n")
         print(f"recorder: stop requested via {stop_file}")
         return 0
     if args.recorder_cmd == "status":
@@ -1991,7 +1991,7 @@ def _hypothesis_rows() -> list[dict]:
 
 def cmd_adjudicate(args: argparse.Namespace) -> int:
     """Idempotent project decision. Does not write a gate or arm file."""
-    from datetime import datetime, timezone
+    from datetime import UTC, datetime
     from cryptobot.research.adjudicate import run_adjudication
     rows = _hypothesis_rows()
     t0 = None
@@ -2007,7 +2007,7 @@ def cmd_adjudicate(args: argparse.Namespace) -> int:
     if gate_path:
         gate_is_go = _read_json(gate_path).get("gate") == "GO"
     out = run_adjudication(
-        rows=rows, now=datetime.now(timezone.utc), t0=t0,
+        rows=rows, now=datetime.now(UTC), t0=t0,
         gate_is_go=gate_is_go,
         chain_path=Path(args.chain),
         plist_dir=Path(args.plist_dir),

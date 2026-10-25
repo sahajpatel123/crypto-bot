@@ -17,7 +17,7 @@ import numpy as np
 import pandas as pd
 
 from cryptobot.research.slow_stats import (
-    deflated_sharpe, pbo_cscv, plateau_fraction, sharpe)
+    dsr_detail, pbo_cscv, plateau_fraction, sharpe)
 
 GRID_AXES = {
     "B1": [("lookback_d", [20, 60, 120]), ("vol_window_d", [20, 60]),
@@ -39,6 +39,12 @@ MAX_HOLD_D = {"B1": 7, "B2": 7, "B3": 28, "B4": 30, "B5": 1, "B6": 7,
               "B7": 30}
 BOOTSTRAP_BLOCK_D = 30
 TEST_YEARS = (2021, 2022, 2023)
+
+# A backtest flag that blocks promotion until a human looks at it. The
+# flags themselves come from slow_backtest (e.g. 'leak-investigate' when
+# Sharpe > 3.0); dropping them let a suspiciously good result be adopted
+# silently.
+BLOCKING_FLAGS = frozenset({"leak-investigate"})
 
 
 def expand_grid(hypothesis: str) -> list[dict]:
@@ -88,14 +94,31 @@ def oos_year_nets(full: pd.Series, *, gap_days: int) -> dict[int, float]:
 
 def promotion_gates(hypothesis: str, cells: dict, *, years: list[float],
                     turnover_budget: float, sharpe_2x: float, pbo: float,
-                    seed: int = 7) -> dict:
-    """The 7 prereg dev-promotion bullets. ALL must pass (AND)."""
+                    seed: int = 7, flags: object = (),
+                    hold_days: float | None = None) -> dict:
+    """The 7 prereg dev-promotion bullets. ALL must pass (AND).
+
+    ``flags`` are the backtest's own warnings (e.g. ``leak-investigate``,
+    appended by ``slow_backtest`` when a Sharpe above 3.0 looks too good
+    to be a real result). They are recorded in the gate document and any
+    BLOCKING flag fails promotion, so a suspiciously good result cannot be
+    adopted without someone looking at it. Before this, the driver threw
+    the flags away and the artifact looked clean.
+
+    ``hold_days`` feeds the autocorrelation-adjusted effective sample size
+    used by the deflated Sharpe ratio (see ``slow_stats.deflated_sharpe``):
+    a 30-day hold is at most one independent bet per 30 days.
+    """
     sharpes = {k: sharpe(v["oos"]) for k, v in cells.items()}
     best = max(sharpes, key=lambda k: sharpes[k])
     best_oos = list(cells[best]["oos"])
     trial_sr = [sharpes[k] for k in sorted(sharpes, key=repr)]
-    dsr = deflated_sharpe(best_oos, trial_sr)
+    dsr_doc = dsr_detail(best_oos, trial_sr, hold_days=hold_days)
+    dsr = dsr_doc["dsr"]
+    dsr_naive = dsr_detail(best_oos, trial_sr, adjust_n=False)["dsr"]
     plateau = plateau_fraction(sharpes)
+    flag_list = sorted({str(f) for f in flags})
+    blocking = [f for f in flag_list if f in BLOCKING_FLAGS]
     bullets = {
         "oos_sharpe": sharpes[best] >= 0.7,
         "adverse_sharpe": sharpe_2x > 0.3,
@@ -105,6 +128,7 @@ def promotion_gates(hypothesis: str, cells: dict, *, years: list[float],
         "plateau": plateau >= 0.7,
         "drawdown": cells[best]["dd"] <= 0.35,
         "turnover": cells[best]["turnover"] <= turnover_budget,
+        "flags_clean": not blocking,
     }
     detail = {"best_cell": best, "best_oos_sharpe": sharpes[best],
               "best_oos": [float(x) for x in best_oos],
@@ -112,6 +136,8 @@ def promotion_gates(hypothesis: str, cells: dict, *, years: list[float],
               "years": years, "plateau": plateau,
               "drawdown": cells[best]["dd"],
               "turnover": cells[best]["turnover"], "bullets": bullets,
+              "flags": flag_list, "blocking_flags": blocking,
+              "dsr_detail": dsr_doc, "dsr_naive_unadjusted": dsr_naive,
               "n_trials": len(cells)}
     return {"pass": bool(all(bullets.values())), **detail}
 
