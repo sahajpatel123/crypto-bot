@@ -1,6 +1,8 @@
 # RESUME — crypto-bot state
 
-Snapshot: **2026-10-25 10:10Z**, base `origin/live/hardening` @ `fcad78f0` (PR #39, this file).
+Snapshot: **2026-10-25 10:00Z**, base `origin/live/hardening` @ `6d76902` (#43).
+`origin/release/v1` (the tree the recorder actually runs) is now at **`ef744a2`** — #44 + #45
+merged there; see §8. No restart has been performed.
 Gate: **NO-GO**, unchanged. Holdout sealed. No orders, no API-key reads, no live money.
 Read this file, then `git log --oneline -5 origin/live/hardening`, then the PR list. That is the whole
 handover — do not re-derive anything below.
@@ -226,6 +228,38 @@ So **#33 being merged on `live/hardening` changes no recorder behaviour**, and *
 recorder is a no-op** until the edge tree carries the change. Landing the fix there and updating
 `edge/src` is an **owner decision**; record it, do not do it. Only one controlled restart follows it,
 with rollback to `6ad62b4`. **No restart has been performed.**
+
+**UPDATE 2026-10-25 10:00Z — the fix is now on `release/v1`, and the edge tree still is not.** Two
+pull requests were opened against `release/v1` (not `live/hardening`, and `release/v1` was **not**
+fast-forwarded to `live/hardening`) and both merged:
+
+- **#45** (`ef744a2`) cherry-picks **#33 `a2acaba`** and **#36 `6e39cba`** onto `release/v1` —
+  `trade_aggregate_s`, `BINANCE_SILENT_STREAMS`, `_silent_streams`, per-second trade buckets, and
+  `tests/unit/test_recorder_streams.py`. 571 insertions / 6 deletions / 3 files; `DECISIONS.md`
+  resolved by union (+199, 0 removed). The default stream set becomes `trade, bookTicker,
+  depth@100ms`; `aggTrade, markPrice@1s, forceOrder` are the names that handshake and then never
+  deliver. One extra commit renames a loop variable that would otherwise raise ruff `F402` on
+  `release/v1` only (that base still imports the unused `dataclasses.field`).
+- **#44** (`4f19a45`) exists because **`ba5d555` made `release/v1` unrunnable**: the merge of
+  `live/hardening` into it left a duplicated block in `app/session.py` that is a hard `SyntaxError`,
+  plus nine `timezone.utc` uses whose import the same merge replaced with `UTC`. So `python -m
+  cryptobot.cli` — the command launchd runs — could not be imported at all from `ba5d555`, and a
+  restart would have crash-looped. #44 restores the block `6ad62b4` ships (keeping its
+  `if not self._exit_only_reasons:` guard rather than `live/hardening`'s flattened form) and rewrites
+  the nine call sites to `UTC`. Acceptance went 17 failed → 180 passed.
+
+Verified at `origin/release/v1` `ef744a2`, in a clean worktree: `import cryptobot.cli` and
+`import cryptobot.market_data.live_recorder` succeed, `trade_aggregate_s` is present,
+`tests/unit/test_recorder_streams.py` is **14/14 green** (also 14/14 under a clean Python 3.12.13
+env), and `ruff --select F821 src` is clean. The edge tree itself is **untouched at `6ad62b4`,
+clean, with the recorder process still running untouched**, so the deploy remains exactly one owner action:
+update `~/Code/cryto-bot-edge` to `ef744a2` (or later) and do the one controlled restart, rollback
+`6ad62b4`.
+
+`release/v1` CI does not go green from this: its `lint` job is already red at base (132 errors,
+identical before and after) and ~230 pre-existing unit failures in the merged `live/hardening` code
+become visible once `app/session.py` imports again. Neither is caused by #44/#45; both are recorded
+here rather than left to be rediscovered.
 
 `com.cryptobot.guard` runs every 5 minutes: it restarts only when no recorder is running, no STOP file
 exists and free space is above its threshold; it prunes pytest scratch older than 6 hours only when
