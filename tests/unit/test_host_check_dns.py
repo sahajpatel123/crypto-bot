@@ -1,8 +1,8 @@
 """host-check dns-sinkhole row: injected resolvers and connector, no network."""
 from __future__ import annotations
 
+import random
 import socket
-from types import SimpleNamespace
 
 import pytest
 
@@ -101,25 +101,36 @@ def test_time_budget_is_inconclusive():
     assert row["status"] == "PASS" and "time budget" in row["detail"]
 
 
-def test_budget_expiring_before_all_system_addresses_is_inconclusive(monkeypatch):
+def test_budget_exhausted_system_probe_cannot_claim_a_sinkhole(monkeypatch):
     now = [0.0]
-    monkeypatch.setattr(host_check, "time", SimpleNamespace(monotonic=lambda: now[0]))
-    system_addresses = [SINK, "49.44.79.237", "49.44.79.238"]
+    monkeypatch.setattr(host_check.time, "monotonic", lambda: now[0])
     doh_calls: list[str] = []
-    connect_calls: list[str] = []
 
-    def connector(address, _port, _timeout):
-        connect_calls.append(address)
-        if address != REAL:
-            now[0] += 2.0  # the first failed system probe consumes the entire budget
+    def connector(address, *_args):
+        now[0] += 1.0
         return address == REAL
 
     row = dns_sinkhole_check(
-        hosts=("fapi.binance.com",), system_resolver=lambda _h: system_addresses,
-        doh_resolver=lambda h: doh_calls.append(h) or [REAL], connector=connector, budget_s=1.0)
+        hosts=("fapi.binance.com",), system_resolver=lambda _h: [SINK] * 8,
+        doh_resolver=lambda h: doh_calls.append(h) or [REAL], connector=connector,
+        budget_s=1.5)
     assert row["status"] == "PASS" and "inconclusive" in row["detail"]
-    assert "time budget" in row["detail"]
-    assert len(connect_calls) == 1 and doh_calls == []
+    assert doh_calls == []  # not enough budget to establish the system addresses are dead
+
+
+def test_unprobed_addresses_due_to_cap_cannot_claim_a_sinkhole(monkeypatch):
+    class PreserveOrder:
+        def shuffle(self, values):
+            pass
+
+    monkeypatch.setattr(random, "Random", lambda: PreserveOrder())
+    addresses = [f"13.224.10.{i}" for i in range(1, 10)]
+    doh_real = "13.224.20.1"
+    row = dns_sinkhole_check(
+        hosts=("fapi.binance.com",), system_resolver=lambda _h: addresses,
+        doh_resolver=lambda _h: [doh_real],
+        connector=lambda address, *_args: address in {addresses[-1], doh_real})
+    assert row["status"] == "PASS" and "inconclusive" in row["detail"]
 
 
 def test_https_proxy_does_not_skip_the_direct_probe(monkeypatch):

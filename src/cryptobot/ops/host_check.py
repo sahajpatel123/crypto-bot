@@ -164,23 +164,22 @@ def dns_sinkhole_check(hosts: tuple[str, ...] = SINKHOLE_HOSTS, *,
     def candidates(addresses: list[str]) -> list[str]:
         shuffled = list(addresses)
         rng.shuffle(shuffled)
-        return shuffled[:MAX_PROBED_ADDRESSES]
+        return shuffled[:MAX_PROBED_ADDRESSES]  # every reachable-or-not address, capped
 
     started = time.monotonic()
     deadline = started + max(0.0, budget_s)
 
-    def reaches(addresses: list[str]) -> tuple[bool, bool]:
-        probes = candidates(addresses)
-        capped = len(probes) < len(addresses)
-        for index, address in enumerate(probes):
+    def reaches(addresses: list[str]) -> bool | None:
+        selected = candidates(addresses)
+        for address in selected:
             remaining = deadline - time.monotonic()
             if remaining <= 0:
-                return False, False
+                return None
             if connect(address, port, min(timeout_s, remaining)):
-                return True, True
-            if time.monotonic() >= deadline and (index + 1 < len(probes) or capped):
-                return False, False
-        return False, not capped
+                return True
+        if len(addresses) > len(selected):
+            return None  # the probe cap prevents proving that every address is dead
+        return False
 
     sinkholed: list[tuple[str, str]] = []
     unknown: list[str] = []
@@ -190,26 +189,27 @@ def dns_sinkhole_check(hosts: tuple[str, ...] = SINKHOLE_HOSTS, *,
             continue
         try:
             system_addrs = list(system(host))
-            system_reaches, system_complete = reaches(system_addrs)
-            if system_reaches:
+            if not system_addrs:
+                unknown.append(f"{host}: system resolver returned no IPv4 addresses")
                 continue
-            if not system_complete:
-                unknown.append(f"{host}: system address probe incomplete (time budget or "
-                               f"{MAX_PROBED_ADDRESSES}-address cap)")
+            system_reaches = reaches(system_addrs)
+            if system_reaches is True:
+                continue
+            if system_reaches is None:
+                unknown.append(f"{host}: system address probe incomplete (time budget or address cap)")
                 continue
             if time.monotonic() >= deadline:
-                unknown.append(f"{host}: time budget {budget_s:.0f}s spent before DoH probe")
+                unknown.append(f"{host}: time budget {budget_s:.0f}s spent")
                 continue
             doh_addrs = list(doh(host))
             if sorted(doh_addrs) == sorted(system_addrs):
                 continue  # answers agree: unreachable, but not a DNS sinkhole (venue-rtt says so)
-            doh_reaches, doh_complete = reaches(doh_addrs)
-            if doh_reaches:
-                sinkholed.append((host, f"{host} system={','.join(system_addrs) or 'none'} "
+            doh_reaches = reaches(doh_addrs)
+            if doh_reaches is True:
+                sinkholed.append((host, f"{host} system={','.join(system_addrs)} "
                                         f"(connect failed) doh={','.join(doh_addrs)} (connects)"))
-            elif not doh_complete:
-                unknown.append(f"{host}: DoH address probe incomplete (time budget or "
-                               f"{MAX_PROBED_ADDRESSES}-address cap)")
+            elif doh_reaches is None:
+                unknown.append(f"{host}: DoH address probe incomplete (time budget or address cap)")
             else:
                 unknown.append(f"{host}: neither system nor DoH address connects")
         except Exception as exc:  # noqa: BLE001 — a check must report, never crash host-check
