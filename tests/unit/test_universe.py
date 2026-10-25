@@ -1,8 +1,19 @@
 """E1.4: point-in-time universe, listing age, no-lookahead proof."""
 from __future__ import annotations
 
+import json
+from datetime import UTC, datetime, timedelta
+
 import pandas as pd
 import pytest
+
+from cryptobot.market_data.universe import (
+    enrich_top_k_depth,
+    rank_symbols,
+    scan_and_select,
+    scan_universe,
+    select_subscriptions,
+)
 
 pytest.importorskip("pandas")
 
@@ -78,16 +89,6 @@ def test_liquidity_table_sums_quote_volume():
     tab = liquidity_table(frames)
     assert tab["B"] == pytest.approx(2e7)
     assert tab["A"] == pytest.approx(1e7)
-import json
-from datetime import UTC, datetime, timedelta
-
-from cryptobot.market_data.universe import (
-    enrich_top_k_depth,
-    rank_symbols,
-    scan_and_select,
-    scan_universe,
-    select_subscriptions,
-)
 
 
 def _meta(symbol, tick="0.10", step="0.001", notional="5", px=2, qty=3,

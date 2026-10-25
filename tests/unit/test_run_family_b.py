@@ -26,7 +26,7 @@ def _micro_lake(root: Path, *, seed: int = 7) -> Path:
                  f"{c * 0.999:.4f},{c:.4f},1000000,"
                  f"{int(t.timestamp() * 1000) + 86399999},{c * 1000000:.1f},"
                  f"100,500000,{c * 500000:.1f},0"
-                 for t, c in zip(idx, closes)]
+                 for t, c in zip(idx, closes, strict=True)]
         zp = raw / "klines" / "1d" / sym / "all.zip"
         zp.parent.mkdir(parents=True, exist_ok=True)
         with zipfile.ZipFile(zp, "w", zipfile.ZIP_DEFLATED) as zf:

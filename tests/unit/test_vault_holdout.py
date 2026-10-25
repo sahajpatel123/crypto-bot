@@ -131,7 +131,6 @@ def test_load_chunk_refuses_holdout(tmp_path):
 
 def test_holdout_import_lint_verdict_only():
     """Only cli/verdict/vault may reference HOLDOUT decode entry points."""
-    import ast
     from pathlib import Path as P
 
     root = P(__file__).resolve().parents[2] / "src" / "cryptobot"

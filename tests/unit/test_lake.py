@@ -1,7 +1,6 @@
 """E1.3: lake parquet store, hash manifest, DQ report (synthetic fixtures)."""
 from __future__ import annotations
 
-import json
 import zipfile
 from pathlib import Path
 

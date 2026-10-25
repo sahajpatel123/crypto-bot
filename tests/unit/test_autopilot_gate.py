@@ -4,13 +4,19 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
 
 from cryptobot import cli
 from cryptobot.research.autopilot import Autopilot
+
+# Every marker cmd_arm refuses on (cli.cmd_arm). A runner exports more than
+# CI: GitHub Actions sets GITHUB_ACTIONS=true, so clearing only CI left the
+# interactive call refused and this test only passed off a runner.
+CI_MARKERS = ("CI", "GITHUB_ACTIONS", "GITLAB_CI", "JENKINS_URL",
+              "BUILDKITE", "TF_BUILD")
 
 
 def _root(tmp_path: Path) -> Path:
@@ -65,7 +71,7 @@ def test_autopilot_full_path_and_idempotence(tmp_path):
     # Fast-forward the paper clock (test-only state edit).
     state = bot.read_state("H1")
     state["paper_started_utc"] = (
-        datetime.now(timezone.utc) - timedelta(days=15)).isoformat()
+        datetime.now(UTC) - timedelta(days=15)).isoformat()
     bot.state_path("H1").write_text(json.dumps(state))
     _write(root / "paper" / "H1.json",
            {"trades": _trades(100, 8.0), "tolerance_bps": 5.0})
@@ -104,14 +110,27 @@ def test_autopilot_refuses_synthetic_without_acceptance_flag(tmp_path):
     assert "synthetic" in result["hypotheses"]["H1"]["blocked"]
 
 
+def _sign(doc: dict) -> dict:
+    """Recompute the verdict document digest over the final body.
+
+    The gate verifies this digest; a fixture that edits a verdict must
+    re-sign it or the gate correctly reports tampering.
+    """
+    body = {k: v for k, v in doc.items() if k != "document_sha256"}
+    doc["document_sha256"] = hashlib.sha256(
+        json.dumps(body, sort_keys=True).encode()).hexdigest()
+    return doc
+
+
 def _gate_artifacts(tmp_path: Path, *, synthetic=False):
     config = tmp_path / "h1.toml"
     config.write_text("x=1\n")
     cfg_sha = hashlib.sha256(config.read_bytes()).hexdigest()[:16]
-    now = datetime.now(timezone.utc).isoformat()
-    verdict = {"verdict": "PASS", "data_provenance": "SEALED-CONFIRM",
-               "hashes": {"config_sha256_16": cfg_sha,
-                          "code_commit": "unknown"}}
+    now = datetime.now(UTC).isoformat()
+    verdict = _sign({"verdict": "PASS", "data_provenance": "SEALED-CONFIRM",
+                     "strategies": ["H1"],
+                     "hashes": {"config_sha256_16": cfg_sha,
+                                "code_commit": "unknown"}})
     state = {"hypothesis": "H1", "state": "GATE_READY",
              "provenance": "SYNTHETIC" if synthetic else "OBSERVED",
              "config_sha256": cfg_sha + "0" * 48}
@@ -156,7 +175,7 @@ def test_gate_go_on_complete_evidence_and_rejects_synthetic(tmp_path):
 
 def test_gate_rejects_stale_cost_and_missing_heartbeat(tmp_path):
     paths = _gate_artifacts(tmp_path)
-    old = (datetime.now(timezone.utc) - timedelta(days=40)).isoformat()
+    old = (datetime.now(UTC) - timedelta(days=40)).isoformat()
     _write(Path(paths["cost"]), {"version": 1, "created_utc": old})
     assert _run_gate(paths, tmp_path / "g1.json") == 2
     (tmp_path / "fresh").mkdir(exist_ok=True)
@@ -172,10 +191,10 @@ def _arm_args(tmp_path, gate_path):
 
 
 def _valid_gate(tmp_path):
+    """A real GO gate: arm refuses one that does not bind evidence hashes."""
     path = tmp_path / "arm-gate.json"
-    _write(path, {"gate": "GO",
-                  "expires_utc": (datetime.now(timezone.utc)
-                                  + timedelta(hours=1)).isoformat()})
+    paths = _gate_artifacts(tmp_path)
+    assert _run_gate(paths, path) == 0
     return path
 
 
@@ -185,13 +204,28 @@ def test_arm_requires_tty_and_ci_absence(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr("sys.stdin.isatty", lambda: False)
     assert cli.cmd_arm(_arm_args(tmp_path, gate)) == 2
     monkeypatch.setattr("sys.stdin.isatty", lambda: True)
-    monkeypatch.setenv("CI", "1")
+    for name in CI_MARKERS:
+        monkeypatch.setenv(name, "1")
     assert cli.cmd_arm(_arm_args(tmp_path, gate)) == 2
-    monkeypatch.delenv("CI")
+    for name in CI_MARKERS:
+        monkeypatch.delenv(name, raising=False)
     monkeypatch.setattr("builtins.input", lambda _prompt: cli.ARM_ACK_PHRASE)
     assert cli.cmd_arm(_arm_args(tmp_path, gate)) == 0
     armed = json.loads((tmp_path / "armed.json").read_text())
     assert armed["armed"] is True and armed["canary_trades"] == 10
+
+
+@pytest.mark.parametrize("marker", CI_MARKERS)
+def test_arm_refuses_each_ci_marker(tmp_path, monkeypatch, marker):
+    """The owner's final switch refuses under every marker the CLI knows."""
+    monkeypatch.setenv("CRYPTOBOT_ARM_ACK", cli.ARM_ACK_PHRASE)
+    gate = _valid_gate(tmp_path)
+    monkeypatch.setattr("sys.stdin.isatty", lambda: True)
+    for name in CI_MARKERS:
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv(marker, "1")
+    assert cli.cmd_arm(_arm_args(tmp_path, gate)) == 2
+    assert not (tmp_path / "armed.json").exists()
 
 
 def test_arm_refuses_expired_gate_even_interactive(tmp_path, monkeypatch):
@@ -199,25 +233,24 @@ def test_arm_refuses_expired_gate_even_interactive(tmp_path, monkeypatch):
     monkeypatch.setattr("sys.stdin.isatty", lambda: True)
     gate = tmp_path / "expired.json"
     _write(gate, {"gate": "GO",
-                  "expires_utc": (datetime.now(timezone.utc)
+                  "expires_utc": (datetime.now(UTC)
                                   - timedelta(hours=1)).isoformat()})
     assert cli.cmd_arm(_arm_args(tmp_path, gate)) == 2
     assert not (tmp_path / "armed.json").exists()
 
 
 def test_gate_family_b_screen_pass_holdout_coupling(tmp_path):
-    import shutil
 
     paths = _gate_artifacts(tmp_path)
     verdict = json.loads(Path(paths["verdict"]).read_text())
     verdict["verdict"] = "SCREEN_PASS"
     verdict["data_provenance"] = "SEALED-HOLDOUT"
-    _write(Path(paths["verdict"]), verdict)
+    _write(Path(paths["verdict"]), _sign(verdict))
     assert _run_gate(paths, tmp_path / "gate-b.json") == 0
     assert json.loads((tmp_path / "gate-b.json").read_text())["gate"] == "GO"
     # Same SCREEN_PASS claimed from OBSERVED/dev data: NO-GO.
     verdict["data_provenance"] = "OBSERVED"
-    _write(Path(paths["verdict"]), verdict)
+    _write(Path(paths["verdict"]), _sign(verdict))
     assert _run_gate(paths, tmp_path / "gate-b2.json") == 2
     doc = json.loads((tmp_path / "gate-b2.json").read_text())
     assert doc["gate"] == "NO-GO"

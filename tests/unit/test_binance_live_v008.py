@@ -201,6 +201,9 @@ def test_lookup_void_allows_retry(tmp_path, ready, orders):
     cmd = EngineOrder("BTCUSDT", "BUY", 0.001, "MARKET", reservation_id="r-1")
     with pytest.raises(UnknownOutcomeError) as exc:
         engine.submit(cmd)
+    # Grace window pinned in test_execution_defects; expire it here: this test
+    # is about a PROVEN void releasing the retry block.
+    engine.VOID_MISS_REQUIRED, engine.VOID_GRACE_MS = 1, 0
     transport.append(
         ("GET", "/fapi/v1/order", {"origClientOrderId": exc.value.client_id},
          ("err", 400, -2013, "Order does not exist.")))
@@ -634,6 +637,7 @@ def test_cancel_on_unknown_looks_up_first(tmp_path, ready, orders):
     cmd = EngineOrder("BTCUSDT", "BUY", 0.001, "MARKET", reservation_id="r-4")
     with pytest.raises(UnknownOutcomeError) as exc:
         engine.submit(cmd)
+    engine.VOID_MISS_REQUIRED, engine.VOID_GRACE_MS = 1, 0  # void proven.
     transport.append(
         ("GET", "/fapi/v1/order", {"origClientOrderId": exc.value.client_id},
          ("err", 400, -2013, "Order does not exist.")))

@@ -98,7 +98,8 @@ def test_walk_forward_purge_embargo():
     folds = walk_forward_splits(dates, test_years=(2021, 2022, 2023),
                                 purge_days=30, embargo_days=5)
     assert len(folds) == 3
-    for (tr0, tr1, te0, te1, eval0), year in zip(folds, (2021, 2022, 2023)):
+    for (tr0, tr1, te0, te1, eval0), year in zip(folds, (2021, 2022, 2023),
+                                                 strict=True):
         assert dates[te0].year == year and dates[te1].year == year
         assert (dates[te0] - dates[tr1]).days >= 35  # purge + embargo gap
         assert (dates[eval0] - dates[te0]).days >= 35  # attribution gap
@@ -123,8 +124,7 @@ def test_plateau_fraction():
 def test_year_breakdown_tail_capacity():
     import pandas as pd
 
-    from cryptobot.research.slow_stats import (
-        capacity_estimate, tail_metrics, year_breakdown)
+    from cryptobot.research.slow_stats import capacity_estimate, tail_metrics, year_breakdown
 
     idx = pd.date_range("2021-01-01", periods=730, freq="D", tz="UTC")
     rets = pd.Series([0.002, 0.0] * 365, index=idx)

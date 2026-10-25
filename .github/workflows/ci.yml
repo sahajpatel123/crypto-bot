@@ -9,20 +9,32 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    # Measured: unit ~21 min, acceptance ~1 min. Headroom for a slow runner.
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
       - name: Install (locked env + dev tools)
+        # Blocking: a corrupt uv.lock must fail here, not be papered over by
+        # an unlocked fallback install (the defect this branch repairs).
         run: |
           pip install uv
-          uv sync --locked --extra dev || pip install -e ".[dev]"
+          uv sync --locked --extra dev
       - name: Unit tests
-        run: uv run --locked pytest tests/unit -q || .venv/bin/pytest tests/unit -q
+        # Choose the interpreter once. The old `uv run ... || .venv/bin/pytest`
+        # fired on a TEST failure too, re-running the whole 20-minute suite
+        # and hiding the failing name behind a job timeout.
+        run: |
+          PYTEST=.venv/bin/pytest
+          [ -x "$PYTEST" ] || PYTEST=pytest
+          "$PYTEST" tests/unit -q
       - name: Acceptance tests
-        run: uv run --locked pytest tests/acceptance -q || .venv/bin/pytest tests/acceptance -q
+        run: |
+          PYTEST=.venv/bin/pytest
+          [ -x "$PYTEST" ] || PYTEST=pytest
+          "$PYTEST" tests/acceptance -q
 
   lint:
     runs-on: ubuntu-latest

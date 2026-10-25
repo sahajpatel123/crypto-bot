@@ -86,6 +86,9 @@ def test_order_status_unknown_and_void_shapes(tmp_path):
     (cid,) = engine.unknown_ids()
     assert engine.order_status(cid).state == "unknown"
     assert engine.unknown_ids() == (cid,)
+    # The -2013 grace window is pinned in test_execution_defects; expire it so
+    # this test stays about what a PROVEN void means for the order and blocks.
+    engine.VOID_MISS_REQUIRED, engine.VOID_GRACE_MS = 1, 0
     transport.append(
         ("GET", "/fapi/v1/order", {"origClientOrderId": cid},
          ("err", 400, -2013, "Order does not exist.")))

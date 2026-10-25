@@ -131,7 +131,6 @@ def test_b3_carry_direction_threshold_and_exit_band():
 def test_b4_basis_entry_exit_arithmetic():
     from cryptobot.research.family_b import MarketData, signals_b4
 
-    idx = pd.date_range("2023-01-01", periods=12, freq="D", tz="UTC")
     close = [100.0] * 12
     daily = {"BTCUSDT": _daily_frame("2023-01-01", close),
              "ETHUSDT": _daily_frame("2023-01-01", close)}
@@ -246,7 +245,6 @@ def test_b3_max_hold_forces_exit():
 def test_b4_neg_flip_block_and_max_hold_and_roundtrip():
     from cryptobot.research.family_b import MarketData, signals_b4
 
-    idx = pd.date_range("2023-01-01", periods=40, freq="D", tz="UTC")
     close = [100.0] * 40
     daily = {"BTCUSDT": _daily_frame("2023-01-01", close)}
     calcs = pd.date_range("2023-01-01", periods=40 * 3, freq="8h", tz="UTC")
@@ -386,7 +384,6 @@ def test_b7_invvol_quintile():
 def test_b4_legs_sized_half_not_clipped():
     from cryptobot.research.family_b import MarketData, signals_b4
 
-    idx = pd.date_range("2023-01-01", periods=12, freq="D", tz="UTC")
     close = [100.0] * 12
     daily = {"BTCUSDT": _daily_frame("2023-01-01", close)}
     calcs = pd.date_range("2023-01-01", periods=12 * 3, freq="8h", tz="UTC")

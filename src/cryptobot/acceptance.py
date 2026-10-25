@@ -10,15 +10,17 @@ from __future__ import annotations
 
 import json
 import shutil
-import tempfile
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
 
-from cryptobot.adapters.binance_live import (
-    BinanceLiveEngine, UnknownOutcomeError, VenueHttpError)
+from cryptobot.adapters.binance_live import BinanceLiveEngine, UnknownOutcomeError, VenueHttpError
 from cryptobot.adapters.sandbox_venue import (
-    FaultScript, SandboxConfig, SandboxSocket, SandboxTransport, SandboxVenue)
+    FaultScript,
+    SandboxConfig,
+    SandboxSocket,
+    SandboxTransport,
+    SandboxVenue,
+)
 from cryptobot.app.engine import EngineOrder
 from cryptobot.research.autopilot import Autopilot
 
@@ -97,7 +99,7 @@ def _sandbox_scenarios(tmp: Path) -> list[dict]:
 def run_acceptance(*, full: bool = False,
                    root: str | Path | None = None) -> dict:
     base = Path(root) if root else Path("runs") / (
-        "acceptance-" + datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ"))
+        "acceptance-" + datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ"))
     if base.exists() and root is None:
         shutil.rmtree(base, ignore_errors=True)
     base.mkdir(parents=True, exist_ok=True)
@@ -137,9 +139,10 @@ def run_acceptance(*, full: bool = False,
     final_state = bot.read_state("H1")
     # Gate must refuse the synthetic GATE_READY artifact even if every
     # other field looks complete.
-    from cryptobot import cli
     import argparse
-    now = datetime.now(timezone.utc).isoformat()
+
+    from cryptobot import cli
+    now = datetime.now(UTC).isoformat()
     verdict = base / "verdict.json"
     _write(verdict, {"verdict": "PASS", "data_provenance": SYNTH,
                      "hashes": {"config_sha256_16":

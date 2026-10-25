@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import html
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 
@@ -33,7 +33,7 @@ def collect_status(*, recorder_root: str | Path = "data/recorder",
                          "power": state.get("power"),
                          "provenance": state.get("provenance", "OBSERVED")})
     risk = _load(Path(risk_state), {}) if risk_state else {}
-    return {"generated_utc": datetime.now(timezone.utc).isoformat(),
+    return {"generated_utc": datetime.now(UTC).isoformat(),
             "recorder": {"state": status.get("state", "UNKNOWN"),
                          "dropped": status.get("dropped", 0),
                          "chunks": len(entries),

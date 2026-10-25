@@ -1,8 +1,6 @@
 """E6.1 prep: Family B driver — grid expansion, walk-forward, gates."""
 from __future__ import annotations
 
-import itertools
-
 import numpy as np
 import pandas as pd
 import pytest

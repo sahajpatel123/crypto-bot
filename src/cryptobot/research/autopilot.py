@@ -20,10 +20,9 @@ from __future__ import annotations
 
 import hashlib
 import json
-import math
 import os
 import statistics
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -45,7 +44,7 @@ FORWARD_MIN_REBALANCES = 30
 
 
 def _utc_now() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def _sha(obj: Any) -> str:
@@ -364,7 +363,7 @@ class Autopilot:
                 return {"state": cur, "changed": False,
                         "blocked": "paper run incomplete"}
             try:
-                elapsed = (datetime.now(timezone.utc)
+                elapsed = (datetime.now(UTC)
                            - datetime.fromisoformat(started)).total_seconds()
             except ValueError:
                 elapsed = 0.0
@@ -484,7 +483,9 @@ class Autopilot:
                 return "verdict refused: unreadable"
             verdict["_path"] = str(alt)
         from cryptobot.research.invalidation import (
-            load_chain, sibling_chain, verdict_consumption,
+            load_chain,
+            sibling_chain,
+            verdict_consumption,
         )
         allowed, why = verdict_consumption(
             verdict, load_chain(sibling_chain(verdict.get("_path"))))
@@ -564,7 +565,7 @@ class Autopilot:
                 return {"state": cur, "changed": False,
                         "blocked": "forward/<H>.json not present"}
             try:
-                elapsed = (datetime.now(timezone.utc)
+                elapsed = (datetime.now(UTC)
                            - datetime.fromisoformat(
                                str(fwd.get("paper_started_utc")))).total_seconds()
             except ValueError:
@@ -634,7 +635,7 @@ class Autopilot:
                 "log_problems": self.verify_log()}
 
     def _write_daily(self, report: dict) -> None:
-        day = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        day = datetime.now(UTC).strftime("%Y-%m-%d")
         path = self.root / "reports" / f"{day}.json"
         _atomic(path, report)
         md = self.root / "reports" / f"{day}.md"

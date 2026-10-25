@@ -105,7 +105,7 @@ def _holdout_case(tmp_path: Path):
              f"{c * 0.999:.4f},{c:.4f},1000,"
              f"{int(t.timestamp() * 1000) + 86399999},{c * 1000:.1f},"
              f"50,500,{c * 500:.1f},0"
-             for t, c in zip(idx, closes)]
+             for t, c in zip(idx, closes, strict=True)]
     zips = []
     for i in range(0, len(lines), 100):
         zips.append(_zip(hold / f"h{i}.zip", f"h{i}.csv", lines[i:i + 100]))

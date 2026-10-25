@@ -119,6 +119,11 @@ class AccountSnapshot:
     # False when any leg of the snapshot is missing/failed: consumers
     # must treat incomplete snapshots as unknown, never as flat.
     complete: bool = True
+    # Venue-reported unrealized PnL across open positions. The equity the
+    # daily-loss cap must see is wallet + this (totalMarginBalance), not the
+    # wallet leg alone: a position bleeding through the stop has to move the
+    # figure the cap polices.
+    unrealized_pnl_usdt: float | None = None
 
 
 class PaperEngine(Protocol):

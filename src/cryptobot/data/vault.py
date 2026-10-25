@@ -30,9 +30,8 @@ import os
 import secrets
 import shutil
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
 
 REGISTRY_FORMAT = "cryptobot-vault-registry/1"
 ACCESS_FORMAT = "cryptobot-vault-access/1"
@@ -46,7 +45,7 @@ OBSERVED_PUBLIC = "OBSERVED_PUBLIC"
 
 
 def _utc_now() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def _sha256_bytes(data: bytes) -> str:
@@ -195,7 +194,7 @@ class Vault:
                 raise VaultError(
                     "CONFIRM seal refused: config hash differs from freeze")
             frozen_utc = datetime.fromisoformat(frozen["frozen_utc"])
-            if datetime.now(timezone.utc) <= frozen_utc:
+            if datetime.now(UTC) <= frozen_utc:
                 raise VaultError(
                     "CONFIRM seal refused: chunk must be sealed after freeze")
         if class_ == HOLDOUT and hypothesis:
@@ -261,7 +260,7 @@ class Vault:
         doc = {"token_sha256": _sha256_bytes(token.encode()),
                "hypothesis": hypothesis, "consumer": consumer,
                "issued_utc": _utc_now(),
-               "expires_epoch": int(datetime.now(timezone.utc).timestamp())
+               "expires_epoch": int(datetime.now(UTC).timestamp())
                + int(ttl_s), "used": False}
         _atomic_json(self.tokens_dir / f"{doc['token_sha256']}.json", doc)
         _chain_append(self.access, {
@@ -285,7 +284,7 @@ class Vault:
             self._deny("token-wrong-hypothesis", hypothesis)
             raise VaultError("CONFIRM token is for another hypothesis")
         if int(doc.get("expires_epoch", 0)) < int(
-                datetime.now(timezone.utc).timestamp()):
+                datetime.now(UTC).timestamp()):
             self._deny("token-expired", hypothesis)
             raise VaultError("CONFIRM token expired")
         doc["used"] = True

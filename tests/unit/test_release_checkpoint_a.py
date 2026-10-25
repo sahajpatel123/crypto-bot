@@ -289,11 +289,13 @@ def test_restart_readopts_same_keys_without_resubmit(tmp_path):
         store.close()
 
 
-def test_live_partial_exit_resize_final_exit_and_flat(tmp_path):
+def test_live_partial_entry_full_cover_exit_and_flat(tmp_path):
     """Live exit legs on the injected venue (REL-W1-EXIT, §9-A).
 
-    Partial entry → small pair; more entry fills → pair REPLACED
-    (sibling resize-up, old legs cancelled, never duplicated);
+    Partial entry → pair sized to the WHOLE entry (reduce-only legs cannot
+    over-exit, and the still-fillable remainder is covered from the first
+    fill rather than after the next one); more entry fills → the same pair
+    still covers, so no resize and no churn;
     partial target fill → partial exit with the stop re-verified over
     the shrunken need (reduce-only over-cover: no churn, no
     over-close); final target fill → full exit with sibling
@@ -345,63 +347,50 @@ def test_live_partial_exit_resize_final_exit_and_flat(tmp_path):
         assert session.ledger.position_qty() == 0.050
         assert session._position["protected"] is True
         stop1, tgt1 = session._position["legs"]
-        assert engine.order_status(stop1).qty == 0.050
+        # Reduce-only legs sized to the live entry, not to the booked 0.050:
+        # the still-fillable remainder is covered from the first fill on.
+        assert engine.order_status(stop1).qty == 0.083
         assert len(_algos()) == 2
         seen_nets.append(session.ledger.position_qty())
 
-        # -- entry remainder 0.033: pair REPLACED (resize-up). ---------
-        transport.append(
-            ("DELETE", "/fapi/v1/algoOrder",
-             {"origClientAlgoId": stop1}, ("ok", {})),
-            ("DELETE", "/fapi/v1/algoOrder",
-             {"origClientAlgoId": tgt1}, ("ok", {})),
-            ("GET", "/fapi/v1/order", {"origClientOrderId": entry},
-             ("ok", {"orderId": 7, "status": "FILLED",
-                     "executedQty": "0.083"})),
-            ("GET", "/fapi/v1/userTrades", {"orderId": 7}, ("ok", [])),
-            ("POST", "/fapi/v1/algoOrder", {"reduceOnly": "true"},
-             ("ok", {"algoId": 13, "algoStatus": "WORKING"})),
-            ("POST", "/fapi/v1/algoOrder", {"reduceOnly": "true"},
-             ("ok", {"algoId": 14, "algoStatus": "WORKING"})))
+        # -- entry remainder 0.033: the same pair already covers it. ---
+        # A fill event books from its own payload: no extra venue read.
         engine.note_user_event(_trade(
             orders, entry, "BUY", "FILLED", 0.033, 0.083,
             100.50, 0.020, 771002))
         assert session.ledger.position_qty() == 0.083
         assert session._position["protected"] is True
-        stop2, tgt2 = session._position["legs"]
-        assert (stop2, tgt2) != (stop1, tgt1)  # replaced, not duplicated.
-        assert engine.order_status(stop1).state == "cancelled"
-        assert engine.order_status(stop2).qty == 0.083
-        assert len(_algos()) == 4 and len(_deletes()) == 2
+        assert session._position["legs"] == [stop1, tgt1]  # no resize needed.
+        assert len(_algos()) == 2 and len(_deletes()) == 0  # no churn.
         seen_nets.append(session.ledger.position_qty())
 
         # -- partial target exit 0.050: no churn, no over-close. -------
         engine.note_user_event(_trade(
-            orders, tgt2, "SELL", "PARTIALLY_FILLED", 0.050, 0.050,
+            orders, tgt1, "SELL", "PARTIALLY_FILLED", 0.050, 0.050,
             101.50, 0.015, 772001))
         assert session.ledger.position_qty() == pytest.approx(0.033)
         assert session._position["protected"] is True
-        assert session._position["legs"] == [stop2, tgt2]  # unchanged.
-        assert len(_algos()) == 4 and len(_deletes()) == 2  # no churn.
-        assert engine.order_status(tgt2).state == "partial"
+        assert session._position["legs"] == [stop1, tgt1]  # unchanged.
+        assert len(_algos()) == 2 and len(_deletes()) == 0  # no churn.
+        assert engine.order_status(tgt1).state == "partial"
         seen_nets.append(session.ledger.position_qty())
 
         # -- final target exit 0.033: sibling terminates, flat. --------
         transport.append(
             ("DELETE", "/fapi/v1/algoOrder",
-             {"origClientAlgoId": stop2}, ("ok", {})),
+             {"origClientAlgoId": stop1}, ("ok", {})),
             ("GET", "/fapi/v2/account", None,
              ("ok", _flat_account(ready))))
         engine.note_user_event(_trade(
-            orders, tgt2, "SELL", "FILLED", 0.033, 0.083,
+            orders, tgt1, "SELL", "FILLED", 0.033, 0.083,
             101.50, 0.010, 772002))
         assert session.ledger.position_qty() == 0.0  # exact, never over.
         seen_nets.append(session.ledger.position_qty())
         assert all(net >= 0.0 for net in seen_nets)  # LONG never flips.
         assert session._position is None  # released on full agreement.
-        assert engine.order_status(tgt2).state == "filled"
-        assert engine.order_status(stop2).state == "cancelled"
-        assert len(_deletes()) == 3
+        assert engine.order_status(tgt1).state == "filled"
+        assert engine.order_status(stop1).state == "cancelled"
+        assert len(_deletes()) == 1
 
         # -- 7-leg reconciled flatness. ---------------------------------
         transport.append(

@@ -186,7 +186,7 @@ def test_partial_fill_legs_exact_tape(tmp_path):
         status.filled_qty * float(trades[0]["price"]) * 0.0005)
 
 
-def test_filters_reject_below_minimum_void_lookup(tmp_path):
+def test_filters_reject_below_minimum_keeps_the_rejection(tmp_path):
     engine, _venue = _engine(tmp_path)
     # 0.001 passes the client LOT_SIZE step but $2.50 notional fails
     # the venue $5 MIN_NOTIONAL.
@@ -196,7 +196,11 @@ def test_filters_reject_below_minimum_void_lookup(tmp_path):
     intents = [r for r in _journal(engine)
                if r.get("event") == "submit-intent"]
     assert len(intents) == 1
-    assert engine.lookup(intents[0]["client_id"]) is None  # void.
+    # The order is already terminal (rejected, zero fill). A -2013 on lookup
+    # must not re-name it: the tracked verdict is the truthful one, and only
+    # a still-live order needs the void grace window to run out.
+    status = engine.lookup(intents[0]["client_id"])
+    assert status is not None and status.state == "rejected"
     assert engine.filled_qty(intents[0]["client_id"]) == 0.0
 
 

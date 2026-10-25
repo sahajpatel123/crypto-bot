@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 from cryptobot.reporting.status import collect_status, write_dashboard
 

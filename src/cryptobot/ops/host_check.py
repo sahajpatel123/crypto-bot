@@ -7,7 +7,6 @@ because the venue RTT and clock offset are not measured.
 from __future__ import annotations
 
 import json
-import os
 import platform
 import resource
 import shutil
@@ -16,9 +15,8 @@ import subprocess
 import sys
 import time
 import urllib.request
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Callable
 
 FAPI_TIME = "https://fapi.binance.com/fapi/v1/time"
 
@@ -120,7 +118,7 @@ def run_host_check(*, min_free_gb: float = 20.0,
         rows.append(_row("clock-skew", "UNKNOWN", "network check disabled"))
     verdict = "PASS" if all(r["status"] == "PASS" for r in rows) else "FAIL"
     doc = {"check": "host-check", "verdict": verdict,
-           "generated_utc": datetime.now(timezone.utc).isoformat(),
+           "generated_utc": datetime.now(UTC).isoformat(),
            "host": socket.gethostname(), "rows": rows}
     if out:
         p = Path(out)

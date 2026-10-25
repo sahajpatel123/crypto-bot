@@ -8,15 +8,17 @@ pytest.importorskip("pandas")
 
 
 def _cfg():
-    from cryptobot.research.family_b_eval import load_config
     from pathlib import Path
+
+    from cryptobot.research.family_b_eval import load_config
     root = Path(__file__).resolve().parents[2]
     return load_config(root / "research" / "configs" / "B1.toml")
 
 
 def test_grid_sizes_match_prereg():
-    from cryptobot.research.family_b_eval import EXPECTED_CELLS, _cells_from, load_config
     from pathlib import Path
+
+    from cryptobot.research.family_b_eval import EXPECTED_CELLS, _cells_from, load_config
     root = Path(__file__).resolve().parents[2]
     for name, n in EXPECTED_CELLS.items():
         cfg = load_config(root / "research" / "configs" / f"{name}.toml")
@@ -40,9 +42,10 @@ def test_rebalance_weekly_is_monday():
 
 
 def test_synthetic_noise_is_not_promoted():
+    import numpy as np
+
     from cryptobot.research.family_b import MarketData
     from cryptobot.research.family_b_eval import evaluate_hypothesis
-    import numpy as np
     rng = np.random.default_rng(0)
     idx = pd.date_range("2020-01-01", "2021-06-30", freq="D", tz="UTC")
     daily = {}
