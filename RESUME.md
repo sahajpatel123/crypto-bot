@@ -1,6 +1,6 @@
 # RESUME — crypto-bot state
 
-Snapshot: **2026-10-25 11:00Z**, base `origin/live/hardening` @ `59a34c0` (#52).
+Snapshot: **2026-10-25 15:05Z**, base `origin/live/hardening` @ `640dff4` (#60).
 `origin/release/v1` (the tree the recorder actually runs) is **`ef744a2`** — #44 + #45 merged there —
 and it is now **deployed in the edge tree with exactly one controlled restart done**: the recorder
 stream fix is **live**. The 10:00Z header this replaces ("no restart has been performed") was true when
@@ -64,6 +64,13 @@ Read from GitHub while writing this file, not from notes.
 | #42 | fix(research): harden C2-FWD booking and scoring | `8585b25` | squash `6aad6b3` |
 | #50 | research(d1): close the DSR trial-count argument path and test the funding clock | `75c25bf` | squash `544888d` |
 | #51 | docs(resume): D1's evaluator is on the release branch, and blocked on two recorder inputs | `a25cf3c` | squash `4b57100` |
+| #54 | research(closeout): rule every gate on the frozen archive | `77393e9` | squash `2e2e5a1` |
+| #55 | docs(research): freeze and independently audit the market-data archive | `b6d603c` | squash `dd5b4dc` |
+| #56 | test(audit): pin the persisted 429 window; selftest names the failing test | `355135b` | merge `e5046eb` |
+| #57 | feat(release): capital-ladder promotion, daily P&L and verdict watch | `51ca1f2` | squash `bd653bc` |
+| #58 | feat(keys): secret-safe credential store, pre-trade permission gate and one-command setup | `e4a3898` | squash `3be9388` |
+| #59 | audit(live-safety): wire operator alerts to sinks, prove reconcile fails closed (10-row matrix) | `88990ed` | squash `3324754` |
+| #60 | docs(release): v1.1.0 notes, frozen-recorder resume, green one-command install | `e23433e` | squash `640dff4` |
 
 CI, re-read on each landed commit for this refresh — not carried from the previous version of this
 file, and the `test` job is **not** green everywhere:
@@ -82,6 +89,13 @@ file, and the `test` job is **not** green everywhere:
 - **#50 (run 254) and #51 (run 257)** were still running when this file was written; read their
   conclusion from GitHub rather than from here. Rows before #43 are inherited from the previous
   refresh and were not re-read.
+- **#54-#60, re-read from GitHub for this revision - all green.** Each landed with `lint`,
+  `typecheck` and `test` successful on its final head: #54 `77393e9`, #55 `b6d603c`, #56 `355135b`,
+  #57 `51ca1f2`, #58 `e4a3898`, #59 `88990ed`, #60 `e23433e`. #59 is the one that ran long: its
+  legs were still `in_progress` when an earlier revision of this file was written (12 minutes of
+  polling against a 12-22 minute baseline), which is why that revision recorded its content as
+  absent from `v1.1.0`; it then went green and squash-landed as `3324754`, one commit below this
+  release's own `640dff4`.
 
 After #50, the D1 unit file holds **44** tests, not 41 (`44 passed in 16.23s` at `4b57100`).
 
@@ -449,8 +463,9 @@ tests were therefore **validated locally, not by that branch's CI**; that is a v
 
 ## 10. v1.1.0 - trade-ready release
 
-Tag `v1.1.0` on this commit. The release adds `cryptobot keys set|status|check` (Keychain or
-a git-ignored 0600 dotenv, prod and demo profiles, a hard refusal for a key that can
+Tag `v1.1.0` on the `live/hardening` commit that carries this section. The release adds
+`cryptobot keys set|status|check` (Keychain or a git-ignored 0600 dotenv, prod and demo
+profiles, a hard refusal for a key that can
 withdraw or has no IP allow-list, and the same check gating `run --mode prod`),
 `./setup.sh` for a one-command install, `cryptobot ladder status|promote|demote` with
 evidence-bound promotion, `cryptobot pnl daily`, and `cryptobot verdict-watch --once`.
@@ -458,10 +473,13 @@ evidence-bound promotion, `cryptobot pnl daily`, and `cryptobot verdict-watch --
 sequence. **No strategy is armed and the gate is still NO-GO**; this release changes no
 research number, opens no holdout and places no order.
 
-**Operator alert delivery is not in this tag.** The sinks exist in
-`src/cryptobot/monitoring/alerts.py`, but nothing calls them: a stream outage, an order
-rejection or a daily-loss breach is appended to the session's alert journal and never
-leaves the process. The `Session._alert()` seam and the ten-row
-`docs/LIVE_SAFETY_MATRIX.md` evidence live in PR #59, which was still open when `v1.1.0`
-was cut (its test legs ran past 28 minutes against a 12-22 minute baseline). Do not claim
-delivered alerts for this tag; merge #59 before relying on them.
+**Operator alert delivery is in this tag.** `Session._alert()` records every alert as a
+durable run checkpoint (so it survives a sink failure) and hands it to an optional sink —
+`LogSink`, `WebhookSink` or `RateLimitedSink` — swallowing sink failures so alerting can
+never kill the bot. The wired triggers are safe-mode/operator kill, emergency stop, daily
+stop, stream outage, order rejected, drop breaker, protection gap and dust position.
+`docs/LIVE_SAFETY_MATRIX.md` carries the ten-row evidence, including row 9 (alerts reach a
+sink) and row 10 (`cryptobot reconcile` refuses rather than claiming FLAT when the venue is
+unreachable). This content landed as #59 (squash `3324754`), one commit below this release;
+an earlier revision of this section recorded it as absent because #59 was still running CI
+when that revision was written.
