@@ -74,9 +74,10 @@ STALE_MAX_S = 86400
 FAIL_BACKOFF_S = 10.0
 CACHE_MAX = 256
 HTTP_TIMEOUT_S = 4.0
+DOH_DEADLINE_S = 6.0  # total budget over all resolvers for one name
 _NOTE_EVERY_S = 600.0
 
-_lock = threading.Lock()
+_lock = threading.RLock()  # re-entrant: a signal handler resolving a name must not deadlock
 _tls = threading.local()
 _rng = random.Random()  # private RNG: never disturbs the caller's global random state
 _installed = False
@@ -84,7 +85,8 @@ _suffixes: tuple = DEFAULT_SUFFIXES
 _real = socket.getaddrinfo
 _previous = socket.getaddrinfo
 _lookup: Callable | None = None
-_clock: Callable = time.monotonic
+_clock: Callable = time.time  # wall time: monotonic stops during sleep on macOS
+_first_real: Callable | None = None  # the resolver before the very first install
 _cache: dict = {}  # name -> (expires, fetched, addresses)
 _fail_until: dict = {}
 _gates: dict = {}
@@ -161,7 +163,11 @@ def doh_lookup(name: str, fetch: Callable | None = None) -> tuple:
     get = fetch or _http_get_json
     quoted = urllib.parse.quote(name, safe="")
     failure = "no resolver tried"
+    deadline = time.monotonic() + DOH_DEADLINE_S
     for template in RESOLVERS:
+        if time.monotonic() >= deadline:
+            failure += " (deadline)"
+            break
         try:
             return parse_answer(get(template.format(name=quoted)))
         except Exception as exc:  # noqa: BLE001 - try the next resolver
@@ -200,7 +206,7 @@ def _refresh(name: str, entry, now: float):
         ttl = max(TTL_MIN_S, min(int(ttl), TTL_MAX_S))
     except Exception as exc:  # noqa: BLE001
         with _lock:
-            _fail_until[name] = now + FAIL_BACKOFF_S
+            _fail_until[name] = _clock() + FAIL_BACKOFF_S  # after the fetch, not before
         if _stale_ok(entry, now):  # stale-while-error beats a sinkhole
             _note(name + "!", f"{name}: DoH failed, serving stale answer ({exc})")
             return _pick(entry)
@@ -268,6 +274,17 @@ def _expand(real, name, addresses, port, family, type_, proto, flags) -> list:
 def _getaddrinfo(host, port, family=0, type=0, proto=0, flags=0):
     """Drop-in for socket.getaddrinfo; exchange hostnames come back with real addresses."""
     real = _real
+    if getattr(_tls, "in_call", False):
+        # re-entered through a wrapper chained on top of us: go straight to the base resolver
+        return (_first_real or real)(host, port, family, type, proto, flags)
+    _tls.in_call = True
+    try:
+        return _dispatch(real, host, port, family, type, proto, flags)
+    finally:
+        _tls.in_call = False
+
+
+def _dispatch(real, host, port, family, type, proto, flags):
     try:
         if _installed and isinstance(host, (str, bytes, bytearray)) \
                 and not flags & socket.AI_NUMERICHOST and not getattr(_tls, "busy", False):
@@ -285,6 +302,8 @@ def _getaddrinfo(host, port, family=0, type=0, proto=0, flags=0):
 
 
 _getaddrinfo._cryptobot_netguard = True  # type: ignore[attr-defined]
+_getaddrinfo._cryptobot_matches = matches  # type: ignore[attr-defined]
+_getaddrinfo._cryptobot_real = _real  # type: ignore[attr-defined]  # updated by install()
 
 
 def is_installed() -> bool:
@@ -293,7 +312,8 @@ def is_installed() -> bool:
 
 def system_getaddrinfo() -> Callable:
     """The resolver that was in place before install (the system one), for diagnostics."""
-    return _real if _installed else socket.getaddrinfo
+    current = socket.getaddrinfo
+    return getattr(current, "_cryptobot_real", None) or current  # also sees the standalone shim
 
 
 def install(*, suffixes=None, lookup: Callable | None = None,
@@ -302,7 +322,7 @@ def install(*, suffixes=None, lookup: Callable | None = None,
 
     ``lookup(name) -> (addresses, ttl_s)`` and ``clock()`` are injection points for tests.
     """
-    global _installed, _suffixes, _real, _previous, _lookup, _clock
+    global _installed, _suffixes, _real, _previous, _lookup, _clock, _first_real
     with _lock:
         if _installed or getattr(socket.getaddrinfo, "_cryptobot_netguard", False):
             return False
@@ -313,8 +333,11 @@ def install(*, suffixes=None, lookup: Callable | None = None,
             _suffixes = _parse_suffixes(raw) or DEFAULT_SUFFIXES
         _previous = socket.getaddrinfo
         _real = real_getaddrinfo or _previous
+        if _first_real is None:
+            _first_real = _real
+        _getaddrinfo._cryptobot_real = _real  # type: ignore[attr-defined]
         _lookup = lookup
-        _clock = clock or time.monotonic
+        _clock = clock or time.time
         _cache.clear()
         _fail_until.clear()
         _gates.clear()
@@ -326,16 +349,17 @@ def install(*, suffixes=None, lookup: Callable | None = None,
 
 def uninstall() -> bool:
     """Restore the resolver that install() replaced; idempotent, for tests and shutdown."""
-    global _installed, _suffixes, _lookup, _clock
+    global _installed, _suffixes, _lookup, _clock, _first_real
     with _lock:
         if not _installed:
             return False
         _installed = False  # a wrapper someone chained on top now passes straight through
         if socket.getaddrinfo is _getaddrinfo:
             socket.getaddrinfo = _previous
+            _first_real = None
         _suffixes = DEFAULT_SUFFIXES
         _lookup = None
-        _clock = time.monotonic
+        _clock = time.time
         _cache.clear()
         _fail_until.clear()
         _gates.clear()

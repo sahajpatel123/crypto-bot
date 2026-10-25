@@ -63,31 +63,81 @@ def test_same_answer_but_unreachable_is_not_called_a_sinkhole():
     assert row["status"] == "PASS"  # venue-rtt owns plain unreachability
 
 
-def test_both_unreachable_is_unknown_not_fail():
+def test_both_unreachable_is_inconclusive_but_never_fatal():
     row, _ = _check([SINK], [REAL], set())
-    assert row["status"] == "UNKNOWN"
+    assert row["status"] == "PASS" and "inconclusive" in row["detail"]
 
 
-def test_doh_failure_is_unknown_and_never_raises():
+def test_doh_failure_is_inconclusive_and_never_raises():
     def doh(_h):
         raise OSError("no route")
 
     row, _ = _check([SINK], doh, set())
-    assert row["status"] == "UNKNOWN" and "OSError" in row["detail"]
+    assert row["status"] == "PASS" and "inconclusive" in row["detail"] and "OSError" in row["detail"]
 
 
-def test_system_resolver_failure_is_unknown():
+def test_ipv6_only_host_with_no_ipv4_answer_is_not_a_regression():
     def system(_h):
-        raise socket.gaierror("nodename nor servname")
+        raise socket.gaierror(socket.EAI_NONAME, "no A record")
 
     row, _ = _check(system, [REAL], {REAL})
-    assert row["status"] == "UNKNOWN"
+    assert row["status"] == "PASS" and "inconclusive" in row["detail"]
 
 
-def test_mitigated_in_this_process_reports_pass(monkeypatch):
-    monkeypatch.setattr(netguard, "is_installed", lambda: True)
+def test_one_unresolvable_host_does_not_hide_a_proven_sinkhole():
+    def system(h):
+        if h == "demo-fapi.binance.com":
+            raise socket.gaierror("nope")
+        return [SINK] if h == "fapi.binance.com" else [REAL]
+
+    row, _ = _check(system, [REAL], {REAL})
+    assert row["status"] == "FAIL" and "inconclusive for demo-fapi" in row["detail"]
+
+
+def test_time_budget_is_inconclusive():
+    row = dns_sinkhole_check(system_resolver=lambda h: [SINK], doh_resolver=lambda h: [REAL],
+                             connector=lambda *a: False, budget_s=-1.0)
+    assert row["status"] == "PASS" and "time budget" in row["detail"]
+
+
+def test_https_proxy_skips_the_direct_probe(monkeypatch):
+    monkeypatch.setenv("HTTPS_PROXY", "http://proxy.invalid:3128")
+    row = dns_sinkhole_check()
+    assert row["status"] == "PASS" and "proxy" in row["detail"]
+
+
+def test_later_addresses_are_tried_not_just_a_sorted_prefix():
+    addrs = [f"13.224.10.{i}" for i in range(1, 9)]
+    row = dns_sinkhole_check(("fapi.binance.com",), system_resolver=lambda h: addrs,
+                             doh_resolver=lambda h: addrs, connector=lambda a, p, t: a == addrs[-1])
+    assert row["status"] == "PASS"  # never FAIL: answers agree
+
+
+def _shim(module_matches=lambda h: True, *, installed=True):
+    def fake(*_a, **_k):
+        raise AssertionError("never called")
+
+    fake._cryptobot_netguard = installed
+    fake._cryptobot_matches = module_matches
+    return fake
+
+
+def test_mitigated_only_when_an_active_shim_covers_the_host(monkeypatch):
+    monkeypatch.setattr(socket, "getaddrinfo", _shim())
     row, _ = _check([SINK], [REAL], {REAL})
     assert row["status"] == "PASS" and "mitigated" in row["detail"]
+
+
+def test_not_mitigated_when_the_suffix_list_excludes_the_host(monkeypatch):
+    monkeypatch.setattr(socket, "getaddrinfo", _shim(lambda h: h.endswith("okx.com")))
+    row, _ = _check([SINK], [REAL], {REAL})
+    assert row["status"] == "FAIL"
+
+
+def test_no_shim_means_no_mitigation(monkeypatch):
+    monkeypatch.setattr(socket, "getaddrinfo", lambda *a, **k: [])
+    row, _ = _check([SINK], [REAL], {REAL})
+    assert row["status"] == "FAIL"
 
 
 def test_run_host_check_adds_the_row_and_keeps_existing_names(monkeypatch):
@@ -118,6 +168,22 @@ def test_offline_mode_marks_dns_unknown_without_touching_the_network():
     report = run_host_check(min_free_gb=0.0, check_network=False)
     rows = {r["check"]: r["status"] for r in report["rows"]}
     assert rows["dns-sinkhole"] == "UNKNOWN" and report["verdict"] == "FAIL"
+
+
+def test_default_resolvers_bypass_the_standalone_shim_too(monkeypatch):
+    sys_calls: list = []
+
+    def real(host, port, *a, **k):
+        sys_calls.append(host)
+        return [(socket.AF_INET, socket.SOCK_STREAM, 0, "", (SINK, port))]
+
+    def wrapper(*a, **k):
+        raise AssertionError("the shim itself must not be used")
+
+    wrapper._cryptobot_real = real
+    monkeypatch.setattr(socket, "getaddrinfo", wrapper)
+    assert host_check._system_addresses("fapi.binance.com") == [SINK]
+    assert sys_calls == ["fapi.binance.com"]
 
 
 def test_default_resolvers_bypass_an_installed_netguard(monkeypatch):

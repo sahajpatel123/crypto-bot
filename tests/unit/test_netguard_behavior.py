@@ -370,6 +370,92 @@ def test_failure_backoff_then_recovery(rig):
     assert rig.addresses(family=socket.AF_INET, type=socket.SOCK_STREAM) == [REAL_B]
 
 
+def test_backoff_counts_from_the_end_of_a_slow_failing_lookup(rig):
+    """A 16 s dead-DoH round trip must not leave an already-expired 10 s backoff."""
+    def slow_failure(name):
+        rig.lookup_calls.append(name)
+        rig.clock.advance(16)
+        raise OSError("blocked")
+
+    rig.lookup = slow_failure
+    rig.install()
+    for _ in range(3):
+        assert rig.addresses(family=socket.AF_INET, type=socket.SOCK_STREAM) == [SINKHOLE_V4]
+    assert rig.lookup_calls == ["fapi.binance.com"]
+
+
+def test_concurrent_failures_do_not_queue_serially(rig):
+    rig.delay = 0.3
+    rig.failure = OSError("blocked")
+    rig.install()
+    barrier = threading.Barrier(6)
+
+    def worker():
+        barrier.wait(5)
+        rig.addresses(family=socket.AF_INET, type=socket.SOCK_STREAM)
+
+    threads = [threading.Thread(target=worker) for _ in range(6)]
+    t0 = time.monotonic()
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join(10)
+    assert time.monotonic() - t0 < 1.0
+    assert len(rig.lookup_calls) == 1
+
+
+def test_doh_lookup_has_an_overall_deadline(ng, monkeypatch):
+    monkeypatch.setattr(ng, "DOH_DEADLINE_S", 0.5)
+    calls: list = []
+
+    def slow(url):
+        calls.append(url)
+        time.sleep(0.4)
+        raise OSError("timeout")
+
+    with pytest.raises(OSError, match="deadline"):
+        ng.doh_lookup("fapi.binance.com", slow)
+    assert len(calls) == 2  # not all four resolvers
+
+
+def test_default_clock_is_wall_time_so_sleep_counts(ng):
+    assert ng._clock is time.time
+
+
+def test_reinstall_after_uninstall_with_a_foreign_wrapper_does_not_recurse(ng):
+    base = socket.getaddrinfo
+    ng.install(lookup=lambda n: (["127.0.0.1"], 60))
+    ours = socket.getaddrinfo
+
+    def outer(*args, **kwargs):
+        return ours(*args, **kwargs)
+
+    socket.getaddrinfo = outer
+    try:
+        ng.uninstall()
+        # real resolver (not injected): the previous resolver is now the chained wrapper itself
+        ng.install(lookup=lambda n: (["127.0.0.1"], 60))
+        got = socket.getaddrinfo("localhost", 443, socket.AF_INET, socket.SOCK_STREAM)
+        assert got  # a RecursionError here would escape: the shim is not allowed to loop
+        got = socket.getaddrinfo("fapi.binance.com", 443, socket.AF_INET, socket.SOCK_STREAM)
+        assert got[0][4][0] == "127.0.0.1"
+    finally:
+        ng.uninstall()
+        socket.getaddrinfo = base
+
+
+def test_lock_is_reentrant_for_signal_handlers(ng):
+    with ng._lock, ng._lock:
+        pass
+
+
+def test_wrapper_advertises_its_matcher_and_real_resolver(rig, ng):
+    rig.install()
+    assert socket.getaddrinfo._cryptobot_matches("fapi.binance.com") is True
+    assert socket.getaddrinfo._cryptobot_real == rig.system
+    assert ng.system_getaddrinfo() == rig.system
+
+
 def test_stale_answer_expires_after_a_day(rig, ng):
     rig.install()
     rig.addresses()

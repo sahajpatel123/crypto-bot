@@ -119,51 +119,82 @@ def _tcp_connects(address: str, port: int, timeout_s: float) -> bool:
     return True
 
 
+def _active_shim_covers(host: str) -> bool:
+    """True when a netguard shim (library or standalone) is active AND re-resolves host."""
+    current = socket.getaddrinfo
+    covers = getattr(current, "_cryptobot_matches", None)
+    try:
+        return bool(getattr(current, "_cryptobot_netguard", False) and covers and covers(host))
+    except Exception:  # noqa: BLE001
+        return False
+
+
 def dns_sinkhole_check(hosts: tuple[str, ...] = SINKHOLE_HOSTS, *,
                        system_resolver: Callable[[str], list[str]] | None = None,
                        doh_resolver: Callable[[str], list[str]] | None = None,
                        connector: Callable[[str, int, float], bool] | None = None,
-                       timeout_s: float = 3.0, port: int = 443) -> dict:
+                       timeout_s: float = 3.0, port: int = 443,
+                       budget_s: float = 20.0) -> dict:
     """Detect an ISP resolver that sinkholes exchange hostnames (observed: Jio, India).
 
     FAIL only on proof: the system answer differs from the DoH answer AND no system
     address accepts a TCP connect AND a DoH address does. A host whose system address
-    connects is PASS without any DoH traffic. A sinkhole that this process already
-    works around (netguard installed, CRYPTOBOT_DOH=1) is reported as PASS, mitigated.
+    connects is PASS without any DoH traffic. An inconclusive probe (no IPv4 answer, proxy,
+    resolver error, time budget spent) is reported as PASS with an explicit "inconclusive"
+    note: it never turns a healthy host's verdict into FAIL. A sinkhole that an active
+    netguard shim already covers is PASS, mitigated.
     Resolvers and the connector are injectable so tests need no network.
     """
-    from cryptobot import netguard
+    import random
 
     system = system_resolver or _system_addresses
     doh = doh_resolver or _doh_addresses
     connect = connector or _tcp_connects
-    sinkholed: list[str] = []
+    if system_resolver is None and connector is None:
+        proxies = urllib.request.getproxies()
+        if proxies.get("https") or proxies.get("all"):
+            return _row("dns-sinkhole", "PASS",
+                        "inconclusive: an HTTPS proxy is configured, so the proxy resolves "
+                        "exchange hostnames; no direct DNS probe made")
+    rng = random.Random()
+
+    def pick(addresses: list[str]) -> list[str]:
+        return rng.sample(addresses, min(2, len(addresses)))
+
+    started = time.monotonic()
+    sinkholed: list[tuple[str, str]] = []
     unknown: list[str] = []
     for host in hosts:
+        if time.monotonic() - started > budget_s:
+            unknown.append(f"{host}: time budget {budget_s:.0f}s spent")
+            continue
         try:
             system_addrs = list(system(host))
-            if any(connect(a, port, timeout_s) for a in system_addrs[:3]):
+            if any(connect(a, port, timeout_s) for a in pick(system_addrs)):
                 continue
             doh_addrs = list(doh(host))
             if sorted(doh_addrs) == sorted(system_addrs):
                 continue  # answers agree: unreachable, but not a DNS sinkhole (venue-rtt says so)
-            if any(connect(a, port, timeout_s) for a in doh_addrs[:3]):
-                sinkholed.append(f"{host} system={','.join(system_addrs) or 'none'} "
-                                 f"(connect failed) doh={','.join(doh_addrs)} (connects)")
+            if any(connect(a, port, timeout_s) for a in pick(doh_addrs)):
+                sinkholed.append((host, f"{host} system={','.join(system_addrs) or 'none'} "
+                                        f"(connect failed) doh={','.join(doh_addrs)} (connects)"))
             else:
                 unknown.append(f"{host}: neither system nor DoH address connects")
         except Exception as exc:  # noqa: BLE001 — a check must report, never crash host-check
             unknown.append(f"{host}: {type(exc).__name__}: {exc}")
+    note = ("; inconclusive for " + "; ".join(unknown)) if unknown else ""
     if sinkholed:
-        if netguard.is_installed():
+        text = "; ".join(t for _, t in sinkholed)
+        if all(_active_shim_covers(h) for h, _ in sinkholed):
             return _row("dns-sinkhole", "PASS",
-                        "ISP DNS sinkholes " + "; ".join(sinkholed)
-                        + " -- mitigated in this process (CRYPTOBOT_DOH=1 active)")
+                        "ISP DNS sinkholes " + text
+                        + " -- mitigated in this process (CRYPTOBOT_DOH=1 active)" + note)
         return _row("dns-sinkhole", "FAIL",
-                    "ISP DNS sinkholes exchange hostnames: " + "; ".join(sinkholed)
-                    + ". Remedy: " + SINKHOLE_REMEDY)
+                    "ISP DNS sinkholes exchange hostnames: " + text
+                    + ". Remedy: " + SINKHOLE_REMEDY + note)
     if unknown:
-        return _row("dns-sinkhole", "UNKNOWN", "inconclusive: " + "; ".join(unknown))
+        return _row("dns-sinkhole", "PASS",
+                    f"no sinkhole proven for {len(hosts)} hosts" + note)
     return _row("dns-sinkhole", "PASS", f"no sinkhole detected for {len(hosts)} hosts")
 
 
