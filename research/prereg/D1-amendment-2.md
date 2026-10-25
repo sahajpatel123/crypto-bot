@@ -15,16 +15,29 @@ The exact program-level trial count is not yet defensible from the current cross
 
 This floor relies on the amendment-1 inventory as an already enumerated minimum. It does not imply that every underlying record or legacy count in that inventory has been independently reconciled to a unique trial identity.
 
-## Unresolved crosswalk items; do not treat the floor as complete
+## Split/setting crosswalk and unresolved total
 
-The counting key must distinguish a rule-selection opportunity by its hypothesis/base rule, filter, parameter cell, universe/execution setting, and evaluation split or confirmation-window choice. Identical keys are deduplicated; different preregistered splits, settings, or confirmation-window choices that could inform selection are counted separately. The existing amendment-1 table does not provide the required cell-by-cell keys for these items, so they are not assigned speculative totals here:
+The identity key for a count is `(hypothesis/base rule, filter, parameter cell, universe/execution setting, evaluation split or confirmation-window choice)`. Identical full keys count once; different preregistered split or confirmation-window choices count separately when they could inform selection. The source preregistrations expose these schedules and cell counts, but the amendment-1 inventory does not map historical run records to all of these keys. The table therefore records the reproducible registered schedule without pretending its per-key executed crosswalk is complete:
 
-- **H1–H6 walk-forward selections:** their preregistrations specify fold-based promotion tests; H1–H5 use three-fold criteria, and H6 evaluates filtered variants against H2 and H3 over folds. Reconcile every grid/filter cell against each distinct DEV split/setting and deduplicate only identical keys. The H3/H6 missing applications above are included in the floor; any additional split-level variants are not.
-- **B1–B7 walk-forward selections:** B1 specifies three anchored OOS splits (train through 2020/test 2021; through 2021/test 2022; through 2022/test 2023); B2–B7 refer to that schedule. Reconcile each registered cell against each split/setting, rather than counting only a pooled result or a grid total.
-- **Confirmation-window choices:** the H1–H6 and B1–B7 preregistrations specify one-shot confirmation choices. Reconcile each distinct strategy/filter configuration and its registered confirmation window/setting. Amendment 1 does not map all such choices to unique trial keys. No confirmation data was accessed for this amendment.
-- **Earlier selection records:** the legacy DEV verdict and decision records named in amendment 1 do not, in that crosswalk, identify every changed rule/filter/universe/split key. Their already-listed entries remain in the floor; any additional documented selection variants must be appended without duplicating an identical key.
+| Source | Grid cells | Registered DEV folds/settings | Confirmation choice |
+|---|---:|---|---|
+| H1 maker OFI | 27 | 3 anchored folds | One-shot, exactly once |
+| H2 trend/vol | 27 | 3 anchored folds | One-shot, exactly once |
+| H3 funding skew | 27 | 3 folds; plus the H3-on-H2 filter trial (counted once by H3 §31) | One-shot, exactly once |
+| H4 cross-venue | 18 | 3 folds | One-shot, exactly once |
+| H5 liquidation cascade | 27 | 3 folds | One-shot, exactly once |
+| H6 volatility filter | 27 parameters; 54 filtered configurations (27 each on H2 and H3) | 3 folds across both bases | One-shot, exactly once |
+| B1 vol-scaled trend | 12 | Train through 2020/test 2021; through 2021/test 2022; through 2022/test 2023 | One-shot confirmation screen |
+| B2 x-sec momentum | 6 | Same three B1 splits | One-shot confirmation screen |
+| B3 funding carry | 8 | Same three B1 splits | One-shot confirmation screen |
+| B4 basis | 9 | Same three B1 splits | One-shot confirmation screen |
+| B5 extreme move | 8 | Same three B1 splits | One-shot confirmation screen |
+| B6 OI divergence | 8 | Same three B1 splits | One-shot confirmation screen |
+| B7 low vol | 8 | Same three B1 splits | One-shot confirmation screen |
 
-A later exact-count amendment must publish the full row-level key crosswalk, the source record for every key, a deterministic deduplication rule, and a checked arithmetic sum. It must be committed before any D1 return, event count, or power estimate is computed. Until then the DSR gate is **not evaluable**, the preregistration remains draft, and no evaluator may substitute 470 (or 442) as if it were exact.
+The 442 inventory counts H1–H6 and B1–B7 grid cells once; it does not enumerate every cell-by-fold key or every one-shot confirmation key above. The 470 floor adds only the two proven H3/H6 omissions described earlier; it does **not** add unverified fold/window expansions. Earlier selection records named in amendment 1 also lack a complete row-level mapping from each observed rule/filter/universe/split to a unique key. These are explicit gaps, not zero-count assumptions. No confirmation data or holdout contents were accessed for this amendment.
+
+A later exact-count amendment must publish the row-level keys for the registered and actually tried variants, the source record for each key, a deterministic deduplication pass, and a checked arithmetic sum. It must be committed before any D1 return, event count, or power estimate is computed. Until then the DSR gate is **not evaluable**, the preregistration remains draft, and no evaluator may substitute 470 (or 442) as if it were exact.
 
 ## Evidence boundary
 
