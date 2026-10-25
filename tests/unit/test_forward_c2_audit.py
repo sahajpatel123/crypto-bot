@@ -145,14 +145,15 @@ def test_refuses_low_coverage_missing_funding_and_volume_outage(tmp_path):
                      next_snapshot=_snapshot(fetcher, DAYS[60], close=True))
 
 
-def test_listing_age_policy_excludes_contracts_without_35_complete_days():
+def test_listing_age_cutoff_is_35_calendar_days_inclusive():
     fetcher = AuditFetcher(n=31)
     day = DAYS[63]
     snapshot = _snapshot(fetcher, day, include_volume=True)
-    snapshot["symbols"]["S11USDT"]["onboard_date"] = fwd._shift(day, -30)
-    snapshot["quote_volume_30d"].pop("S11USDT")
+    snapshot["symbols"]["S29USDT"]["onboard_date"] = fwd._shift(day, -35)
+    snapshot["symbols"]["S30USDT"]["onboard_date"] = fwd._shift(day, -34)
     universe = fwd._universe(snapshot, day)
-    assert "S11USDT" not in universe
+    assert "S29USDT" in universe  # exactly 35 calendar days is eligible
+    assert "S30USDT" not in universe  # 34 days is too young
     assert len(universe) == 30
 
 
@@ -245,6 +246,18 @@ def test_t_plus_one_data_cannot_change_signal_eligibility():
     assert after == before
     assert weights_after == weights_before
     assert "S11USDT" in after
+
+
+def test_signal_eligibility_requires_36_closes_across_35_intervals():
+    fetcher = AuditFetcher()
+    days = DAYS[:fwd.HISTORY_DAYS + 2]
+    t = fwd.HISTORY_DAYS
+    eligible = fwd._eligible_at(fetcher.closes, days, t)
+    assert eligible == sorted(fetcher.closes)
+
+    missing_oldest = eligible[0]
+    fetcher.closes[missing_oldest].pop(days[t - fwd.HISTORY_DAYS])
+    assert missing_oldest not in fwd._eligible_at(fetcher.closes, days, t)
 
 
 def test_scoring_rejects_gaps_duplicates_and_bad_look_counts(tmp_path):
