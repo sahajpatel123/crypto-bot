@@ -22,9 +22,12 @@ streams; `release/v1` `ef744a2` was deployed to the edge tree and the recorder r
 once** (§8), and the first closed chunk after it holds **559 `trade_agg`** in five minutes (§5).
 Liquidations are still **not** recorded — `forceOrder` never delivers — and that stays an open gap,
 not a fix (§5). **Binance is not geo-blocked from the Mac** — Reliance Jio's
-DNS sinkholes it, and the opt-in DoH fallback for that is merged as #26. The recorder is running on
-the owner's Mac (one pid, heartbeat fresh) and is the single point of failure for every forward
-verdict; nothing that touches the exchange can run on Reason Cloud (§6). The fifth: **D1's evaluator
+DNS sinkholes it, and the opt-in DoH fallback for that is merged as #26. The recorder is **stopped
+and the archive frozen**: the owner ended market-data collection at 2026-10-25T12:41:18Z, all
+`com.cryptobot.*` launchd jobs are disabled, a `STOP` file holds the guard job off, and
+`research/ARCHIVE_FREEZE.md` records the immutable dataset of record (473 chunks, 98,371,791
+records, hash-chain head `8001aad7…`). Nothing that touches the exchange can run on Reason Cloud.
+The fifth: **D1's evaluator
 is now on the release branch** — #43 re-landed it against `live/hardening` and merged as `6d76902`,
 so D1 has one executable command (`research d1-eval`). It still cannot PASS: `N_TRIALS` is unset,
 so no DSR is emitted (§3, §5). Landing the evaluator changed no verdict. After it, **#50 closed the
@@ -443,3 +446,22 @@ tests were therefore **validated locally, not by that branch's CI**; that is a v
 - Do not `uv sync`, `pip` or rebuild the main checkout's venv while the recorder runs — it executes
   with that venv's python.
 - Mutations are the test of a test: for every guard, delete it and confirm a named test fails.
+
+## 10. v1.1.0 - trade-ready release
+
+Tag `v1.1.0` on this commit. The release adds `cryptobot keys set|status|check` (Keychain or
+a git-ignored 0600 dotenv, prod and demo profiles, a hard refusal for a key that can
+withdraw or has no IP allow-list, and the same check gating `run --mode prod`),
+`./setup.sh` for a one-command install, `cryptobot ladder status|promote|demote` with
+evidence-bound promotion, `cryptobot pnl daily`, and `cryptobot verdict-watch --once`.
+`RELEASE-v1.1.0.md` carries the gate table, the verification evidence and the owner
+sequence. **No strategy is armed and the gate is still NO-GO**; this release changes no
+research number, opens no holdout and places no order.
+
+**Operator alert delivery is not in this tag.** The sinks exist in
+`src/cryptobot/monitoring/alerts.py`, but nothing calls them: a stream outage, an order
+rejection or a daily-loss breach is appended to the session's alert journal and never
+leaves the process. The `Session._alert()` seam and the ten-row
+`docs/LIVE_SAFETY_MATRIX.md` evidence live in PR #59, which was still open when `v1.1.0`
+was cut (its test legs ran past 28 minutes against a 12-22 minute baseline). Do not claim
+delivered alerts for this tag; merge #59 before relying on them.
