@@ -5,9 +5,19 @@ behaviour lives in, the test that proves it, the exact command executed, and
 the observed result. Nothing in this audit places an order, reads an API key,
 or touches the research gates, thresholds, holdout or recorder data.
 
-Legend: **PASS** = an executed test proves the behaviour on this branch.
-**GAP** = behaviour is implemented but not proven by an executed test, or is
-only provable with the owner's demo keys.
+Legend: **PASS** = the behaviour is proven by the named test in this matrix.
+**GAP** = behaviour is implemented but not proven, or is only provable with the
+owner's demo keys.
+
+> **Status of this revision (read before trusting a verdict).** The verdicts
+> below are audit verdicts from reading the code and the named tests. The
+> executed run log is the final section of this document, and it records
+> exactly which commands completed in this environment. On this run
+> `uv sync --locked --extra dev` had to build the whole environment from
+> scratch and was still running after 25 minutes (nautilus-trader ~149 MB on a
+> slow link), so **no pytest, ruff or mypy command had completed when this
+> revision was pushed**. Every row whose run log entry is missing is therefore
+> a design verdict awaiting executed confirmation, not a green check.
 
 ## 1. Restart recovery (kill -9 with an open position)
 
@@ -125,6 +135,30 @@ one run with the owner's demo keys to be signed off:
 4. A true `kill -9` of the live process against a real open demo position:
    the recovery path is proven with a simulated kill plus journal restart, not
    with an OS-signalled live demo process.
+
+## Executed run log (append-only, this environment)
+
+```
+$ uv sync --locked --extra dev
+Resolved 30 packages in 133ms
+Downloading nautilus-trader (148.8MiB), pyarrow (34.7MiB), numpy, pandas, ruff, mypy, ...
+# still downloading/building after 25+ minutes; no pytest/ruff/mypy in .venv yet
+
+$ .venv/bin/pytest tests/unit/test_safety_alerts.py -q
+.venv/bin/pytest: No such file or directory            # exit 127 (venv incomplete)
+$ .venv/bin/pytest tests/unit/test_cli_readiness.py -q
+.venv/bin/pytest: No such file or directory            # exit 127
+$ .venv/bin/pytest tests/unit/test_execution_orders.py tests/unit/test_execution_positions.py \
+      tests/unit/test_execution_runtime.py tests/unit/test_adapters_user_stream.py \
+      tests/unit/test_execution_fake_venue.py -q
+.venv/bin/pytest: No such file or directory            # exit 127
+$ .venv/bin/ruff check src tests
+.venv/bin/ruff: No such file or directory              # exit 127
+```
+
+**No test in this commit was executed.** The commands above are recorded as
+run and failed to start; the results are appended in follow-up commits once
+the environment finishes installing.
 
 ## Verification limits
 
