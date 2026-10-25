@@ -2067,6 +2067,62 @@ def cmd_acceptance(args: argparse.Namespace) -> int:
     return 0 if doc["verdict"] == "PASS" else 1
 
 
+def cmd_forward(args: argparse.Namespace) -> int:
+    """`cryptobot forward b4b --dir <data>`: the frozen study, one command.
+
+    Prints exactly one of two things and nothing else on stdout:
+      * the frozen verdict, once the study is powered, or
+      * INSUFFICIENT FORWARD DATA with the current forward-day count, the
+        days still missing, and the calendar date the look can first fire.
+
+    Exit 0 when a verdict was produced, 3 while forward data is still
+    short (so a timer can distinguish "not yet" from "done"), 2 on a
+    contract error. It never reads the holdout: the study layer refuses it.
+    """
+    if args.what != "b4b":
+        print(f"forward: unknown study {args.what!r}", file=sys.stderr)
+        return 2
+    import importlib.util
+
+    path = Path(__file__).resolve().parents[2] / "tools" / "forward_b4b.py"
+    spec = importlib.util.spec_from_file_location("forward_b4b_cmd", path)
+    mod = importlib.util.module_from_spec(spec)
+    # dataclasses resolves annotations through sys.modules, so a module
+    # exec'd by path must be registered before it runs.
+    sys.modules[spec.name] = mod
+    spec.loader.exec_module(mod)
+    root = Path(args.dir)
+    try:
+        doc = mod.forward_command(root)
+    except mod.InputBeforeForwardWindow as exc:
+        print(f"BLOCKED: {exc}", file=sys.stderr)
+        return 2
+    if args.json:
+        print(json.dumps(doc, indent=1, default=str))
+        return 0 if doc["state"] == "VERDICT" else 3
+    if doc["state"] == "VERDICT":
+        v = doc["verdict"]
+        print(f"B4b FROZEN VERDICT: {v['status']}")
+        if v.get("status_reason"):
+            print(f"reason: {v['status_reason']}")
+        for key in ("failed_gates", "unassessable_gates"):
+            if v.get(key):
+                print(f"{key}: {', '.join(map(str, v[key]))}")
+        print(f"prereg: {v['prereg']}")
+        return 0
+    print("INSUFFICIENT FORWARD DATA")
+    print(f"forward days: {doc['forward_days']} of {doc['forward_days_required']} "
+          f"({doc['forward_days_remaining']} still to accrue)")
+    print(f"round trips: {doc['round_trips']} of {doc['round_trips_required']} "
+          f"({doc['round_trips_remaining']} still to complete)")
+    print(f"earliest evaluable date: {doc['earliest_evaluable_on']}")
+    print(f"earliest possible PASS: {doc['pass_possible_on']} "
+          f"(years gate, forward day "
+          f"{doc['years_assessable_from_forward_day'] or mod.years_assessable_forward_day()})")
+    print(f"prereg: {doc['prereg']}")
+    return 3
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="cryptobot",
                                      description="Bot v0.1 paper/replay application")
@@ -2361,6 +2417,18 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--matrix-out", default=None)
     p.add_argument("--suite-log", default=None)
     p.set_defaults(func=cli_extra.cmd_certify)
+    p = sub.add_parser(
+        "forward",
+        help="forward-only preregistered studies (B4b delta-neutral carry)")
+    fwd_sub = p.add_subparsers(dest="what", required=True)
+    b4b = fwd_sub.add_parser(
+        "b4b",
+        help="print the frozen B4b verdict, or what forward data is missing")
+    b4b.add_argument("--dir", default="data/forward_b4b",
+                     help="forward data root (raw Vision zips + manifest)")
+    b4b.add_argument("--json", action="store_true",
+                     help="emit the whole document as JSON")
+    b4b.set_defaults(func=cmd_forward)
     return parser
 
 

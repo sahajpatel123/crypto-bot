@@ -119,6 +119,7 @@ B4_DEV_ARTIFACT = ROOT / "research/autopilot_b/dev/B4.json"
 VERDICT_DIR = ROOT / "reports/hypotheses"
 VERDICT_NAME = "B4b-forward.json"
 DEFAULT_ROOT = ROOT / "data/forward_b4b"
+TRACKED_MANIFEST = ROOT / "research/forward_b4b_data_manifest.json"
 
 DAY_RE = re.compile(r"-(\d{4}-\d{2}-\d{2})\.zip$")
 MONTH_RE = re.compile(r"-(\d{4}-\d{2})\.zip$")
@@ -292,15 +293,22 @@ def plan_files(vision: VisionClient, *, symbols=UNIVERSE) -> list[dict]:
 
 
 def fetch(root: Path, vision: VisionClient, *,
-          symbols=UNIVERSE) -> dict:
+          symbols=UNIVERSE,
+          manifest_out: Path | None = None) -> dict:
     root.mkdir(parents=True, exist_ok=True)
     jobs = plan_files(vision, symbols=symbols)
     records = []
     for job in jobs:
         dest = local_path(root, job["dataset"], job["symbol"], job["name"])
         rec = vision.download_verified(job["key"], dest)
+        # The prereg requires every file to be reproducible by a reviewer:
+        # url, bytes, sha256, row count and retrieval time, per file.
         rec.update({"dataset": job["dataset"], "symbol": job["symbol"],
-                    "name": job["name"]})
+                    "name": job["name"],
+                    "url": f"{VISION}/{urllib.parse.quote(job['key'], safe='/')}",
+                    "retrieved_at": dt.datetime.now(dt.UTC).isoformat(
+                        timespec="seconds"),
+                    "rows": _row_count(dest, job["dataset"])})
         records.append(rec)
     manifest = {
         "format": "cryptobot-b4b-forward-manifest/1",
@@ -313,6 +321,11 @@ def fetch(root: Path, vision: VisionClient, *,
         "files": records,
     }
     (root / "manifest.json").write_text(json.dumps(manifest, indent=1) + "\n")
+    if manifest_out is not None:
+        # A tracked copy so a reviewer can reproduce the dataset without
+        # the raw zips, which stay out of git.
+        manifest_out.parent.mkdir(parents=True, exist_ok=True)
+        manifest_out.write_text(json.dumps(manifest, indent=1) + "\n")
     return manifest
 
 
@@ -658,6 +671,23 @@ def _trailing_funding(funding: pd.Series, boundary: pd.Timestamp,
     return float(np.median(past.tail(n).to_numpy(dtype=float)))
 
 
+def exit_decision(*, held_days: float, median_rate: float, apr: float,
+                  streak: int = 0, k: float = K_HURDLE,
+                  rt_bps: float = RT_BPS) -> tuple[bool, int]:
+    """C1/B4b exit hysteresis, as one testable predicate.
+
+    Exit when the trailing median rate is negative, or -- only after at
+    least ``MIN_HOLD_DAYS`` decision days in the position -- when trailing
+    APR has been below half the entry hurdle for ``EXIT_STREAK``
+    consecutive decision days. Returns (exit_now, new_streak).
+    """
+    below = apr < 0.5 * hurdle_apr(k, rt_bps)
+    new_streak = streak + 1 if below else 0
+    exit_now = bool(median_rate < 0.0) or (
+        held_days >= MIN_HOLD_DAYS and new_streak >= EXIT_STREAK)
+    return exit_now, new_streak
+
+
 def simulate(frames_by_symbol: dict[str, dict[str, pd.DataFrame]],
              cfg: B4bConfig | None = None) -> dict:
     """Run the frozen B4b book point-in-time. Returns ledger + audit trail."""
@@ -736,10 +766,9 @@ def simulate(frames_by_symbol: dict[str, dict[str, pd.DataFrame]],
             if median is None:
                 continue
             held = (day - pos.entry) / pd.Timedelta(days=1)
-            below = apr < 0.5 * hurdle
-            pos.exit_streak = pos.exit_streak + 1 if below else 0
-            do_exit = (median < 0) or (held >= MIN_HOLD_DAYS
-                                       and pos.exit_streak >= EXIT_STREAK)
+            do_exit, pos.exit_streak = exit_decision(
+                held_days=held, median_rate=median, apr=apr,
+                streak=pos.exit_streak, k=cfg.k, rt_bps=cfg.rt_bps)
             if do_exit:
                 s_px = _fill_bar_price(p["spot"], day)
                 p_px = _fill_bar_price(p["perp"], day)
@@ -1034,6 +1063,63 @@ def _gate(value, threshold: float, test) -> bool | None:
 
 
 # -- commands ---------------------------------------------------------------
+def _row_count(path: Path, dataset: str) -> int:
+    """Data rows in a downloaded Vision zip (header rows excluded)."""
+    df = (_read_funding_zip(path) if dataset == "funding"
+          else _read_kline_zip(path))
+    return int(len(df))
+
+
+def forward_clock_day(stamp: dt.date | pd.Timestamp) -> int:
+    """Forward day number of a calendar date (forward day 1 = 2026-11-01)."""
+    day = pd.Timestamp(stamp)
+    return int((day - pd.Timestamp(FORWARD_CLOCK_START)) / pd.Timedelta(days=1)) + 1
+
+
+def clock_date(forward_day: int) -> dt.date:
+    """Calendar date of forward day ``forward_day`` under the frozen clock."""
+    return (pd.Timestamp(FORWARD_CLOCK_START)
+            + pd.Timedelta(days=max(0, forward_day - 1))).date()
+
+
+def earliest_evaluable_on() -> dt.date:
+    """Earliest date the one look can fire: the 90-forward-day floor.
+
+    Powering also needs 20 completed round trips, which depends on regime
+    and cannot be dated; this is the day-count floor of the stopping rule.
+    """
+    return clock_date(MIN_FORWARD_DAYS)
+
+
+CAPITAL_TABLE_EQUITIES: tuple[float, ...] = (120.0, 1_000.0, 10_000.0)
+
+
+def capital_table(prices: dict[str, float],
+                  equities: tuple[float, ...] = CAPITAL_TABLE_EQUITIES) \
+        -> list[dict]:
+    """C1's capital feasibility table (prereg C1-b4b-carry.md).
+
+    Per symbol: target leg notional = 0.5 x equity, quantity floored to the
+    0.001 step, and whether that quantity clears the 6 USDT minimum
+    notional. Reports only; it is never a reason to change the 50% leg.
+    """
+    rows: list[dict] = []
+    for equity in equities:
+        for symbol in sorted(prices):
+            px = float(prices[symbol])
+            target = 0.5 * equity
+            qty = _step_floor(_qty(target, px), QTY_STEP) if px > 0 else 0.0
+            notional = qty * px
+            rows.append({
+                "equity_usdt": equity, "symbol": symbol, "price": px,
+                "target_notional": target, "qty": qty, "notional": notional,
+                "clears_min_notional": bool(notional >= MIN_NOTIONAL),
+                "finite": all(math.isfinite(x)
+                              for x in (target, qty, notional)),
+            })
+    return rows
+
+
 def status_doc(root: Path) -> dict:
     frames = load_frames(root)
     cov = coverage(frames)
@@ -1094,6 +1180,46 @@ def evaluate(root: Path, *, force: bool = False,
     return verdict
 
 
+def forward_command(root: Path, *, force: bool = False) -> dict:
+    """The one-command contract behind `cryptobot forward b4b --dir`.
+
+    Returns exactly one of two documents and never a half-answer:
+    a frozen verdict once the study is powered (or once it already fired),
+    otherwise INSUFFICIENT FORWARD DATA carrying the day/round-trip counts
+    still missing and the calendar date the look can first fire.
+    """
+    doc = status_doc(root)
+    dest = VERDICT_DIR / VERDICT_NAME
+    if dest.exists():
+        prior = json.loads(dest.read_text())
+        if prior.get("status") != "UNDERPOWERED":
+            # The prereg gives one look; a fired verdict is returned, not
+            # recomputed and not overwritten.
+            return {"state": "VERDICT", "verdict": prior,
+                    "note": "already fired; the study gets one look"}
+    if doc["powered"]:
+        return {"state": "VERDICT", "verdict": evaluate(root, force=force)}
+    return {
+        "state": "INSUFFICIENT FORWARD DATA",
+        "prereg": doc["prereg"],
+        "forward_clock_start": doc["forward_clock_start"],
+        "forward_days": doc["forward_days"],
+        "forward_days_required": doc["forward_days_required"],
+        "forward_days_remaining": doc["forward_days_remaining"],
+        "round_trips": doc["round_trips"],
+        "round_trips_required": doc["round_trips_required"],
+        "round_trips_remaining": doc["round_trips_remaining"],
+        # The 90-day floor can be dated; the 20-round-trip floor is regime
+        # dependent and is reported as a count, never as a promise.
+        "earliest_evaluable_on": str(earliest_evaluable_on()),
+        "pass_possible_on": doc["years_assessable_from"],
+        "years_assessable_from_forward_day": doc[
+            "years_assessable_from_forward_day"],
+        "coverage": doc["coverage"],
+        "note": doc["note"],
+    }
+
+
 def main(argv=None) -> int:
     from cryptobot import netguard  # opt-in DNS-sinkhole fallback (CRYPTOBOT_DOH=1)
 
@@ -1103,6 +1229,8 @@ def main(argv=None) -> int:
         description="B4b forward basis recorder/evaluator (Vision CDN only)")
     ap.add_argument("cmd", choices=("fetch", "status", "evaluate", "all"))
     ap.add_argument("--root", default=str(DEFAULT_ROOT))
+    ap.add_argument("--manifest-out", default=str(TRACKED_MANIFEST),
+                    help="tracked manifest copy (default research/)")
     ap.add_argument("--force", action="store_true",
                     help="evaluate even while UNDERPOWERED (manual override; "
                          "writes an UNDERPOWERED verdict, never a pass)")
@@ -1110,7 +1238,9 @@ def main(argv=None) -> int:
     root = Path(args.root)
     if args.cmd in ("fetch", "all"):
         vision = VisionClient()
-        manifest = fetch(root, vision)
+        manifest = fetch(root, vision,
+                         manifest_out=Path(args.manifest_out)
+                         if args.manifest_out else None)
         print(f"forward_b4b: fetched {len(manifest['files'])} forward file(s) "
               f"into {root} ({vision.requests} request(s), checksums verified)")
     if args.cmd in ("status", "all"):
