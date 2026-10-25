@@ -638,8 +638,9 @@ Meta Muse Spark.
   `session.py` merge fragment, the `cli.py` `timezone.utc`/`UTC`
   NameErrors, the spliced `uv.lock`). Those were repaired on this branch
   only so the suite could run at all. After PR #21 merged the real
-  repair into base (live/hardening 0c2ccc4), this branch was rebased onto
-  it and its own three repair commits were DROPPED rather than re-landed:
+  repair into base (live/hardening 0c2ccc4), this branch was merged onto
+  it (64d5989 is a merge commit, not a rebase) and its own three repair
+  commits were DROPPED rather than re-landed:
   the lock, session and CLI repairs in this history are #21's, not this
   branch's. Confirm with
   `git diff origin/live/hardening..HEAD -- src/cryptobot/cli.py
@@ -685,3 +686,37 @@ Meta Muse Spark.
   guard is deleted (nine guard-deletions verified). No frozen threshold
   changed: Sharpe 0.70, 2x 0.30, DSR 0.80, PBO 0.30, DD 35%, 2 years,
   1%/5% participation, bootstrap > 0, NW t 2.0 all stand.
+
+- D-057 (recorder stream coverage, 2026-10-25): the recorder subscribed to
+  five Binance streams and recorded two. Measured on the owner's Mac
+  (DoH shim on, raw sockets, both `/ws/<name>` and `/stream?streams=`):
+  `trade`, `bookTicker` and `depth@100ms` deliver frames; `aggTrade`,
+  `markPrice@1s` and `forceOrder` complete the handshake and then send
+  zero bytes for the whole window, with no close and no error. The chunk
+  for 07:18Z held 96,273 `book_ticker`, 5,874 `depth`, 10 `open_interest`,
+  10 `premium_index`, 10 `depth_snapshot` and **zero** trade, mark-price
+  or liquidation records; every chunk back to 18 October is the same. So
+  it was neither a disk-budget cut nor a writer allowlist (there is none:
+  drops happen only on queue overflow, and the manifest's `streams` list
+  is derived from records actually written) -- the three names are simply
+  not served on this path, and the loss was silent.
+  Consequences and the fix: (a) `BINANCE_STREAMS` is now the delivered
+  set (`trade`, `bookTicker`, `depth@100ms`), with the silent names kept
+  in `BINANCE_SILENT_STREAMS` and still requestable through the new
+  `RecorderConfig.streams`; (b) `classify_message` accepts `e == "trade"`
+  (id in `t`, not `a`), so raw prints are no longer unclassified;
+  (c) trades are folded into per-second order-flow buckets (`trade_agg`:
+  buy/sell qty, count, VWAP) because raw prints do not fit the 4 GB
+  budget -- measured 689 B / 3 s for ETHUSDT and 554 B / 2.5 s for
+  BTCUSDT on `@trade`, i.e. roughly 20 MB/day per symbol raw, 40 MB/day
+  for both, versus ~1.2 GB/day today, so aggregates add well under 5%;
+  (d) a sealed chunk now raises a `stream-silent` alert naming every
+  subscribed stream that produced no record, so this cannot repeat
+  quietly; (e) mark price keeps coming from the 60 s REST `premiumIndex`
+  poll, which already carries `markPrice` and `indexPrice`; index/mark
+  over websocket and liquidation events remain unavailable on this path
+  and are recorded as foreclosed rather than assumed.
+  Scope note: this changes the recorder's future output, not any scored
+  dataset. The change must land on a chunk boundary when the owner
+  restarts the recorder; the 18-25 Oct chunks stay as they are, and no
+  preregistered threshold, holdout file or verdict is touched.

@@ -1,112 +1,231 @@
 # RESUME — crypto-bot state
 
-Last checkpoint: 2026-10-25 ~05:10 UTC. Owner: Sahaj. Gate: **NO-GO** (no strategy has passed; holdout sealed).
+Snapshot: **2026-10-25 08:20Z**, base `origin/live/hardening` @ `a2acaba` (PR #33, recorder stream fix).
+Gate: **NO-GO**, unchanged. Holdout sealed. No orders, no API-key reads, no live money.
+Read this file, then `git log --oneline -5 origin/live/hardening`, then the PR list. That is the whole
+handover — do not re-derive anything below.
 
-Read this first after any interruption. Then check `git log --oneline -5 origin/live/hardening`
-and the PR list.
+## 1. Current state
 
-## Where the code is
+The system is in **NO-GO** and no strategy has passed: Family B is closed (B1–B7 killed on frozen
+gates), Family C is closed (C2 killed on replication), D1 is unevaluated for lack of forward data, and
+the only live experiment is the C2-FWD forward recorder booking its first rows. Four things changed
+this milestone. **DSR is formally unevaluable and the gate now fails closed**: `N_TRIALS` stays
+`None`, no finite upper bound can be proven, and the evaluator must refuse to emit a DSR verdict while
+it is unset — so D1 cannot PASS (§5). The **recorder stream gap** was found and fixed in code: for the
+whole 18–25 Oct run the recorder silently discarded three of its five subscribed streams, and #33 is
+merged on `live/hardening` — but **the running recorder does not execute that tree**, so the fix is
+not live until the owner deploys it (§8). **Binance is not geo-blocked from the Mac** — Reliance Jio's
+DNS sinkholes it, and the opt-in DoH fallback for that is merged as #26. The recorder is running on
+the owner's Mac (one pid, heartbeat fresh) and is the single point of failure for every forward
+verdict; nothing that touches the exchange can run on Reason Cloud (§6).
 
-| Ref | SHA | State |
+## 2. Done and merged into `live/hardening`
+
+Read from GitHub while writing this file, not from notes.
+
+| PR | Title | Head SHA | Landed |
+|---|---|---|---|
+| #23 | B4b forward test + two statistics repairs | `64d5989` | merge `9dc49f9` |
+| #27 | docs(research): record Family B diagnostic archive touch | `3c111fa` | squash `8f0f106` |
+| #28 | tests: stop pytest scratch filling laptop disks | `3461180` | squash `fc92c45` |
+| #26 | feat(net): netguard — opt-in DoH fallback for the ISP DNS sinkhole | `4c9a992` | squash `a635315` |
+| #35 | docs: refresh RESUME after netguard merge | `065375e` | squash `d950d78` |
+| #33 | fix(recorder): record trade flow, fail loudly on a silent stream | `5b1688d` | squash `a2acaba` = **current base** |
+
+All six merged with `lint` + `typecheck` + `test` green.
+
+## 3. In progress — open PRs, by owner
+
+Read from GitHub at 2026-10-25 08:20Z. Do not trust an older note for a head SHA.
+
+| PR | Owner / topic | Head SHA | Checks I read |
+|---|---|---|---|
+| #29 | **D1** prereg + amendment 3 (trial-bound audit, fail-closed DSR) | `4e7d37b` | draft; `lint` + `typecheck` success, `test` success + `test` in progress. Carries `research/prereg/D1-amendment-3.md`, which is the **sole source** for `N_TRIALS`. |
+| #32 | **E1** emulator recovery fault matrix | `aa7e287` | draft; `lint` + `typecheck` success, `test` in progress (an earlier head `f785df4` had a `test` failure; re-pushed). |
+| #31 | **Gate audit (G1)** — audit gate statistics on synthetic data | `0de94ea` | draft; `lint` + `typecheck` + `test` all success, clean. G1 still running. |
+| #30 | **C2-FWD** audit of booking and scoring integrity | `376aa13` | draft; `lint` success, `typecheck`/`test` in progress. |
+| #34 | **This file** — RESUME milestone snapshot | see PR | docs only. |
+
+None of these is a gate verdict, and none changes a prereg threshold, a holdout file or CI.
+
+## 4. Next steps, in priority order
+
+1. **Deploy the recorder fix — it is an owner decision, not an agent's.** #33 is merged on
+   `live/hardening`, but the running recorder executes the separate edge tree at `release/v1`
+   `6ad62b4`, so **a restart alone changes nothing** (§8). Do not update the edge tree yourself.
+2. **Prune finished session workspaces** before the disk drives the recorder into its 4,096 MB floor.
+   Each Reason child session leaves ~1.2 GB under `~/.reason/workspace/sessions/`; there were six at
+   08:11Z (≈7.2 GB) and guard's free-space samples swung 12,632 → 9,906 MB inside ten minutes. Never
+   delete the folder of a session with a turn running.
+3. **#29.** Finish the prereg review and land it — amendment 3 is the file the evaluator reads for
+   `N_TRIALS`, and D1 must stay `UNEVALUATED` until it is merged.
+4. **#32 E1.** Let the re-pushed `test` finish; if red, read the job log and fix it. Draft until green.
+5. **#31, then #30.** #31 audits the gate statistics themselves, so it should land before any
+   evaluator change touches DSR. Mark ready if the conclusions hold.
+6. **C2-FWD.** Leave it running; scoring reads 365/730/1095 rows only, so nothing is readable yet.
+   Never look at its P&L before then.
+7. **Do not re-open Family B or C and do not rescore B4.** The holdout is spent.
+
+## 5. Key numbers
+
+### DSR is unevaluable — and the gate now fails closed
+
+**Exact `N` cannot be established.** The H1–H6 DEV summaries and the B1–B7 aggregates carry no run
+keys tying a config to its fold/split or confirmation run, and they do not establish whether the
+H3-on-H2 and H6-on-H2/H3 filter applications ever ran. No H/B run-key manifest exists; the only one
+found is `trials/x1-run-manifest.json`, which is **X1-specific** and says nothing about H/B or restart
+completeness. `research/prereg/D1-amendment-3.md` (PR #29) also flags an unresolved contradiction in
+H6's text — its exact rules name H1/H3 and H2/H4, its grid paragraph says H2/H3 only. That is
+recorded, not silently rewritten.
+
+**The correction that matters.** `N >= 470` was a **lower** bound, and the DSR null `SR0` **rises**
+with `N`. A low `N` made the gate **easier, not safer**: the registered gate was optimistic, not
+conservative.
+
+| `N` | DSR null `SR0` |
+|---|---|
+| 470 | 3.0339 |
+| 1000 | 3.2551 |
+| 1187 | 3.3036 |
+| 1470 | 3.3631 |
+| 5000 | 3.6877 |
+
+`SR0 = √V · q(N)` with `q(N) = (1-g)Φ⁻¹(1-1/N) + gΦ⁻¹(1-1/(N·e))`, `g = 0.5772156649`; both
+probabilities rise with `N`, so `q(N)` is increasing and a *proven* finite upper bound would be
+conservative. I re-derived the table from `q(N)` while writing this file; it reproduces to 4 dp, and
+`q(1187) = 3.3035583220` matches amendment 3's figure exactly.
+
+**No `N_max` is adopted.** An earlier plan to build a provable upper bound from the declared grid
+maxima was **withdrawn**, and nothing in this file should read as licensing it. Grid maxima give a
+**documented design-opportunity subtotal**, not an upper bound, because preregistrations count voided
+runs but cap no number of aborted or restarted scored attempts, and a missing execution log is not
+evidence an attempt did not happen. The reproducible subtotal is:
+
+`H 937 + B 236 + amendment-1 non-H/B 230 + 3 C2-VM looks = 1406`
+
+Amendment 3 states plainly that **1406 is not an `N_max` and must not be used by the evaluator**. It
+also **rejects `N = 1187`**: the arithmetic was confirmed, but 1187 is not a provable upper bound.
+Neither number is the penalty.
+
+**So, the rule to follow.** `N_TRIALS` remains `None`. **Do not compute or emit a DSR verdict, and do
+not allow a D1 PASS while it is unset.** The evaluator must fail closed when the constant is unset —
+refusing is correct behaviour, not a bug to work around.
+
+### Gate: NO-GO
+
+| Study | Verdict | The number |
 |---|---|---|
-| `origin/live/hardening` | `0c2ccc4` | **Merged base.** PR #21 landed. Installs and runs green. |
-| PR #23 `reason/b4b-forward-basis-study-62b3f9db` | `64d5989` | Open. Merge of `8afd7d5` onto `0c2ccc4`. Lint + typecheck green; test job in progress. Awaiting independent re-review. |
-| `reason/resume-state` | this commit | Docs-only: this file. |
+| B4 delta-neutral basis (backtest) | **KILLED on turnover** | turnover **17.05** (`17.05060731836767`, `research/autopilot_b/state/B4.json`) against the frozen cap **12** (`research/prereg/B4-delta-neutral-basis.md`: "turnover ≤ 12×. Any miss KILLS B4"). Holdout burned; nothing rescored. |
+| B4b forward basis | **UNDERPOWERED** | **0 of 90** forward days, **0 of 20** round trips (`research/prereg/B4b-forward-basis.md` requires both). Forward clock starts 2026-11-01. |
+| C2 XSMOM replication | **KILLED on replication** | replication **p = 0.080** against the bar **p ≤ 0.01** (holdout p = 0.154). `research/DATA_LEDGER.md`, `RESEARCH_VERDICTS.md`. Family C closed. |
+| D1 open-interest flush | **UNEVALUATED** | Pending forward data; prereg still a draft (#29). DSR cannot be emitted. |
 
-`live/hardening` at `0c2ccc4` was verified locally, not just by badge:
-`uv sync --locked --extra dev` exit 0; **1510 passed, 3 skipped** (unit);
-**180 passed** (acceptance); `ruff check src tests` **0 findings**; collection
-**1513 tests, 0 errors**.
+B4b costs, unchanged: 49 bps round trip plus `0.5·σ·√(Q/ADV20)` impact per fill.
+**A 90-day look can only KILL**: the ≥2-positive-calendar-years gate needs 121 forward days, so
+earliest possible PASS is 2027-03-01.
 
-PR #21 carried the real base repair: the spliced `uv.lock`, the duplicate `cmd_gate`
-in `src/cryptobot/cli.py`, the `-2013` grace window, proof-by-id reconciliation,
-marked venue equity, clamped reduce-only legs, and the CI step-masking fix
-(one interpreter per step, blocking `uv sync --locked`, 60 min timeout).
-The arm test now asserts a refusal for each of the six CI env markers.
+### Recorder (owner's Mac, read-only; `guard.log` 2026-10-25T07:42:05Z and my re-read at 08:11Z)
 
-## In flight
+- Exactly **one** recorder: pid **91414**, launchd `com.cryptobot.recorder`, `caffeinate` wrapper pid
+  91416. `--symbols BTCUSDT,ETHUSDT --chunk-seconds 300 --disk-budget-mb 4096`.
+- `heartbeat_age_s` **0.0156**, free **12,295 MB** against the **4,096 MB** floor, runway **166.7 h**.
+- `c2fwd` days_behind **0**, **1** row booked; `stop_file` **false**; data volume **11.8 GiB** available.
+- Re-read at 08:11Z: one pid, heartbeat advancing (chunk `rec-000426-20261025T080325Z`), free space
+  **8,684–10,147 MB** — guard's own samples swing ~2.7 GB in ten minutes. Treat 166.7 h as a snapshot,
+  re-read it, and never plan against it.
 
-- **PR #23** (B4b forward basis study). Content is research-only vs base: `.gitignore`,
-  `DECISIONS.md` (D-051..D-056), `RESEARCH_VERDICTS_B.md`, `research/prereg/B4b-forward-basis.md`,
-  `family_b_driver.py`, `slow_stats.py`, `tools/forward_b4b.py`, `tools/run_family_b.py`,
-  `tests/unit/test_forward_b4b.py`, `tests/unit/test_stats_confidence.py`.
-  At `64d5989`: `ruff check src tests` clean; **38** research tests pass.
-  Independence rule: **#23 does not merge until an independent reviewer re-checks the
-  eight findings and CI is green.** The B4b session must not merge it itself.
-- **Recorder** repaired (below). Watch the first closed chunk to confirm it is writing.
+### The recorder stream gap (measured, not inferred)
 
-## Market-data recorder — repaired 2026-10-25T05:05Z
+For the whole 18–25 Oct run the recorder subscribed to five Binance streams and wrote only some.
+Chunk `rec-000417-20261025T071824Z` holds **96,273** `book_ticker`, **5,874** `depth`, **10**
+`open_interest`, **10** `premium_index`, **10** `depth_snapshot`, and **ZERO** `trade`, mark-price or
+liquidation records; chunk `rec-000426-20261025T080325Z` repeats it (**93,495** bookTicker, **5,875**
+depth, 10/10/10, zero trade). Both were counted from the sealed chunks while writing this file, and
+the per-symbol splits reconcile exactly. Nothing about those chunks changes retroactively.
 
-It had been **dead since 2026-10-20T07:19Z** (pid 25570 gone). Two causes, both fixed:
+Cause: `aggTrade`, `markPrice@1s` and `forceOrder` complete the handshake and then **send zero bytes,
+silently** — no close, no error, no timeout. Fix in **#33**: per-second `trade_agg` buckets instead of
+raw prints (raw prints do not fit the 4 GB budget), a sealed chunk now raises a **stream-silent alert
+naming any subscribed stream that produced no record**, and mark price continues from the 60 s REST
+`premiumIndex` poll. **Nothing was a disk-budget or priority cut** — do not "fix" it by raising the
+budget.
 
-1. Every `com.cryptobot.*` launchd agent was **explicitly disabled**
-   (`launchctl print-disabled` showed recorder/watchdog/autopilot/refresh/adjudicate
-   => disabled).
-2. The plist pointed at `/Users/sahajpatel/Code/crypto-bot-edge`, which **does not
-   exist**. The real tree, with the code and all recorded data, is
-   `~/Code/cryto-bot-edge` (typo).
+## 6. Standing safety rules
 
-Repair applied: backed up the plist (`com.cryptobot.recorder.plist.bak-<timestamp>`),
-rewrote the four `crypto-bot-edge` paths to `cryto-bot-edge`, then `launchctl enable`
-+ `bootstrap` + `kickstart` for **recorder only** — the trading-side agents
-(autopilot, watchdog, adjudicate, refresh) were left disabled on purpose.
+- **Never start a second recorder.** Check first:
+  `ps -axo pid,command | grep 'cryptobot.cli recorder' | grep -v grep` and
+  `~/Code/cryto-bot-edge/data/recorder/recorder.pid`. It must keep running.
+- **The sealed holdout stays sealed.** No rescoring, no peeking, no "just one diagnostic" read.
+- **API keys are trade-only, withdrawals disabled.** Agents never place orders and never read API keys.
+- **The live switch is the owner's**, via `cryptobot owner` — and nothing else.
+- **Gate is NO-GO.** Absent proof it stays NO-GO: no manual override, no threshold edits, and no DSR
+  number invented to fill the gap.
+- **Keep this file committed** after every milestone.
+- **Binance cannot be reached from Reason Cloud.** `api.binance.com/api/v3/ping` returns HTTP 451 and
+  `fapi.binance.com/fapi/v1/premiumIndex` returns "Service unavailable from a restricted location
+  according to 'b. Eligibility'"; direct socket DNS fails too. So **no live API call, order or
+  market-data session runs on Reason Cloud** — anything touching the exchange runs on the owner's Mac.
+- **The public archive *is* reachable from cloud:** `https://data.binance.vision/` returns HTTP 200
+  and a ranged klines zip fetch returns 206. Research backfill uses those static zips, never the API.
+- **Never run full test suites on the owner's Mac.** One `pytest tests/unit` run wrote 1.2–2.1 GB of
+  scratch in ~25 minutes and dropped free space from 9.4 to 3.7 GiB. Test in CI.
 
-Now: one instance, `cryptobot.cli recorder start --symbols BTCUSDT,ETHUSDT
---chunk-seconds 300 --disk-budget-mb 8192`, out `~/Code/cryto-bot-edge/data/recorder`.
-Resumed at chunk **rec-000395-20261025T050538Z**; series is continuous from
-`rec-000000-20261018T213756Z` (~397 chunks, 2.1 GB). KeepAlive is on.
+## 7. Network: not geo-blocked on the Mac; Jio DNS sinkholes it
 
-**Never start a second recorder.** Check with
-`ps -axo pid,command | grep 'cryptobot.cli recorder' | grep -v grep` and the pid file
-`~/Code/cryto-bot-edge/data/recorder/recorder.pid`.
+Verified 2026-10-25 in Ahmedabad: Reliance Jio's resolver answers `*.binance.com` and `*.okx.com` with
+`49.44.79.236`, a dead host. Real addresses via DoH (`1.1.1.1` / `8.8.8.8`) work — fapi REST 200,
+fstream websocket upgrade 101, demo-fapi 200 — and SNI/certificate checks are unaffected. Earlier
+claims that Binance futures needed a VPN were wrong. `data.binance.vision`,
+`testnet.binancefuture.com` and `api.bybit.com` are not sinkholed; the Cloud HTTP 451 is a separate geo
+restriction, not this one.
 
-Two standing risks here:
-- `~/Code/cryto-bot` is at `83b24c7`, **behind `0c2ccc4`**, and that commit has no
-  `recorder` subcommand. The recorder therefore runs with
-  `PYTHONPATH=~/Code/cryto-bot-edge/src` and `CRYPTOBOT_ROOT=~/Code/cryto-bot-edge`.
-  Do not "fix" the plist back to the main checkout without first fast-forwarding it.
-- The Mac has **8.9 GiB free (96% used)**. Recorder data is capped at 8 GB by
-  `--disk-budget-mb`, currently 2.1 GB, so growth is bounded but the machine is tight.
+The fix is opt-in `CRYPTOBOT_DOH=1`, only on a network where `cryptobot host-check` proves sinkholing;
+it is off by default. The CLI and exchange-facing tools install `src/cryptobot/netguard.py`;
+`tools/netshim/sitecustomize.py` is standalone for processes that cannot import `cryptobot`. See
+`tools/netshim/README.md`.
 
-## Strategy numbers (after fees, slippage, funding)
+## 8. Deployment reality: the running recorder is not `live/hardening`
 
-| Study | Verdict | Key numbers |
-|---|---|---|
-| B4 delta-neutral basis/carry (backtest) | **Killed** | Holdout burned (`release/holdout-reconcile.json`, three decodes). Turnover 17.05 vs frozen 12 — but that cap double-counts cost and measures no capacity. Nothing rescored. |
-| B4b forward basis/carry | **UNDERPOWERED** | 0 of 90 forward days, 0 of 20 round trips. Forward clock starts 2026-11-01. No result exists yet. |
-| B4 DSR (recomputed) | Passes 0.80 | 0.9464 at n_eff 91.5; **0.8211** at the real 30-day hold cap; 0.8055 as the runner calls it. The 0.7838 / "22.5 bets" figure in older notes is **impossible** (implies a 40.7-day hold) — it was wrong. |
+**This is the trap that will waste a session if it is not read.** The launchd job executes the
+separate edge tree, not this repo:
 
-B4b gate set (frozen, prereg `research/prereg/B4b-forward-basis.md`): Sharpe >= 0.70;
-> 0.30 at 2x cost; DSR >= 0.80 at N=10; PBO <= 0.30; DD <= 35%; >= 2 positive calendar
-years with >= 60 forward days each; median participation <= 1% and max <= 5% of ADV;
-block-bootstrap lower bound > 0; Newey-West t(30) >= 2.0. Costs 49 bps round trip plus
-`0.5*sigma*sqrt(Q/ADV20)` impact per fill. One look, at >= 90 days AND >= 20 round trips.
+- Tree `~/Code/cryto-bot-edge`, branch **`release/v1`, HEAD `6ad62b4` (2026-10-20)**.
+- `WorkingDirectory = ~/Code/cryto-bot-edge`; `PYTHONPATH = ~/.cryptobot/netshim:~/Code/cryto-bot-edge/src`;
+  `CRYPTOBOT_DOH=1`.
+- `KeepAlive{SuccessfulExit:false}`, `ThrottleInterval 30`, so a clean stop does not restart into
+  empty chunks.
 
-**A 90-day look can only KILL.** The years gate needs 121 forward days (2027-03-01),
-and it is blocking and non-structural, so a PASS is impossible before then.
+So **#33 being merged on `live/hardening` changes no recorder behaviour**, and **restarting the
+recorder is a no-op** until the edge tree carries the change. Landing the fix there and updating
+`edge/src` is an **owner decision**; record it, do not do it. Only one controlled restart follows it,
+with rollback to `6ad62b4`. **No restart has been performed.**
 
-## Next steps, in order
+`com.cryptobot.guard` runs every 5 minutes: it restarts only when no recorder is running, no STOP file
+exists and free space is above its threshold; it prunes pytest scratch older than 6 hours only when
+pytest is not running; it alerts on low runway, stale heartbeat, duplicate recorder or a C2-FWD ledger
+2+ days behind. It never touches chunks, the manifest or ledgers.
 
-1. PR #23: wait for the independent reviewer's verdict on `64d5989` and for the test
-   job. Merge only if both are good; otherwise bound the fix and re-review.
-2. Confirm the recorder closed chunk 395 and advanced `heartbeat.json` past
-   2026-10-20T07:19:41Z. If not, read `~/Library/Logs/cryptobot/recorder.err`.
-3. Once #23 is merged: re-run the base gates at the merge commit (`uv sync --locked
-   --extra dev`, unit + acceptance, `ruff check src tests`).
-4. Run `tools/forward_b4b.py` against whatever forward data exists; expect
-   UNDERPOWERED until 2026-11-01 + 90 days. It must fire automatically when the
-   thresholds are met — no manual look.
-5. Keep the sealed holdout sealed. No rescoring of B4. No orders; trade-only keys,
-   withdrawals disabled; the live switch stays with the owner via `cryptobot owner`.
+The recorder measured ~1.5 GB per UTC day and **self-caps at 4096 MB** (2.2 GB used at 07:05Z, 400
+sealed chunks, 0 gaps in the last three, one harmless unsealed `rec-000396-20261025T051309Z` not in
+the manifest; ingress verified 05:33Z at 50,400 records in 33 s). Its own budget is not the risk — the
+machine's free space is, which is what the 4,096 MB floor protects.
 
-## Ground rules for the next session
+C2-FWD runs from `~/Code/cryto-bot-fwd` at `9dc49f9` with `CRYPTOBOT_DOH=1`, launched by
+`com.cryptobot.c2fwd` four times daily (05:50/11:50/17:50/23:50 IST). Ledger
+`data/forward_c2/ledger.jsonl`; first row booked 2026-10-25T05:43Z for day 2026-10-24 (universe 30, 12
+positions). Preregistered scoring runs once at 365/730/1095 rows (first ≈2027-10-24); no P&L is read
+before then.
 
-- `ruff check src tests` is the CI lint scope (ruff 0.17.1, blocking). `tools/` is not
-  linted by CI; 138 findings live there and are not a merge blocker.
-- CI installs `--extra dev` and calls `.venv/bin/pytest`. `uv run pytest` fails
-  (`Failed to spawn: pytest`) because pytest is not in a dependency group.
-- A bare `uv sync --locked` on Python 3.15 picks 3.15.1 and cannot build
-  `nautilus-trader`; pin 3.12-3.14. CI pins 3.12.
-- Mutations are the test of a test: for every guard, delete it and confirm a named
-  test fails. Two were proven this way (spot accrual -> 1178.69 vs 1260.91;
-  years 60->30 -> both years-gate tests).
+## 9. Environment notes that still bite
+
+- `ruff check src tests` is the CI lint scope (ruff 0.17.1, blocking). `tools/` is outside CI's lint
+  scope; the standalone netshim is checked separately.
+- CI installs `uv sync --locked --extra dev` then calls `.venv/bin/pytest`; `uv run pytest` fails
+  (`Failed to spawn: pytest`). CI uses Python 3.12 and the repo supports 3.12–3.14; a bare sync on 3.15
+  cannot build `nautilus-trader`.
+- Test-job baseline on this repo: **12.1 min typical, 22.2 min worst observed** (run 40169206876). Use
+  that before calling a test job hung; logs are not published mid-step.
+- Do not `uv sync`, `pip` or rebuild the main checkout's venv while the recorder runs — it executes
+  with that venv's python.
+- Mutations are the test of a test: for every guard, delete it and confirm a named test fails.
