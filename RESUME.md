@@ -1,9 +1,9 @@
 # RESUME — crypto-bot state
 
-Snapshot: **2026-10-25 10:40Z**, base `origin/live/hardening` @ `4b57100` (#51).
+Snapshot: **2026-10-25 11:00Z**, base `origin/live/hardening` @ `59a34c0` (#52).
 `origin/release/v1` (the tree the recorder actually runs) is **`ef744a2`** — #44 + #45 merged there —
 and it is now **deployed in the edge tree with exactly one controlled restart done**: the recorder
-stream fix is **live**. The 10:00Z line this replaces ("no restart has been performed") was true when
+stream fix is **live**. The 10:00Z header this replaces ("no restart has been performed") was true when
 it was written; §8 carries both, and §5 carries the post-restart chunk counts.
 Gate: **NO-GO**, unchanged. Holdout sealed. No orders, no API-key reads, no live money.
 Read this file, then `git log --oneline -5 origin/live/hardening`, then the PR list. That is the whole
@@ -27,7 +27,15 @@ the owner's Mac (one pid, heartbeat fresh) and is the single point of failure fo
 verdict; nothing that touches the exchange can run on Reason Cloud (§6). The fifth: **D1's evaluator
 is now on the release branch** — #43 re-landed it against `live/hardening` and merged as `6d76902`,
 so D1 has one executable command (`research d1-eval`). It still cannot PASS: `N_TRIALS` is unset,
-so no DSR is emitted (§3, §5). Landing the evaluator changed no verdict.
+so no DSR is emitted (§3, §5). Landing the evaluator changed no verdict. After it, **#50 closed the
+last argument path into the DSR gate**: a caller can no longer hand the gate a trial count of its own
+choosing, at the library level or from a shell (§5).
+
+**This file was refreshed against `4b57100`, and it corrects three things the previous version got
+wrong at that commit.** It quoted the D1 file hashes #43 landed as if they were the branch's (a later
+commit, #50, rewrote all three); it said every merged row had a green `test` job when #42's landed run
+is red; and its snapshot base was `6d76902`, three merges behind. §2, §3 and §5 carry the corrected
+values and name the commit each was read at.
 
 ## 2. Done and merged into `live/hardening`
 
@@ -48,13 +56,31 @@ Read from GitHub while writing this file, not from notes.
 | #32 | fix(e1): complete emulator rehearsal and safety rails | `dc41e54` | squash `856c0b9` |
 | #38 | B4b: make the frozen forward verdict executable as one command | `a0acd92` | squash `5eed674` |
 | #39 | docs(resume): this file's refresh (stale PR rows) | `fe3ce0e` | squash `fcad78f` |
-| #42 | fix(research): harden C2-FWD booking and scoring | `8585b25` | squash `6aad6b3` |
 | #43 | research(d1): forward evaluator with the frozen universe, cutoff and fail-closed DSR | `1bdf675` | squash `6d76902` |
+| #46 | docs(resume): the recorder fix is now on release/v1 (#45), and needed #44 to run | `c3f900d` | squash `8961364` |
+| #42 | fix(research): harden C2-FWD booking and scoring | `8585b25` | squash `6aad6b3` |
+| #50 | research(d1): close the DSR trial-count argument path and test the funding clock | `75c25bf` | squash `544888d` |
+| #51 | docs(resume): D1's evaluator is on the release branch, and blocked on two recorder inputs | `a25cf3c` | squash `4b57100` |
 
-Every row above merged with `lint` + `typecheck` + `test` green. For #43 that is run **239** on
-`6d76902`: unit **1976 passed, 3 skipped** (1339 s) and acceptance **180 passed** — against
-**1935 passed** in run 229 on the pre-merge base `2120a9f`, a delta of exactly **41**, the D1 suite's
-own size, so the evaluator's tests ran in CI and passed.
+CI, re-read on each landed commit for this refresh — not carried from the previous version of this
+file, and the `test` job is **not** green everywhere:
+
+- **#43, run 239 on `6d76902` — green.** Unit **1976 passed, 3 skipped** (1339 s) and acceptance
+  **180 passed**, against **1935 passed** in run 229 on the pre-merge base `2120a9f`: a delta of
+  exactly **41**, the D1 suite's own size then, so the evaluator's tests ran in CI and passed.
+- **#46, run 244 on `8961364` — green.**
+- **#42, run 249 on `6aad6b3` — RED in acceptance.** `lint` and `typecheck` passed; the `test` job
+  failed at `tests/acceptance/test_rel_integrated_challenge.py::test_rel_crash_boundaries_resume_complete`
+  with `FileNotFoundError: .../crash/res/rep.json` — its *reference* bench subprocess exited without
+  writing a report (`1 failed, 179 passed in 33.78s`). #42 touches only `tools/forward_c2.py`,
+  `tests/unit/test_forward_c2*.py` and three markdown files, and that test passes at `4b57100` in this
+  file's checkout (`1 passed in 8.78s`), so it reads as a runner/harness failure rather than a
+  regression — but **do not treat `6aad6b3` as a green commit** and do not cite it as one.
+- **#50 (run 254) and #51 (run 257)** were still running when this file was written; read their
+  conclusion from GitHub rather than from here. Rows before #43 are inherited from the previous
+  refresh and were not re-read.
+
+After #50, the D1 unit file holds **44** tests, not 41 (`44 passed in 16.23s` at `4b57100`).
 
 `research/prereg/D1-amendment-3.md` is on the base and is the **sole source** for `N_TRIALS` (§5).
 **#36 supersedes #33's alert granularity**: it now alerts per silent *stream*, not per silent *symbol*.
@@ -68,13 +94,19 @@ recorder inputs below. Do not trust an older note for a head SHA.
 **The D1 evaluator is on the release branch.** #43 ("research(d1): forward evaluator with the frozen
 universe, cutoff and fail-closed DSR") merged into `live/hardening` as squash **`6d76902`**, from head
 `1bdf675`, and it went **straight onto `live/hardening`** — no stacked base this time. The three files
-and their sha256, re-read with `sha256sum` against `8961364` while writing this file:
+and their sha256, read with `sha256sum` **at the tip `4b57100`** while writing this file:
 
-| Path | sha256 |
+| Path | sha256 at `4b57100` |
 |---|---|
-| `src/cryptobot/research/d1_eval.py` | `15bd4393d9f5e4cfd992a4c35c171087abf632ac328617bccf0df7d4f5dc9209` |
-| `src/cryptobot/research/d1_trials.py` | `974179bde58647e7ba0df713f9e93817b8aa5a1793aa02c5d975a901f32be058` |
-| `tests/unit/test_d1_eval.py` | `46cb9e963b52cb960b405e9fa2c2c96e43d9af4becb3a5e1454059db6dd4e666` |
+| `src/cryptobot/research/d1_eval.py` | `65229675842bca6877fe858941ccdce981201dcc6fa9645cfb1a8fa6a2400dd1` |
+| `src/cryptobot/research/d1_trials.py` | `c4ffeeedbc73062054bb8ba7f3ebac48fef1db7a50ef45673ed1f3d0d29dda72` |
+| `tests/unit/test_d1_eval.py` | `90c1561de2a68eddd1bbc4806fac974ca7873c00f59c30a8e2aa1f65f0720160` |
+
+**These are not the hashes #43 landed, and a hash is only meaningful with the commit it was read at.**
+#43 landed `15bd4393…` / `974179bd…` / `46cb9e96…` at `6d76902`; #50 (`544888d`) then rewrote all
+three files — the DSR guard in `d1_eval.py`, a comment recording the freeze obligation in
+`d1_trials.py`, and three new tests. Quote the `4b57100` triple for the branch; quote the `6d76902`
+triple only when describing what #43 landed.
 
 `cryptobot research d1-eval` is the one command (in `src/cryptobot/cli.py`, beside #38's `forward b4b`),
 taking `--recorder-root`, `--prereg-dir`, `--repo-root`, `--start`, `--end`, `--json-out` and an
@@ -106,6 +138,17 @@ Re-read in the merged source, not taken from that PR body:
 - **DSR fails closed.** `N_TRIALS: int | None = None` in `d1_trials.py`; `trial_count_ready()` returns a
   refusal naming the exact missing file when the constant is unset, when the amendment is missing, or
   when the constant is set but the amendment is not there.
+
+**#50 closed the argument path #43 left open.** In the merged #43 code, `evaluate_cells(...)` honoured
+a caller's `n_trials` whenever `trial_count_trusted=True` was passed, and `evaluate_forward(...)`
+hard-coded that flag while forwarding its own `n_trials` argument — so a library caller could still
+reach a DSR with `N=470`. Since #50 (`544888d`): the flag is gone, `evaluate_cells` raises `D1Error`
+for any count that is not exactly `d1_trials.N_TRIALS`, `evaluate_forward` has **no** trial-count
+parameter at all (passing one is a `TypeError`), and the count is resolved once inside it from
+`trial_count_ready()`. There is still no CLI flag. The guard's residual limit is recorded at the
+constant: it cannot distinguish "read the constant" from "typed the same integer", which is
+unreachable while the constant is `None`, and whoever freezes the count must edit
+`research/prereg/D1-amendment-3.md` and the constant in the same commit.
 
 **What still stops D1 is two recorder inputs, not the evaluator.** `d1-eval` reads the recorder chain and
 refuses by naming what is absent. Given the stream vocabulary the deployed recorder actually writes
