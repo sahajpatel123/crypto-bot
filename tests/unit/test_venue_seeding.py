@@ -137,7 +137,7 @@ def test_venue_status_keeps_missing_withdraw_permission_unverified(tmp_path):
         ("GET", "/fapi/v1/openOrders", None, ("ok", [])),
     ]
     engine, transport = venues.make_engine(tmp_path, script)
-    assert engine.venue_status(["BTCUSDT"])["can_withdraw"] is None
+    assert engine.venue_status(["BTCUSDT"])["account_can_withdraw"] is None
     transport.assert_empty()
 
 

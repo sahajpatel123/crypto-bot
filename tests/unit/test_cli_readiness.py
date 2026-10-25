@@ -24,7 +24,7 @@ def _ready_venue_status(**updates):
         "account_tag": "abc123",
         "clock_skew_ms": 120,
         "can_trade": True,
-        "can_withdraw": False,
+        "account_can_withdraw": False,
         "fee_tier": 0,
         "position_mode": "one-way",
         "fees_bps": {"BTCUSDT": {"taker_bps": 5.0,
@@ -90,8 +90,8 @@ def test_readiness_rejects_non_live_engine(capsys):
     assert "[FAIL] live-engine" in out
 
 
-def test_readiness_signed_ready_with_stub_engine(monkeypatch, tmp_path,
-                                                 capsys):
+def test_readiness_account_withdrawal_flag_is_not_key_permission(
+        monkeypatch, tmp_path, capsys):
     monkeypatch.setenv("BINANCE_DEMO_KEY", "k")
     monkeypatch.setenv("BINANCE_DEMO_SECRET", "s")
 
@@ -111,18 +111,20 @@ def test_readiness_signed_ready_with_stub_engine(monkeypatch, tmp_path,
     monkeypatch.setattr(live_mod, "BinanceLiveEngine", StubEngine)
     rc = cli.cmd_readiness(argparse.Namespace(config="configs/demo.toml"))
     out = capsys.readouterr().out
-    assert rc == 0, out
-    assert "readiness: READY" in out
+    assert rc == 3, out
+    assert "readiness: UNVERIFIED" in out
     assert "[PASS] venue-connect" in out
-    assert "[PASS] withdrawals: canWithdraw=false" in out
+    assert "[UNVERIFIED] withdrawals" in out
+    assert "does not verify the API-key restriction" in out
+    assert "readiness: READY" not in out
 
 
 @pytest.mark.parametrize(
-    ("can_withdraw", "row_state", "exit_code"),
+    ("account_can_withdraw", "row_state", "exit_code"),
     [(True, "FAIL", 2), (None, "UNVERIFIED", 3)],
 )
-def test_readiness_refuses_enabled_or_unreported_withdrawals(
-        monkeypatch, capsys, can_withdraw, row_state, exit_code):
+def test_readiness_refuses_risk_or_unverified_withdrawal_signal(
+        monkeypatch, capsys, account_can_withdraw, row_state, exit_code):
     monkeypatch.setenv("BINANCE_DEMO_KEY", "k")
     monkeypatch.setenv("BINANCE_DEMO_SECRET", "s")
 
@@ -131,7 +133,8 @@ def test_readiness_refuses_enabled_or_unreported_withdrawals(
             pass
 
         def venue_status(self, _symbols):
-            return _ready_venue_status(can_withdraw=can_withdraw)
+            return _ready_venue_status(
+                account_can_withdraw=account_can_withdraw)
 
         def close(self):
             pass
@@ -142,11 +145,11 @@ def test_readiness_refuses_enabled_or_unreported_withdrawals(
     out = capsys.readouterr().out
     assert rc == exit_code
     assert f"[{row_state}] withdrawals" in out
-    if can_withdraw is None:
+    if account_can_withdraw is None:
         assert "readiness: UNVERIFIED" in out
         assert "readiness: READY" not in out
     else:
-        assert "canWithdraw=true" in out
+        assert "account reports canWithdraw=true" in out
         assert "readiness: READY" not in out
 
 

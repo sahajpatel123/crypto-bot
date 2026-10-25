@@ -480,16 +480,19 @@ def _signed_rows(engine, config) -> list[tuple[str, str, str]]:
         rows.append(("permissions", "PASS" if status["can_trade"] else "FAIL",
                      f"can_trade={status['can_trade']} "
                      f"fee_tier={status['fee_tier']}"))
-        can_withdraw = status.get("can_withdraw")
-        if can_withdraw is None:
-            rows.append(("withdrawals", "UNVERIFIED",
-                         "venue did not report canWithdraw; confirm "
-                         "withdrawals are disabled in the demo UI"))
-        elif can_withdraw:
+        account_can_withdraw = status.get("account_can_withdraw")
+        if account_can_withdraw is True:
             rows.append(("withdrawals", "FAIL",
-                         "canWithdraw=true; disable withdrawals on this key"))
+                         "account reports canWithdraw=true; fail closed "
+                         "and disable withdrawals in the demo UI"))
+        elif account_can_withdraw is False:
+            rows.append(("withdrawals", "UNVERIFIED",
+                         "account canWithdraw=false does not verify the "
+                         "API-key restriction; confirm it in the demo UI"))
         else:
-            rows.append(("withdrawals", "PASS", "canWithdraw=false"))
+            rows.append(("withdrawals", "UNVERIFIED",
+                         "venue omitted account canWithdraw; confirm the "
+                         "API-key restriction in the demo UI"))
         rows.append(("position-mode",
                      "PASS" if status["position_mode"] == "one-way"
                      else "FAIL", status["position_mode"]))

@@ -88,12 +88,13 @@ uv run --locked cryptobot reconcile --config configs/demo.toml --expect-flat
 
 Expected: `tools/demo_drill_live.py` writes `"verdict": "PASS"` with
 measured auth/filter/leverage/entry/protection/flatten latencies;
-readiness reports withdrawals PASS only when `canWithdraw=false`, and
-reconcile reports FLAT. If the venue omits `canWithdraw`, readiness must
-show UNVERIFIED (exit 3), not READY; verify the key in the demo UI before
-continuing. A reported `canWithdraw=true` must fail readiness.
+reconcile reports FLAT. The venue's account `canWithdraw` flag does not
+prove the API-key restriction, so readiness reports withdrawals UNVERIFIED
+(exit 3) even when that account flag is false. A reported `canWithdraw=true`
+fails readiness. Confirm the API key is trade-only and withdrawals are
+disabled in the demo UI before continuing.
 Pass criteria: drill PASS, flat after the drill, no unknown orders, and
-demo-key withdrawals confirmed disabled (by readiness or the demo UI).
+demo-key withdrawals confirmed disabled in the demo UI.
 If the drill fails, flatten in the demo UI and bring back `drill.json`.
 
 ### Verify during the owner's demo drill

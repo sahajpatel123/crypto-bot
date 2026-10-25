@@ -5,6 +5,6 @@ This evidence is from the in-repository MockEx emulator bound to `127.0.0.1`, us
 - `drill.json`: owner drill reached auth/modes, tiny entry acknowledgement and fill, server-acknowledged protection attach, flatten, and PASS.
 - `readiness.txt`: signed checks reached MockEx, but the CLI correctly exited 2 because the loopback URL fails the exact demo-host pin. Treat this as loopback transport evidence only, not a readiness PASS.
 - `reconcile.txt`: read-only `--expect-flat` succeeded after the drill.
-- MockEx reports `canWithdraw=false` to exercise the readiness PASS branch; that does not establish a real API key's withdrawal permission. If a real demo response omits `canWithdraw`, readiness now reports UNVERIFIED and exits 3; a reported `true` fails readiness. The owner must confirm the real demo key in the demo UI.
+- MockEx reports the account field `canWithdraw=false`; that does not establish the API key's withdrawal restriction. Readiness therefore reports withdrawals UNVERIFIED (rather than PASS) for this API surface; an account `canWithdraw=true` fails closed. The owner must confirm the real demo key in the demo UI.
 
 No real credential, live venue, private Binance endpoint, or holdout dataset was used.
