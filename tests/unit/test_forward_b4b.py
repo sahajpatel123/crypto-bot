@@ -544,3 +544,277 @@ def _write_tiny_root(root: Path, *, days: int) -> None:
             name = f"{sym}-fundingRate-{month}.zip"
             with zipfile.ZipFile(folder / name, "w") as zf:
                 zf.writestr("data.csv", "\n".join(lines) + "\n")
+
+
+# -- frozen-rule audit: each clause of C1/B4b pinned to a test ---------------
+def _settlements(rates_by_day: list[float], *, per_day: int = 3):
+    """Funding settlements: one rate per forward day, ``per_day`` each."""
+    rows = []
+    for d, rate in enumerate(rates_by_day):
+        for k in range(per_day):
+            rows.append({"calc_ms": int(_ms(pd.DatetimeIndex(
+                [START + pd.Timedelta(days=d, hours=8 * k)]))[0]),
+                "rate": float(rate)})
+    return pd.DataFrame(rows)
+
+
+def _frames_with_rates(rates_by_day: list[float], *, price: float = 100.0,
+                       adv: float = 5.0e8, sigma: float = 0.01,
+                       seed: int = 11):
+    """Bars for len(rates_by_day) forward days + that funding profile."""
+    days = len(rates_by_day)
+    base = _frames(days=days, warmup_days=1, price=price, adv=adv,
+                   sigma=sigma, seed=seed)
+    funding = _settlements(rates_by_day)
+    return {sym: {"spot": f["spot"].copy(), "perp": f["perp"].copy(),
+                  "funding": funding.copy()} for sym, f in base.items()}
+
+
+def test_decision_clock_is_midnight_utc_and_daily():
+    timing = _frames(days=10)["BTCUSDT"]["perp"]
+    d = pd.DataFrame({"open_ms": timing["open_ms"], "open": timing["open"],
+                      "close": timing["close"],
+                      "quote_volume": timing["quote_volume"]})
+    # decision_days reads the bar index, exactly as _prep builds it
+    d.index = pd.to_datetime(d["open_ms"], unit="ms", utc=True)
+    days = fwd.decision_days(d)
+    assert days, "the clock must produce decision days"
+    for stamp in days:
+        assert stamp.hour == 0 and stamp.minute == 0 and stamp.second == 0
+        assert stamp.tzinfo is not None
+        assert stamp >= fwd.forward_clock_start()
+    assert len(days) == len(set(days)), "one decision per UTC day"
+
+
+def test_settlement_at_the_decision_instant_is_excluded():
+    """Prereg: a rate is eligible only if strictly BEFORE the decision."""
+    boundary = START + pd.Timedelta(days=20)
+    stamps = [boundary - pd.Timedelta(hours=8 * (21 - i)) for i in range(21)]
+    series = pd.Series([1.0e-4] * 21, index=stamps)
+    series.loc[boundary] = 9.0      # at the decision instant: not eligible
+    got = fwd._trailing_funding(series, boundary)
+    assert got == pytest.approx(1.0e-4), "the boundary settlement leaked in"
+
+
+def test_trailing_funding_is_the_median_of_21_settlements():
+    boundary = START + pd.Timedelta(days=30)
+    stamps = [boundary - pd.Timedelta(hours=8 * (40 - i)) for i in range(40)]
+    # the last 21 settlements are 1..21; the 19 older ones are huge
+    vals = [1.0e2] * 19 + [float(i + 1) for i in range(21)]
+    series = pd.Series(vals, index=stamps)
+    assert fwd._trailing_funding(series, boundary) == pytest.approx(11.0)
+    assert fwd.TRAIL_SETTLEMENTS == 21
+    # warm-up: fewer than 21 settlements is no decision at all
+    assert fwd._trailing_funding(series.head(20), boundary) is None
+
+
+def test_apr_is_median_8h_times_3_times_365():
+    rate = fwd.median_hurdle_rate(1.5, 53.0)
+    assert rate * 3.0 * 365.0 == pytest.approx(fwd.hurdle_apr(1.5, 53.0))
+    assert rate * 3.0 * 365.0 == pytest.approx(0.41453571428571427)
+    assert rate == pytest.approx(3.7857142857142856e-4, rel=1e-9)
+
+
+def test_round_trip_53bps_decomposition():
+    """RT = 2x(15 spot + 1 spread + 1 slip) + 2x(7.5 perp + 1 spread + 1 slip)."""
+    assert fwd.RT_BPS == 53.0
+    assert (fwd.SPOT_TAKER_BPS, fwd.SPOT_SPREAD_BPS) == (15.0, 1.0)
+    assert (fwd.PERP_TAKER_BPS, fwd.PERP_SPREAD_BPS) == (7.5, 1.0)
+    assert 2 * (15.0 + 1.0 + 1.0) + 2 * (7.5 + 1.0 + 1.0) == 53.0
+    # the model actually charged removes the 4bps of slip floor it replaces
+    assert fwd.FILL_BPS == {"spot": 16.0, "perp": 8.5}
+    assert 2 * 16.0 + 2 * 8.5 == 49.0
+
+
+def test_hysteresis_needs_three_consecutive_below_hurdle_days():
+    """Clause: exit when APR < 0.5 x hurdle for 3 CONSECUTIVE decision days."""
+    hurdle = fwd.hurdle_apr(fwd.K_HURDLE, fwd.RT_BPS)
+    below = 0.4 * hurdle          # below half the hurdle
+    above = 1.5 * hurdle
+    # 1st and 2nd below days accrue a streak but never exit
+    exit1, s1 = fwd.exit_decision(held_days=30, median_rate=1e-4,
+                                  apr=below, streak=0)
+    assert (exit1, s1) == (False, 1)
+    exit2, s2 = fwd.exit_decision(held_days=30, median_rate=1e-4,
+                                  apr=below, streak=s1)
+    assert (exit2, s2) == (False, 2)
+    # the 3rd consecutive day exits
+    exit3, s3 = fwd.exit_decision(held_days=30, median_rate=1e-4,
+                                  apr=below, streak=s2)
+    assert (exit3, s3) == (True, 3)
+    # a day back above the band resets the streak
+    _, reset = fwd.exit_decision(held_days=30, median_rate=1e-4,
+                                 apr=above, streak=s2)
+    assert reset == 0
+
+
+def test_hysteresis_respects_the_seven_day_minimum_hold():
+    hurdle = fwd.hurdle_apr(fwd.K_HURDLE, fwd.RT_BPS)
+    below = 0.4 * hurdle
+    # 3 consecutive below days but only 6 days held: no exit yet
+    exit_now, streak = fwd.exit_decision(held_days=fwd.MIN_HOLD_DAYS - 1,
+                                         median_rate=1e-4, apr=below, streak=2)
+    assert (exit_now, streak) == (False, 3)
+    # one more decision day and the same streak exits
+    exit_now, _ = fwd.exit_decision(held_days=fwd.MIN_HOLD_DAYS,
+                                    median_rate=1e-4, apr=below, streak=2)
+    assert exit_now is True
+
+
+def test_negative_median_rate_exits_regardless_of_hold_or_streak():
+    hurdle = fwd.hurdle_apr(fwd.K_HURDLE, fwd.RT_BPS)
+    exit_now, _ = fwd.exit_decision(held_days=1.0, median_rate=-1e-6,
+                                    apr=10 * hurdle, streak=0)
+    assert exit_now is True, "a funding flip exits with no min-hold"
+
+
+def test_rich_then_flat_regime_completes_one_round_trip_per_symbol():
+    rich, low = 2.0e-3, 1.0e-4
+    rates = [rich] * 40 + [low] * 40
+    sim = fwd.simulate(_frames_with_rates(rates))
+    # "A round trip is one open-and-closed position in one symbol", so the
+    # two-symbol universe yields two.
+    assert sim["round_trips"] == len(fwd.UNIVERSE) == 2
+    assert sim["mean_hold_days"] >= fwd.MIN_HOLD_DAYS
+
+
+def test_dip_that_does_not_break_the_band_never_exits():
+    rich, low = 2.0e-3, 1.0e-4
+    # a short low patch, then rich again for the rest of the sample
+    rates = [rich] * 20 + [low, low] + [rich] * 40
+    sim = fwd.simulate(_frames_with_rates(rates))
+    assert sim["round_trips"] == 0
+
+
+def test_each_leg_is_fifty_percent_of_equity():
+    frames = _frames(days=90)
+    sim = fwd.simulate(frames)
+    spot = [f for f in sim["fills"] if f["venue"] == "spot"]
+    assert spot, "the rich regime must open the book"
+    assert spot[0]["notional"] == pytest.approx(0.5 * fwd.E0, rel=0.02)
+    # and the two legs are matched, so gross is 2 x equity at entry
+    perp = [f for f in sim["fills"] if f["venue"] == "perp"]
+    assert abs(spot[0]["notional"] - perp[0]["notional"]) <= 0.02 * spot[0]["notional"]
+
+
+def test_capital_table_is_finite_at_120_1000_10000():
+    rows = fwd.capital_table({"BTCUSDT": 100_000.0, "ETHUSDT": 3_000.0})
+    assert {r["equity_usdt"] for r in rows} == {120.0, 1000.0, 10_000.0}
+    assert len(rows) == 6
+    for r in rows:
+        assert r["finite"] is True
+        assert r["target_notional"] == pytest.approx(0.5 * r["equity_usdt"])
+        assert r["qty"] <= r["target_notional"] / r["price"] + 1e-12
+        assert r["clears_min_notional"] == (r["notional"] >= fwd.MIN_NOTIONAL)
+    # Reported finding, not a defect: at 120 USDT with BTC at 100k the 0.001
+    # quantity step floors the 60 USDT leg (0.0006 BTC) to zero, so BTC does
+    # NOT clear the minimum while ETH does. The table says so instead of
+    # hiding it; it is never a reason to change the 50% leg.
+    small = {r["symbol"]: r for r in rows if r["equity_usdt"] == 120.0}
+    assert small["BTCUSDT"]["qty"] == 0.0
+    assert small["BTCUSDT"]["clears_min_notional"] is False
+    assert small["ETHUSDT"]["clears_min_notional"] is True
+    assert all(r["clears_min_notional"] for r in rows
+               if r["equity_usdt"] >= 1_000.0)
+
+
+# -- the one command ---------------------------------------------------------
+def test_forward_command_reports_insufficient_with_dates(tmp_path):
+    doc = fwd.forward_command(tmp_path)
+    assert doc["state"] == "INSUFFICIENT FORWARD DATA"
+    assert doc["forward_days"] == 0
+    assert doc["forward_days_remaining"] == 90
+    assert doc["round_trips_remaining"] == 20
+    assert doc["earliest_evaluable_on"] == "2027-01-29"
+    assert doc["pass_possible_on"] == "2027-03-01"
+
+
+def test_forward_command_returns_the_verdict_when_powered(monkeypatch, tmp_path):
+    monkeypatch.setattr(fwd, "VERDICT_DIR", tmp_path)
+    monkeypatch.setattr(fwd, "VERDICT_NAME", "v.json")
+    monkeypatch.setattr(fwd, "status_doc", lambda root: {
+        "prereg": "p", "forward_days": 121, "round_trips": 25,
+        "forward_days_required": 90, "forward_days_remaining": 0,
+        "round_trips_required": 20, "round_trips_remaining": 0,
+        "powered": True, "forward_clock_start": "2026-11-01",
+        "years_assessable_from": "2027-03-01",
+        "years_assessable_from_forward_day": 121,
+        "coverage": {}, "note": "n"})
+    monkeypatch.setattr(fwd, "evaluate",
+                        lambda root, force=False: {"status": "KILLED",
+                                                   "prereg": "p"})
+    doc = fwd.forward_command(tmp_path)
+    assert doc["state"] == "VERDICT"
+    assert doc["verdict"]["status"] == "KILLED"
+
+
+def test_forward_command_never_overwrites_a_fired_verdict(monkeypatch, tmp_path):
+    monkeypatch.setattr(fwd, "VERDICT_DIR", tmp_path)
+    monkeypatch.setattr(fwd, "VERDICT_NAME", "v.json")
+    (tmp_path / "v.json").write_text(json.dumps({"status": "KILLED"}))
+    monkeypatch.setattr(fwd, "status_doc", lambda root: {"powered": True})
+    called = []
+    monkeypatch.setattr(fwd, "evaluate",
+                        lambda root, force=False: called.append(1) or {})
+    doc = fwd.forward_command(tmp_path)
+    assert doc["state"] == "VERDICT"
+    assert called == [], "the one look must not be recomputed"
+
+
+def test_cli_forward_b4b_prints_insufficient(tmp_path, capsys):
+    from cryptobot import cli
+    code = cli.main(["forward", "b4b", "--dir", str(tmp_path)])
+    out = capsys.readouterr().out
+    assert code == 3
+    assert "INSUFFICIENT FORWARD DATA" in out
+    assert "2027-01-29" in out
+    assert "0 of 90" in out
+
+
+def test_manifest_records_url_bytes_sha256_rows_and_time(monkeypatch, tmp_path):
+    """Prereg data rule: every file reproducible by a reviewer."""
+    payload = b"col\n1\n2\n"
+    digest = hashlib.sha256(payload).hexdigest()
+
+    class _Stub:
+        requests = 0
+
+        def plan(self, **_):
+            return []
+
+        def list_keys(self, prefix):
+            return []
+
+    monkeypatch.setattr(fwd, "plan_files", lambda vision, symbols=None: [{
+        "dataset": "spot", "symbol": "BTCUSDT",
+        "name": "BTCUSDT-1h-2026-11-01.zip",
+        "key": "data/spot/daily/klines/BTCUSDT/1h/BTCUSDT-1h-2026-11-01.zip"}])
+
+    class _Vision(_Stub):
+        def download_verified(self, key, dest):
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            _write_kline_zip(dest, 24)
+            return {"key": key, "path": str(dest), "sha256": digest,
+                    "bytes": len(payload), "resumed": False, "verified": True}
+
+    out = tmp_path / "tracked.json"
+    doc = fwd.fetch(tmp_path / "data", _Vision(),
+                    manifest_out=out)
+    assert out.exists(), "the tracked manifest copy must be written"
+    rec = doc["files"][0]
+    for field in ("url", "bytes", "sha256", "rows", "retrieved_at"):
+        assert field in rec, field
+    assert rec["url"].startswith("https://data.binance.vision/")
+    assert rec["rows"] == 24
+    assert json.loads(out.read_text())["files"] == doc["files"]
+
+
+def _write_kline_zip(dest: Path, rows: int) -> None:
+    stamp = pd.Timestamp("2026-11-01", tz="UTC")
+    idx = pd.date_range(stamp, periods=rows, freq="h", tz="UTC")
+    body = ("open_time,open,high,low,close,volume,close_time,quote_volume,"
+            "count,taker_base,taker_quote,ignore\n")
+    lines = [f"{t_ms},100,100,100,100,1,{t_ms + 3599999},1000,5,0.5,50,0"
+             for t_ms in (int(_ms(pd.DatetimeIndex([t]))[0]) for t in idx)]
+    with zipfile.ZipFile(dest, "w") as zf:
+        zf.writestr(dest.with_suffix("").name + ".csv", body + "\n".join(lines))

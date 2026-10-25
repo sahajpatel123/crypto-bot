@@ -115,6 +115,10 @@ class UserStreamReader:
         try:
             envelope = self._socket.recv(timeout_s)
         except Exception:
+            mark_gap = getattr(self._engine, "mark_stream_gap", None)
+            if callable(mark_gap):
+                with contextlib.suppress(Exception):
+                    mark_gap()
             self._drop()
             healed = self._ensure_connected()
             return "healed" if healed else "backoff"
@@ -140,7 +144,11 @@ class UserStreamReader:
         self._engine.note_user_event(envelope)
         if envelope.get("e") == "listenKeyExpired" \
                 or self._engine.listen_key is None:
-            # Venue closed the socket with the key; redial next step.
+            # The dead key may have lost a fill event for a terminal order.
+            mark_gap = getattr(self._engine, "mark_stream_gap", None)
+            if callable(mark_gap):
+                with contextlib.suppress(Exception):
+                    mark_gap()
             self._drop()
         return "event"
 
@@ -547,11 +555,19 @@ class UserStreamAttachment:
             self._redial("listenKeyExpired")
 
     def _on_socket_dead(self, error: str) -> None:
+        mark_gap = getattr(self._engine, "mark_stream_gap", None)
+        if callable(mark_gap):
+            with contextlib.suppress(Exception):
+                mark_gap()
         self._live_socket = None
         self._engage_halt(_GAP_REASON, "user-stream-gap",
                           {"phase": "socket-dead", "error": error})
 
     def _redial(self, why: str) -> None:
+        mark_gap = getattr(self._engine, "mark_stream_gap", None)
+        if callable(mark_gap):
+            with contextlib.suppress(Exception):
+                mark_gap()
         sock, self._live_socket = self._live_socket, None
         if sock is not None:
             with contextlib.suppress(Exception):

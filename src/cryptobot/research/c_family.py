@@ -141,13 +141,15 @@ def _week(day: str) -> str:
     return f"{y}-W{w:02d}"
 
 
-def score(results: list[DayResult]) -> dict:
-    """Week-block bootstrap statistics on daily portfolio returns."""
+def score(results: list[DayResult], *, rounds: int = 2000) -> dict:
+    """Week-block bootstrap statistics; ``rounds`` controls Monte Carlo precision."""
+    if rounds < 1:
+        raise ValueError("rounds must be positive")
     if not results:
         return {"n_days": 0}
     net = [r.net_bps for r in results]
     weeks = [_week(r.day) for r in results]
-    means = _block_bootstrap(net, weeks)
+    means = _block_bootstrap(net, weeks, rounds=rounds)
     lo, hi = means[int(0.025 * len(means))], means[int(0.975 * len(means)) - 1]
     sd = statistics.pstdev(net)
     by_year: dict[str, list[float]] = {}

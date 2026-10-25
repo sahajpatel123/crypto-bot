@@ -356,10 +356,11 @@ def calendar_year_table(returns: pd.Series) -> dict[int, dict[str, float]]:
     series = _as_series(returns)
     out: dict[int, dict[str, float]] = {}
     for year, chunk in series.groupby(series.index.year):
+        values = chunk.to_numpy()
         out[int(year)] = {
-            "sharpe": sharpe_ratio(chunk.to_numpy()),
-            "net": float(np.nansum(chunk.to_numpy())),
-            "n": int(np.isfinite(chunk.to_numpy()).sum()),
+            "sharpe": sharpe_ratio(values),
+            "net": math.fsum(float(v) for v in values if np.isfinite(v)),
+            "n": int(np.isfinite(values).sum()),
         }
     return out
 

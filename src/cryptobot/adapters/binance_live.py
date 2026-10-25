@@ -45,6 +45,7 @@ import contextlib
 import hashlib
 import hmac
 import json
+import math
 import os
 import random
 import re
@@ -156,11 +157,14 @@ def classify_exception(exc: BaseException, *,
 class VenueHttpError(Exception):
     """Transport/HTTP failure. ``status`` 0 = timeout/socket error."""
 
-    def __init__(self, status: int, code: int | None, msg: str) -> None:
+    def __init__(self, status: int, code: int | None, msg: str, *,
+                 retry_after_s: float | None = None) -> None:
         super().__init__(f"venue http {status} code={code}: {msg}")
         self.status = status
         self.code = code
         self.msg = msg
+        # Seconds the venue asked us to stay away (Retry-After on 429/418).
+        self.retry_after_s = retry_after_s
 
 
 class VenueRejectedError(VenueHttpError):
@@ -249,8 +253,12 @@ class UrllibTransport:
                 payload = json.loads(exc.read().decode("utf-8"))
             except Exception:
                 payload = {}
+            retry_after: float | None = None
+            with contextlib.suppress(TypeError, ValueError):
+                retry_after = float(exc.headers.get("Retry-After", ""))
             raise VenueHttpError(
-                exc.code, payload.get("code"), str(payload.get("msg", exc))) from None
+                exc.code, payload.get("code"), str(payload.get("msg", exc)),
+                retry_after_s=retry_after) from None
         except (TimeoutError, urllib.error.URLError, OSError) as exc:
             raise VenueHttpError(0, None, f"transport: {exc}") from None
 
@@ -450,7 +458,21 @@ class BinanceLiveEngine:
                 self._symbols[cid] = str(record.get("symbol", ""))
         for record in self._read_journal():
             event, cid = record.get("event"), record.get("client_id")
-            if event == "submit-intent" and cid:
+            if event == "rate-limited":
+                # Persisted absolute epoch deadline survives process restart.
+                # Legacy rows only had duration + timestamp; reconstruct them.
+                until = record.get("until_ms")
+                try:
+                    if until is None:
+                        stamp = datetime.fromisoformat(
+                            str(record.get("ts_utc", ""))).timestamp()
+                        until = int((stamp + float(
+                            record.get("backoff_s", 0.0))) * 1000)
+                    self._rate_limited_until_ms = max(
+                        self._rate_limited_until_ms, int(until))
+                except (TypeError, ValueError, OverflowError, OSError):
+                    pass
+            elif event == "submit-intent" and cid:
                 cid = str(cid)
                 self._roles[cid] = str(record.get("role", "entry"))
                 res = record.get("reservation_id")
@@ -611,11 +633,20 @@ class BinanceLiveEngine:
         return self._now_ms() < self._rate_limited_until_ms
 
     def _note_rate_limit(self, exc: VenueHttpError) -> RateLimitedError:
+        # Honour the venue's own Retry-After (a 418 IP ban can last minutes
+        # to days; probing inside it extends it). The configured floor still
+        # applies, a window is never shortened by a later, smaller hint, and
+        # the hint is capped at Binance's 3-day maximum ban.
         backoff = self._rate_limit_backoff_s
-        self._rate_limited_until_ms = self._now_ms() + int(backoff * 1000)
+        hint = getattr(exc, "retry_after_s", None)
+        if hint is not None and hint > backoff:
+            backoff = min(float(hint), 3 * 86400.0)
+        until = self._now_ms() + int(backoff * 1000)
+        self._rate_limited_until_ms = max(self._rate_limited_until_ms, until)
         self._journal("rate-limited",
                       {"status": exc.status, "code": exc.code,
-                       "backoff_s": backoff})
+                       "backoff_s": backoff,
+                       "until_ms": self._rate_limited_until_ms})
         self._orders_cache = None
         return RateLimitedError(exc.status, exc.code, exc.msg, backoff)
 
@@ -908,6 +939,12 @@ class BinanceLiveEngine:
                                      {"order_id": view.get("orderId"),
                                       "state": self._states[cid]})
         self._orders_cache = None
+        # Without a user stream, even a terminal partial fill has no delivery
+        # path; the next REST reconciliation must revisit it.
+        if not is_algo and self._listen_key is None:
+            executed = float(view.get("executedQty", 0.0) or 0.0)
+            if executed > 0:
+                self._reconcile_fill_gap(cid, executed)
         self._maybe_emit_terminal(cid, symbol, "submitted-terminal")
         return cid
 
@@ -1068,6 +1105,21 @@ class BinanceLiveEngine:
                 raise VenueRejectedError(
                     0, None, f"{sym} leverage {lev.get('leverage')} != "
                              f"expected {self._leverage}")
+            # The owner demo reads filters and uses a mark to size its tiny
+            # order immediately after this handshake. Prime filters here so
+            # unsupported symbols fail with an operator-readable readiness
+            # error, not a later KeyError or equity-as-price fallback.
+            self._ensure_ready(sym)
+            mark_view = self._public("GET", "/fapi/v1/premiumIndex",
+                                     {"symbol": sym})
+            try:
+                mark = float(mark_view["markPrice"])
+            except (KeyError, TypeError, ValueError):
+                mark = 0.0
+            if not math.isfinite(mark) or mark <= 0:
+                raise VenueRejectedError(
+                    0, None, f"venue returned no valid mark price for {sym}")
+            self.note_mark(sym, mark)
         return {"position_mode": "one-way", "multi_assets": False,
                 "margin_type": "ISOLATED", "leverage": self._leverage,
                 "symbols": [s.upper() for s in symbols]}
@@ -1133,7 +1185,8 @@ class BinanceLiveEngine:
                           {"client_id": client_id, "executed_qty": exec_qty,
                            "tape_qty": booked})
 
-    def _reconcile_fill_gap(self, client_id: str, exec_qty: float) -> None:
+    def _reconcile_fill_gap(self, client_id: str,
+                            exec_qty: float | None) -> None:
         """Track cumulative-vs-tape fills still missing (R2).
 
         A lookup that leaves executedQty above the adopted tape
@@ -1142,6 +1195,13 @@ class BinanceLiveEngine:
         once each (never per-lookup spam).
         """
         adopted = self._adopted_qty.get(client_id, 0.0)
+        if exec_qty is None:
+            if client_id not in self._gap_orders:
+                self._gap_orders.add(client_id)
+                self._journal("fill-gap", {"client_id": client_id,
+                                           "executed_qty": None,
+                                           "adopted_qty": adopted})
+            return
         if exec_qty > adopted + 1e-9:
             if client_id not in self._gap_orders:
                 self._gap_orders.add(client_id)
@@ -1246,6 +1306,9 @@ class BinanceLiveEngine:
         self._states[client_order_id] = "cancelled"
         self._journal_transition("cancel-acked", client_order_id,
                                  {"reason": reason})
+        # DELETE replies do not consistently include executedQty. Watch the
+        # terminal order until a GET reconciles any fill raced with the cancel.
+        self._reconcile_fill_gap(client_order_id, None)
         self._maybe_emit_terminal(client_order_id, symbol,
                                   f"cancel-acked:{reason}")
         self._orders_cache = None
@@ -1409,6 +1472,11 @@ class BinanceLiveEngine:
         self._states[cid] = _local_state(str(order["X"]))
         self._journal_transition("user-order-state", cid,
                                  {"state": self._states[cid]})
+        cumulative = float(order.get("z", 0.0) or 0.0)
+        if cumulative > 0:
+            self._reconcile_fill_gap(cid, cumulative)
+        elif self._states[cid] in ("cancelled", "expired"):
+            self._reconcile_fill_gap(cid, None)
         if str(order["x"]) != "TRADE":
             self._maybe_emit_terminal(cid, str(order["s"]),
                                       f"stream:{order['x']}")
@@ -1439,6 +1507,8 @@ class BinanceLiveEngine:
             self._adopted_exec.add(exec_id)
             self._unacked[exec_id] = cid
             self._adopted_qty[cid] = self._adopted_qty.get(cid, 0.0) + last_qty
+        self._reconcile_fill_gap(
+            cid, cumulative if cumulative > 0 else self._adopted_qty.get(cid, 0.0))
         self._emit(EngineEvent(
             "fill",
             EngineFill(execution_id=exec_id,
@@ -1508,6 +1578,19 @@ class BinanceLiveEngine:
                 "no user-stream host mapped for base_url "
                 f"{self._base_url!r}")
         return f"{ws}/ws/{listen_key}"
+
+    def mark_stream_gap(self) -> None:
+        """Mark terminal executions that may have lost their TRADE event."""
+        for cid, state in tuple(self._states.items()):
+            adopted = self._adopted_qty.get(cid, 0.0)
+            if state == "filled":
+                expected = float(self._submitted_qty.get(cid, 0.0) or 0.0)
+                if expected > adopted + 1e-9:
+                    self._reconcile_fill_gap(cid, expected)
+            elif state in ("cancelled", "expired"):
+                # A terminal partial entry can have a fill despite zero
+                # adopted quantity; only REST distinguishes that from none.
+                self._reconcile_fill_gap(cid, None)
 
     def stream_reconnected(self) -> None:
         """Heal a user-stream gap: look up every journaled non-terminal
@@ -1859,6 +1942,9 @@ class BinanceLiveEngine:
                      if float(p.get("positionAmt", 0.0) or 0.0) != 0.0]
         assets = [a for a in account.get("assets", [])
                   if float(a.get("walletBalance", 0.0) or 0.0) != 0.0]
+        account_can_withdraw = account.get("canWithdraw")
+        if not isinstance(account_can_withdraw, bool):
+            account_can_withdraw = None
         return {
             "base_url": self._base_url,
             "demo": self._demo,
@@ -1866,7 +1952,7 @@ class BinanceLiveEngine:
             "server_time_ms": server_ms,
             "clock_skew_ms": server_ms - self._now_ms(),
             "can_trade": bool(account.get("canTrade", False)),
-            "can_withdraw": bool(account.get("canWithdraw", False)),
+            "account_can_withdraw": account_can_withdraw,
             "can_deposit": bool(account.get("canDeposit", False)),
             "fee_tier": account.get("feeTier", 0),
             "total_wallet_usdt": float(

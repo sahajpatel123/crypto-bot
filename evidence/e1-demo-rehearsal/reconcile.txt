@@ -1,0 +1,7 @@
+reconcile /home/runner/.reason/workspace/sessions/8af52624-83f0-480a-a15e-de2d1de78e79/.ara-state/tmp/e1-loopback-final-z7p51scj/demo.toml (host=http://127.0.0.1:42821 account=bc571096334b):
+  wallet=9999.93 available=9999.93 USDT
+  positions: 0 open
+  open orders: 0
+reconcile: FLAT (read-only; nothing submitted)
+
+exit_code=0

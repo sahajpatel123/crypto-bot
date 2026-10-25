@@ -298,7 +298,12 @@ def pbo_cscv(trial_returns: list[list[float]], *, n_partitions: int = 8,
     Partitions the history in S blocks; for every half/half split, the
     IS-best trial's OOS Sharpe rank fraction lambda is recorded. PBO =
     fraction of splits with logit(lambda) < 0 (IS-best below OOS median).
+    Non-finite returns make the ranking undefined and are rejected rather
+    than silently turning an invalid comparison into a finite PBO.
     """
+    if any(not math.isfinite(float(value))
+           for trial in trial_returns for value in trial):
+        raise ValueError("PBO requires finite returns")
     k = len(trial_returns)
     if k < 2:
         return 0.5

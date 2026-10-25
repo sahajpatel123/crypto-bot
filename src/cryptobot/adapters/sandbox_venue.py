@@ -38,7 +38,7 @@ LABEL_KEY = "sandboxSimulated"
 _KNOWN_ACTIONS = {
     "rate-limit", "rate-limit-418", "unknown", "gateway-502",
     "gateway-504", "timeout", "reject", "partial-legs", "reorder",
-    "dupe", "die", "expire-key", "void-lookup",
+    "dupe", "die", "expire-key", "void-lookup", "http-error", "stall",
 }
 
 SYMBOLS = {
@@ -59,12 +59,9 @@ FUNDING_DAY_MS = [0, 8 * 3600_000, 16 * 3600_000]  # UTC boundaries.
 class FaultScript:
     """Scripted venue faults, applied in request order (logged).
 
-    Each entry: {"op": <path suffix or "stream" or "submit:<n>">,
-    "action": "rate-limit" | "rate-limit-418" | "unknown" |
-    "gateway-502" | "gateway-504" | "timeout" | "reject" |
-    "partial-legs" | "reorder" | "dupe" | "die" | "expire-key" |
-    "void-lookup",
-    "at": <1-based request counter, or "always"/"once">}.
+    Each entry: {"op": <path suffix or "stream" or "submit:<n>"},
+    "action": one of the supported scripted faults,
+    "at": <1-based request number, "always", or "once">}.
     """
     entries: list[dict[str, Any]] = field(default_factory=list)
 
@@ -116,6 +113,10 @@ class SandboxVenue:
         self._walk_cache: dict[int, float] = {}
         self._fault_hits: list[dict[str, Any]] = []
         self._stream_die_armed = False
+        self.dual_side = False  # venue hedge mode (positionSide/dual).
+        # Account-level flag only: on the real venue it does not describe
+        # the API key's own permission (see readiness withdrawals row).
+        self.can_withdraw = False
 
     # -- clock / market data ------------------------------------------------
     def now_ms(self) -> int:
@@ -147,32 +148,76 @@ class SandboxVenue:
         SYMBOLS[symbol.upper()]["size"] = size
 
     # -- faults ---------------------------------------------------------------
-    def _fault_for(self, op: str) -> dict[str, Any] | None:
+    def _fault_for(self, op: str,
+                   phase: str = "before") -> dict[str, Any] | None:
         for entry in self.cfg.faults.entries:
             at = entry.get("at", "always")
-            if at != "always" and at != "once":
-                continue
+            numeric_at: int | None = None
+            if at not in ("always", "once"):
+                if isinstance(at, bool):
+                    continue
+                try:
+                    numeric_at = int(at)
+                except (TypeError, ValueError):
+                    continue
+                if numeric_at < 1 or (not isinstance(at, int)
+                                      and str(at).strip() != str(numeric_at)):
+                    continue
+                if self.request_no != numeric_at:
+                    continue
+                if entry.get("_last_request_no") == self.request_no:
+                    continue
             if entry.get("op") not in (op, "*"):
                 continue
-            if at == "once" and entry.get("_fired"):
+            if entry.get("phase", "before") != phase:
                 continue
-            entry["_fired"] = True
+            # "times": N fires the entry on N matching requests (default 1
+            # for at="once"); "after" skips that many matches first.
+            seen = int(entry.get("_seen", 0))
+            entry["_seen"] = seen + 1
+            if seen < int(entry.get("after", 0)):
+                continue
+            if at != "always" and int(entry.get("_fired", 0)) >= int(
+                    entry.get("times", 1)):
+                continue
+            entry["_fired"] = int(entry.get("_fired", 0)) + 1
+            if numeric_at is not None:
+                entry["_last_request_no"] = self.request_no
             self._fault_hits.append({"op": op, "action": entry["action"],
                                      "request_no": self.request_no})
             return entry
         return None
 
-    def _maybe_request_fault(self, op: str) -> None:
-        fault = self._fault_for(op)
+    def _maybe_request_fault(self, op: str, phase: str = "before") -> None:
+        fault = self._fault_for(op, phase)
         if fault is None:
             return
         action = fault["action"]
+        retry_after = fault.get("retry_after_s")
         if action == "rate-limit":
             raise VenueHttpError(429, -1003,
-                                 "sandbox: Way too many requests")
+                                 "sandbox: Way too many requests",
+                                 retry_after_s=retry_after)
         if action == "rate-limit-418":
             raise VenueHttpError(418, -1003,
-                                 "sandbox: IP banned for rate abuse")
+                                 "sandbox: IP banned for rate abuse",
+                                 retry_after_s=retry_after)
+        if action == "http-error":
+            # Any scripted venue answer: {"status": 400, "code": -4164,
+            # "msg": "..."} (real Binance error codes, see the E1 matrix).
+            raise VenueHttpError(int(fault.get("status", 400)),
+                                 fault.get("code"),
+                                 str(fault.get("msg", "sandbox: scripted")),
+                                 retry_after_s=retry_after)
+        if action == "void-lookup":
+            raise VenueHttpError(400, -2013,
+                                 "sandbox: Order does not exist (scripted)")
+        if action == "stall":
+            # The venue is slow: the client's read timeout fires while the
+            # request is still pending (and, for phase=before, still
+            # executes afterwards -- the realistic duplicate-risk case).
+            time.sleep(float(fault.get("delay_s", 1.0)))
+            return
         if action == "unknown":
             raise VenueHttpError(503, None, "sandbox: response dropped")
         if action == "gateway-502":
@@ -301,11 +346,20 @@ class SandboxVenue:
         # boundary (documented, labeled); real violations still reject.
         ref_px = float(params["price"]) if kind == "LIMIT" \
             else self.mid(symbol)
-        if qty < spec["min_qty"] or qty * ref_px < \
-                spec["min_notional"] * (1.0 - 1e-3):
-            raise VenueHttpError(400, -2013 - 1,
-                                 "sandbox: below venue minimums")
         reduce_only = str(params.get("reduceOnly", "false")) == "true"
+        if self.dual_side and "positionSide" not in params:
+            # Hedge mode on the venue: every order must name a side.
+            raise VenueHttpError(
+                400, -4061,
+                "sandbox: Order's position side does not match user's "
+                "setting.")
+        # Binance exempts reduce-only closes from the notional floor.
+        if qty < spec["min_qty"] or (
+                not reduce_only and qty * ref_px < spec["min_notional"]
+                * (1.0 - 1e-3)):
+            # Binance: -4164 "Order's notional must be no smaller than N".
+            raise VenueHttpError(400, -4164,
+                                 "sandbox: below venue minimums")
         if reduce_only:
             pos_qty = self._position(symbol)["qty"]
             signed = qty if side == "BUY" else -qty
@@ -313,6 +367,14 @@ class SandboxVenue:
             if not closing or abs(signed) > abs(pos_qty) + 1e-12:
                 raise VenueHttpError(
                     400, -2022, "sandbox: ReduceOnly Order is rejected")
+        else:
+            # Binance -2019: margin is insufficient for a risk-increasing
+            # order (notional / leverage above the available balance).
+            acct = self.account_view()
+            if qty * ref_px / self.cfg.leverage > float(
+                    acct["availableBalance"]) + 1e-9:
+                raise VenueHttpError(400, -2019,
+                                     "sandbox: Margin is insufficient.")
         book = self.book(symbol)
         touch = book["ask"] if side == "BUY" else book["bid"]
         size = book["ask_qty"] if side == "BUY" else book["bid_qty"]
@@ -386,6 +448,13 @@ class SandboxVenue:
         return {"symbol": order["symbol"], "orderId": order["order_id"],
                 "clientOrderId": cid, "status": "CANCELED",
                 LABEL_KEY: True}
+
+    def expire_order(self, client_id: str) -> None:
+        """Venue-side expiry of a resting remainder (IOC/GTD): fills stay."""
+        order = self.orders[self.by_client[client_id]]
+        if order["status"] in ("NEW", "PARTIALLY_FILLED"):
+            order["status"] = "EXPIRED"
+            self.stream_queue.append(self._stream_envelope(order, "EXPIRED"))
 
     def open_orders(self) -> list[dict[str, Any]]:
         return [{"symbol": o["symbol"], "orderId": o["order_id"],
@@ -529,7 +598,9 @@ class SandboxVenue:
         margin_used = sum(
             abs(self.positions[s]["qty"]) * self.mid(s) / self.cfg.leverage
             for s in self.positions if self.positions[s]["qty"] != 0.0)
-        return {"totalWalletBalance": f"{self.wallet:.8f}",
+        return {"canTrade": True, "canDeposit": True,
+                "canWithdraw": self.can_withdraw, "feeTier": 0,
+                "totalWalletBalance": f"{self.wallet:.8f}",
                 "availableBalance": f"{self.wallet - margin_used:.8f}",
                 "totalMarginBalance": f"{self.wallet:.8f}",
                 "totalInitialMargin": f"{margin_used:.8f}",
@@ -681,12 +752,22 @@ class SandboxTransport:
         op = path.rsplit("/", 1)[-1]
         venue._maybe_request_fault(op)
         venue._maybe_request_fault(f"{method}:{op}")
+        result = self._route(method, path, params)
+        # phase="after" faults: the venue EXECUTED the request and the
+        # response is then lost/garbled (502/504/timeout/reset). This is
+        # the duplicate-exposure case a retry must survive.
+        venue._maybe_request_fault(op, "after")
+        venue._maybe_request_fault(f"{method}:{op}", "after")
+        return result
+
+    def _route(self, method: str, path: str, params: dict[str, Any]) -> Any:
+        venue = self.venue
         handler = (method, path)
         if handler == ("GET", "/fapi/v1/time"):
             return {"serverTime": venue.now_ms(), LABEL_KEY: True}
         if handler == ("GET", "/fapi/v1/exchangeInfo"):
             return {"symbols": [
-                {"symbol": sym,
+                {"symbol": sym, "status": "TRADING",
                  "pricePrecision": 2, "quantityPrecision": 3,
                  "filters": [
                      {"filterType": "PRICE_FILTER",
@@ -768,9 +849,12 @@ class SandboxTransport:
                     "indexPrice": f"{venue.mid(sym):.2f}",
                     "lastFundingRate": "0.0001",
                     "time": venue.now_ms(), LABEL_KEY: True}
-        if handler in (("GET", "/fapi/v1/positionSide/dual"),
-                       ("POST", "/fapi/v1/positionSide/dual")):
-            return {"dualSidePosition": False, LABEL_KEY: True}
+        if handler == ("POST", "/fapi/v1/positionSide/dual"):
+            venue.dual_side = str(params.get(
+                "dualSidePosition", "false")).lower() == "true"
+            return {"code": 200, "msg": "success", LABEL_KEY: True}
+        if handler == ("GET", "/fapi/v1/positionSide/dual"):
+            return {"dualSidePosition": venue.dual_side, LABEL_KEY: True}
         if handler in (("GET", "/fapi/v1/multiAssetsMargin"),
                        ("POST", "/fapi/v1/multiAssetsMargin")):
             return {"multiAssetsMargin": False, LABEL_KEY: True}

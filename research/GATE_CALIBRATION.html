@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>G1 Synthetic Gate Calibration</title>
+  <style>
+    :root { color-scheme: light dark; }
+    * { box-sizing: border-box; }
+    body {
+      max-width: 1120px; margin: 0 auto; padding: 32px 22px 56px;
+      color: var(--foreground); background: var(--background);
+      font: 15px/1.55 system-ui, sans-serif;
+    }
+    h1, h2, p { margin-top: 0; }
+    h1 { font-size: clamp(2rem, 5vw, 3.15rem); line-height: 1.08; letter-spacing: -.035em; }
+    h2 { margin: 34px 0 12px; font-size: 1.2rem; }
+    .eyebrow { color: var(--muted-foreground); text-transform: uppercase; letter-spacing: .12em; font-size: .75rem; font-weight: 700; }
+    .badge { display: inline-flex; border: 1px solid var(--border); border-radius: 999px; padding: 5px 10px; font-size: .78rem; font-weight: 700; margin: 0 6px 12px 0; }
+    .lead { color: var(--muted-foreground); max-width: 820px; font-size: 1.05rem; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(205px, 1fr)); gap: 12px; margin: 24px 0; }
+    .card, .callout { border: 1px solid var(--border); border-radius: 14px; padding: 18px; }
+    .card strong { display: block; font-size: 1.8rem; line-height: 1.15; margin: 8px 0; }
+    .card span, .muted { color: var(--muted-foreground); }
+    .callout { border-left: 4px solid var(--chart-2); background: color-mix(in srgb, var(--chart-2) 9%, transparent); }
+    .warning { border-left-color: var(--chart-3); background: color-mix(in srgb, var(--chart-3) 9%, transparent); }
+    table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+    th, td { text-align: left; border-bottom: 1px solid var(--border); padding: 9px 10px; }
+    th { color: var(--muted-foreground); font-size: .82rem; font-weight: 650; }
+    .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 12px; }
+    .bars { display: grid; gap: 13px; }
+    .bar-row { display: grid; grid-template-columns: minmax(86px, 125px) 1fr 90px; align-items: center; gap: 12px; }
+    .track { height: 12px; border-radius: 999px; background: var(--border); overflow: hidden; }
+    .fill { height: 100%; border-radius: inherit; background: var(--chart-1); }
+    .value { text-align: right; font-variant-numeric: tabular-nums; }
+    .notes { color: var(--muted-foreground); font-size: .9rem; }
+    footer { margin-top: 34px; padding-top: 16px; border-top: 1px solid var(--border); color: var(--muted-foreground); font-size: .85rem; }
+    @media (max-width: 560px) { body { padding: 22px 14px 38px; } th, td { padding: 8px 7px; } .bar-row { grid-template-columns: 80px 1fr 70px; gap: 8px; font-size: .9rem; } }
+  </style>
+</head>
+<body>
+  <header>
+    <p class="eyebrow">G1 · synthetic calibration · seed 20261025</p>
+    <span class="badge">SYNTHETIC ONLY</span><span class="badge">NO-GO UNCHANGED</span>
+    <h1>Can the gate distinguish edge from noise?</h1>
+    <p class="lead">A seeded four-year study exercised the production B4b evaluator with generated returns only. No strategy result, market P&amp;L, or holdout evidence is included.</p>
+  </header>
+
+  <section class="cards" aria-label="Study results">
+    <article class="card"><span>Primary null results</span><strong>0 / 200</strong><span>GO in every N=10 null cell; per-cell 95% upper bound 1.9%.</span></article>
+    <article class="card"><span>Requested planted edges</span><strong>0 / 25</strong><span>GO for 2–40 bps at N=10, at each event count tested.</span></article>
+    <article class="card"><span>Raw 80% pass crossing</span><strong>49.8–52 bps</strong><span>Net after 1× fixed fees; only 25 power paths per cell.</span></article>
+    <article class="card"><span>Full grid runtime</span><strong>407 s</strong><span>191 cells; 64 bootstrap resamples per study path.</span></article>
+  </section>
+
+  <section class="callout warning">
+    <strong>False-GO precision is not enough to claim “under 1%.”</strong>
+    <p>Zero of 200 gives a per-cell 95% Wilson upper bound of 1.9%. N=50/100 sensitivity cells use only five paths and cannot establish a low false-GO rate. The separate zero-after-2×-fees diagnostic had 23.5–55% passes, highlighting the limitation of B4b’s adverse-Sharpe-only leg.</p>
+  </section>
+
+  <h2>Primary null: zero net after 1× fixed fees</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Null process</th><th>100 events</th><th>300</th><th>1,000</th><th>3,000</th></tr></thead>
+      <tbody>
+        <tr><td>iid Gaussian</td><td>0/200</td><td>0/200</td><td>0/200</td><td>0/200</td></tr>
+        <tr><td>Student-t(3)</td><td>0/200</td><td>0/200</td><td>0/200</td><td>0/200</td></tr>
+        <tr><td>GARCH-like</td><td>0/200</td><td>0/200</td><td>0/200</td><td>0/200</td></tr>
+        <tr><td>Positive AR(1)</td><td>0/200</td><td>0/200</td><td>0/200</td><td>0/200</td></tr>
+        <tr><td>Zero-mean regime switching</td><td>0/200</td><td>0/200</td><td>0/200</td><td>0/200</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>Raw N=10 80%-pass crossing</h2>
+  <div class="bars" role="img" aria-label="Raw 80 percent pass crossing, bps per trade after one-times fees">
+    <div class="bar-row"><span>100 events</span><div class="track"><div class="fill" style="width:100%"></div></div><span class="value">52.0 bps</span></div>
+    <div class="bar-row"><span>300 events</span><div class="track"><div class="fill" style="width:98%"></div></div><span class="value">51.0 bps</span></div>
+    <div class="bar-row"><span>1,000 events</span><div class="track"><div class="fill" style="width:96%"></div></div><span class="value">50.0 bps</span></div>
+    <div class="bar-row"><span>3,000 events</span><div class="track"><div class="fill" style="width:95%"></div></div><span class="value">49.8 bps</span></div>
+  </div>
+  <p class="notes">These crossings are coarse, noisy Monte Carlo estimates near the 49-bps extra fixed-fee stress—not a validated MDE. IID Sharpe and daily-return translations use 20-bps trade SD, 1,461 days, and linear leverage scaling.</p>
+
+  <h2>Independent recomputation</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Statistic</th><th>Cases</th><th>Result</th></tr></thead>
+      <tbody>
+        <tr><td>DSR, including N=10 and effective-n convention</td><td>200</td><td>0 disagreements</td></tr>
+        <tr><td>PBO / CSCV</td><td>200</td><td>0 disagreements; non-finite cases rejected</td></tr>
+        <tr><td>Stationary and whole-day block bootstrap CIs</td><td>200 each</td><td>0 disagreements</td></tr>
+        <tr><td>Sharpe and expectancy at 1× / 2×</td><td>200 pairs</td><td>0 disagreements</td></tr>
+        <tr><td>Positive DEV-year count</td><td>200</td><td>0 disagreements</td></tr>
+        <tr><td>Positive-month share</td><td>200 diagnostics</td><td>No production gate or threshold found</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>What this study does not establish</h2>
+  <ul>
+    <li>It does not demonstrate a false-GO rate below 1%; the N=10 upper bound is 1.9% and the N=50/100 samples are sparse.</li>
+    <li>It does not quantify false-GO increases for every gate-leg deletion. Boundary mutation tests kill existing generic guards; B4b lacks a PBO, month-share, n≥300, or adverse-expectancy leg.</li>
+    <li>The fixed 49-bps stress includes configured fees/spread only. Synthetic streams do not model market impact, funding, real execution, or liquidation.</li>
+    <li>Bootstrap resampling is 64 per path versus B4b production’s 1,000. Peak RSS was not measured.</li>
+  </ul>
+  <footer>Thresholds and verdict were not changed. Gate remains NO-GO. See the accompanying G1 calibration report for methods, full tables, mutation tests, and caveats.</footer>
+</body>
+</html>
