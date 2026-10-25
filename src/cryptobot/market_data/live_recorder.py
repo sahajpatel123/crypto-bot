@@ -729,8 +729,8 @@ class Recorder:
             qty = bucket["buy_qty"] + bucket["sell_qty"]
             bucket["vwap"] = (round(bucket["notional"] / qty, 8)
                               if qty else None)
-            for field in ("buy_qty", "sell_qty", "notional"):
-                bucket[field] = round(bucket[field], 8)
+            for part in ("buy_qty", "sell_qty", "notional"):
+                bucket[part] = round(bucket[part], 8)
             self.writer.submit(bucket)
 
     def _rest_poll(self, venue: str) -> None:
