@@ -6,8 +6,7 @@ PY="${CRYPTOBOT_PYTHON:-$ROOT/.venv/bin/python}"
 AGENTS="$HOME/Library/LaunchAgents"
 LOGS="$HOME/Library/Logs/cryptobot"
 UID_N="$(id -u)"
-mkdir -p "$AGENTS" "$LOGS" "$ROOT/data/recorder" "$ROOT/data/lake/forward" \
-  "$ROOT/data/lake/verdicts" "$ROOT/data/lake/pnl"
+mkdir -p "$AGENTS" "$LOGS" "$ROOT/data/recorder" "$ROOT/data/lake/forward" "$ROOT/data/pnl"
 install_one() {
   label="$1"
   body="$2"
@@ -105,8 +104,6 @@ install_one com.cryptobot.verdict-watch "$(cat <<EOF
   <array>
     <string>$PY</string><string>-m</string><string>cryptobot.cli</string>
     <string>verdict-watch</string><string>--once</string>
-    <string>--out-dir</string><string>$ROOT/data/lake/verdicts</string>
-    <string>--repo-root</string><string>$ROOT</string>
   </array>
   <key>StartCalendarInterval</key>
   <dict><key>Hour</key><integer>4</integer><key>Minute</key><integer>0</integer></dict>
@@ -122,9 +119,8 @@ install_one com.cryptobot.pnl "$(cat <<EOF
   <key>ProgramArguments</key>
   <array>
     <string>$PY</string><string>-m</string><string>cryptobot.cli</string>
-    <string>pnl</string><string>daily</string>
-    <string>--root</string><string>$ROOT/runs</string>
-    <string>--out</string><string>$ROOT/data/lake/pnl/latest.json</string>
+    <string>pnl</string><string>daily</string><string>--out</string>
+    <string>$ROOT/data/pnl/daily.json</string>
   </array>
   <key>StartCalendarInterval</key>
   <dict><key>Hour</key><integer>4</integer><key>Minute</key><integer>15</integer></dict>
