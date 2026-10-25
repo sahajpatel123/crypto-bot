@@ -793,3 +793,81 @@ Meta Muse Spark.
   Do not silently prune candidates; refuse incomplete records rather than rank
   a partial history. The gate remains
   NO-GO pending owner review of eligible evidence.
+
+## Operational ladder promotion and trade-ready reporting (2026-10-25)
+
+These are **operational sizing rules, not research gates**. They cannot make a
+strategy pass, cannot revive a killed family, cannot re-interpret a
+preregistered threshold, and do not move the program gate: it stays **NO-GO**,
+the holdout stays sealed, and nothing here reports an edge. A promotion only
+decides whether *already-bought* live evidence is strong enough to size the
+same strategy one rung larger.
+
+- D-063 (capital-ladder promotion thresholds, 2026-10-25): a strategy on
+  `canary` may move to `armed` only when **all** of the following hold, and
+  every one of them is a refusal when its statistic is absent:
+  - **>= 100 closed live round trips.** Three times the demoter's own 30-trade
+    expectancy window, so promotion can never fire on a sample the automatic
+    demotion rule would still call noise, and no single regime or day can
+    dominate the evidence.
+  - **>= 30 distinct live trading days with at least one fill.** An active-day
+    count, not a calendar span: a month in which the bot traded five times is
+    not a month of evidence. It spans every weekly pattern and a full set of
+    funding cycles.
+  - **live Sharpe >= 0.5 x backtest Sharpe, with backtest Sharpe > 0.**
+    Annualised `mean/stdev * sqrt(365)` of daily net realised P&L over opening
+    equity. Half the backtest is the allowance a backtest earns for its own
+    optimism (no queue position, ideal fills); a zero or negative backtest
+    Sharpe is not a reference at all and is refused (`backtest-sharpe<=0`).
+  - **realised all-in cost <= 1.5 x modelled cost.** Realised cost is fees +
+    signed funding + measured slippage (from the ladder's own per-trade
+    attribution) divided by the one-way notional of closing fills; modelled
+    cost comes from the strategy's backtest reference. 1.5x is the same
+    multiple the demotion rule already uses for `slippage>1.5x-assumed`, so
+    promotion and demotion agree on what "costs are out of line" means. No
+    measured slippage means the cost is *unknown*, which is a refusal
+    (`live-cost-missing`), never an assumption of zero.
+  - **live max drawdown <= 1.5 x backtest drawdown.** Peak-to-trough on the
+    equity journal (realised-only while flat if there is no equity journal),
+    as a fraction of the running peak. 1.5x matches the stress multiple the
+    research books already charge themselves. A zero backtest drawdown, or a
+    live fraction outside `[0, 1]`, is refused as not a reference.
+  - **no halted risk state.** `demoted` in the persisted ladder state, or a
+    `halted` flag in the evidence, refuses; and no evidence promotes out of
+    `halted` at all (`rung-halted`), because clearing a halt is an operator
+    action that lands on `canary`.
+
+  The rule only ever moves **one rung** (`halted -> canary -> armed`); it never
+  skips a rung, never promotes above `armed`, and demotion remains automatic
+  and unchanged. Implementation and thresholds: `src/cryptobot/risk/ladder.py`
+  (`promotion_decision`, `PROMOTION_*` constants).
+
+- D-064 (promotion evidence is derived, not typed, 2026-10-25): a promotion must
+  cite an evidence document (`cryptobot-ladder-evidence/1`) produced by
+  `cryptobot.ops.daily_pnl.build_ladder_evidence` from the run journals, and
+  `cryptobot ladder promote` refuses a document without `--evidence` or the
+  `--root`/`--backtest` inputs needed to derive one. The controller re-hashes
+  the document's `generated_by.code_sha256` against the installed generator, and
+  re-hashes **every** source file the document cites, so a stale or edited
+  journal invalidates the evidence instead of being silently trusted. The
+  persisted audit trail records the rung history entry (`from_rung`, `to_rung`),
+  the evidence document's sha256, the git commit and the UTC timestamp; the same
+  evidence document is refused a second time. Residual limit, stated rather than
+  hidden: a determined forger who reproduces the generator's hash could still
+  fabricate an evidence file; the journal hashes are what make that detectable,
+  and no human-typed number reaches the rule without them.
+
+- D-065 (daily P&L and verdict watch are read-only reporting, 2026-10-25):
+  `cryptobot pnl daily` reads only the existing run journals (`ledger.json`
+  replayed through the real `Ledger`, `equity.jsonl`, `fills.jsonl`), writes a
+  `cryptobot-daily-pnl/1` document with the sha256 of every source, and renders
+  a markdown table. A missing journal is an explicit empty report with null
+  numbers, never a zero that reads as a flat result; a corrupt journal line is
+  listed with its file and line number and makes the report incomplete and the
+  command exit 1, never silently dropped. `cryptobot verdict-watch --once` runs
+  the B4b forward command and the D1 evaluator, copies their own status and
+  reason text, records the code hashes they emit (plus the B4b tool's own file
+  hash, which that tool does not emit), and exits 0 while every study is still
+  waiting, 10 when any status differs from the previous record, 3 when the
+  watch itself could not run. It has no threshold and no verdict of its own: a
+  study with missing input is `ERROR` or `WAITING`, never a pass.
