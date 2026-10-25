@@ -100,10 +100,22 @@ def test_time_budget_is_inconclusive():
     assert row["status"] == "PASS" and "time budget" in row["detail"]
 
 
-def test_https_proxy_skips_the_direct_probe(monkeypatch):
+def test_https_proxy_does_not_skip_the_direct_probe(monkeypatch):
+    # the websocket client ignores proxy variables, so the direct probe still runs
     monkeypatch.setenv("HTTPS_PROXY", "http://proxy.invalid:3128")
-    row = dns_sinkhole_check()
-    assert row["status"] == "PASS" and "proxy" in row["detail"]
+    row = dns_sinkhole_check(hosts=("fapi.binance.com",),
+                             system_resolver=lambda h: [SINK], doh_resolver=lambda h: [REAL],
+                             connector=lambda a, *_: a == REAL)
+    assert row["status"] == "FAIL" and "proxy" in row["detail"]
+
+
+def test_healthy_host_is_never_a_flaky_fail_when_one_of_many_addresses_connects():
+    addrs = [f"13.224.10.{i}" for i in range(1, 6)]
+    for _ in range(200):
+        row = dns_sinkhole_check(hosts=("fapi.binance.com",),
+                                 system_resolver=lambda h: addrs, doh_resolver=lambda h: [REAL],
+                                 connector=lambda a, *_: a == addrs[3])
+        assert row["status"] == "PASS" and "sinkhole detected" in row["detail"]
 
 
 def test_later_addresses_are_tried_not_just_a_sorted_prefix():

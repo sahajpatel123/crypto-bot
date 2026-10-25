@@ -405,12 +405,16 @@ def test_concurrent_failures_do_not_queue_serially(rig):
 
 
 def test_doh_lookup_has_an_overall_deadline(ng, monkeypatch):
+    import types
     monkeypatch.setattr(ng, "DOH_DEADLINE_S", 0.5)
+    now = [1000.0]  # fake monotonic clock: no real sleeping, so no load-dependent timing
+    monkeypatch.setattr(ng, "time", types.SimpleNamespace(
+        monotonic=lambda: now[0], time=time.time, sleep=time.sleep))
     calls: list = []
 
     def slow(url):
         calls.append(url)
-        time.sleep(0.4)
+        now[0] += 0.4
         raise OSError("timeout")
 
     with pytest.raises(OSError, match="deadline"):

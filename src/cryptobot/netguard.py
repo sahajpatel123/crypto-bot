@@ -63,6 +63,7 @@ STALE_MAX_S = 86400
 FAIL_BACKOFF_S = 10.0
 CACHE_MAX = 256
 HTTP_TIMEOUT_S = 4.0
+MAX_REPLY_BYTES = 65536
 DOH_DEADLINE_S = 6.0  # total budget over all resolvers for one name
 _NOTE_EVERY_S = 600.0
 
@@ -143,8 +144,10 @@ def _http_get_json(url: str):
     request = urllib.request.Request(
         url, headers={"accept": "application/dns-json", "user-agent": "cryptobot-netguard/1"})
     context = ssl.create_default_context()
-    with urllib.request.urlopen(request, timeout=HTTP_TIMEOUT_S, context=context) as reply:  # noqa: S310
-        return json.loads(reply.read().decode("utf-8"))
+    left = getattr(_tls, "deadline", None)
+    timeout = HTTP_TIMEOUT_S if left is None else max(0.2, min(HTTP_TIMEOUT_S, left - time.monotonic()))
+    with urllib.request.urlopen(request, timeout=timeout, context=context) as reply:  # noqa: S310
+        return json.loads(reply.read(MAX_REPLY_BYTES).decode("utf-8"))
 
 
 def doh_lookup(name: str, fetch: Callable | None = None) -> tuple:
@@ -153,14 +156,18 @@ def doh_lookup(name: str, fetch: Callable | None = None) -> tuple:
     quoted = urllib.parse.quote(name, safe="")
     failure = "no resolver tried"
     deadline = time.monotonic() + DOH_DEADLINE_S
-    for template in RESOLVERS:
-        if time.monotonic() >= deadline:
-            failure += " (deadline)"
-            break
-        try:
-            return parse_answer(get(template.format(name=quoted)))
-        except Exception as exc:  # noqa: BLE001 - try the next resolver
-            failure = f"{type(exc).__name__}: {exc}"
+    _tls.deadline = deadline  # the default fetch shortens its socket timeout to what is left
+    try:
+        for template in RESOLVERS:
+            if time.monotonic() >= deadline:
+                failure += " (deadline)"
+                break
+            try:
+                return parse_answer(get(template.format(name=quoted)))
+            except Exception as exc:  # noqa: BLE001 - try the next resolver
+                failure = f"{type(exc).__name__}: {exc}"
+    finally:
+        _tls.deadline = None
     raise OSError(f"all DoH resolvers failed for {name} ({failure})")
 
 
@@ -225,7 +232,8 @@ def _resolve(name: str):
     if not gate.acquire(blocking=False):  # another thread is already asking DoH
         if _stale_ok(entry, now):
             return _pick(entry)
-        gate.acquire()
+        if not gate.acquire(timeout=DOH_DEADLINE_S + HTTP_TIMEOUT_S):
+            return None  # the lookup in flight is stuck: defer to the system resolver
     try:
         now = _clock()
         entry, failing = _peek(name, now)

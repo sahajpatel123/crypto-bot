@@ -129,6 +129,9 @@ def _active_shim_covers(host: str) -> bool:
         return False
 
 
+MAX_PROBED_ADDRESSES = 8
+
+
 def dns_sinkhole_check(hosts: tuple[str, ...] = SINKHOLE_HOSTS, *,
                        system_resolver: Callable[[str], list[str]] | None = None,
                        doh_resolver: Callable[[str], list[str]] | None = None,
@@ -139,7 +142,7 @@ def dns_sinkhole_check(hosts: tuple[str, ...] = SINKHOLE_HOSTS, *,
 
     FAIL only on proof: the system answer differs from the DoH answer AND no system
     address accepts a TCP connect AND a DoH address does. A host whose system address
-    connects is PASS without any DoH traffic. An inconclusive probe (no IPv4 answer, proxy,
+    connects is PASS without any DoH traffic. An inconclusive probe (no IPv4 answer,
     resolver error, time budget spent) is reported as PASS with an explicit "inconclusive"
     note: it never turns a healthy host's verdict into FAIL. A sinkhole that an active
     netguard shim already covers is PASS, mitigated.
@@ -150,18 +153,29 @@ def dns_sinkhole_check(hosts: tuple[str, ...] = SINKHOLE_HOSTS, *,
     system = system_resolver or _system_addresses
     doh = doh_resolver or _doh_addresses
     connect = connector or _tcp_connects
-    if system_resolver is None and connector is None:
-        proxies = urllib.request.getproxies()
-        if proxies.get("https") or proxies.get("all"):
-            return _row("dns-sinkhole", "PASS",
-                        "inconclusive: an HTTPS proxy is configured, so the proxy resolves "
-                        "exchange hostnames; no direct DNS probe made")
+    proxied = ""
+    proxies = urllib.request.getproxies()
+    if proxies.get("https") or proxies.get("all"):
+        # The websocket client dials sockets directly and ignores proxy variables, so
+        # the direct probe is still the right one; the proxy is only noted.
+        proxied = "; note: an HTTPS proxy is configured (websocket path ignores it)"
     rng = random.Random()
 
-    def pick(addresses: list[str]) -> list[str]:
-        return rng.sample(addresses, min(2, len(addresses)))
+    def candidates(addresses: list[str]) -> list[str]:
+        shuffled = list(addresses)
+        rng.shuffle(shuffled)
+        return shuffled[:MAX_PROBED_ADDRESSES]  # every reachable-or-not address, capped
 
     started = time.monotonic()
+
+    def reaches(addresses: list[str]) -> bool:
+        for address in candidates(addresses):
+            if connect(address, port, timeout_s):
+                return True
+            if time.monotonic() - started > budget_s:
+                break  # soft cap: stop probing, the caller reports what it saw
+        return False
+
     sinkholed: list[tuple[str, str]] = []
     unknown: list[str] = []
     for host in hosts:
@@ -170,19 +184,19 @@ def dns_sinkhole_check(hosts: tuple[str, ...] = SINKHOLE_HOSTS, *,
             continue
         try:
             system_addrs = list(system(host))
-            if any(connect(a, port, timeout_s) for a in pick(system_addrs)):
+            if reaches(system_addrs):
                 continue
             doh_addrs = list(doh(host))
             if sorted(doh_addrs) == sorted(system_addrs):
                 continue  # answers agree: unreachable, but not a DNS sinkhole (venue-rtt says so)
-            if any(connect(a, port, timeout_s) for a in pick(doh_addrs)):
+            if reaches(doh_addrs):
                 sinkholed.append((host, f"{host} system={','.join(system_addrs) or 'none'} "
                                         f"(connect failed) doh={','.join(doh_addrs)} (connects)"))
             else:
                 unknown.append(f"{host}: neither system nor DoH address connects")
         except Exception as exc:  # noqa: BLE001 — a check must report, never crash host-check
             unknown.append(f"{host}: {type(exc).__name__}: {exc}")
-    note = ("; inconclusive for " + "; ".join(unknown)) if unknown else ""
+    note = (("; inconclusive for " + "; ".join(unknown)) if unknown else "") + proxied
     if sinkholed:
         text = "; ".join(t for _, t in sinkholed)
         if all(_active_shim_covers(h) for h, _ in sinkholed):
@@ -195,7 +209,7 @@ def dns_sinkhole_check(hosts: tuple[str, ...] = SINKHOLE_HOSTS, *,
     if unknown:
         return _row("dns-sinkhole", "PASS",
                     f"no sinkhole proven for {len(hosts)} hosts" + note)
-    return _row("dns-sinkhole", "PASS", f"no sinkhole detected for {len(hosts)} hosts")
+    return _row("dns-sinkhole", "PASS", f"no sinkhole detected for {len(hosts)} hosts" + note)
 
 
 def run_host_check(*, min_free_gb: float = 20.0,
