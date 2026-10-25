@@ -122,9 +122,12 @@ def _tcp_connects(address: str, port: int, timeout_s: float) -> bool:
 def _active_shim_covers(host: str) -> bool:
     """True when a netguard shim (library or standalone) is active AND re-resolves host."""
     current = socket.getaddrinfo
+    active_marker = getattr(current, "_cryptobot_netguard", False)
+    active_probe = getattr(current, "_cryptobot_active", None)
     covers = getattr(current, "_cryptobot_matches", None)
     try:
-        return bool(getattr(current, "_cryptobot_netguard", False) and covers and covers(host))
+        active = active_probe() if callable(active_probe) else active_marker
+        return bool(active and covers and covers(host))
     except Exception:  # noqa: BLE001
         return False
 

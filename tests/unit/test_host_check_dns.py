@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import random
 import socket
+from functools import wraps
 
 import pytest
 
@@ -171,6 +172,28 @@ def test_mitigated_only_when_an_active_shim_covers_the_host(monkeypatch):
     monkeypatch.setattr(socket, "getaddrinfo", _shim())
     row, _ = _check([SINK], [REAL], {REAL})
     assert row["status"] == "PASS" and "mitigated" in row["detail"]
+
+
+def test_wraps_copy_cannot_report_uninstalled_shim_as_mitigated(monkeypatch):
+    original = socket.getaddrinfo
+    monkeypatch.setattr(socket, "getaddrinfo", original)
+    assert netguard.install(real_getaddrinfo=original)
+    shim = socket.getaddrinfo
+
+    @wraps(shim)
+    def wrapped(*args, **kwargs):
+        return shim(*args, **kwargs)
+
+    monkeypatch.setattr(socket, "getaddrinfo", wrapped)
+    assert host_check._active_shim_covers("fapi.binance.com")
+
+    # Restore the actual shim before uninstall so it can clean up its own state;
+    # then leave the copied wrapper installed to reproduce the stale-marker case.
+    monkeypatch.setattr(socket, "getaddrinfo", shim)
+    assert netguard.uninstall()
+    monkeypatch.setattr(socket, "getaddrinfo", wrapped)
+    row, _ = _check([SINK], [REAL], {REAL})
+    assert row["status"] == "FAIL" and "mitigated" not in row["detail"]
 
 
 def test_not_mitigated_when_the_suffix_list_excludes_the_host(monkeypatch):

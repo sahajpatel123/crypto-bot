@@ -402,7 +402,13 @@ def _dispatch(real, host, port, family, type, proto, flags):
     return real(host, port, family, type, proto, flags)
 
 
+def _netguard_is_active() -> bool:
+    """Dynamic marker: functools.wraps copies attributes but shares this function."""
+    return _installed
+
+
 _getaddrinfo._cryptobot_netguard = True  # type: ignore[attr-defined]
+_getaddrinfo._cryptobot_active = _netguard_is_active  # type: ignore[attr-defined]
 _getaddrinfo._cryptobot_matches = matches  # type: ignore[attr-defined]
 _getaddrinfo._cryptobot_real = _real  # type: ignore[attr-defined]  # updated by install()
 
