@@ -42,6 +42,9 @@ DOCS_RECHECK = (
 
 
 def main() -> int:
+    from cryptobot import netguard  # opt-in DNS-sinkhole fallback (CRYPTOBOT_DOH=1)
+
+    netguard.install_from_env()
     parser = argparse.ArgumentParser(description="Supervised public-stream capture")
     parser.add_argument("--top-n", type=int, default=2)
     parser.add_argument("--symbols", default=None, help="comma list to override selection (recorded)")

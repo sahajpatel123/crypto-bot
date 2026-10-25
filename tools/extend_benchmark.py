@@ -83,6 +83,9 @@ def today_rows(symbol: str, funding: list[tuple[int, float]]) -> list[dict]:
 
 
 def main() -> int:
+    from cryptobot import netguard  # opt-in DNS-sinkhole fallback (CRYPTOBOT_DOH=1)
+
+    netguard.install_from_env()
     total = 0
     for symbol in SYMBOLS:
         funding = load_funding(symbol, ROOT / "datasets/cache")

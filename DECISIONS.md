@@ -638,8 +638,9 @@ Meta Muse Spark.
   `session.py` merge fragment, the `cli.py` `timezone.utc`/`UTC`
   NameErrors, the spliced `uv.lock`). Those were repaired on this branch
   only so the suite could run at all. After PR #21 merged the real
-  repair into base (live/hardening 0c2ccc4), this branch was rebased onto
-  it and its own three repair commits were DROPPED rather than re-landed:
+  repair into base (live/hardening 0c2ccc4), this branch was merged onto
+  it (64d5989 is a merge commit, not a rebase) and its own three repair
+  commits were DROPPED rather than re-landed:
   the lock, session and CLI repairs in this history are #21's, not this
   branch's. Confirm with
   `git diff origin/live/hardening..HEAD -- src/cryptobot/cli.py

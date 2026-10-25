@@ -21,10 +21,28 @@ uv run --locked cryptobot host-check --out host.json
 ```
 
 Expected: `"verdict": "PASS"` with `python`, `open-files`, `disk`,
-`time-sync-daemon`, `venue-rtt`, `clock-skew` all PASS.
+`time-sync-daemon`, `venue-rtt`, `clock-skew`, `dns-sinkhole` all PASS.
 Pass criteria: Python ≥3.12, nofile ≥4096, free disk ≥20GB, NTP
 synchronized, RTT measured, |clock skew| ≤250ms.
 On failure bring back: `host.json`.
+
+## Network: ISP DNS sinkhole (India/Jio)
+
+Some ISP resolvers (observed: Reliance Jio) answer `*.binance.com` / `*.okx.com` with a dead
+address, so every connect times out even though Binance is reachable. This is a DNS problem,
+**not** a VPN or geo-block. It is opt-in and only for networks where host-check proves it:
+
+```sh
+uv run --locked cryptobot host-check --out host.json   # look for the dns-sinkhole row
+# only if dns-sinkhole is FAIL (system address dead, DoH address connects):
+export CRYPTOBOT_DOH=1          # every cryptobot command and network tool then re-resolves
+                                # exchange hostnames over DNS-over-HTTPS
+uv run --locked cryptobot host-check --out host.json   # dns-sinkhole: PASS (mitigated)
+```
+
+Cleaner alternative: set a public DNS (1.1.1.1 / 8.8.8.8) in the OS network settings. For
+launchd/systemd/recorder lines see `tools/netshim/README.md`. Leave `CRYPTOBOT_DOH` unset on a
+healthy network: it is off by default and never needed there.
 
 ## 2. Start the recorder (public data; no keys)
 

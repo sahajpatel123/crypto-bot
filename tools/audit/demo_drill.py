@@ -992,6 +992,9 @@ def cmd_reconcile(drill):
 
 
 def main(argv=None):
+    from cryptobot import netguard  # opt-in DNS-sinkhole fallback (CRYPTOBOT_DOH=1)
+
+    netguard.install_from_env()
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--dir", default="/tmp/demo30")
     parser.add_argument("--symbol", default="BTCUSDT")
