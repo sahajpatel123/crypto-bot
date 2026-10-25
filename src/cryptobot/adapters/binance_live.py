@@ -45,6 +45,7 @@ import contextlib
 import hashlib
 import hmac
 import json
+import math
 import os
 import random
 import re
@@ -1104,6 +1105,21 @@ class BinanceLiveEngine:
                 raise VenueRejectedError(
                     0, None, f"{sym} leverage {lev.get('leverage')} != "
                              f"expected {self._leverage}")
+            # The owner demo reads filters and uses a mark to size its tiny
+            # order immediately after this handshake. Prime filters here so
+            # unsupported symbols fail with an operator-readable readiness
+            # error, not a later KeyError or equity-as-price fallback.
+            self._ensure_ready(sym)
+            mark_view = self._public("GET", "/fapi/v1/premiumIndex",
+                                     {"symbol": sym})
+            try:
+                mark = float(mark_view["markPrice"])
+            except (KeyError, TypeError, ValueError):
+                mark = 0.0
+            if not math.isfinite(mark) or mark <= 0:
+                raise VenueRejectedError(
+                    0, None, f"venue returned no valid mark price for {sym}")
+            self.note_mark(sym, mark)
         return {"position_mode": "one-way", "multi_assets": False,
                 "margin_type": "ISOLATED", "leverage": self._leverage,
                 "symbols": [s.upper() for s in symbols]}

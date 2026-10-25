@@ -1,8 +1,8 @@
 {
- "created_utc": "2026-10-25T07:25:00.844358+00:00",
+ "created_utc": "2026-10-25T07:49:43.654783+00:00",
  "drill": "demo-drill-live",
  "note": "demo/testnet only; never proof of live edge",
- "sha256": "2b386b24449f04b192217dfdcfe5c9af372208a0156a5ea205f39192e2669b80",
+ "sha256": "d79876a542f124eeefc55047de0483a58705bf326a4a76145e05dbefaeb07a79",
  "steps": [
   {
    "detail": {
@@ -14,15 +14,36 @@
      "BTCUSDT"
     ]
    },
-   "latency_ms": 13.662,
+   "latency_ms": 17.054,
    "status": "PASS",
    "step": "auth+modes"
   },
   {
-   "error": "KeyError: 'BTCUSDT'",
-   "status": "FAIL",
-   "step": "drill"
+   "client_id": "drill-531e35bd57-000001",
+   "latency_ms": 2.32,
+   "status": "PASS",
+   "step": "tiny-entry-ack"
+  },
+  {
+   "qty": 0.001,
+   "status": "PASS",
+   "step": "tiny-entry-fill"
+  },
+  {
+   "latency_ms": 5.413,
+   "legs": [
+    "drill-531e35bd57-000002",
+    "drill-531e35bd57-000003"
+   ],
+   "status": "PASS",
+   "step": "protection-attach"
+  },
+  {
+   "close_id": "drill-531e35bd57-000004",
+   "latency_ms": 3.371,
+   "status": "PASS",
+   "step": "sigterm-flatten-equivalent"
   }
  ],
- "verdict": "FAIL"
+ "verdict": "PASS"
 }

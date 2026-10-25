@@ -132,8 +132,11 @@ def _full_script(tmp_path):
                ("GET", "/fapi/v1/openOrders", None, ("ok", [])),
                ("GET", "/fapi/v1/openAlgoOrders", None, ("ok", [])),
                _listen_close()]
-    # Gap: attach, exit submit, reheal lookup, close.
+    # Gap: stream adoption looks up four persisted conditional intents before
+    # the exit submit; its REST snapshot uses this fresh engine's readiness.
     script += [_listen_open()]
+    script += [("GET", "/fapi/v1/algoOrder", None,
+                ("ok", _algo_cancelled()))] * 4
     script += _ready(acct)
     script += [("POST", "/fapi/v1/order", {"type": "MARKET"},
                 ("ok", orders["orderAck"])),

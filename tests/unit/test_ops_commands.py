@@ -124,6 +124,21 @@ def test_ops_flatten_and_kill(tmp_path):
     assert doc.get("halted") is True
 
 
+def test_ops_kill_cancels_orders_and_is_idempotent(tmp_path):
+    p = _paths(tmp_path)
+    code, text = _ops(["order", "--symbol", "BTCUSDT", "--side", "BUY",
+                       "--qty", "0.01", "--kind", "LIMIT", "--price", "1.0"], p)
+    assert code == 0, text
+    for _ in range(2):
+        code, text = _ops(["kill"], p)
+        assert code == 0, text
+        assert json.loads(text)["halted"] is True
+    code, text = _ops(["positions"], p)
+    assert code == 0 and json.loads(text)["positions"] == []
+    code, text = _ops(["orders"], p)
+    assert code == 0 and json.loads(text)["orders"] == []
+
+
 def test_ops_prod_refuses_every_action(tmp_path):
     p = _paths(tmp_path)
     for action in ("status", "positions", "orders", "pause", "resume",
