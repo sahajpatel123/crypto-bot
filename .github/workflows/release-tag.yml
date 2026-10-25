@@ -6,7 +6,12 @@ name: release-tag
 # checkout is attached read-only (`git push` is refused, PRs are pushed server-side),
 # so the tag has to be created by Actions, which holds `contents: write`.
 #
-# Deliberately narrow: it runs only when the marker file changes, the marker must be
+# The marker's first line is the tag name. Any lines after it become the tag's own
+# annotation message verbatim (v1.1.1 uses this so the release message is exactly the
+# one the release owner wrote); a marker holding only the name keeps the original
+# composed message, so existing markers behave as they always did.
+#
+# Deliberately narrow: it runs only when the marker file changes, the first line must be
 # exactly `vX.Y.Z`, and an existing tag is never moved or overwritten - a rerun or a
 # later branch update is a no-op. Tagging a new release means editing the marker.
 on:
@@ -33,9 +38,9 @@ jobs:
       - name: Create the annotated tag, once
         run: |
           set -euo pipefail
-          tag="$(tr -d '[:space:]' < .github/release-tag)"
+          tag="$(head -n1 .github/release-tag | tr -d '[:space:]')"
           if ! printf '%s' "$tag" | grep -Eqx 'v[0-9]+\.[0-9]+\.[0-9]+'; then
-            echo "::error::.github/release-tag must hold a vX.Y.Z name, got '$tag'"
+            echo "::error::.github/release-tag must start with a vX.Y.Z name, got '$tag'"
             exit 1
           fi
           if [ "$(git rev-parse HEAD)" != "$GITHUB_SHA" ]; then
@@ -49,6 +54,12 @@ jobs:
           git config user.name "release-tag[bot]"
           git config user.email "release-tag@users.noreply.github.com"
           subject="$(git log -1 --format=%s "$GITHUB_SHA")"
-          git tag -a "$tag" -m "$tag" -m "Tagged at $GITHUB_SHA by .github/workflows/release-tag.yml." -m "$subject"
+          # Lines after the name (blank leading lines trimmed) are the annotation message.
+          message="$(tail -n +2 .github/release-tag | sed -e '/./,$!d')"
+          if [ -n "$message" ]; then
+            git tag -a "$tag" -m "$message"
+          else
+            git tag -a "$tag" -m "$tag" -m "Tagged at $GITHUB_SHA by .github/workflows/release-tag.yml." -m "$subject"
+          fi
           git push origin "refs/tags/$tag"
           echo "created $tag at $GITHUB_SHA"
