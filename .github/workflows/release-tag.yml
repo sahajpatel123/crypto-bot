@@ -1,0 +1,54 @@
+name: release-tag
+
+# Creates the release tag named in .github/release-tag, at the commit that lands it.
+#
+# Why here: the release owner asked for `v1.1.0` to be tagged, but the workspace
+# checkout is attached read-only (`git push` is refused, PRs are pushed server-side),
+# so the tag has to be created by Actions, which holds `contents: write`.
+#
+# Deliberately narrow: it runs only when the marker file changes, the marker must be
+# exactly `vX.Y.Z`, and an existing tag is never moved or overwritten - a rerun or a
+# later branch update is a no-op. Tagging a new release means editing the marker.
+on:
+  push:
+    branches: ["live/hardening"]
+    paths: [".github/release-tag"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-tag
+  cancel-in-progress: false
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create the annotated tag, once
+        run: |
+          set -euo pipefail
+          tag="$(tr -d '[:space:]' < .github/release-tag)"
+          if ! printf '%s' "$tag" | grep -Eqx 'v[0-9]+\.[0-9]+\.[0-9]+'; then
+            echo "::error::.github/release-tag must hold a vX.Y.Z name, got '$tag'"
+            exit 1
+          fi
+          if [ "$(git rev-parse HEAD)" != "$GITHUB_SHA" ]; then
+            echo "::error::checked-out commit does not match the pushed commit $GITHUB_SHA"
+            exit 1
+          fi
+          if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1; then
+            echo "tag $tag already exists on origin; nothing to do"
+            exit 0
+          fi
+          git config user.name "release-tag[bot]"
+          git config user.email "release-tag@users.noreply.github.com"
+          subject="$(git log -1 --format=%s "$GITHUB_SHA")"
+          git tag -a "$tag" -m "$tag" -m "Tagged at $GITHUB_SHA by .github/workflows/release-tag.yml." -m "$subject"
+          git push origin "refs/tags/$tag"
+          echo "created $tag at $GITHUB_SHA"
