@@ -57,7 +57,10 @@ gains additive tokens, sealed chunks stay immutable.
 - Only completed bars (`closeTime` in the past) are emitted, so
   `quote_volume` is final. `event_ms` is the pull time (fresh, keeps chunk
   timestamp monotonicity); D1 attributes the day from `exchange_open_ms`.
-- One pull per day is enforced by `kline_state.json`; a restart mid-pull
+- One pull per day is enforced by `kline_state.json`, and a day is marked
+  pulled only when every symbol succeeds: a partial pull (any error) leaves
+  the day unmarked and retries ≥30 min apart via `last_attempt_ms`, so
+  failed symbols are never permanently missing (F-A). A restart mid-pull
   may re-emit a day, which D1 absorbs idempotently
   (`daily_quote_volume[day]` overwrite).
 

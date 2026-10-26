@@ -236,6 +236,53 @@ def test_kline_pulls_completed_bars_only_and_marks_day(tmp_path):
     assert state["last_pulled_day"] == "2026-10-27"
 
 
+def test_kline_partial_pull_retries_with_throttle(tmp_path):
+    from datetime import timedelta
+
+    now = datetime(2026, 10, 27, 0, 6, tzinfo=UTC)
+    now_ms = int(now.timestamp() * 1000)
+    day26 = int(datetime(2026, 10, 26, tzinfo=UTC).timestamp() * 1000)
+    calls: list[str] = []
+    eth_broken = [True]
+
+    def handler(url: str):
+        calls.append(url)
+        symbol = url.split("symbol=")[1].split("&")[0]
+        if symbol == "ETHUSDT" and eth_broken[0]:
+            raise OSError("gateway flake")
+        return [_kline_row(day26, 10.0)]
+
+    rec, _ = _recorder(tmp_path, kline_symbols=("BTCUSDT", "ETHUSDT"),
+                       _rest_handler=handler)
+    try:
+        first = rec._kline_sweep("binance", now)
+        assert first["pulled"] is False
+        assert first["reason"] == "partial-failed"
+        assert first["emitted"] == 1 and first["errors"] == 1
+        state = json.loads((tmp_path / "kline_state.json").read_text())
+        assert "last_pulled_day" not in state  # unmarked: retry allowed
+        assert state["last_attempt_ms"] == now_ms
+        calls_after_first = len(calls)
+        assert calls_after_first == 2
+
+        throttled = rec._kline_sweep("binance", now)
+        assert throttled["pulled"] is False
+        assert throttled["reason"] == "retry-throttled"
+        assert throttled["retry_in_s"] == 1800
+        assert len(calls) == calls_after_first  # zero REST calls
+
+        eth_broken[0] = False
+        later = now + timedelta(minutes=31)
+        done = rec._kline_sweep("binance", later)
+        assert done["pulled"] is True
+        assert done["errors"] == 0
+        assert done["emitted"] == 2  # BTCUSDT re-emitted, idempotent downstream
+        state = json.loads((tmp_path / "kline_state.json").read_text())
+        assert state["last_pulled_day"] == "2026-10-27"
+    finally:
+        rec.writer.close()
+
+
 def test_kline_full_listing_discovers_trading_usd_perps(tmp_path):
     requested: list[str] = []
 

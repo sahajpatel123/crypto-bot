@@ -3,14 +3,17 @@
 Status: **record of fact**. The recorder is owner-stopped (STOP file
 2026-10-25T12:41:18Z) and this archive is frozen. Nothing listed here is
 deleted or renamed in place — the files stay byte-identical so every hash
-ever quoted still reproduces. Consumers MUST read via `manifest.json`
+ever quoted still reproduces — until P4 deploys; the first P4 restart
+renames exactly these 6 files to `orphan-*` (content untouched, hashes
+reproduce). Consumers MUST read via `manifest.json`
 entries, never by scanning the chunks directory.
 
 Audited base: `live/n49-recorder-inputs` from `live/trade-ready` (`3968cc7`).
 
 ## 1. Orphan twins (5 sequence numbers, 10 files)
 
-Four crash-loop restarts on 2026-10-25 each orphaned one partial chunk: a
+Five recorder processes ran on 2026-10-25 (four restarts plus the final
+death); between them they orphaned one partial chunk per row below: a
 fresh process recomputed its next index as `len(manifest entries)`, reusing
 the unsealed predecessor's number. The manifest references only the fuller
 second twin (all five sha256-verified OK). The first twin of each pair is an

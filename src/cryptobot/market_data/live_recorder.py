@@ -87,6 +87,10 @@ SETTLE_GRID_MS = 8 * 3600 * 1000
 # Daily klines are pulled after this UTC clock time, mirroring the forward
 # booking cutoff: only then is yesterday's 1d bar guaranteed complete.
 KLINE_PULL_CUTOFF_HM = (0, 5)
+# Minimum spacing between kline pull attempts after a failure. A 400-symbol
+# pull every 60 s loop would burn ~4000 weight/min against a 6000 budget --
+# retries wait at least this long (F-A).
+KLINE_RETRY_MIN_S = 1800
 DAY_MS = 24 * 3600 * 1000
 # One stream name is satisfied by the other: they carry the same content,
 # so a request for either is served if records of the other arrive. This
@@ -135,10 +139,11 @@ _CHUNK_FILE_RE = re.compile(r"^rec-\d{6}-\d{8}T\d{6}Z\.jsonl\.gz$")
 def quarantine_orphans(chunk_dir: Path, manifest: ManifestChain) -> list[str]:
     """Rename unsealed chunk files so no sequence number is ever reused.
 
-    On 2026-10-25 four crash-loop restarts each orphaned one partial chunk
-    (seqs 396/401/404/449/458 exist twice on disk; the manifest references
-    only the fuller twin) because a fresh process recomputes its next index
-    as ``len(manifest entries)``. Any ``rec-*.jsonl.gz`` file the manifest
+    On 2026-10-25 five recorder processes ran (four restarts plus the
+    final death); between them they orphaned one partial chunk at each of
+    seqs 396/401/404/449/458 (each exists twice on disk; the manifest
+    references only the fuller twin) because a fresh process recomputes
+    its next index as ``len(manifest entries)``. Any ``rec-*.jsonl.gz`` file the manifest
     does not reference is therefore renamed to ``orphan-<name>`` at startup,
     before the writer thread opens anything. Returns the quarantined names.
     Sealed chunks are never touched: only unreferenced files move.
@@ -1043,15 +1048,27 @@ class Recorder:
         and D1 overwrites daily_quote_volume[day]. A downtime longer than
         the pull window leaves permanently missing days -- those need the
         sidecar backfill (proposal only), never a sealed-chunk edit.
+        A day is marked pulled ONLY when every symbol succeeded: a partial
+        pull (errors>0) leaves last_pulled_day untouched so the next attempt
+        retries the failed symbols, throttled to KLINE_RETRY_MIN_S apart
+        via last_attempt_ms (F-A). D1 drops symbols missing any required
+        day from that month's candidates, so a wrongly marked partial day
+        would silently shrink the universe.
         """
         cutoff_h, cutoff_m = KLINE_PULL_CUTOFF_HM
         today = now_utc.date().isoformat()
+        now_ms = int(now_utc.timestamp() * 1000)
         state_path = self.root / "kline_state.json"
         last_pulled: str | None = None
+        last_attempt_ms = 0
         try:
             state = json.loads(state_path.read_text(encoding="utf-8"))
             if isinstance(state, dict):
                 last_pulled = state.get("last_pulled_day")
+                raw_attempt = state.get("last_attempt_ms", 0)
+                if isinstance(raw_attempt, int) and not isinstance(
+                        raw_attempt, bool):
+                    last_attempt_ms = raw_attempt
         except FileNotFoundError:
             pass
         except (OSError, ValueError) as exc:
@@ -1061,8 +1078,11 @@ class Recorder:
             return {"pulled": False, "reason": "before-cutoff"}
         if last_pulled == today:
             return {"pulled": False, "reason": "already-pulled"}
+        if now_ms - last_attempt_ms < KLINE_RETRY_MIN_S * 1000:
+            remaining_ms = KLINE_RETRY_MIN_S * 1000 - (now_ms - last_attempt_ms)
+            return {"pulled": False, "reason": "retry-throttled",
+                    "retry_in_s": (remaining_ms + 999) // 1000}
         symbols, source = self._universe_for_pull("klines")
-        now_ms = int(now_utc.timestamp() * 1000)
         emitted = errors = 0
         for symbol in symbols:
             if self._stop.is_set():
@@ -1106,19 +1126,38 @@ class Recorder:
                     continue
                 self.writer.submit(record)
                 emitted += 1
-        if errors and not emitted:
-            return {"pulled": False, "reason": "all-symbols-failed",
-                    "errors": errors, "symbols": len(symbols)}
+        if errors:
+            # F-A: never mark a partial day complete -- the failed symbols
+            # would be permanently missing (already-pulled blocks retry) and
+            # D1 would drop them from that month's candidates. Record the
+            # attempt so the retry waits out the throttle; re-emitted rows
+            # are idempotent downstream.
+            self._save_kline_state(state_path, last_pulled, now_ms, source,
+                                   len(symbols))
+            if not emitted:
+                return {"pulled": False, "reason": "all-symbols-failed",
+                        "errors": errors, "symbols": len(symbols)}
+            return {"pulled": False, "reason": "partial-failed",
+                    "emitted": emitted, "errors": errors,
+                    "symbols": len(symbols)}
+        self._save_kline_state(state_path, today, now_ms, source,
+                               len(symbols))
+        return {"pulled": True, "emitted": emitted, "errors": errors,
+                "symbols": len(symbols), "universe_source": source}
+
+    def _save_kline_state(self, state_path: Path, last_pulled: str | None,
+                          now_ms: int, source: str, size: int) -> None:
+        doc: dict[str, Any] = {"last_attempt_ms": now_ms,
+                               "universe_source": source,
+                               "universe_size": size}
+        if last_pulled is not None:
+            doc["last_pulled_day"] = last_pulled
         try:
-            _atomic_json(state_path, {"last_pulled_day": today,
-                                      "universe_source": source,
-                                      "universe_size": len(symbols)})
+            _atomic_json(state_path, doc)
         except OSError as exc:
             self.writer._alert("state-persist-failed", {
                 "file": "kline_state.json",
                 "error": f"{type(exc).__name__}: {exc}"})
-        return {"pulled": True, "emitted": emitted, "errors": errors,
-                "symbols": len(symbols), "universe_source": source}
 
     def _rest_poll(self, venue: str) -> None:
         while not self._stop.is_set():
