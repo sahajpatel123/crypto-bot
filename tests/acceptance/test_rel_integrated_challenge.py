@@ -359,6 +359,10 @@ def test_rel_crash_boundaries_resume_complete(tmp_path):
     import shutil
     shutil.copytree(root / "vic" / "ck", root / "res" / "ck")
     r2 = run_bench("res", ("--resume",))
+    # Flake note (#67): if the resume subprocess dies before writing
+    # rep.json this read masks its stderr as FileNotFoundError. See the
+    # issue for the assert-order + observability fix; parity asserts below
+    # must not be weakened.
     rep_res = json.loads((root / "res" / "rep.json").read_text())
     assert r2.returncode == 0, r2.stderr[-500:]
     assert rep_res["status"] == "COMPLETE", rep_res

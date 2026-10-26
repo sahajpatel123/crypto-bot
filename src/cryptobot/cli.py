@@ -1287,13 +1287,18 @@ def _verdict_doc_valid(doc: dict) -> bool:
 
 
 def _drill_fresh(drill: dict) -> bool:
-    """Demo-drill gate: PASS, never emulated/synthetic, and <= 7 days old.
+    """Demo-drill gate: PASS, positive venue proof, and <= 7 days old.
 
     A drill with no timestamp cannot be shown fresh and is refused.
+    A drill with missing or empty provenance is refused: only a drill
+    that positively names its venue (``provenance: DEMO`` from the
+    credentialed drill) counts — the absence of an EMULATED marker is
+    not proof (D-066).
     """
     if drill.get("verdict") != "PASS":
         return False
-    if str(drill.get("provenance", "")).upper() in ("SYNTHETIC", "EMULATED"):
+    if str(drill.get("provenance") or "").upper() in (
+            "", "SYNTHETIC", "EMULATED"):
         return False
     if drill.get("emulated") is True:
         return False
@@ -1783,6 +1788,7 @@ def cmd_demo_drill(args: argparse.Namespace) -> int:
         {"step": "http-429", "status": "PASS-unit-covered"},
     ]
     doc = {"drill": "demo-drill", "verdict": "BLOCKED",
+           "provenance": "EMULATED",
            "steps": steps,
            "note": "live steps need owner demo credentials (OWNER_ACTIONS)"}
     doc["sha256"] = _hl.sha256(

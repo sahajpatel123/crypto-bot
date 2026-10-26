@@ -27,7 +27,11 @@ def _pass_verdict(tmp_path: Path) -> Path:
 
 def _evidence(tmp_path: Path) -> dict[str, Path]:
     drill = tmp_path / "drill.json"
-    drill.write_text(json.dumps({"verdict": "PASS"}) + "\n")
+    # Positive venue proof (D-066): undated, so this exercises the
+    # intentional hash-bound path with a provenance-bearing drill.
+    drill.write_text(json.dumps(
+        {"verdict": "PASS", "provenance": "DEMO",
+         "venue": "https://demo-fapi.binance.com"}) + "\n")
     latency = tmp_path / "latency.json"
     latency.write_text(json.dumps(
         {"verdict": "PASS", "ws_p99_ms": 120.0, "drop_rate": 0.0005,
@@ -51,6 +55,35 @@ def test_gate_go_binds_evidence_hashes(tmp_path):
     assert gate["gate"] == "GO"
     assert all(gate["evidence_sha256"].values())
     assert cli._gate_doc_valid(gate)
+
+
+def test_drill_fresh_requires_positive_venue_proof():
+    """D-066: unmarked/EMULATED drills are refused; only a fresh DEMO
+    PASS counts. The undated hash-bound path still applies — to
+    provenance-bearing drills, not to unmarked ones."""
+    now = datetime.now(UTC).isoformat()
+    old = (datetime.now(UTC) - timedelta(days=8)).isoformat()
+    fresh_demo = {"verdict": "PASS", "provenance": "DEMO",
+                  "venue": "https://demo-fapi.binance.com",
+                  "created_utc": now}
+    assert cli._drill_fresh(fresh_demo) is True
+    assert cli._drill_fresh(
+        {"verdict": "PASS", "created_utc": now}) is False  # unmarked
+    assert cli._drill_fresh(
+        {"verdict": "PASS", "provenance": "", "created_utc": now}
+    ) is False  # empty
+    assert cli._drill_fresh(
+        {"verdict": "PASS", "provenance": None, "created_utc": now}
+    ) is False  # null
+    assert cli._drill_fresh(
+        {"verdict": "PASS", "provenance": "EMULATED", "emulated": True,
+         "created_utc": now}) is False
+    assert cli._drill_fresh(
+        {**fresh_demo, "created_utc": old}) is False  # stale stays refused
+    assert cli._drill_fresh(
+        {"verdict": "PASS", "provenance": "DEMO",
+         "venue": "https://demo-fapi.binance.com"}) is True  # hash-bound
+    assert cli._drill_fresh({"verdict": "PASS"}) is False  # unmarked undated
 
 
 def test_gate_rest_only_latency_is_no_go(tmp_path):

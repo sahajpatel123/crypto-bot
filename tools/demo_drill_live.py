@@ -62,7 +62,7 @@ def main(argv: list[str] | None = None) -> int:
                                 + "; store them with `cryptobot keys set "
                                   "--profile demo` (BINANCE_DEMO_KEY/SECRET "
                                   "are still accepted)"})
-        _write(args.out, "BLOCKED", steps)
+        _write(args.out, "BLOCKED", steps, config.engine_base_url)
         return 2
     key_obj, secret_obj = resolved.require()
     key, secret = key_obj.reveal(), secret_obj.reveal()
@@ -70,7 +70,7 @@ def main(argv: list[str] | None = None) -> int:
         steps.append({"step": "read-only", "status": "PASS",
                       "detail": "credentials present; pass --execute-orders "
                                 "to run the demo drill"})
-        _write(args.out, "BLOCKED", steps)
+        _write(args.out, "BLOCKED", steps, config.engine_base_url)
         return 2
 
     engine = BinanceLiveEngine(
@@ -133,7 +133,7 @@ def main(argv: list[str] | None = None) -> int:
         verdict, rc = "FAIL", 1
     finally:
         engine.close()
-    _write(args.out, verdict, steps)
+    _write(args.out, verdict, steps, config.engine_base_url)
     return rc
 
 
@@ -167,8 +167,12 @@ def _wait_flat(engine, symbol: str, *, timeout_s: float) -> bool:
     return False
 
 
-def _write(out: str, verdict: str, steps: list[dict]) -> None:
+def _write(out: str, verdict: str, steps: list[dict], venue: str) -> None:
+    # Positive venue proof (gate-tightening D-066): a PASS verdict implies
+    # the engine session ran against exactly this base_url (the engine is
+    # constructed with it); BLOCKED docs are gate-refused regardless.
     doc = {"drill": "demo-drill-live", "verdict": verdict,
+           "provenance": "DEMO", "venue": venue,
            "created_utc": _now(), "steps": steps,
            "note": "demo/testnet only; never proof of live edge"}
     doc["sha256"] = hashlib.sha256(

@@ -871,3 +871,17 @@ same strategy one rung larger.
   waiting, 10 when any status differs from the previous record, 3 when the
   watch itself could not run. It has no threshold and no verdict of its own: a
   study with missing input is `ERROR` or `WAITING`, never a pass.
+- D-066 (drill provenance gate-tightening, 2026-10-26): `_drill_fresh`
+  refused only explicitly emulated drills, so the unmarked MockEx-loopback
+  rehearsal `evidence/e1-demo-rehearsal/drill.json` (verdict PASS, dated,
+  shaped like a demo report) satisfied the drill check while fresh — the
+  gate bound the file by hash but nothing proved it came from a real demo
+  venue (Verity Finding #1). Now the gate requires positive venue proof:
+  missing/empty/null provenance is refused; `tools/demo_drill_live.py`
+  stamps `provenance DEMO` + the `venue` base_url its engine dialled;
+  every emulator/rehearsal drill writer (`acceptance.py`, offline
+  `cmd_demo_drill`; `run_drill` already stamped) marks EMULATED. The
+  intentional undated-hash-bound path is unchanged and still applies to
+  provenance-bearing drills. The existing E1 evidence file is deliberately
+  NOT edited and becomes gate-rejected automatically. No gate.json exists,
+  so migration cost is zero. Gate stays NO-GO.
