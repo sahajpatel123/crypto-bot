@@ -152,7 +152,8 @@ def run_acceptance(*, full: bool = False,
     host = base / "host.json"
     _write(host, {"verdict": "PASS", "generated_utc": now})
     drill = base / "drill.json"
-    _write(drill, {"verdict": "PASS", "created_utc": now})
+    _write(drill, {"verdict": "PASS", "provenance": "EMULATED",
+                   "created_utc": now})
     latency = base / "latency.json"
     _write(latency, {"verdict": "PASS", "p99_feed_age_ms": 100,
                      "drop_rate": 0.0})

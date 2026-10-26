@@ -160,6 +160,81 @@ $ .venv/bin/ruff check src tests
 run and failed to start; the results are appended in follow-up commits once
 the environment finishes installing.
 
+```
+$ git rev-parse HEAD   # live/trade-ready, 2026-10-26, macOS arm64, python 3.14, pytest 9.1.1
+3cb280d8f3e2e3fb1a63b6687c7f6b2c6135a8fc   # v1.1.1 + selftest ready-line fix only
+
+$ .venv/bin/python -m cryptobot.cli selftest   # x3 consecutive
+selftest: PASS  {"commands": 69, "failed": 0, "passed": 159, "verdict": "PASS"}
+$ .venv/bin/python -m cryptobot.cli selftest --all
+selftest: PASS  {"commands": 69, "failed": 0, "passed": 164, "verdict": "PASS"}
+# --all adds 5 pytest subsets incl. tests/audit/test_sandbox_drill.py (chaos): green
+
+$ .venv/bin/pytest tests/unit/test_e1_fault_matrix.py tests/unit/test_execution_orders.py \
+    tests/unit/test_execution_runtime.py tests/unit/test_execution_positions.py \
+    tests/unit/test_execution_handoff.py -q                      # row 1
+97 passed in 26.35s
+$ .venv/bin/pytest tests/unit/test_adapters_bridge.py tests/unit/test_execution_feed.py \
+    tests/unit/test_adapters_user_stream.py tests/unit/test_safety_alerts.py \
+    tests/unit/test_e1_fault_matrix.py -q                        # row 2
+70 passed in 33.09s
+$ .venv/bin/pytest tests/unit/test_execution_orders.py tests/unit/test_execution_positions.py \
+    tests/unit/test_execution_w3profile.py tests/unit/test_execution_fake_venue.py \
+    tests/unit/test_execution_defects.py tests/unit/test_e1_fault_matrix.py -q   # row 3
+91 passed in 23.37s
+$ .venv/bin/pytest tests/unit/test_e1_fault_matrix.py \
+    tests/unit/test_binance_live_contract.py -q                  # row 4
+48 passed in 22.71s
+$ .venv/bin/pytest tests/unit/test_e1_fault_matrix.py tests/unit/test_execution_defects.py \
+    tests/unit/test_exception_policy.py -q                       # row 5
+56 passed in 22.97s
+$ .venv/bin/pytest tests/unit/test_execution_orders.py tests/unit/test_execution_runtime.py \
+    tests/unit/test_execution_handoff.py tests/unit/test_execution_defects.py \
+    tests/unit/test_adapters_paper_contract.py -q                # row 6
+66 passed in 5.00s
+$ .venv/bin/pytest tests/acceptance/test_risk_halts.py tests/acceptance/test_risk_gates.py \
+    tests/acceptance/test_risk_sizing.py tests/unit/test_e1_safety_rails.py -q   # row 7
+33 passed in 0.48s
+$ .venv/bin/pytest tests/unit/test_e1_safety_rails.py tests/audit/test_runtime_controls.py \
+    tests/unit/test_exception_policy.py tests/unit/test_execution_handoff.py \
+    tests/unit/test_safety_alerts.py -q                          # row 8
+40 passed in 0.62s
+$ .venv/bin/pytest tests/unit/test_safety_alerts.py -q           # row 9
+7 passed in 0.20s
+$ .venv/bin/pytest tests/unit/test_cli_readiness.py \
+    tests/unit/test_execution_runtime.py -q                      # row 10
+42 passed in 2.50s
+
+$ .venv/bin/pytest tests/unit/test_cli_readiness.py::test_reconcile_unreachable_venue_fails_and_never_claims_flat \
+    tests/unit/test_e1_fault_matrix.py::test_a_retry_after_window_survives_engine_restart \
+    tests/unit/test_e1_fault_matrix.py::test_f_listen_key_expiry_reopens_a_key_and_heals \
+    tests/audit/test_sandbox_drill.py::test_rate_limit_refuse_fast_no_order -q   # named spot checks
+4 passed in 1.28s
+$ .venv/bin/pytest \
+    "tests/acceptance/test_rel_integrated_challenge.py::test_rel_crash_boundaries_resume_complete" -q
+1 passed in 8.98s   # the #42-run-249 red test: green here, runner flake confirmed, no regression
+
+$ .venv/bin/ruff check src tests
+All checks passed!
+$ uv lock --check
+Resolved 30 packages in 42ms   # uv.lock parses and is in sync (the #47 defect is release/v1-only)
+$ .venv/bin/python -m cryptobot.cli selftest --matrix-out /tmp/matrix_new.md && diff COMMAND_MATRIX.md /tmp/matrix_new.md
+MATRIX-IDENTICAL   # all 69 rows PASS, committed matrix matches generated output
+```
+
+**Executed-confirmation amendment, 2026-10-26 (`live/trade-ready` @
+`3cb280d`).** Rows 1–10 above are no longer design verdicts: each row's
+exact matrix command was executed on this tree and passed with the counts
+shown. Two caveats from the original revision are resolved: (1) the row-4
+note about `tests/audit/test_sandbox_drill.py::test_rate_limit_refuse_fast_no_order`
+is stale — PR #56 landed the persisted-window semantics and the test passes
+(confirmed in the spot checks and inside `selftest --all`); (2) the #42
+landed-run red (`test_rel_crash_boundaries_resume_complete`) reproduces
+green here, confirming the runner/harness-flake assessment — `6aad6b3`
+itself is still not cited as green. Full `tests/unit` + `tests/acceptance`
+suites run in CI on the PR, not on this Mac. What still needs the owner's
+demo keys is unchanged (§"What still requires the owner's demo keys").
+
 ## Verification limits
 
 - The audit was run in the macOS session workspace, not the owner's
