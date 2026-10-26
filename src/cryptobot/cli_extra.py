@@ -230,12 +230,14 @@ def cmd_owner(args: argparse.Namespace) -> int:
             state = {}
     steps = [
         ("host-check", "run cryptobot host-check --no-network"),
+        ("recorder-start", "BLOCKED-OWNER: recorder restart is a human step"),
         ("demo-keys", "export demo keys in the environment; this wizard never stores them"),
         ("readiness", "run cryptobot readiness --config configs/demo.toml when that file exists"),
         ("demo-drill", "BLOCKED-OWNER: real demo-account drill is a human step"),
         ("latency-probe", "run cryptobot latency-probe when a capture exists"),
         ("fixtures", "run cryptobot fixtures ingest <source>"),
         ("calibrate", "run cryptobot calibrate --fills <file>"),
+        ("disk", "run cryptobot background status --recorder <edge-root>"),
         ("legal", "BLOCKED-OWNER: venue access from your jurisdiction"),
         ("tax", "BLOCKED-OWNER: tax treatment of gains and losses"),
     ]

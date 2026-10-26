@@ -302,11 +302,17 @@ On failure bring back: `research/autopilot_b/transitions.json` problems.
 
 ## 17. Recorder disk and retention (owner resource step)
 
-`cryptobot background status` projects recorder disk against the next
-adjudication. Today it reports `disk_alert: true` (about 16 days of
-disk against about 103 days to adjudication) and the recorder plist
-stops at its 8192 MB guard. The recorder cannot run unattended to
-adjudication on this disk without an external data root.
+`cryptobot background status --recorder <edge-root>` projects recorder
+disk against the next adjudication. Pass the live edge root explicitly:
+the default `data/recorder` resolves to the current directory, not the
+recorder the installed plist runs. As of 2026-10-26 it reports
+`disk_alert: true` (about 36.0 days of disk against about 96.3 days to
+adjudication, measured 61.17 MB/h from the 473-entry manifest); recompute
+with the command above rather than trusting these numbers. The recorder
+plist stops at its 4096 MB guard, matching the installed hardened plist
+(`deploy/macos/install.sh` carries the same value: reinstalling preserves
+it). The recorder cannot run unattended to adjudication on this disk
+without an external data root.
 
 1. Attach a disk with enough free space and set `EXTERNAL_DATA_ROOT`
    (or `CRYPTOBOT_EXTERNAL_ROOT`) before starting the recorder.

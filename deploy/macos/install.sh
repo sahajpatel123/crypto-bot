@@ -1,5 +1,11 @@
 #!/bin/sh
 # Per-user launchd agents. No sudo. Public data only.
+# NOTE (Iris G2): the recorder block below matches the deployed hardened
+# plist (4096 MB budget, restart-on-crash-only, 30 s crash pacing) so a
+# reinstall preserves owner tuning. The live Jio host additionally sets
+# CRYPTOBOT_DOH=1 and prepends ~/.cryptobot/netshim to PYTHONPATH for DNS
+# fallback; that stays host-specific (opt-in netguard) and must be
+# re-applied on that host after reinstall -- see Helix's runbooks.
 set -eu
 ROOT="$(CDPATH= cd -- "$(dirname "$0")/../.." && pwd)"
 PY="${CRYPTOBOT_PYTHON:-$ROOT/.venv/bin/python}"
@@ -40,9 +46,10 @@ install_one com.cryptobot.recorder "$(cat <<EOF
     <string>--out</string><string>$ROOT/data/recorder</string>
     <string>--symbols</string><string>BTCUSDT,ETHUSDT</string>
     <string>--chunk-seconds</string><string>300</string>
-    <string>--disk-budget-mb</string><string>8192</string>
+    <string>--disk-budget-mb</string><string>4096</string>
   </array>
-  <key>KeepAlive</key><true/>
+  <key>KeepAlive</key><dict><key>SuccessfulExit</key><false/></dict>
+  <key>ThrottleInterval</key><integer>30</integer>
   <key>Nice</key><integer>10</integer>
   ${COMMON//PLACE/recorder}
 </dict></plist>

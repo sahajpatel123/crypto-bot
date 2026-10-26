@@ -33,3 +33,22 @@ def test_dashboard_collects_and_escapes(tmp_path):
     assert "42.5" in text
     assert "<script>" not in text
     assert html["recorder"]["dropped"] == 2
+
+
+def test_dashboard_out_directory_writes_default_file(tmp_path, capsys):
+    """Iris G4: --out pointing at a directory writes dashboard.html
+    inside it instead of dying on a raw IsADirectoryError."""
+    import argparse
+
+    from cryptobot.cli import cmd_dashboard
+
+    outdir = tmp_path / "dash"
+    outdir.mkdir()
+    rc = cmd_dashboard(argparse.Namespace(
+        out=str(outdir), recorder_root=str(tmp_path / "norec"),
+        autopilot_root=str(tmp_path / "noauto"),
+        risk_state=str(tmp_path / "norisk.json")))
+    assert rc == 0
+    assert (outdir / "dashboard.html").exists()
+    assert "dashboard:" in capsys.readouterr().out
+    assert "IsADirectoryError" not in capsys.readouterr().out
