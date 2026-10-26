@@ -5,6 +5,7 @@ import argparse
 import io
 import json
 import os
+import select
 import signal
 import subprocess
 import sys
@@ -164,20 +165,34 @@ def run_selftest(*, include_emulator: bool = True,
                f"{m1},{m2}", results)
 
     # SIGINT on the emulator server, which never dials a public host.
+    # Wait for the ready line, not a blind sleep: the server installs its
+    # SIGINT handler before printing it, so signalling only after the line
+    # proves the handler ran instead of racing interpreter startup.
     proc = subprocess.Popen(
         [sys.executable, "-m", "cryptobot.cli", "emulator", "serve",
          "--port", "0"],
         stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-    time.sleep(0.4)
-    proc.send_signal(signal.SIGINT)
+    ready = False
+    deadline = time.time() + 15
+    assert proc.stdout is not None
+    while time.time() < deadline and proc.poll() is None:
+        ready_r, _, _ = select.select([proc.stdout], [], [], 0.2)
+        if ready_r:
+            line = proc.stdout.readline()
+            if line and '"url"' in line:
+                ready = True
+                break
+    if proc.poll() is None:
+        proc.send_signal(signal.SIGINT)
     try:
         out, err = proc.communicate(timeout=5)
     except subprocess.TimeoutExpired:
         proc.kill()
         out, err = proc.communicate()
     blob = (out or "") + (err or "")
-    _check("emulator-sigint", proc.returncode == 0
-           and "Traceback" not in blob, f"rc={proc.returncode}", results)
+    _check("emulator-sigint", ready and proc.returncode == 0
+           and "Traceback" not in blob,
+           f"ready={ready} rc={proc.returncode}", results)
 
     if include_emulator:
         from cryptobot.emulator.drill import run_drill, run_recorder_smoke, run_soak
