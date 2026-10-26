@@ -1827,11 +1827,20 @@ def cmd_recorder(args: argparse.Namespace) -> int:
                                                 ).split(",") if s.strip())
     venues = tuple(s.strip().lower() for s in (args.venues or "binance"
                                                ).split(",") if s.strip())
+    kline_raw = (args.kline_symbols or "full").strip()
+    kline_symbols: tuple[str, ...] = ()
+    if kline_raw.lower() not in ("full", ""):
+        kline_symbols = tuple(s.strip().upper() for s in kline_raw.split(",")
+                              if s.strip())
+        if not kline_symbols:
+            print("recorder: --kline-symbols names no symbols", file=sys.stderr)
+            return 2
     cfg = RecorderConfig(out_dir=str(out), symbols=symbols, venues=venues,
                          stop_file=str(stop_file),
                          chunk_seconds=int(args.chunk_seconds),
                          disk_budget_mb=int(args.disk_budget_mb),
-                         input_class=args.input_class)
+                         input_class=args.input_class,
+                         kline_symbols=kline_symbols)
     (out / "recorder.pid").write_text(str(os.getpid()) + "\n")
     try:
         status = run_recorder(cfg, duration_s=args.duration_s)
@@ -2355,6 +2364,12 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--stop-file", default=None)
     p.add_argument("--symbols", default="BTCUSDT,ETHUSDT")
     p.add_argument("--venues", default="binance")
+    p.add_argument("--kline-symbols", default="full",
+                   help="'full' (default) discovers every TRADING USDT-margined "
+                   "perp from exchangeInfo for the daily-kline + funding "
+                   "universe (#49); a comma list pins an explicit subset and "
+                   "is tagged on every record (a narrowed universe cannot "
+                   "satisfy D1's frozen-universe rule)")
     p.add_argument("--duration-s", type=float, default=None)
     p.add_argument("--chunk-seconds", type=int, default=3600)
     p.add_argument("--disk-budget-mb", type=int, default=50_000)
