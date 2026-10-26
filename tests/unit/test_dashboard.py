@@ -50,5 +50,6 @@ def test_dashboard_out_directory_writes_default_file(tmp_path, capsys):
         risk_state=str(tmp_path / "norisk.json")))
     assert rc == 0
     assert (outdir / "dashboard.html").exists()
-    assert "dashboard:" in capsys.readouterr().out
-    assert "IsADirectoryError" not in capsys.readouterr().out
+    captured = capsys.readouterr()
+    assert "dashboard:" in captured.out
+    assert "IsADirectoryError" not in captured.out + captured.err
