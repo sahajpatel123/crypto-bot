@@ -325,8 +325,9 @@ def test_rel_crash_boundaries_resume_complete(tmp_path):
 
     (root / "ref").mkdir()
     r = run_bench("ref")
+    assert r.returncode == 0, f"setup: reference run rc={r.returncode}\n{r.stderr[-2000:]}"
     rep_ref = json.loads((root / "ref" / "rep.json").read_text())
-    assert r.returncode == 0 and rep_ref["status"] == "COMPLETE", (
+    assert rep_ref["status"] == "COMPLETE", (
         f"setup: reference run failed rc={r.returncode} {rep_ref}")
     (root / "vic").mkdir()
     env = dict(os.environ)
@@ -337,13 +338,19 @@ def test_rel_crash_boundaries_resume_complete(tmp_path):
         cwd=str(repo), env=env)
     try:
         # Kill as soon as partial progress exists (dirty crash mid-run).
+        # The kill requires a REAL checkpoint file: killing on work/-
+        # exists races the first commit by ~5ms (Session init creates
+        # work/; bench_checkpoint.json lands after the first ingested
+        # event), and resume without a checkpoint dies rc=1 with no
+        # rep.json (#67: 1/30 local repro). The old commit.json name
+        # never existed (dead disjunct); work/ alone proves nothing.
         deadline = time.monotonic() + 120
         killed = False
         while time.monotonic() < deadline:
             if vic.poll() is not None:
                 break
             ck = root / "vic" / "ck"
-            if (ck / "commit.json").exists() or (ck / "work").exists():
+            if (ck / "bench_checkpoint.json").exists():
                 vic.send_signal(signal.SIGKILL)
                 killed = True
                 break
@@ -359,12 +366,11 @@ def test_rel_crash_boundaries_resume_complete(tmp_path):
     import shutil
     shutil.copytree(root / "vic" / "ck", root / "res" / "ck")
     r2 = run_bench("res", ("--resume",))
-    # Flake note (#67): if the resume subprocess dies before writing
-    # rep.json this read masks its stderr as FileNotFoundError. See the
-    # issue for the assert-order + observability fix; parity asserts below
-    # must not be weakened.
+    # Assert rc (with stderr) BEFORE reading rep.json: a dead resume
+    # subprocess must surface its own error, never a masking
+    # FileNotFoundError (#67 observability fix; outcomes unchanged).
+    assert r2.returncode == 0, f"setup: resume run rc={r2.returncode}\n{r2.stderr[-2000:]}"
     rep_res = json.loads((root / "res" / "rep.json").read_text())
-    assert r2.returncode == 0, r2.stderr[-500:]
     assert rep_res["status"] == "COMPLETE", rep_res
     fills_ref = (root / "ref" / "ck" / "work" / "fills.jsonl").read_text()
     fills_res = (root / "res" / "ck" / "work" / "fills.jsonl").read_text()
