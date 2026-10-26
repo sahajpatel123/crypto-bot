@@ -378,7 +378,9 @@ def decide(trips: dict[str, list[dict]], funding: list[dict],
         # restatement naming the tail -- costs never ease on ambiguity.
         verdict = "RESTATE-UP"
         reason = ("p90 realized RT exceeds 2x modeled RT with median inside "
-                  "model: tail restatement, conservative direction only")
+                  "model: tail restatement, conservative direction only; "
+                  "restated medians at/below modeled are recorded, not "
+                  "adopted (plan's conservative-direction adoption rule)")
     else:
         verdict = "CONFIRMED"
         reason = ("median realized RT <= modeled RT per symbol, p90 <= 2x "

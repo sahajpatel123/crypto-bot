@@ -50,7 +50,9 @@ statistics only). When powered, funding must reconcile to zero vs Vision
 against config modeled_rt_bps: median > 2× modeled → COST-MODEL-KILLED;
 median > modeled → RESTATE-UP (restated values = realized medians);
 p90 > 2× modeled with median inside → RESTATE-UP naming the tail
-(conservative extension of the draft, documented in code for review);
+(conservative extension of the draft, documented in code for review;
+restated medians at/below modeled are recorded, not adopted, per the
+plan's conservative-direction adoption rule);
 else CONFIRMED. Downward restatements are recorded, never adopted without
 a new preregistration (there is no adoption path in this tool).
 
