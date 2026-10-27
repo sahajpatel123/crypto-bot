@@ -22,7 +22,9 @@ def _gate_bundle(tmp: Path, verdict: dict) -> dict:
                   "config_sha256": "abc" + "0" * 61},
         "cost": {"version": 1, "created_utc": now},
         "host": {"verdict": "PASS", "generated_utc": now},
-        "drill": {"verdict": "PASS", "created_utc": now},
+        "drill": {"verdict": "PASS", "provenance": "DEMO",
+                  "venue": "https://demo-fapi.binance.com",
+                  "created_utc": now},
         "latency": {"verdict": "PASS", "p99_feed_age_ms": 10, "drop_rate": 0},
         "hb": {"ts_utc": now, "has_exposure": False},
     }
