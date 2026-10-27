@@ -2025,11 +2025,16 @@ def cmd_dashboard(args: argparse.Namespace) -> int:
     """F6.1: write the static HTML dashboard."""
     from cryptobot.reporting.status import write_dashboard
 
+    out = Path(args.out)
+    if out.is_dir():
+        # A directory names the container: write the default file inside
+        # rather than dying on a raw IsADirectoryError.
+        out = out / "dashboard.html"
     status = write_dashboard(
-        args.out, recorder_root=args.recorder_root,
+        out, recorder_root=args.recorder_root,
         autopilot_root=args.autopilot_root, risk_state=args.risk_state)
     print(json.dumps(status, indent=1, sort_keys=True))
-    print(f"dashboard: {args.out}")
+    print(f"dashboard: {out}")
     return 0
 
 
@@ -2416,7 +2421,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--out", default=None)
     p.set_defaults(func=cmd_host_check)
     p = sub.add_parser("dashboard", help="static status dashboard (F6.1)")
-    p.add_argument("--out", default="reports/dashboard.html")
+    p.add_argument("--out", default="reports/dashboard.html",
+                   help="output HTML file (a directory writes dashboard.html "
+                        "inside it)")
     p.add_argument("--recorder-root", default="data/recorder")
     p.add_argument("--autopilot-root", default="research/autopilot")
     p.add_argument("--risk-state", default=None)
@@ -2479,7 +2486,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.set_defaults(func=cli_extra.cmd_ops)
     p = sub.add_parser("background", help="launchd install, uninstall, status")
     p.add_argument("background_cmd", choices=("install", "uninstall", "status"))
-    p.add_argument("--recorder", default="data/recorder")
+    p.add_argument("--recorder", default="data/recorder",
+                   help="recorder root to report on (default resolves to "
+                        "the current directory; pass the live edge root "
+                        "for the real disk alert)")
     p.add_argument("--no-notify", action="store_true")
     p.set_defaults(func=cli_extra.cmd_background)
     p = sub.add_parser("owner", help="guided human-only steps")
