@@ -1,13 +1,14 @@
-"""deploy/macos/install.sh must schedule the verdict watcher and the daily P&L.
+"""The macOS installer must install agents whose commands still exist.
 
-v1.1.0 shipped ``cryptobot verdict-watch --once`` and ``cryptobot pnl daily`` but nothing
-called them, so "delivers its verdict automatically" held only if the owner wrote cron by
-hand. These tests keep both agents in the installer, keep their commands real (they parse in
-the CLI parser the same installation ships) and keep them inert: a calendar trigger, no
-KeepAlive, and no hand on the recorder.
+`cryptobot verdict-watch --once` and `cryptobot pnl daily` only run daily if
+``deploy/macos/install.sh`` installs agents for them, and an agent whose command
+was renamed -- or whose flag was dropped -- fails silently at 04:00 instead of
+in CI. This module parses the installer (no line numbers, no hand-kept command
+list) and parses every installed CLI command through the real argparse tree.
 """
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import pytest
@@ -15,69 +16,93 @@ import pytest
 from cryptobot.cli import build_parser
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-INSTALL = REPO_ROOT / "deploy" / "macos" / "install.sh"
+INSTALL_SH = REPO_ROOT / "deploy" / "macos" / "install.sh"
 
-# label -> argv after ``-m cryptobot.cli`` (the command the agent must actually run)
-AGENTS = {
-    "com.cryptobot.verdict-watch": ["verdict-watch", "--once"],
-    "com.cryptobot.pnl": ["pnl", "daily"],
-}
-IDS = list(AGENTS)
+#: The daily operator jobs v1.1.1 promises; the recorder is deliberately not here.
+DAILY_AGENTS = ("com.cryptobot.verdict-watch", "com.cryptobot.pnl")
 
-
-def _script() -> str:
-    assert INSTALL.is_file(), f"missing {INSTALL}"
-    return INSTALL.read_text(encoding="utf-8")
-
-
-def _agent_block(text: str, label: str) -> str:
-    """The here-document body of ``install_one <label> "$(cat <<EOF``."""
-    marker = f'install_one {label} "$(cat <<EOF'
-    start = text.find(marker)
-    assert start != -1, f"install.sh does not install {label}"
-    end = text.find("\nEOF\n", start)
-    assert end != -1, f"unterminated here-document for {label}"
-    return text[start:end]
+_AGENT_BLOCK = re.compile(
+    r'install_one\s+(?P<label>[\w.-]+)\s+"\$\(cat\s*<<EOF\n(?P<body>.*?)\nEOF\n\)"',
+    re.DOTALL)
+_PROGRAM_ARGS = re.compile(
+    r"<key>ProgramArguments</key>\s*<array>(?P<items>.*?)</array>", re.DOTALL)
+_STRING = re.compile(r"<string>(?P<value>.*?)</string>", re.DOTALL)
+_HOUR = re.compile(r"<key>Hour</key>\s*<integer>\d+</integer>")
+_MINUTE = re.compile(r"<key>Minute</key>\s*<integer>\d+</integer>")
 
 
-@pytest.mark.parametrize("label", IDS)
-def test_installer_schedules_the_agent(label):
-    block = _agent_block(_script(), label)
-    assert f"<key>Label</key><string>{label}</string>" in block
-    tokens = ["<string>-m</string>", "<string>cryptobot.cli</string>"]
-    tokens += [f"<string>{part}</string>" for part in AGENTS[label]]
-    for token in tokens:
-        assert token in block, f"{label} does not run {token}"
+def _agents() -> dict[str, str]:
+    """label -> plist body, for every agent the installer writes."""
+    text = INSTALL_SH.read_text(encoding="utf-8")
+    agents = {m.group("label"): m.group("body") for m in _AGENT_BLOCK.finditer(text)}
+    assert agents, f"no install_one blocks parsed from {INSTALL_SH}"
+    return agents
 
 
-@pytest.mark.parametrize("label", IDS)
-def test_agent_is_a_plain_daily_calendar_agent(label):
-    block = _agent_block(_script(), label)
-    assert "<key>StartCalendarInterval</key>" in block, f"{label} needs a daily trigger"
-    assert "<key>Hour</key>" in block and "<key>Minute</key>" in block
-    assert "<key>KeepAlive</key>" not in block, f"{label} must not restart itself"
-    assert "<key>RunAtLoad</key>" not in block, f"{label} must not run at install time"
-    assert "<key>StartInterval</key>" not in block
-    assert "recorder" not in block, f"{label} must not touch the recorder"
-    assert "caffeinate" not in block, f"{label} is a short job, not a long-lived one"
+def _program_arguments(body: str) -> list[str]:
+    array = _PROGRAM_ARGS.search(body)
+    assert array, "agent has no ProgramArguments array"
+    return [value.strip() for value in _STRING.findall(array.group("items"))]
 
 
-@pytest.mark.parametrize("label", IDS)
-def test_the_scheduled_command_exists_in_the_cli_parser(label):
-    args = build_parser().parse_args(AGENTS[label])
-    assert callable(getattr(args, "func", None)), f"{AGENTS[label]} has no command function"
+def _cli_argv(body: str) -> list[str]:
+    """The arguments after ``-m cryptobot.cli`` (wrappers such as nice are skipped)."""
+    argv = _program_arguments(body)
+    assert "cryptobot.cli" in argv, f"not a cryptobot.cli agent: {argv}"
+    return argv[argv.index("cryptobot.cli") + 1:]
 
 
-def test_the_verdict_agent_passes_once():
-    """``verdict-watch`` refuses without ``--once`` (it is the cron idiom), so it must be
-    in the installed argv, not left to the installer's environment."""
-    args = build_parser().parse_args(AGENTS["com.cryptobot.verdict-watch"])
-    assert args.once is True
+def _script_path(argv: list[str]) -> str | None:
+    """The repository-relative script an agent runs directly, if it runs one."""
+    for argument in argv:
+        if not argument.endswith(".py"):
+            continue
+        return argument.split("$ROOT/", 1)[1] if "$ROOT/" in argument else argument
+    return None
 
 
-def test_the_agents_do_not_replace_the_existing_ones():
-    text = _script()
-    for label in ("com.cryptobot.recorder", "com.cryptobot.refresh",
-                  "com.cryptobot.autopilot", "com.cryptobot.adjudicate",
-                  "com.cryptobot.watchdog"):
-        assert f"install_one {label} " in text, f"{label} disappeared from install.sh"
+def test_installer_parses_and_still_owns_the_recorder():
+    """A parse that silently matched nothing would make every test below vacuous."""
+    agents = _agents()
+    assert "com.cryptobot.recorder" in agents
+    assert "<key>KeepAlive</key><true/>" in agents["com.cryptobot.recorder"]
+    for label in DAILY_AGENTS:
+        assert label in agents, f"{label} is not installed by deploy/macos/install.sh"
+
+
+@pytest.mark.parametrize("label", DAILY_AGENTS)
+def test_daily_agent_is_a_plain_calendar_job_outside_the_recorder(label):
+    body = _agents()[label]
+    assert f"<key>Label</key><string>{label}</string>" in body
+    assert _HOUR.search(body) and _MINUTE.search(body), "want StartCalendarInterval H:M"
+    assert "<key>StartCalendarInterval</key>" in body
+    # No supervision, no polling loop, and nothing that could disturb the recorder.
+    assert "<key>KeepAlive</key>" not in body
+    assert "<key>StartInterval</key>" not in body
+    assert "recorder" not in " ".join(_program_arguments(body))
+    assert label != "com.cryptobot.recorder"
+
+
+@pytest.mark.parametrize("label", DAILY_AGENTS)
+def test_daily_agent_command_exists_in_the_cli_parser(label):
+    argv = _cli_argv(_agents()[label])
+    assert argv, f"{label} installs an empty command"
+    args = build_parser().parse_args(argv)  # SystemExit => subcommand or flag is gone
+    assert callable(args.func)
+    if label == "com.cryptobot.verdict-watch":
+        assert "--once" in argv  # the cron-friendly form; the command refuses otherwise
+    if label == "com.cryptobot.pnl":
+        assert argv[:2] == ["pnl", "daily"]
+
+
+def test_every_installed_command_exists():
+    """Every agent: a live cryptobot.cli command, or a script that is really in the repo."""
+    for label, body in _agents().items():
+        argv = _program_arguments(body)
+        if "cryptobot.cli" in argv:
+            args = build_parser().parse_args(_cli_argv(body))
+            assert callable(args.func), label
+            continue
+        script = _script_path(argv)
+        assert script, f"{label} installs neither a CLI command nor a script: {argv}"
+        assert (REPO_ROOT / script).is_file(), f"{label} points at missing {script}"

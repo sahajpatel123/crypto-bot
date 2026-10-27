@@ -370,6 +370,10 @@ def test_rel_crash_boundaries_resume_complete(tmp_path):
     # subprocess must surface its own error, never a masking
     # FileNotFoundError (#67 observability fix; outcomes unchanged).
     assert r2.returncode == 0, f"setup: resume run rc={r2.returncode}\n{r2.stderr[-2000:]}"
+    # Flake note (#67): if the resume subprocess dies before writing
+    # rep.json this read masks its stderr as FileNotFoundError. See the
+    # issue for the assert-order + observability fix; parity asserts below
+    # must not be weakened.
     rep_res = json.loads((root / "res" / "rep.json").read_text())
     assert rep_res["status"] == "COMPLETE", rep_res
     fills_ref = (root / "ref" / "ck" / "work" / "fills.jsonl").read_text()
