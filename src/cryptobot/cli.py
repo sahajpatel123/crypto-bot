@@ -2025,11 +2025,16 @@ def cmd_dashboard(args: argparse.Namespace) -> int:
     """F6.1: write the static HTML dashboard."""
     from cryptobot.reporting.status import write_dashboard
 
+    out = Path(args.out)
+    if out.is_dir():
+        # A directory names the container: write the default file inside
+        # rather than dying on a raw IsADirectoryError.
+        out = out / "dashboard.html"
     status = write_dashboard(
-        args.out, recorder_root=args.recorder_root,
+        out, recorder_root=args.recorder_root,
         autopilot_root=args.autopilot_root, risk_state=args.risk_state)
     print(json.dumps(status, indent=1, sort_keys=True))
-    print(f"dashboard: {args.out}")
+    print(f"dashboard: {out}")
     return 0
 
 
@@ -2131,13 +2136,15 @@ def cmd_forward(args: argparse.Namespace) -> int:
     short (so a timer can distinguish "not yet" from "done"), 2 on a
     contract error. It never reads the holdout: the study layer refuses it.
     """
-    if args.what != "b4b":
+    if args.what not in ("b4b", "fcarry"):
         print(f"forward: unknown study {args.what!r}", file=sys.stderr)
         return 2
     import importlib.util
 
-    path = Path(__file__).resolve().parents[2] / "tools" / "forward_b4b.py"
-    spec = importlib.util.spec_from_file_location("forward_b4b_cmd", path)
+    tool = "forward_b4b.py" if args.what == "b4b" else "forward_fcarry.py"
+    label = "B4b" if args.what == "b4b" else "F-CARRY"
+    path = Path(__file__).resolve().parents[2] / "tools" / tool
+    spec = importlib.util.spec_from_file_location("forward_cmd_mod", path)
     mod = importlib.util.module_from_spec(spec)
     # dataclasses resolves annotations through sys.modules, so a module
     # exec'd by path must be registered before it runs.
@@ -2149,12 +2156,15 @@ def cmd_forward(args: argparse.Namespace) -> int:
     except mod.InputBeforeForwardWindow as exc:
         print(f"BLOCKED: {exc}", file=sys.stderr)
         return 2
+    except getattr(mod, "ChecksumRefusal", RuntimeError) as exc:
+        print(f"BLOCKED: {exc}", file=sys.stderr)
+        return 2
     if args.json:
         print(json.dumps(doc, indent=1, default=str))
         return 0 if doc["state"] == "VERDICT" else 3
     if doc["state"] == "VERDICT":
         v = doc["verdict"]
-        print(f"B4b FROZEN VERDICT: {v['status']}")
+        print(f"{label} FROZEN VERDICT: {v['status']}")
         if v.get("status_reason"):
             print(f"reason: {v['status_reason']}")
         for key in ("failed_gates", "unassessable_gates"):
@@ -2165,8 +2175,14 @@ def cmd_forward(args: argparse.Namespace) -> int:
     print("INSUFFICIENT FORWARD DATA")
     print(f"forward days: {doc['forward_days']} of {doc['forward_days_required']} "
           f"({doc['forward_days_remaining']} still to accrue)")
-    print(f"round trips: {doc['round_trips']} of {doc['round_trips_required']} "
-          f"({doc['round_trips_remaining']} still to complete)")
+    if "per_cell" in doc:
+        for key, cell in doc["per_cell"].items():
+            print(f"round trips {key}: {cell['round_trips']} of "
+                  f"{cell['round_trips_required']} "
+                  f"({cell['round_trips_remaining']} still to complete)")
+    else:
+        print(f"round trips: {doc['round_trips']} of {doc['round_trips_required']} "
+              f"({doc['round_trips_remaining']} still to complete)")
     print(f"earliest evaluable date: {doc['earliest_evaluable_on']}")
     print(f"earliest possible PASS: {doc['pass_possible_on']} "
           f"(years gate, forward day "
@@ -2416,7 +2432,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--out", default=None)
     p.set_defaults(func=cmd_host_check)
     p = sub.add_parser("dashboard", help="static status dashboard (F6.1)")
-    p.add_argument("--out", default="reports/dashboard.html")
+    p.add_argument("--out", default="reports/dashboard.html",
+                   help="output HTML file (a directory writes dashboard.html "
+                        "inside it)")
     p.add_argument("--recorder-root", default="data/recorder")
     p.add_argument("--autopilot-root", default="research/autopilot")
     p.add_argument("--risk-state", default=None)
@@ -2479,7 +2497,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.set_defaults(func=cli_extra.cmd_ops)
     p = sub.add_parser("background", help="launchd install, uninstall, status")
     p.add_argument("background_cmd", choices=("install", "uninstall", "status"))
-    p.add_argument("--recorder", default="data/recorder")
+    p.add_argument("--recorder", default="data/recorder",
+                   help="recorder root to report on (default resolves to "
+                        "the current directory; pass the live edge root "
+                        "for the real disk alert)")
     p.add_argument("--no-notify", action="store_true")
     p.set_defaults(func=cli_extra.cmd_background)
     p = sub.add_parser("owner", help="guided human-only steps")
@@ -2548,7 +2569,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.set_defaults(func=cli_extra.cmd_certify)
     p = sub.add_parser(
         "forward",
-        help="forward-only preregistered studies (B4b delta-neutral carry)")
+        help="forward-only preregistered studies (B4b/F-CARRY carry)")
     fwd_sub = p.add_subparsers(dest="what", required=True)
     b4b = fwd_sub.add_parser(
         "b4b",
@@ -2558,6 +2579,14 @@ def build_parser() -> argparse.ArgumentParser:
     b4b.add_argument("--json", action="store_true",
                      help="emit the whole document as JSON")
     b4b.set_defaults(func=cmd_forward)
+    fcarry = fwd_sub.add_parser(
+        "fcarry",
+        help="print the frozen F-CARRY verdict, or what is missing")
+    fcarry.add_argument("--dir", default="data/forward_fcarry",
+                        help="forward data root (raw Vision zips + manifest)")
+    fcarry.add_argument("--json", action="store_true",
+                        help="emit the whole document as JSON")
+    fcarry.set_defaults(func=cmd_forward)
 
     # Trade-ready operational commands. Registered last, and their handlers
     # live in the owning modules, so this block stays disjoint from cli_extra.

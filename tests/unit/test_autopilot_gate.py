@@ -136,7 +136,8 @@ def _gate_artifacts(tmp_path: Path, *, synthetic=False):
              "config_sha256": cfg_sha + "0" * 48}
     cost = {"version": 1, "created_utc": now}
     host = {"verdict": "PASS", "generated_utc": now}
-    drill = {"verdict": "PASS", "created_utc": now}
+    drill = {"verdict": "PASS", "provenance": "DEMO",
+             "venue": "https://demo-fapi.binance.com", "created_utc": now}
     latency = {"verdict": "PASS", "p99_feed_age_ms": 100,
                "drop_rate": 0.0}
     hb = {"ts_utc": now, "has_exposure": False}

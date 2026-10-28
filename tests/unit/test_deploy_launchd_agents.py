@@ -65,7 +65,13 @@ def test_installer_parses_and_still_owns_the_recorder():
     """A parse that silently matched nothing would make every test below vacuous."""
     agents = _agents()
     assert "com.cryptobot.recorder" in agents
-    assert "<key>KeepAlive</key><true/>" in agents["com.cryptobot.recorder"]
+    # Hardened restart policy (Iris G2, matching the deployed plist): restart
+    # on crash only, so a clean STOP/disk-floor exit stays stopped; 30 s
+    # crash pacing. The canary is the stanza's presence in the parsed block.
+    assert "<key>KeepAlive</key><dict>" in agents["com.cryptobot.recorder"]
+    assert "<key>SuccessfulExit</key><false/>" in agents["com.cryptobot.recorder"]
+    assert "<key>ThrottleInterval</key><integer>30</integer>" in agents[
+        "com.cryptobot.recorder"]
     for label in DAILY_AGENTS:
         assert label in agents, f"{label} is not installed by deploy/macos/install.sh"
 

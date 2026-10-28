@@ -68,6 +68,7 @@ Generated from the CLI parser. A row is PASS only when `cryptobot selftest` exer
 | `cryptobot keys check` | n/a | works, or a clear non-zero refusal with no traceback | PASS |
 | `cryptobot certify` | n/a | works, or a clear non-zero refusal with no traceback | PASS |
 | `cryptobot forward b4b` | n/a | works, or a clear non-zero refusal with no traceback | PASS |
+| `cryptobot forward fcarry` | n/a | works, or a clear non-zero refusal with no traceback | PASS |
 | `cryptobot ladder status` | n/a | works, or a clear non-zero refusal with no traceback | PASS |
 | `cryptobot ladder promote` | n/a | works, or a clear non-zero refusal with no traceback | PASS |
 | `cryptobot ladder demote` | n/a | works, or a clear non-zero refusal with no traceback | PASS |
